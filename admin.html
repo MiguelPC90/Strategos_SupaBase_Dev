@@ -458,6 +458,14 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
 <div id="admin-toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Supabase -->
+<script>
+  // Substitua pelos valores do seu projecto Supabase:
+  // window.SUPABASE_URL      = 'https://SEU_PROJECTO.supabase.co';
+  // window.SUPABASE_ANON_KEY = 'SUA_CHAVE_ANON';
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
+<script src="supabase-adapter.js"></script>
 <script>
 // ── CONFIG ────────────────────────────────────────────────────────────────────
 const DEF={title:'Strategos',subtitle:'Plano Estratégico',refDate:'',logo:'',filterLabels:{},
@@ -478,20 +486,61 @@ const DEF={title:'Strategos',subtitle:'Plano Estratégico',refDate:'',logo:'',fi
   theme:'light'
 };
 let CFG=JSON.parse(JSON.stringify(DEF));
-function loadCfg(){ try{ const s=localStorage.getItem('pmo_cfg'); if(s) CFG=JSON.parse(s); }catch(e){} }
-function saveCfg(){ try{ localStorage.setItem('pmo_cfg',JSON.stringify(CFG)); }catch(e){} }
+function loadCfg(){
+  try{ const s=localStorage.getItem('pmo_cfg'); if(s) CFG=JSON.parse(s); }catch(e){}
+  if(window.SB && SB.isOnline){
+    SB.loadConfig().then(function(remote){
+      if(remote){ CFG=Object.assign({},CFG,remote); initAdmin(); }
+    }).catch(function(){});
+  }
+}
+function saveCfg(){
+  try{ localStorage.setItem('pmo_cfg',JSON.stringify(CFG)); }catch(e){}
+  if(window.SB && SB.isOnline){
+    SB.saveConfig(CFG).catch(function(err){ console.warn('Admin: Supabase saveConfig falhou:', err); });
+  }
+}
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
 // ── LOCK ─────────────────────────────────────────────────────────────────────
-loadCfg();
-function unlock(){
+(async function(){ if(window.SB) await SB.init(); loadCfg(); })();
+async function unlock(){
   const pwd=document.getElementById('lock-pwd').value;
+  const errEl=document.getElementById('lock-err');
+
+  // ── Autenticação via Supabase (admin only) ──────────────────
+  if(window.SB && SB.isOnline){
+    try{
+      const emailInp=document.getElementById('lock-email');
+      const email=emailInp ? emailInp.value : ('admin@strategos.local');
+      const authData = await SB.signIn(email, pwd);
+      const meta = await SB.getUserMeta(authData.user.id);
+      if(!meta || meta.role !== 'admin'){
+        errEl.textContent='Sem permissões de administrador.';
+        document.getElementById('lock-pwd').value='';
+        await SB.signOut();
+        return;
+      }
+      document.getElementById('lock-screen').style.display='none';
+      initAdmin();
+      return;
+    }catch(e){
+      if(e.message && (e.message.includes('Invalid') || e.message.includes('credentials') || e.message.includes('password'))){
+        errEl.textContent='Password incorrecta.';
+        document.getElementById('lock-pwd').value='';
+        return;
+      }
+      console.warn('Admin: Supabase unlock falhou, a usar password local.', e);
+    }
+  }
+
+  // ── Fallback: password local ────────────────────────────────
   if(pwd===(CFG.password||'admin')){
     document.getElementById('lock-screen').style.display='none';
     initAdmin();
   } else {
-    document.getElementById('lock-err').textContent='Password incorrecta.';
+    errEl.textContent='Password incorrecta.';
     document.getElementById('lock-pwd').value='';
   }
 }
@@ -1251,19 +1300,44 @@ function addUser(){
   saveCfg(); renderUsersList();
 }
 
-function saveUser(uid_val){
+async function saveUser(uid_val){
   const u=CFG.users.find(function(x){return x.id===uid_val;});
   if(!u) return;
   document.querySelectorAll('[data-uid="'+uid_val+'"]').forEach(function(inp){
     const f=inp.dataset.field;
     if(f) u[f]=inp.value;
   });
-  saveCfg(); toast('Utilizador guardado.');
+  // Persistir no Supabase se disponível (via Edge Function que usa service_role)
+  if(window.SB && SB.isOnline){
+    try{
+      const email=u.username.includes('@')?u.username:u.username+'@strategos.local';
+      await SB.upsertUser({
+        supabase_uid : u._supabase_uid || null,
+        email        : email,
+        password     : u.password || undefined,
+        display_name : u.name || u.username,
+        profile_id   : u._supabase_profile_id || null
+      });
+      toast('Utilizador guardado na base de dados.');
+    }catch(err){
+      console.warn('Admin: Supabase upsertUser falhou:', err);
+      toast('Guardado localmente (Supabase indisponível).', 'var(--amber,#854F0B)');
+    }
+  } else {
+    toast('Utilizador guardado.');
+  }
+  saveCfg();
 }
 
-function deleteUser(uid_val){
+async function deleteUser(uid_val){
   if(!confirm('Eliminar utilizador?')) return;
-  CFG.users=CFG.users.filter(function(u){return u.id!==uid_val;});
+  const u=CFG.users.find(function(x){return x.id===uid_val;});
+  if(u && u._supabase_uid && window.SB && SB.isOnline){
+    try{
+      await SB.deleteUser(u._supabase_uid);
+    }catch(err){ console.warn('Admin: Supabase deleteUser falhou:', err); }
+  }
+  CFG.users=CFG.users.filter(function(x){return x.id!==uid_val;});
   saveCfg(); renderUsersList();
 }
 

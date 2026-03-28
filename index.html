@@ -1202,6 +1202,14 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
         crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
         crossorigin="anonymous"></script>
+<!-- Supabase: configurar SUPABASE_URL e SUPABASE_ANON_KEY antes deste bloco -->
+<script>
+  // Substitua pelos valores do seu projecto Supabase:
+  // window.SUPABASE_URL      = 'https://SEU_PROJECTO.supabase.co';
+  // window.SUPABASE_ANON_KEY = 'SUA_CHAVE_ANON';
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
+<script src="supabase-adapter.js"></script>
 <script>
 // ── DEBOUNCE UTILITY ──────────────────────────────────────────────────────────
 function debounce(fn,ms){let t;return function(){clearTimeout(t);t=setTimeout(fn,ms);};}
@@ -1509,11 +1517,48 @@ function showLogin(){
   setTimeout(function(){const u=document.getElementById('login-username');if(u)u.focus();},50);
 }
 
-function doLogin(){
+async function doLogin(){
   const uval=(document.getElementById('login-username').value||'').trim();
   const pval=(document.getElementById('login-password').value||'');
-  const user=(CFG.users||[]).find(function(u){return u.username===uval&&u.password===pval;});
   const err=document.getElementById('login-error');
+  err.style.display='none';
+
+  // ── Autenticação via Supabase (se online) ─────────────────────
+  if(window.SB && SB.isOnline){
+    try{
+      // Aceitar username simples (ex: "admin") ou email completo
+      const email = uval.includes('@') ? uval : uval+'@strategos.local';
+      const authData = await SB.signIn(email, pval);
+      const meta = await SB.getUserMeta(authData.user.id);
+      const profile = meta && meta.user_profiles;
+      if(!profile){
+        err.textContent='Perfil não encontrado. Contacte o administrador.';
+        err.style.display='block';
+        await SB.signOut();
+        return;
+      }
+      err.style.display='none';
+      currentUser = { id: authData.user.id, name: meta.display_name||uval, username: uval, role: meta.role };
+      currentProfile = { id: profile.id, name: profile.name, tabs: profile.tabs||{} };
+      localStorage.setItem('pmo_session', JSON.stringify({userId: authData.user.id}));
+      document.getElementById('login-screen').style.display='none';
+      const nameEl=document.getElementById('topbar-user-name');
+      if(nameEl) nameEl.textContent=meta.display_name||uval;
+      applyProfile(currentProfile);
+      return;
+    }catch(e){
+      // Se o login falhou (credenciais erradas) mostra erro; se foi erro de rede usa fallback
+      if(e.message && (e.message.includes('Invalid') || e.message.includes('credentials') || e.message.includes('password'))){
+        err.textContent='Utilizador ou password incorrectos.';
+        err.style.display='block';
+        return;
+      }
+      console.warn('PMO: Supabase login falhou, a usar autenticação local.', e);
+    }
+  }
+
+  // ── Fallback: autenticação local (CFG.users) ──────────────────
+  const user=(CFG.users||[]).find(function(u){return u.username===uval&&u.password===pval;});
   if(!user){err.style.display='block';return;}
   err.style.display='none';
   const profile=(CFG.profiles||[]).find(function(p){return p.id===user.profileId;});
@@ -1530,6 +1575,8 @@ function logout(){
   localStorage.removeItem('pmo_session');
   currentUser=null; currentProfile=null;
   setEditMode(false);
+  if(window.SB && SB.isOnline) SB.signOut().catch(function(){});
+  if(window.SB) SB.unsubscribeAll();
   showLogin();
 }
 
@@ -2897,8 +2944,21 @@ const DEF={title:'Strategos',subtitle:'Plano Estratégico',refDate:'',logo:'',fi
   ]};
 let CFG=JSON.parse(JSON.stringify(DEF));
 
-function loadCfg(){try{const s=localStorage.getItem('pmo_cfg');if(s)CFG=JSON.parse(s);}catch(e){}}
-function saveCfg(){try{localStorage.setItem('pmo_cfg',JSON.stringify(CFG));}catch(e){}}
+function loadCfg(){
+  try{const s=localStorage.getItem('pmo_cfg');if(s)CFG=JSON.parse(s);}catch(e){}
+  // Overlay assíncrono do Supabase (não bloqueia)
+  if(window.SB && SB.isOnline){
+    SB.loadConfig().then(function(remote){
+      if(remote){ CFG=Object.assign({},CFG,remote); applyAll(); }
+    }).catch(function(){});
+  }
+}
+function saveCfg(){
+  try{localStorage.setItem('pmo_cfg',JSON.stringify(CFG));}catch(e){}
+  if(window.SB && SB.isOnline){
+    SB.saveConfig(CFG).catch(function(err){ console.warn('PMO: Supabase saveConfig falhou:', err); });
+  }
+}
 
 function buildColorRows(){
   document.getElementById('color-rows').innerHTML=CFG.colors.map((c,i)=>`
@@ -2986,9 +3046,61 @@ initUsers();
 })();
 setTimeout(adjustSpacer,100);
 
+// Helpers partilhados para re-derivar e actualizar o estado após carregar dados
+function _applyLoadedData(){
+  var _n1map={}, _n0map={};
+  ALL_ACT.forEach(function(d){ var k=(d.id0||'')+'_'+d.id2; _n1map[k]=d.n1; _n0map[k]=d.n0||''; });
+  ALL_PDS.forEach(function(p){ var k=(p.id0||'')+'_'+p.id2; if(_n1map[k]){p.n1=_n1map[k]; p.n0=_n0map[k];} });
+  recomputeHierarchy(ALL_GANTT);
+  syncActFromGantt();
+  applyCutoff();
+  buildAllFilters(ALL_ACT);
+  ['n0','n1','n2','owner','sponsor'].forEach(function(id){MS_STATE[id]=new Set();});
+  applyFilters(); ensurePDSItems();
+  setTimeout(function(){
+    if(document.getElementById('gpds-selector')) initGPDS();
+    if(document.getElementById('gfin-selector')) initGFin();
+    if(document.getElementById('grisk-selector')) initGRisk();
+    if(document.getElementById('pds-selector')) buildPdsSelector();
+    if(document.getElementById('ef-plano')){ initExecFin(); renderExecFin(); }
+    try{
+      var _n0s=[...new Set(ALL_ACT.map(function(d){return d.n0||'';}))].filter(Boolean).sort();
+      var _n1s=[...new Set(ALL_ACT.map(function(d){return (d.n0||'')+'|||'+(d.n1||'');}))].filter(Boolean);
+      localStorage.setItem('pmo_n0s',JSON.stringify(_n0s));
+      localStorage.setItem('pmo_n1s',JSON.stringify(_n1s));
+    }catch(e){}
+  },100);
+}
+
 // Load data from JSON files
 async function loadData(){
-  // Restore persisted data first (survives navigation to admin and back)
+  // ── 1. Tentar Supabase (base de dados partilhada) ─────────────
+  if(window.SB && SB.isOnline){
+    try{
+      const [ganttRows, pdsRows] = await Promise.all([
+        SB.loadActivities(),
+        SB.loadPDS()
+      ]);
+      if(ganttRows && ganttRows.length){
+        ALL_GANTT = ganttRows;
+        ALL_ACT   = ALL_GANTT.filter(function(r){ return r.nivel === 4; });
+        ALL_PDS   = pdsRows || [];
+        _applyLoadedData();
+        // Guardar em localStorage como cache offline
+        try{
+          localStorage.setItem('pmo_gantt_data', JSON.stringify(ALL_GANTT));
+          localStorage.setItem('pmo_act',        JSON.stringify(ALL_ACT));
+          localStorage.setItem('pmo_pds_data',   JSON.stringify(ALL_PDS));
+          localStorage.setItem('pmo_data_ver','2');
+        }catch(e){}
+        return;
+      }
+    }catch(err){
+      console.warn('PMO: Supabase loadData falhou, a usar fallback local.', err);
+    }
+  }
+
+  // ── 2. Fallback: localStorage (cache offline) ─────────────────
   try{
     const _act=localStorage.getItem('pmo_act');
     const _gantt=localStorage.getItem('pmo_gantt_data');
@@ -2998,31 +3110,13 @@ async function loadData(){
       const _a=JSON.parse(_act), _g=JSON.parse(_gantt), _p=JSON.parse(_pds);
       if(_a.length){
         ALL_ACT=_a; ALL_GANTT=_g; ALL_PDS=_p;
-        // Re-derive n1/n0 for PDS from ALL_ACT (fixes stale composite key data)
-        var _n1map={}, _n0map={};
-        ALL_ACT.forEach(function(d){ var k=(d.id0||'')+'_'+d.id2; _n1map[k]=d.n1; _n0map[k]=d.n0||''; });
-        ALL_PDS.forEach(function(p){ var k=(p.id0||'')+'_'+p.id2; if(_n1map[k]){p.n1=_n1map[k]; p.n0=_n0map[k];} });
-        recomputeHierarchy(ALL_GANTT);
-        syncActFromGantt();
-        applyCutoff();
-        buildAllFilters(ALL_ACT);
-        ['n0','n1','n2','owner','sponsor'].forEach(function(id){MS_STATE[id]=new Set();});
-        applyFilters(); ensurePDSItems();
-        setTimeout(function(){
-          if(document.getElementById('gpds-selector')) initGPDS();
-          if(document.getElementById('gfin-selector')) initGFin();
-          if(document.getElementById('grisk-selector')) initGRisk();
-          if(document.getElementById('pds-selector')) buildPdsSelector();
-          const _n0s=[...new Set(ALL_ACT.map(function(d){return d.n0||'';}))].filter(Boolean).sort();
-          const _n1s=[...new Set(ALL_ACT.map(function(d){return (d.n0||'')+'|||'+(d.n1||'');}))].filter(Boolean);
-          localStorage.setItem('pmo_n0s',JSON.stringify(_n0s));
-          localStorage.setItem('pmo_n1s',JSON.stringify(_n1s));
-        },100);
+        _applyLoadedData();
         return;
       }
     }
   }catch(e){ console.warn('localStorage restore failed:', e); }
-  // Build base URL from current page location
+
+  // ── 3. Fallback final: ficheiros JSON estáticos ───────────────
   const pageURL = window.location.href.replace(/\/[^/]*$/, '');
   const paths = [
     pageURL + '/data',
@@ -3050,9 +3144,8 @@ async function loadData(){
   }
   if(!loaded) console.warn('PMO: JSON not found, use Excel upload');
   ['n0','n1','n2','owner','sponsor'].forEach(id=>{MS_STATE[id]=new Set();});
-  buildAllFilters(ALL_ACT);  // Rebuild all filters to full list
+  buildAllFilters(ALL_ACT);
   applyFilters();
-  // Rebuild PDS selectors after async data load
   setTimeout(function(){
     if(document.getElementById('gpds-selector')) initGPDS();
     if(document.getElementById('gfin-selector')) initGFin();
@@ -3060,7 +3153,6 @@ async function loadData(){
     if(document.getElementById('pds-selector')) buildPdsSelector();
     if(document.getElementById('ef-plano')){ initExecFin(); renderExecFin(); }
   }, 100);
-  // Store program/eixo list for Admin page
   try{
     const _n0s=[...new Set(ALL_ACT.map(function(d){return d.n0||'';}))].filter(Boolean).sort();
     const _n1s=[...new Set(ALL_ACT.map(function(d){return (d.n0||'')+'|||'+(d.n1||'');}))].filter(Boolean);
@@ -3068,7 +3160,44 @@ async function loadData(){
     localStorage.setItem('pmo_n1s', JSON.stringify(_n1s));
   }catch(e){}
 }
-loadData();
+
+// Inicializar Supabase e depois carregar dados
+(async function(){
+  if(window.SB) await SB.init();
+  await loadData();
+  // Subscrever actualizações em tempo real de outros utilizadores
+  if(window.SB && SB.isOnline){
+    SB.subscribeToChanges(
+      // onActivities: outra sessão guardou actividades
+      function(payload){
+        if(payload.eventType === 'DELETE') return; // ignorar deletes parciais (full-replace)
+        SB.loadActivities().then(function(rows){
+          if(!rows || !rows.length) return;
+          ALL_GANTT = rows;
+          ALL_ACT   = ALL_GANTT.filter(function(r){ return r.nivel === 4; });
+          recomputeHierarchy(ALL_GANTT);
+          syncActFromGantt();
+          applyFilters();
+          showToast('Dados de actividades actualizados por outro utilizador.', 'navy', 3000);
+        }).catch(function(){});
+      },
+      // onPDS: outra sessão actualizou um PDS
+      function(payload){
+        if(!payload.new || !payload.new.id) return;
+        SB.loadPDS().then(function(rows){
+          if(!rows) return;
+          ALL_PDS = rows;
+          try{ localStorage.setItem('pmo_pds_data', JSON.stringify(ALL_PDS)); }catch(e){}
+          showToast('PDS actualizado por outro utilizador.', 'navy', 3000);
+        }).catch(function(){});
+      },
+      // onSnapshots: outro utilizador criou um snapshot
+      function(){
+        buildSnapSelector();
+      }
+    );
+  }
+})();
 
 
 // ── SNAPSHOTS & EVOLUÇÃO ──────────────────────────────────────────────────────
@@ -3108,6 +3237,16 @@ function saveSnapshot(){
   saveSnapshots(snaps);
   buildSnapSelector();
   renderSnapHistory();
+  // Persistir snapshot na base de dados partilhada
+  if(window.SB && SB.isOnline){
+    SB.saveSnapshot({
+      label    : snap.label,
+      timestamp: snap.date,
+      kpis     : snap.kpi,
+      byN1     : snap.byN1,
+      byN0     : snap.byN0
+    }).catch(function(err){ console.warn('PMO: Supabase saveSnapshot falhou:', err); });
+  }
   alert('Snapshot guardado: ' + snap.label);
 }
 
@@ -3704,7 +3843,23 @@ function saveToSession(){
   applyFilters();  // refreshes fAct/fGantt and re-renders all tabs incl. KPIs
   pmDirty = false;
   document.getElementById('pm-unsaved').classList.remove('show');
-  showToast('Guardado! Os outros menus já reflectem as alterações.', 'navy');
+  // Persistir localmente sempre
+  try{
+    localStorage.setItem('pmo_gantt_data', JSON.stringify(ALL_GANTT));
+    localStorage.setItem('pmo_act',        JSON.stringify(ALL_ACT));
+    localStorage.setItem('pmo_data_ver','2');
+  }catch(e){}
+  // Persistir na base de dados partilhada se online
+  if(window.SB && SB.isOnline){
+    SB.saveActivities(ALL_GANTT)
+      .then(function(){ showToast('Guardado na base de dados partilhada!', 'navy'); })
+      .catch(function(err){
+        console.warn('PMO: Supabase save activities falhou:', err);
+        showToast('Guardado localmente (Supabase indisponível).', 'amber');
+      });
+  } else {
+    showToast('Guardado! Os outros menus já reflectem as alterações.', 'navy');
+  }
 }
 
 function exportToExcel(){
@@ -4072,6 +4227,15 @@ function saveGPDS(){
   document.getElementById('gpds-unsaved').classList.remove('show');
   gpdsUnsaved = false;
   try{localStorage.setItem('pmo_pds_data',JSON.stringify(ALL_PDS));localStorage.setItem('pmo_data_ver','2');}catch(e){}
+  // Persistir na base de dados partilhada
+  if(window.SB && SB.isOnline){
+    const p = getCurrentPDS();
+    if(p){
+      SB.savePDSEntry(p).catch(function(err){
+        console.warn('PMO: Supabase savePDSEntry falhou:', err);
+      });
+    }
+  }
   showToast('PDS guardado! O Ponto de situação já reflecte as alterações.','navy');
 }
 
@@ -4265,6 +4429,18 @@ function markGRiskDirty(){
 function saveGRisk(){
   griskUnsaved=false;
   document.getElementById('grisk-unsaved').classList.remove('show');
+  try{localStorage.setItem('pmo_pds_data',JSON.stringify(ALL_PDS));localStorage.setItem('pmo_data_ver','2');}catch(e){}
+  // Persistir riscos na base de dados partilhada
+  if(window.SB && SB.isOnline){
+    const sel=document.getElementById('grisk-selector');
+    const _key=sel?sel.value:'';
+    const p=_key?ALL_PDS.find(function(x){ return ((x.id0||'')+'_'+x.id2)===_key; }):null;
+    if(p){
+      // Garantir que o registo PDS existe antes de gravar riscos
+      SB.savePDSEntry(p).then(function(){ return SB.saveRisks(p._supabase_id, p.risks||[]); })
+        .catch(function(err){ console.warn('PMO: Supabase saveRisks falhou:', err); });
+    }
+  }
   showToast('Riscos guardados! O Ponto de situação já reflecte as alterações.','navy');
 }
 
@@ -5389,6 +5565,14 @@ function saveGFin(){
     localStorage.setItem('pmo_pds_data', JSON.stringify(ALL_PDS));
     localStorage.setItem('pmo_data_ver','2');
   }catch(e){}
+  // Persistir finanças na base de dados partilhada
+  if(window.SB && SB.isOnline){
+    const p = getCurrentFinPDS();
+    if(p){
+      SB.savePDSEntry(p).then(function(){ return SB.saveFinances(p._supabase_id, p.finances||{}); })
+        .catch(function(err){ console.warn('PMO: Supabase saveFinances falhou:', err); });
+    }
+  }
   showToast('Informação financeira guardada.','navy');
   // Refresh EF if visible
   if(document.getElementById('exec-fin')?.classList.contains('active')){
