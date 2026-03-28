@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>Strategos — Migração para Supabase</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #f5f6f7; color: #1a1a18; padding: 2rem; }
+h1 { color: #002E5E; margin-bottom: 0.5rem; }
+p.desc { color: #5c5c58; margin-bottom: 1.5rem; font-size: 14px; }
+.card { background: #fff; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.08); max-width: 680px; }
+label { display: block; font-size: 13px; color: #5c5c58; margin-bottom: 4px; }
+input { width: 100%; padding: 8px 10px; border: 1px solid rgba(0,0,0,0.16); border-radius: 6px; font-size: 14px; margin-bottom: 1rem; }
+button { background: #002E5E; color: #fff; border: none; border-radius: 6px; padding: 10px 20px; font-size: 14px; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.danger { background: #A32D2D; }
+#log { background: #1a1a18; color: #95BB42; font-family: monospace; font-size: 12px; border-radius: 8px; padding: 1rem; min-height: 200px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+.ok { color: #95BB42; }
+.err { color: #E24B4A; }
+.info { color: #8ab4f8; }
+.warn { color: #f5a623; }
+</style>
+</head>
+<body>
+<h1>Strategos PMO — Migração para Supabase</h1>
+<p class="desc">
+  Execute este script <strong>uma única vez</strong> para migrar os dados do <code>localStorage</code>
+  para a base de dados Supabase partilhada.<br>
+  Abra esta página no mesmo browser onde a aplicação está configurada (com os dados no localStorage).
+</p>
+
+<div class="card">
+  <label>Supabase URL</label>
+  <input id="sb-url" type="url" placeholder="https://xxxx.supabase.co" value="">
+  <label>Supabase Anon Key</label>
+  <input id="sb-key" type="text" placeholder="eyJh...">
+  <label>Email do administrador</label>
+  <input id="sb-email" type="email" placeholder="admin@strategos.local">
+  <label>Password do administrador</label>
+  <input id="sb-pwd" type="password" placeholder="••••••">
+  <button onclick="startMigration()" id="btn-migrate">Iniciar Migração</button>
+</div>
+
+<div class="card">
+  <div id="log"><span class="info">Aguarda configuração...</span></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
+<script src="supabase-adapter.js"></script>
+<script>
+'use strict';
+
+var logEl = document.getElementById('log');
+function log(msg, cls) {
+  cls = cls || 'ok';
+  logEl.innerHTML += '<span class="'+cls+'">'+escHTML(msg)+'</span>\n';
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function escHTML(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function startMigration() {
+  var btn = document.getElementById('btn-migrate');
+  btn.disabled = true;
+  logEl.innerHTML = '';
+
+  var url   = document.getElementById('sb-url').value.trim();
+  var key   = document.getElementById('sb-key').value.trim();
+  var email = document.getElementById('sb-email').value.trim();
+  var pwd   = document.getElementById('sb-pwd').value;
+
+  if(!url || !key || !email || !pwd) {
+    log('ERRO: preenche todos os campos.', 'err');
+    btn.disabled = false;
+    return;
+  }
+
+  // Configurar e inicializar SB
+  window.SUPABASE_URL      = url;
+  window.SUPABASE_ANON_KEY = key;
+
+  log('A inicializar Supabase...', 'info');
+  try {
+    await SB.init();
+    if(!SB.isOnline) throw new Error('Supabase não disponível.');
+    log('Supabase: OK', 'ok');
+  } catch(e) {
+    log('ERRO ao inicializar: ' + e.message, 'err');
+    btn.disabled = false;
+    return;
+  }
+
+  // Autenticar
+  log('A autenticar como ' + email + '...', 'info');
+  try {
+    await SB.signIn(email, pwd);
+    log('Autenticado com sucesso.', 'ok');
+  } catch(e) {
+    log('ERRO de autenticação: ' + e.message, 'err');
+    btn.disabled = false;
+    return;
+  }
+
+  // ── 1. Migrar GANTT / Actividades ────────────────────────────
+  var ganttRaw = null;
+  try { ganttRaw = JSON.parse(localStorage.getItem('pmo_gantt_data') || '[]'); } catch(e) {}
+  if(!ganttRaw || !ganttRaw.length) {
+    // Fallback: tentar pmo_act (nível 4)
+    try { ganttRaw = JSON.parse(localStorage.getItem('pmo_act') || '[]'); } catch(e) {}
+  }
+  log('Actividades/Gantt encontradas: ' + (ganttRaw ? ganttRaw.length : 0) + ' linhas.', 'info');
+  if(ganttRaw && ganttRaw.length) {
+    log('A migrar actividades...', 'info');
+    try {
+      await SB.saveActivities(ganttRaw);
+      log('✓ Actividades migradas.', 'ok');
+    } catch(e) {
+      log('ERRO a migrar actividades: ' + e.message, 'err');
+    }
+  } else {
+    log('Sem dados de actividades no localStorage.', 'warn');
+  }
+
+  // ── 2. Migrar PDS (com riscos e finanças aninhados) ──────────
+  var pdsRaw = null;
+  try { pdsRaw = JSON.parse(localStorage.getItem('pmo_pds_data') || '[]'); } catch(e) {}
+  log('Entradas PDS encontradas: ' + (pdsRaw ? pdsRaw.length : 0) + '.', 'info');
+  if(pdsRaw && pdsRaw.length) {
+    var pdsOk = 0, pdsErr = 0;
+    for(var i = 0; i < pdsRaw.length; i++) {
+      var p = pdsRaw[i];
+      try {
+        var pdsId = await SB.savePDSEntry(p);
+        // Riscos
+        if(p.risks && p.risks.length) {
+          await SB.saveRisks(pdsId, p.risks);
+        }
+        // Finanças
+        if(p.finances && (
+          (p.finances.rubricas && p.finances.rubricas.length) ||
+          (p.finances.contratos && p.finances.contratos.length) ||
+          (p.finances.facturas && p.finances.facturas.length)
+        )) {
+          await SB.saveFinances(pdsId, p.finances);
+        }
+        pdsOk++;
+        log('  ✓ PDS: ' + (p.plano || p.id2 || i), 'ok');
+      } catch(e) {
+        pdsErr++;
+        log('  ✗ PDS ' + (p.plano || p.id2 || i) + ': ' + e.message, 'err');
+      }
+    }
+    log('PDS: ' + pdsOk + ' OK, ' + pdsErr + ' erros.', pdsErr ? 'warn' : 'ok');
+  } else {
+    log('Sem dados PDS no localStorage.', 'warn');
+  }
+
+  // ── 3. Migrar Snapshots ───────────────────────────────────────
+  var snapsRaw = null;
+  try { snapsRaw = JSON.parse(localStorage.getItem('pmo_snapshots') || '[]'); } catch(e) {}
+  log('Snapshots encontrados: ' + (snapsRaw ? snapsRaw.length : 0) + '.', 'info');
+  if(snapsRaw && snapsRaw.length) {
+    var snapOk = 0, snapErr = 0;
+    for(var j = 0; j < snapsRaw.length; j++) {
+      var s = snapsRaw[j];
+      try {
+        await SB.saveSnapshot({
+          label    : s.label,
+          timestamp: s.date || s.timestamp,
+          kpis     : s.kpi  || s.kpis || {},
+          byN1     : s.byN1 || {},
+          byN0     : s.byN0 || {}
+        });
+        snapOk++;
+      } catch(e) {
+        snapErr++;
+        log('  ✗ Snapshot ' + j + ': ' + e.message, 'err');
+      }
+    }
+    log('Snapshots: ' + snapOk + ' OK, ' + snapErr + ' erros.', snapErr ? 'warn' : 'ok');
+  } else {
+    log('Sem snapshots no localStorage.', 'warn');
+  }
+
+  // ── 4. Migrar Configuração ────────────────────────────────────
+  var cfgRaw = null;
+  try { cfgRaw = JSON.parse(localStorage.getItem('pmo_cfg') || 'null'); } catch(e) {}
+  if(cfgRaw) {
+    log('A migrar configuração...', 'info');
+    try {
+      await SB.saveConfig(cfgRaw);
+      log('✓ Configuração migrada.', 'ok');
+    } catch(e) {
+      log('ERRO a migrar configuração: ' + e.message, 'err');
+    }
+  } else {
+    log('Sem configuração no localStorage.', 'warn');
+  }
+
+  log('', 'info');
+  log('═══════════════════════════════════════════', 'info');
+  log('  MIGRAÇÃO CONCLUÍDA', 'ok');
+  log('  Verifica os dados no dashboard do Supabase.', 'info');
+  log('═══════════════════════════════════════════', 'info');
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
