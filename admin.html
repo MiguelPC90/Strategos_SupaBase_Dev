@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Strategos — Administração</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<style>
+:root{
+  --navy:#002E5E;--green:#95BB42;--red:#A32D2D;--red-bar:#E24B4A;
+  --amber:#854F0B;--blue:#185FA5;
+  --bg:#fff;--bg2:#f5f6f7;--bg3:#eceef0;
+  --text:#1a1a18;--text2:#5c5c58;--text3:#9c9c96;
+  --border:rgba(0,0,0,.09);--border2:rgba(0,0,0,.16);
+  --r:8px;--rl:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg2);color:var(--text);min-height:100vh}
+
+/* ── TOPBAR ── */
+.admin-topbar{background:var(--navy);color:#fff;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.admin-brand{display:flex;align-items:center;gap:10px}
+.admin-brand img{height:32px;width:auto}
+.admin-brand-text{font-size:15px;font-weight:700}
+.admin-brand-sub{font-size:11px;opacity:.6;margin-top:1px}
+.admin-back{color:rgba(255,255,255,.7);font-size:12px;text-decoration:none;display:flex;align-items:center;gap:4px;padding:6px 12px;border:1px solid rgba(255,255,255,.2);border-radius:var(--r);transition:all .15s}
+.admin-back:hover{background:rgba(255,255,255,.1);color:#fff}
+
+/* ── LAYOUT ── */
+.admin-layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 56px)}
+
+/* ── SIDEBAR ── */
+.admin-sidebar{background:var(--navy);padding:16px 0;border-right:1px solid rgba(255,255,255,.08)}
+.admin-nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;color:rgba(255,255,255,.65);cursor:pointer;transition:all .15s;border-left:3px solid transparent}
+.admin-nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.admin-nav-item.active{background:rgba(255,255,255,.1);color:#fff;border-left-color:var(--green)}
+.admin-nav-item .nav-icon{font-size:15px;width:20px;text-align:center}
+.admin-nav-section{font-size:10px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;padding:16px 20px 6px}
+
+/* ── CONTENT ── */
+.admin-content{padding:28px;overflow-y:auto}
+.admin-panel{display:none}
+.admin-panel.active{display:block}
+.admin-panel h2{font-size:18px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.admin-panel .panel-desc{font-size:13px;color:var(--text2);margin-bottom:1.5rem}
+
+/* ── CARDS ── */
+.acard{background:var(--bg);border-radius:var(--rl);border:1px solid var(--border);padding:20px;margin-bottom:16px}
+.acard-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.arow{margin-bottom:12px}
+.arow label{display:block;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.ainput{width:100%;padding:8px 10px;font-size:13px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit}
+.ainput:focus{outline:none;border-color:var(--navy)}
+.agrid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.agrid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+/* ── BUTTONS ── */
+.abtn{padding:8px 16px;font-size:13px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg);color:var(--text);cursor:pointer;font-family:inherit;transition:all .15s}
+.abtn:hover{background:var(--bg2)}
+.abtn-primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+.abtn-primary:hover{opacity:.9}
+.abtn-danger{color:var(--red);border-color:var(--red)}
+.abtn-danger:hover{background:#fff0f0}
+.abtn-sm{padding:5px 10px;font-size:12px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ── COLOR SWATCHES ── */
+.color-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.color-row:last-child{border-bottom:none}
+.color-swatch{width:32px;height:32px;border-radius:6px;border:1px solid var(--border2);cursor:pointer;flex-shrink:0}
+.color-label{font-size:13px;flex:1}
+.color-key{font-size:11px;color:var(--text3);font-family:monospace}
+
+/* ── PROGRAM CARDS ── */
+.prog-card{background:var(--bg2);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.prog-code{font-size:11px;font-weight:700;color:var(--navy);background:var(--bg);border:1px solid var(--border2);border-radius:4px;padding:2px 8px;min-width:48px;text-align:center}
+.prog-name{font-size:13px;font-weight:600;flex:1}
+.prog-desc{font-size:12px;color:var(--text2)}
+
+/* ── RISK MATRIX ── */
+.risk-matrix-grid{display:inline-grid;gap:3px;margin-top:8px}
+.risk-cell{width:44px;height:44px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;cursor:default}
+
+/* ── SNAP CARDS ── */
+.snap-item{background:var(--bg2);border-radius:var(--r);padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.snap-label{font-size:13px;font-weight:600}
+.snap-date{font-size:11px;color:var(--text3)}
+
+/* ── TOAST ── */
+#admin-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:10px 20px;border-radius:var(--r);font-size:13px;opacity:0;transition:all .3s;pointer-events:none;z-index:999}
+#admin-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── LOCK SCREEN ── */
+#lock-screen{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:16px}
+.lock-box{background:#fff;border-radius:var(--rl);padding:32px;width:min(360px,90vw);text-align:center}
+.lock-box h2{color:var(--navy);margin-bottom:8px}
+.lock-box p{color:var(--text2);font-size:13px;margin-bottom:20px}
+.lock-input{width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);font-family:inherit;text-align:center;letter-spacing:4px;margin-bottom:12px}
+.lock-input:focus{outline:none;border-color:var(--navy)}
+.lock-error{color:var(--red);font-size:12px;min-height:16px;margin-bottom:8px}
+
+/* Dark mode */
+body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09a;--text3:#606058;--border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.15)}
+
+/* Mobile */
+@media(max-width:768px){
+  .admin-layout{grid-template-columns:1fr}
+  .admin-sidebar{padding:8px 0;border-right:none;border-bottom:1px solid rgba(255,255,255,.12);display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px}
+  .admin-nav-section{display:none}
+  .admin-nav-item{padding:6px 12px;border-left:none;border-radius:4px;font-size:12px}
+  .admin-nav-item.active{background:rgba(255,255,255,.15);border-left:none}
+  .admin-content{padding:16px}
+  .agrid-2,.agrid-3{grid-template-columns:1fr}
+}
+
+.fin-section-title{font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.05em;margin:8px 0 4px}
+</style>
+</head>
+<body>
+
+<!-- Lock screen -->
+<div id="lock-screen">
+  <div class="lock-box">
+    <h2>⚙ Administração</h2>
+    <p>Introduz a password para aceder às definições</p>
+    <input class="lock-input" type="password" id="lock-pwd" placeholder="••••••" onkeydown="if(event.key==='Enter')unlock()">
+    <div class="lock-error" id="lock-err"></div>
+    <button class="abtn abtn-primary" style="width:100%" onclick="unlock()">Entrar</button>
+    <div style="margin-top:12px"><a href="index.html" style="font-size:12px;color:var(--text3);text-decoration:none">← Voltar ao Strategos</a></div>
+  </div>
+</div>
+
+<!-- Topbar -->
+<div class="admin-topbar">
+  <div class="admin-brand">
+    <img id="admin-logo" src="" alt="Strategos" onerror="this.style.display='none'">
+    <div>
+      <div class="admin-brand-text">Strategos</div>
+      <div class="admin-brand-sub">Painel de Administração</div>
+    </div>
+  </div>
+  <a href="index.html" class="admin-back">← Voltar à plataforma</a>
+</div>
+
+<!-- Layout -->
+<div class="admin-layout">
+
+  <!-- Sidebar -->
+  <nav class="admin-sidebar">
+    <div class="admin-nav-section">Configuração</div>
+    <div class="admin-nav-item active" data-panel="geral" onclick="showPanel('geral',this)">
+      <span class="nav-icon">🏠</span> Geral
+    </div>
+    <div class="admin-nav-item" data-panel="seguranca" onclick="showPanel('seguranca',this)">
+      <span class="nav-icon">🔒</span> Segurança
+    </div>
+    <div class="admin-nav-item" data-panel="cores" onclick="showPanel('cores',this)">
+      <span class="nav-icon">🎨</span> Cores e Tema
+    </div>
+    <div class="admin-nav-section">Estrutura</div>
+    <div class="admin-nav-item" data-panel="estrutura" onclick="showPanel('estrutura',this)">
+      <span class="nav-icon">🏗</span> Programas e Eixos
+    </div>
+    <div class="admin-nav-item" data-panel="financeiro" onclick="showPanel('financeiro',this)">
+      <span class="nav-icon">💰</span> Financeiro
+    </div>
+    <div class="admin-nav-item" data-panel="risco" onclick="showPanel('risco',this)">
+      <span class="nav-icon">⚠️</span> Risco
+    </div>
+    <div class="admin-nav-section">Sistema</div>
+    <div class="admin-nav-item" data-panel="historico" onclick="showPanel('historico',this)">
+      <span class="nav-icon">📅</span> Histórico
+    </div>
+    <div class="admin-nav-item" data-panel="outros" onclick="showPanel('outros',this)">
+      <span class="nav-icon">⚙️</span> Outros
+    </div>
+    <div class="admin-nav-item" data-panel="utilizadores" onclick="showPanel('utilizadores',this)">
+      <span class="nav-icon">👥</span> Utilizadores
+    </div>
+    <div class="admin-nav-item" data-panel="dados" onclick="showPanel('dados',this)">
+      <span class="nav-icon">📊</span> Dados
+    </div>
+  </nav>
+
+  <!-- Content -->
+  <main class="admin-content">
+
+    <!-- GERAL -->
+    <div id="panel-geral" class="admin-panel active">
+      <h2>Geral</h2>
+      <p class="panel-desc">Identidade e apresentação da plataforma</p>
+      <div class="acard">
+        <div class="acard-title">Identidade</div>
+        <div class="agrid-2">
+          <div class="arow"><label>Título</label><input class="ainput" id="cfg-title" placeholder="Strategos"></div>
+          <div class="arow"><label>Subtítulo</label><input class="ainput" id="cfg-subtitle" placeholder="Plano Estratégico"></div>
+        </div>
+        <div class="arow"><label>Data de referência</label><input class="ainput" type="date" id="cfg-refdate" style="max-width:200px"></div>
+      </div>
+      <div class="acard">
+        <div class="acard-title">Logótipo</div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div id="logo-preview" style="width:80px;height:80px;border:1px solid var(--border2);border-radius:var(--r);display:flex;align-items:center;justify-content:center;background:var(--bg2);overflow:hidden">
+            <span style="font-size:11px;color:var(--text3)">Sem logo</span>
+          </div>
+          <div>
+            <button class="abtn abtn-sm" onclick="document.getElementById('logo-file').click()">↑ Carregar logo</button>
+            <button class="abtn abtn-sm abtn-danger" onclick="removeLogo()" style="margin-left:6px">Remover</button>
+            <input type="file" id="logo-file" accept="image/*" style="display:none" onchange="uploadLogo(this)">
+            <div style="font-size:11px;color:var(--text3);margin-top:6px">PNG ou SVG recomendado. Aparece no cabeçalho e rodapé.</div>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="abtn abtn-primary" onclick="saveGeral()">💾 Guardar alterações</button>
+      </div>
+    </div>
+
+    <!-- SEGURANÇA -->
+    <div id="panel-seguranca" class="admin-panel">
+      <h2>Segurança</h2>
+      <p class="panel-desc">Controlo de acesso ao painel de administração</p>
+      <div class="acard">
+        <div class="acard-title">Password de acesso</div>
+        <div class="agrid-2">
+          <div class="arow"><label>Password actual</label><input class="ainput" type="password" id="pwd-current" placeholder="••••••"></div>
+          <div></div>
+          <div class="arow"><label>Nova password</label><input class="ainput" type="password" id="pwd-new" placeholder="••••••"></div>
+          <div class="arow"><label>Confirmar nova password</label><input class="ainput" type="password" id="pwd-confirm" placeholder="••••••"></div>
+        </div>
+        <div id="pwd-msg" style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px"></div>
+        <button class="abtn abtn-primary" onclick="changePassword()">🔒 Alterar password</button>
+      </div>
+    </div>
+
+    <!-- CORES -->
+    <div id="panel-cores" class="admin-panel">
+      <h2>Cores e Tema</h2>
+      <p class="panel-desc">Personalização visual da plataforma</p>
+      <div class="acard">
+        <div class="acard-title">Modo</div>
+        <div style="display:flex;gap:10px">
+          <button class="abtn" id="btn-light" onclick="setTheme('light')">☀️ Claro</button>
+          <button class="abtn" id="btn-dark" onclick="setTheme('dark')">🌙 Escuro</button>
+        </div>
+      </div>
+      <div class="acard">
+        <div class="acard-title">Paleta de cores</div>
+        <div id="color-rows-admin"></div>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="abtn abtn-primary" onclick="saveCores()">💾 Aplicar cores</button>
+          <button class="abtn" onclick="resetCores()">↺ Repor predefinições</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ESTRUTURA -->
+    <div id="panel-estrutura" class="admin-panel">
+      <h2>Programas e Eixos</h2>
+      <p class="panel-desc">Gestão da hierarquia N0 e N1</p>
+      <div class="acard">
+        <div class="acard-title">Programas (N0)</div>
+        <div id="admin-prog-list" style="margin-bottom:12px;max-height:240px;overflow-y:auto"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input class="ainput" id="new-prog-name" placeholder="Nome do programa" style="flex:1;min-width:160px">
+          <input class="ainput" id="new-prog-desc" placeholder="Descrição" style="flex:1;min-width:160px">
+          <button class="abtn abtn-primary" onclick="adminAddProgram()">+ Adicionar</button>
+        </div>
+      </div>
+      <div class="acard">
+        <div class="acard-title">Eixos (N1)</div>
+        <div id="admin-eixo-list" style="margin-bottom:12px;max-height:240px;overflow-y:auto"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select class="ainput" id="new-eixo-prog" style="max-width:200px"></select>
+          <input class="ainput" id="new-eixo-name" placeholder="Nome do eixo" style="flex:1;min-width:160px">
+          <button class="abtn abtn-primary" onclick="adminAddEixo()">+ Adicionar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FINANCEIRO -->
+    <div id="panel-financeiro" class="admin-panel">
+      <h2>Configuração Financeira</h2>
+      <p class="panel-desc">Moeda base, categorias de custo, horizonte temporal e gestão de contratos por programa</p>
+
+      <div style="background:#FFF3CD;border:1px solid #856404;border-radius:var(--r);padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <span style="font-size:12px;color:#856404">Abre primeiro a plataforma principal com dados carregados, depois clica em Detectar.</span>
+        <button class="abtn abtn-primary abtn-sm" onclick="forceDetectPrograms()">🔄 Detectar programas</button>
+      </div>
+
+      <div class="acard">
+        <div class="acard-title">Moeda base</div>
+        <div class="arow">
+          <label>Moeda predefinida para todos os programas</label>
+          <select class="ainput" id="cfg-base-moeda" style="max-width:200px">
+            <option value="€">Euro (€)</option>
+            <option value="$">Dólar (USD)</option>
+            <option value="Kz">Kwanza (Kz)</option>
+          </select>
+        </div>
+        <button class="abtn abtn-primary" style="margin-top:8px" onclick="saveBaseMoeda()">💾 Guardar</button>
+      </div>
+
+      <div id="admin-fin-list"></div>
+
+      <div class="acard" style="margin-top:16px">
+        <div class="acard-title" style="color:var(--red)">Remover Contratos</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Selecciona o programa e plano para gerir contratos.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <select class="ainput" id="admin-ct-prog" onchange="loadAdminContracts()" style="max-width:180px"><option value="">— programa —</option></select>
+          <select class="ainput" id="admin-ct-plano" onchange="loadAdminContracts()" style="max-width:220px"><option value="">— plano —</option></select>
+        </div>
+        <div id="admin-contracts-list"></div>
+      </div>
+
+    </div>
+
+    <!-- RISCO -->
+    <div id="panel-risco" class="admin-panel">
+      <h2>Gestão de Risco</h2>
+      <p class="panel-desc">Configuração da matriz de risco e classificações</p>
+      <div class="acard">
+        <div class="acard-title">Dimensão da matriz</div>
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <button class="abtn" id="btn-matrix-3" onclick="setMatrix(3)">Matriz 3×3</button>
+          <button class="abtn" id="btn-matrix-5" onclick="setMatrix(5)">Matriz 5×5</button>
+        </div>
+        <div id="risk-matrix-preview"></div>
+      </div>
+      <div class="acard">
+        <div class="acard-title">Limiares de classificação (Impacto × Probabilidade)</div>
+        <div class="agrid-3">
+          <div class="arow"><label>Baixo (até)</label><input class="ainput" type="number" id="risk-thr-low" min="1" max="25" value="4"></div>
+          <div class="arow"><label>Médio (até)</label><input class="ainput" type="number" id="risk-thr-med" min="1" max="25" value="9"></div>
+          <div class="arow"><label>Alto (até)</label><input class="ainput" type="number" id="risk-thr-high" min="1" max="25" value="16"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3)">Acima do limiar "Alto" → Crítico</div>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="abtn abtn-primary" onclick="saveRisco()">💾 Guardar</button>
+          <button class="abtn" onclick="resetRisco()">↺ Repor</button>
+        </div>
+      </div>
+      <div class="acard">
+        <div class="acard-title">Estados do risco</div>
+        <div id="risk-estados-list" style="margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px">
+          <input class="ainput" id="new-risk-estado" placeholder="Novo estado">
+          <button class="abtn abtn-primary abtn-sm" onclick="addRiskEstado()">+ Adicionar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div id="panel-historico" class="admin-panel">
+      <h2>Histórico de Snapshots</h2>
+      <p class="panel-desc">Gestão dos snapshots para comparação temporal</p>
+      <div class="acard">
+        <div class="acard-title">Acções</div>
+        <div class="btn-row">
+          <button class="abtn abtn-primary" onclick="adminSaveSnap()">📸 Guardar snapshot agora</button>
+          <button class="abtn" onclick="exportSnaps()">↓ Exportar todos</button>
+          <button class="abtn" onclick="document.getElementById('snap-import').click()">↑ Importar</button>
+          <input type="file" id="snap-import" accept=".json" style="display:none" onchange="importSnaps(this)">
+        </div>
+      </div>
+      <div class="acard">
+        <div class="acard-title">Snapshots guardados (<span id="snap-count">0</span>)</div>
+        <div id="admin-snap-list" style="max-height:400px;overflow-y:auto"></div>
+      </div>
+    </div>
+
+    <!-- OUTROS -->
+    <div id="panel-outros" class="admin-panel">
+      <h2>Outros</h2>
+      <p class="panel-desc">Configurações avançadas e automação</p>
+      <div class="acard">
+        <div class="acard-title">Snapshot automático</div>
+        <div class="agrid-2">
+          <div class="arow"><label>Hora do snapshot diário</label><input class="ainput" type="time" id="cfg-snap-time" value="18:00" style="max-width:140px"></div>
+          <div class="arow"><label>Data de corte predefinida</label><input class="ainput" type="date" id="cfg-cutoff"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Snapshot automático guardado diariamente à hora definida.</div>
+        <button class="abtn abtn-primary" onclick="saveOutros()">💾 Guardar</button>
+      </div>
+      <div class="acard">
+        <div class="acard-title" style="color:var(--red)">Zona de perigo</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Estas acções são irreversíveis.</div>
+        <div class="btn-row">
+          <button class="abtn abtn-danger" onclick="clearAllData()">🗑 Limpar todos os dados</button>
+          <button class="abtn abtn-danger" onclick="resetConfig()">↺ Repor configuração</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- UTILIZADORES -->
+    <div id="panel-utilizadores" class="admin-panel">
+      <h2>Utilizadores</h2>
+      <p class="panel-desc">Gestão de perfis de acesso e utilizadores do dashboard</p>
+
+      <div class="acard">
+        <div class="acard-title">Perfis de acesso
+          <button class="abtn abtn-sm" style="margin-left:auto" onclick="addPerfil()">+ Novo perfil</button>
+        </div>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Cada perfil define o acesso a cada componente: <b>Sem acesso</b>, <b>Leitura</b> ou <b>Edição</b>.</p>
+        <div id="perfis-list"></div>
+      </div>
+
+      <div class="acard">
+        <div class="acard-title">Utilizadores
+          <button class="abtn abtn-sm" style="margin-left:auto" onclick="addUser()">+ Novo utilizador</button>
+        </div>
+        <div id="users-list"></div>
+      </div>
+    </div>
+
+    <!-- DADOS -->
+    <div id="panel-dados" class="admin-panel">
+      <h2>Dados</h2>
+      <p class="panel-desc">Exportação e edição de dados estruturais</p>
+
+      <div class="acard">
+        <div class="acard-title">Exportar tudo como Excel</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Exporta todas as actividades, Gantt, PDS, contratos e facturas num único ficheiro Excel com múltiplas folhas.</p>
+        <button class="abtn abtn-primary" onclick="exportAllExcel()">↓ Download Excel completo</button>
+      </div>
+
+      <div class="acard">
+        <div class="acard-title">Editar tags — Plano de Acção (N2)</div>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Renomeia globalmente os valores em todas as actividades e Gantt.</p>
+        <div id="tags-n2-list"></div>
+        <button class="abtn abtn-sm" style="margin-top:8px" onclick="saveTags('n2')">💾 Guardar Planos</button>
+      </div>
+
+      <div class="acard">
+        <div class="acard-title">Editar tags — Owner</div>
+        <div id="tags-owner-list"></div>
+        <button class="abtn abtn-sm" style="margin-top:8px" onclick="saveTags('owner')">💾 Guardar Owners</button>
+      </div>
+
+      <div class="acard">
+        <div class="acard-title">Editar tags — Sponsor</div>
+        <div id="tags-sponsor-list"></div>
+        <button class="abtn abtn-sm" style="margin-top:8px" onclick="saveTags('sponsor')">💾 Guardar Sponsors</button>
+      </div>
+
+      <div class="acard">
+        <div class="acard-title">Rótulos dos filtros por Programa</div>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Define como se chamam os filtros N1, N2, Owner e Sponsor em cada programa. Deixar em branco usa o valor por defeito.</p>
+        <div id="rotulos-wrap"></div>
+        <button class="abtn abtn-sm" style="margin-top:10px" onclick="saveRotulos()">💾 Guardar rótulos</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="admin-toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const DEF={title:'Strategos',subtitle:'Plano Estratégico',refDate:'',logo:'',filterLabels:{},
+  colors:[
+    {label:'Cor primária',key:'--navy',val:'#002E5E'},
+    {label:'Cor secundária',key:'--green',val:'#95BB42'},
+    {label:'Cor de alerta',key:'--red-bar',val:'#E24B4A'},
+    {label:'Cor de destaque',key:'--amber',val:'#854F0B'},
+    {label:'Cor de informação',key:'--blue',val:'#185FA5'},
+  ],
+  password:'admin',
+  programs:[],
+  snapTime:'18:00',
+  cutoffDate:'',
+  riskMatrix:5,
+  riskThresholds:{low:4,med:9,high:16},
+  riskEstados:['Aberto','Em mitigação','Mitigado','Fechado'],
+  theme:'light'
+};
+let CFG=JSON.parse(JSON.stringify(DEF));
+function loadCfg(){ try{ const s=localStorage.getItem('pmo_cfg'); if(s) CFG=JSON.parse(s); }catch(e){} }
+function saveCfg(){ try{ localStorage.setItem('pmo_cfg',JSON.stringify(CFG)); }catch(e){} }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+// ── LOCK ─────────────────────────────────────────────────────────────────────
+loadCfg();
+function unlock(){
+  const pwd=document.getElementById('lock-pwd').value;
+  if(pwd===(CFG.password||'admin')){
+    document.getElementById('lock-screen').style.display='none';
+    initAdmin();
+  } else {
+    document.getElementById('lock-err').textContent='Password incorrecta.';
+    document.getElementById('lock-pwd').value='';
+  }
+}
+document.getElementById('lock-pwd').focus();
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function toast(msg,col){
+  const t=document.getElementById('admin-toast');
+  t.textContent=msg;
+  t.style.background=col||'var(--navy)';
+  t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},2500);
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+function showPanel(id,el){
+  document.querySelectorAll('.admin-panel').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.admin-nav-item').forEach(function(n){n.classList.remove('active');});
+  document.getElementById('panel-'+id).classList.add('active');
+  if(el) el.classList.add('active');
+  // Refresh panel-specific content
+  if(id==='estrutura'){ autoDetectPrograms(); renderEstrutura(); }
+  if(id==='financeiro'){ autoDetectPrograms(); renderFinAdmin(); }
+  if(id==='historico') renderHistorico();
+  if(id==='risco') renderRisco();
+  if(id==='cores') renderCores();
+  if(id==='utilizadores') initUtilizadores();
+  if(id==='dados') initDados();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function initAdmin(){
+  // Geral
+  document.getElementById('cfg-title').value = CFG.title||'Strategos';
+  document.getElementById('cfg-subtitle').value = CFG.subtitle||'';
+  document.getElementById('cfg-refdate').value = CFG.refDate||'';
+  if(CFG.logo){
+    const prev=document.getElementById('logo-preview');
+    prev.innerHTML='<img src="'+CFG.logo+'" style="max-width:100%;max-height:100%;object-fit:contain">';
+  }
+  // Load logo into topbar
+  const logoImg=document.getElementById('admin-logo');
+  if(CFG.logo) logoImg.src=CFG.logo;
+  // Segurança — don't pre-fill password fields
+  // Outros
+  document.getElementById('cfg-snap-time').value=CFG.snapTime||'18:00';
+  document.getElementById('cfg-cutoff').value=CFG.cutoffDate||'';
+  // Theme
+  if(CFG.theme==='dark') document.body.classList.add('dark');
+  // Risk thresholds
+  const thr=CFG.riskThresholds||{low:4,med:9,high:16};
+  document.getElementById('risk-thr-low').value=thr.low;
+  document.getElementById('risk-thr-med').value=thr.med;
+  document.getElementById('risk-thr-high').value=thr.high;
+  // Auto-detect programs from loaded data
+  autoDetectPrograms();
+  autoDetectPrograms();
+  renderCores();
+  renderEstrutura();
+  renderFinAdmin();
+}
+
+// Cached data from JSON files
+var adminGantt=[], adminAct=[];
+
+function loadAdminData(cb){
+  if(adminGantt.length){ if(cb) cb(); return; }
+  // Fetch gantt.json relative to admin.html location
+  var base = window.location.href.replace(/admin\.html.*$/,'');
+  fetch(base+'data/gantt.json')
+    .then(function(r){ return r.ok?r.json():fetch(base+'gantt.json').then(function(r2){return r2.json();}); })
+    .then(function(data){ adminGantt=data||[]; if(cb) cb(); })
+    .catch(function(){ if(cb) cb(); });
+}
+
+function autoDetectPrograms(){
+  if(!CFG.programs) CFG.programs=[];
+  var detected=[];
+  try{
+    var n0s=JSON.parse(localStorage.getItem('pmo_n0s')||'[]');
+    if(!n0s.length){var pRaw=localStorage.getItem('pmo_pds_data');if(pRaw){var pA=JSON.parse(pRaw)||[];n0s=[...new Set(pA.map(function(p){return p.n0||''}).filter(Boolean))];}}
+    if(!n0s.length){var aRaw=localStorage.getItem('pmo_act');if(aRaw){var aA=JSON.parse(aRaw)||[];n0s=[...new Set(aA.map(function(d){return d.n0||''}).filter(Boolean))];}}
+    n0s.forEach(function(nome){if(nome&&!CFG.programs.find(function(p){return p.name===nome;}))detected.push(nome);});
+  }catch(e){console.warn('autoDetect:',e);}
+  if(detected.length){
+    var ny=new Date().getFullYear();
+    detected.forEach(function(nome){CFG.programs.push({code:String(CFG.programs.length+1),name:nome,desc:'',finCats:[],finAnos:[ny,ny+1]});});
+    saveCfg();
+    toast('Detectado '+detected.length+' programa(s): '+detected.join(', '),'#2D5F75');
+  }else{toast('Sem programas novos.','#555');}
+  try{
+    var n1s=JSON.parse(localStorage.getItem('pmo_n1s')||'[]');
+    var el=document.getElementById('admin-eixos-list');
+    if(el&&n1s.length){
+      var eixos=[...new Set(n1s.map(function(s){return s.split('|||')[1]||''}).filter(Boolean))].sort();
+      el.innerHTML=eixos.map(function(e){return '<span style="display:inline-block;margin:2px 4px;padding:2px 8px;background:var(--bg2);border-radius:20px;font-size:12px">'+esc(e)+'</span>';}).join('');
+    }
+  }catch(e){}
+  renderEstrutura();
+  renderFinAdmin();
+}
+
+// ── GERAL ─────────────────────────────────────────────────────────────────────
+function saveGeral(){
+  CFG.title   = document.getElementById('cfg-title').value||'Strategos';
+  CFG.subtitle= document.getElementById('cfg-subtitle').value||'';
+  CFG.refDate = document.getElementById('cfg-refdate').value||'';
+  saveCfg(); toast('Configuração geral guardada.','#2D5F75');
+}
+function uploadLogo(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    CFG.logo=e.target.result;
+    document.getElementById('logo-preview').innerHTML='<img src="'+CFG.logo+'" style="max-width:100%;max-height:100%;object-fit:contain">';
+    document.getElementById('admin-logo').src=CFG.logo;
+    saveCfg(); toast('Logo actualizado.','#2D5F75');
+  };
+  reader.readAsDataURL(file);
+}
+function removeLogo(){
+  CFG.logo='';
+  document.getElementById('logo-preview').innerHTML='<span style="font-size:11px;color:var(--text3)">Sem logo</span>';
+  document.getElementById('admin-logo').src='';
+  saveCfg(); toast('Logo removido.');
+}
+
+// ── SEGURANÇA ─────────────────────────────────────────────────────────────────
+function changePassword(){
+  const cur=document.getElementById('pwd-current').value;
+  const nw=document.getElementById('pwd-new').value;
+  const conf=document.getElementById('pwd-confirm').value;
+  const msg=document.getElementById('pwd-msg');
+  if(cur!==(CFG.password||'admin')){msg.textContent='Password actual incorrecta.';return;}
+  if(nw.length<4){msg.textContent='A nova password deve ter pelo menos 4 caracteres.';return;}
+  if(nw!==conf){msg.textContent='As passwords não coincidem.';return;}
+  CFG.password=nw;
+  saveCfg();
+  msg.textContent='';
+  document.getElementById('pwd-current').value='';
+  document.getElementById('pwd-new').value='';
+  document.getElementById('pwd-confirm').value='';
+  toast('Password alterada com sucesso.','#3B6D11');
+}
+
+// ── CORES ─────────────────────────────────────────────────────────────────────
+function renderCores(){
+  const wrap=document.getElementById('color-rows-admin');
+  wrap.innerHTML=(CFG.colors||DEF.colors).map(function(c,i){
+    return '<div class="color-row">'
+      +'<input type="color" class="color-swatch" value="'+c.val+'" data-i="'+i+'" onchange="updateColor('+i+',this.value)">'
+      +'<div><div class="color-label">'+c.label+'</div><div class="color-key">'+c.key+'</div></div>'
+      +'<input class="ainput" style="max-width:120px;font-family:monospace;font-size:12px" value="'+c.val+'" data-i="'+i+'" oninput="updateColorHex('+i+',this.value)">'
+      +'</div>';
+  }).join('');
+  // Active theme buttons
+  document.getElementById('btn-light').classList.toggle('abtn-primary', CFG.theme!=='dark');
+  document.getElementById('btn-dark').classList.toggle('abtn-primary', CFG.theme==='dark');
+}
+function updateColor(i,val){
+  CFG.colors[i].val=val;
+  document.querySelectorAll('[data-i="'+i+'"]').forEach(function(el){el.value=val;});
+}
+function updateColorHex(i,val){
+  if(/^#[0-9a-fA-F]{6}$/.test(val)){
+    CFG.colors[i].val=val;
+    document.querySelectorAll('[data-i="'+i+'"]').forEach(function(el){el.value=val;});
+  }
+}
+function setTheme(t){
+  CFG.theme=t;
+  document.body.classList.toggle('dark',t==='dark');
+  document.getElementById('btn-light').classList.toggle('abtn-primary',t!=='dark');
+  document.getElementById('btn-dark').classList.toggle('abtn-primary',t==='dark');
+}
+function saveCores(){
+  saveCfg();
+  applyColors();
+  toast('Cores guardadas e aplicadas.','#3B6D11');
+}
+function applyColors(){
+  (CFG.colors||[]).forEach(function(c){
+    document.documentElement.style.setProperty(c.key,c.val);
+  });
+}
+function resetCores(){
+  CFG.colors=JSON.parse(JSON.stringify(DEF.colors));
+  CFG.theme='light';
+  renderCores();
+  saveCfg(); applyColors(); toast('Cores repostas.');
+}
+
+// ── ESTRUTURA ─────────────────────────────────────────────────────────────────
+function renderEstrutura(){
+  // Programs
+  const pl=document.getElementById('admin-prog-list');
+  const progs=CFG.programs||[];
+  pl.innerHTML=progs.length
+    ? progs.map(function(p,i){
+        return '<div class="prog-card">'
+          +'<span class="prog-code">'+(i+1)+'</span>'
+          +'<div style="flex:1"><div class="prog-name">'+esc(p.name)+'</div>'
+          +'<div class="prog-desc">'+esc(p.desc||'')+'</div></div>'
+          +'<button class="abtn abtn-sm abtn-danger" onclick="adminRemoveProgram('+i+')">✕</button>'
+          +'</div>';
+      }).join('')
+    : '<div style="color:var(--text3);font-size:12px;font-style:italic;padding:8px 0">Sem programas.</div>';
+
+  // Populate eixo program selector
+  const epSel=document.getElementById('new-eixo-prog');
+  epSel.innerHTML='<option value="">— programa —</option>'+progs.map(function(p){
+    return '<option>'+esc(p.name)+'</option>';
+  }).join('');
+
+  // Eixos — from fetched gantt data
+  const el=document.getElementById('admin-eixo-list');
+  if(adminGantt.length){
+    const n1s=[...new Set(adminGantt.filter(function(r){return r.nivel===1;}).map(function(r){return r.n0+'|||'+r.n1;}))];
+    el.innerHTML=n1s.length
+      ? n1s.map(function(k){
+          const parts=k.split('|||');
+          return '<div class="prog-card" style="gap:8px">'
+            +'<span style="font-size:11px;color:var(--text3);min-width:120px">'+esc(parts[0])+'</span>'
+            +'<span class="prog-name">'+esc(parts[1])+'</span>'
+            +'</div>';
+        }).join('')
+      : '<div style="color:var(--text3);font-size:12px;font-style:italic;padding:8px 0">Sem eixos encontrados.</div>';
+  } else {
+    el.innerHTML='<div style="color:var(--text3);font-size:12px;font-style:italic;padding:8px 0">A carregar dados...</div>';
+    loadAdminData(function(){ renderEstrutura(); });
+  }
+}
+
+function adminAddProgram(){
+  const name=document.getElementById('new-prog-name').value.trim();
+  const desc=document.getElementById('new-prog-desc').value.trim();
+  if(!name){toast('O nome é obrigatório.','var(--red)');return;}
+  if(!CFG.programs) CFG.programs=[];
+  const nowYear=new Date().getFullYear();
+  const num=CFG.programs.length+1;
+  CFG.programs.push({code:String(num),name,desc,
+    finCats:['Consultoria','Tecnologia','Comunicação','Formação','Outros'],
+    finAnos:[nowYear,nowYear+1]});
+  document.getElementById('new-prog-name').value='';
+  document.getElementById('new-prog-desc').value='';
+  saveCfg(); renderEstrutura(); renderFinAdmin();
+  toast('Programa '+num+' adicionado.','#2D5F75');
+}
+function adminRemoveProgram(i){
+  if(!confirm('Remover programa?')) return;
+  CFG.programs.splice(i,1);
+  saveCfg(); renderEstrutura(); renderFinAdmin();
+  toast('Programa removido.');
+}
+function adminAddEixo(){
+  // Eixos are managed via Excel import — just inform
+  toast('Os eixos são criados via importação de Excel ou na Gestão de Iniciativas.','var(--amber)');
+}
+
+// ── FINANCEIRO ────────────────────────────────────────────────────────────────
+function getCatsObj(prog){ return Array.isArray(prog?.finCats) ? prog.finCats : []; }
+
+function renderFinAdmin(){
+  const wrap=document.getElementById('admin-fin-list');
+  const progs=CFG.programs||[];
+
+  const bm=document.getElementById('cfg-base-moeda');
+  if(bm) bm.value=CFG.baseMoeda||'€';
+  const ctProg=document.getElementById('admin-ct-prog');
+  if(ctProg) ctProg.innerHTML='<option value="">— programa —</option>'+progs.map(function(p){return '<option>'+esc(p.name)+'</option>';}).join('');
+
+  if(!progs.length){
+    wrap.innerHTML='<div style="background:var(--bg2);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--text2)">'
+      +'Clica em <strong>Detectar programas</strong> para carregar os programas a partir dos dados importados.</div>';
+    return;
+  }
+  wrap.innerHTML=progs.map(function(p,pi){
+    const cats=getCatsObj(p);
+    const anos=(p.finAnos||[new Date().getFullYear()]).join(', ');
+    return '<div class="acard">'
+      +'<div class="acard-title"><span style="color:var(--text3);margin-right:6px">'+(pi+1)+'.</span>'+esc(p.name)+'</div>'
+      +'<div class="arow"><label>Anos de gestão <span style="font-weight:400;text-transform:none;color:var(--text3)">(separados por vírgula)</span></label>'
+      +'<input class="ainput" data-pi="'+pi+'" data-field="finAnos" value="'+esc(anos)+'" placeholder="2025, 2026, 2027" style="max-width:300px"></div>'
+      +'<div class="fin-section-title" style="margin:12px 0 6px">Categorias de custo</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:13px" id="fin-cats-'+pi+'">'
+      +'<thead><tr>'
+      +'<th style="text-align:left;padding:5px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:11px;font-weight:600">Nome</th>'
+      +'<th style="text-align:left;padding:5px 8px;border-bottom:2px solid var(--border);color:var(--text2);font-size:11px;font-weight:600;width:110px">Tipo</th>'
+      +'<th style="padding:5px 8px;border-bottom:2px solid var(--border);width:40px"></th>'
+      +'</tr></thead><tbody>'
+      +cats.map(function(c,ci){
+        return '<tr>'
+          +'<td style="padding:4px 8px;border-bottom:1px solid var(--border)">'
+          +'<input class="ainput" style="width:100%" data-pi="'+pi+'" data-ci="'+ci+'" data-field="cat_nome" value="'+esc(c.nome)+'">'
+          +'</td>'
+          +'<td style="padding:4px 8px;border-bottom:1px solid var(--border)">'
+          +'<select class="ainput" style="width:100%" data-pi="'+pi+'" data-ci="'+ci+'" data-field="cat_capex">'
+          +'<option value="0"'+(c.capex?'':' selected')+'>OPEX</option>'
+          +'<option value="1"'+(c.capex?' selected':'')+'>CAPEX</option>'
+          +'</select>'
+          +'</td>'
+          +'<td style="padding:4px 8px;border-bottom:1px solid var(--border);text-align:center">'
+          +'<button class="abtn abtn-sm abtn-danger" onclick="removeFinCat('+pi+','+ci+')">✕</button>'
+          +'</td>'
+          +'</tr>';
+      }).join('')
+      +'</tbody></table>'
+      +'<button class="abtn abtn-sm" style="margin-top:6px" onclick="addFinCat('+pi+')">+ Categoria</button>'
+      +'</div>';
+  }).join('');
+
+  if(!wrap._finAdminDelegate){
+    wrap._finAdminDelegate=true;
+    wrap.addEventListener('blur',function(e){
+      const pi=e.target.dataset.pi; const field=e.target.dataset.field; const ci=e.target.dataset.ci;
+      if(pi==null||!field) return;
+      const prog=(CFG.programs||[])[parseInt(pi)]; if(!prog) return;
+      if(field==='finAnos') prog.finAnos=e.target.value.split(',').map(function(s){return parseInt(s.trim());}).filter(function(n){return !isNaN(n);});
+      else if(field==='cat_nome'&&ci!=null){const cats=getCatsObj(prog);cats[parseInt(ci)].nome=e.target.value;prog.finCats=cats;}
+      saveCfg(); toast('Guardado.','#3B6D11');
+    },true);
+    wrap.addEventListener('change',function(e){
+      const pi=e.target.dataset.pi; const field=e.target.dataset.field; const ci=e.target.dataset.ci;
+      if(pi==null||field!=='cat_capex'||ci==null) return;
+      const prog=(CFG.programs||[])[parseInt(pi)]; if(!prog) return;
+      const cats=getCatsObj(prog); cats[parseInt(ci)].capex=e.target.value==='1'; prog.finCats=cats;
+      saveCfg(); toast('Guardado.','#3B6D11');
+    });
+  }
+}
+
+// ── RISCO ─────────────────────────────────────────────────────────────────────
+function renderRisco(){
+  const size=CFG.riskMatrix||5;
+  document.getElementById('btn-matrix-3').classList.toggle('abtn-primary',size===3);
+  document.getElementById('btn-matrix-5').classList.toggle('abtn-primary',size===5);
+  renderRiskMatrix(size);
+  renderRiskEstados();
+}
+function setMatrix(n){
+  CFG.riskMatrix=n;
+  renderRisco();
+}
+function renderRiskMatrix(n){
+  const thr=CFG.riskThresholds||{low:4,med:9,high:16};
+  const wrap=document.getElementById('risk-matrix-preview');
+  let html='<div style="font-size:11px;color:var(--text2);margin-bottom:6px">Pré-visualização — Impacto (linha) × Probabilidade (coluna)</div>';
+  html+='<div class="risk-matrix-grid" style="grid-template-columns:repeat('+n+',44px)">';
+  for(let i=n;i>=1;i--){
+    for(let j=1;j<=n;j++){
+      const g=i*j;
+      let bg='#3B6D11',label='B';
+      if(g>thr.high){bg='#7B0000';label='C';}
+      else if(g>thr.med){bg='#A32D2D';label='A';}
+      else if(g>thr.low){bg='#854F0B';label='M';}
+      html+='<div class="risk-cell" style="background:'+bg+'" title="'+i+'×'+j+'='+g+'">'+g+'</div>';
+    }
+  }
+  html+='</div>';
+  html+='<div style="margin-top:8px;display:flex;gap:8px;font-size:11px">'
+    +'<span style="background:#3B6D11;color:#fff;padding:2px 8px;border-radius:4px">Baixo ≤'+thr.low+'</span>'
+    +'<span style="background:#854F0B;color:#fff;padding:2px 8px;border-radius:4px">Médio ≤'+thr.med+'</span>'
+    +'<span style="background:#A32D2D;color:#fff;padding:2px 8px;border-radius:4px">Alto ≤'+thr.high+'</span>'
+    +'<span style="background:#7B0000;color:#fff;padding:2px 8px;border-radius:4px">Crítico &gt;'+thr.high+'</span>'
+    +'</div>';
+  wrap.innerHTML=html;
+}
+function saveRisco(){
+  CFG.riskThresholds={
+    low:parseInt(document.getElementById('risk-thr-low').value)||4,
+    med:parseInt(document.getElementById('risk-thr-med').value)||9,
+    high:parseInt(document.getElementById('risk-thr-high').value)||16
+  };
+  saveCfg(); renderRiskMatrix(CFG.riskMatrix||5); toast('Configuração de risco guardada.','#3B6D11');
+}
+function resetRisco(){
+  CFG.riskMatrix=5;
+  CFG.riskThresholds={low:4,med:9,high:16};
+  CFG.riskEstados=['Aberto','Em mitigação','Mitigado','Fechado'];
+  saveCfg(); renderRisco(); toast('Configuração de risco reposta.');
+}
+function renderRiskEstados(){
+  const wrap=document.getElementById('risk-estados-list');
+  const estados=CFG.riskEstados||DEF.riskEstados;
+  wrap.innerHTML=estados.map(function(e,i){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">'
+      +'<span style="flex:1;font-size:13px">'+esc(e)+'</span>'
+      +(estados.length>2?'<button class="abtn abtn-sm abtn-danger" onclick="removeRiskEstado('+i+')">✕</button>':'')
+      +'</div>';
+  }).join('');
+}
+function addRiskEstado(){
+  const val=document.getElementById('new-risk-estado').value.trim();
+  if(!val) return;
+  if(!CFG.riskEstados) CFG.riskEstados=[...DEF.riskEstados];
+  CFG.riskEstados.push(val);
+  document.getElementById('new-risk-estado').value='';
+  saveCfg(); renderRiskEstados();
+}
+function removeRiskEstado(i){
+  CFG.riskEstados.splice(i,1);
+  saveCfg(); renderRiskEstados();
+}
+
+// ── HISTÓRICO ─────────────────────────────────────────────────────────────────
+function getSnaps(){ try{ return JSON.parse(localStorage.getItem('pmo_snapshots')||'[]'); }catch(e){return[];} }
+function saveSnaps(s){ try{ localStorage.setItem('pmo_snapshots',JSON.stringify(s)); }catch(e){} }
+
+function renderHistorico(){
+  const snaps=getSnaps();
+  document.getElementById('snap-count').textContent=snaps.length;
+  const wrap=document.getElementById('admin-snap-list');
+  if(!snaps.length){
+    wrap.innerHTML='<div style="color:var(--text3);font-size:13px;padding:1rem;text-align:center">Sem snapshots guardados.</div>';
+    return;
+  }
+  wrap.innerHTML=snaps.map(function(s,i){
+    const d=new Date(s.date);
+    const acts=s.kpi?s.kpi.n:'—';
+    return '<div class="snap-item">'
+      +'<div><div class="snap-label">'+esc(s.label)+'</div>'
+      +'<div class="snap-date">'+d.toLocaleString('pt-PT')+' · '+acts+' actividades</div></div>'
+      +'<div style="display:flex;gap:6px">'
+      +'<button class="abtn abtn-sm" onclick="downloadSnap('+i+')">↓</button>'
+      +'<button class="abtn abtn-sm abtn-danger" onclick="deleteSnap('+i+')">✕</button>'
+      +'</div></div>';
+  }).join('');
+}
+function adminSaveSnap(){
+  // Note: actual snapshot with data requires main app context
+  // Here we just trigger a placeholder
+  toast('Abre a plataforma principal para guardar um snapshot com dados actuais.','var(--amber)');
+}
+function downloadSnap(i){
+  const snaps=getSnaps();
+  const s=snaps[i]; if(!s) return;
+  const blob=new Blob([JSON.stringify(s,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='snapshot_'+s.label.replace(/\//g,'-')+'.json';
+  a.click();
+}
+function deleteSnap(i){
+  if(!confirm('Eliminar este snapshot?')) return;
+  const snaps=getSnaps(); snaps.splice(i,1); saveSnaps(snaps);
+  renderHistorico(); toast('Snapshot eliminado.');
+}
+function exportSnaps(){
+  const snaps=getSnaps();
+  if(!snaps.length){toast('Sem snapshots para exportar.','var(--amber)');return;}
+  const blob=new Blob([JSON.stringify(snaps,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='strategos_snapshots_'+new Date().toISOString().split('T')[0]+'.json';
+  a.click();
+  toast('Snapshots exportados.');
+}
+function importSnaps(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      const snaps=Array.isArray(data)?data:[data];
+      const existing=getSnaps();
+      const merged=[...snaps,...existing];
+      saveSnaps(merged);
+      renderHistorico();
+      toast('Importados '+snaps.length+' snapshots.','#3B6D11');
+    }catch(err){ toast('Erro ao importar: '+err.message,'var(--red)'); }
+  };
+  reader.readAsText(file);
+}
+
+// ── OUTROS ────────────────────────────────────────────────────────────────────
+function saveOutros(){
+  CFG.snapTime=document.getElementById('cfg-snap-time').value||'18:00';
+  CFG.cutoffDate=document.getElementById('cfg-cutoff').value||'';
+  saveCfg(); toast('Configurações guardadas.','#3B6D11');
+}
+function clearAllData(){
+  if(!confirm('Atenção: isto irá eliminar TODOS os dados (snapshots, configurações financeiras, etc.).\n\nEsta acção é irreversível. Confirmas?')) return;
+  localStorage.clear();
+  toast('Todos os dados eliminados. A recarregar...','var(--red)');
+  setTimeout(function(){location.reload();},1500);
+}
+function resetConfig(){
+  if(!confirm('Repor toda a configuração para os valores predefinidos?')) return;
+  CFG=JSON.parse(JSON.stringify(DEF));
+  saveCfg();
+  initAdmin();
+  toast('Configuração reposta.','#2D5F75');
+}
+
+// ── APPLY COLORS ON LOAD ──────────────────────────────────────────────────────
+applyColors();
+
+function saveBaseMoeda(){
+  CFG.baseMoeda=document.getElementById('cfg-base-moeda').value||'€';
+  saveCfg();
+  toast('Moeda base guardada — abre a plataforma para ver o efeito.','#3B6D11');
+}
+
+function addFinCat(pi){
+  const prog=(CFG.programs||[])[pi]; if(!prog) return;
+  const cats=getCatsObj(prog);
+  cats.push({nome:'Nova categoria',capex:false});
+  prog.finCats=cats;
+  saveCfg(); renderFinAdmin();
+}
+function removeFinCat(pi,ci){
+  const prog=(CFG.programs||[])[pi]; if(!prog) return;
+  const cats=getCatsObj(prog);
+  cats.splice(ci,1);
+  prog.finCats=cats;
+  saveCfg(); renderFinAdmin();
+}
+
+function loadAdminContracts(){
+  const progSel=document.getElementById('admin-ct-prog');
+  const planoSel=document.getElementById('admin-ct-plano');
+  const progName=progSel?progSel.value:'';
+  const wrap=document.getElementById('admin-contracts-list');
+  if(!wrap) return;
+
+  if(progName&&planoSel&&planoSel.dataset.prog!==progName){
+    planoSel.dataset.prog=progName;
+    planoSel.innerHTML='<option value="">— plano —</option>';
+    try{
+      const pds=JSON.parse(localStorage.getItem('pmo_pds_data')||'[]');
+      pds.filter(function(p){return p.n0===progName;}).forEach(function(p){
+        const opt=document.createElement('option');
+        opt.value=JSON.stringify({n0:p.n0,plano:p.plano});
+        opt.textContent=(p.n1||'')+' › '+(p.plano||'');
+        planoSel.appendChild(opt);
+      });
+    }catch(e){}
+  }
+
+  const planoVal=planoSel?planoSel.value:'';
+  if(!planoVal){wrap.innerHTML='';return;}
+  let key;
+  try{key=JSON.parse(planoVal);}catch(e){return;}
+
+  try{
+    const pds=JSON.parse(localStorage.getItem('pmo_pds_data')||'[]');
+    const plan=pds.find(function(p){return p.n0===key.n0&&p.plano===key.plano;});
+    const contracts=(plan&&plan.finances&&plan.finances.contratos)||[];
+    if(!contracts.length){
+      wrap.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0">Sem contratos neste plano.</div>';
+      return;
+    }
+    // Add event delegation after rendering
+    setTimeout(function(){
+      var tbl=document.getElementById('admin-contracts-list');
+      if(tbl && !tbl._del){
+        tbl._del=true;
+        tbl.addEventListener('click',function(e){
+          var btn=e.target.closest('.gfin-del-ct');
+          if(!btn) return;
+          try{
+            var key=JSON.parse(decodeURIComponent(btn.dataset.key));
+            adminRemoveContract(key, btn.dataset.ctid);
+          }catch(ex){toast('Erro.','var(--red)');}
+        });
+      }
+    },100);
+    wrap.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      +'<thead><tr>'
+      +'<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border)">ID</th>'
+      +'<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border)">Fornecedor</th>'
+      +'<th style="text-align:right;padding:6px 8px;border-bottom:2px solid var(--border)">Valor</th>'
+      +'<th style="padding:6px 8px;border-bottom:2px solid var(--border)"></th>'
+      +'</tr></thead><tbody>'
+      +contracts.map(function(ct){
+        const keyStr=JSON.stringify(key).replace(/"/g,'&quot;');
+        return '<tr>'
+          +'<td style="padding:6px 8px;border-bottom:1px solid var(--border);font-family:monospace;font-size:11px;color:var(--text3)">#'+ct.id.slice(-6)+'</td>'
+          +'<td style="padding:6px 8px;border-bottom:1px solid var(--border)">'+esc(ct.fornecedor||'—')+'</td>'
+          +'<td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right">'+(ct.valor_total||0)+' '+(ct.moeda||'€')+'</td>'
+          +'<td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:center">'
+          +'<button class="abtn abtn-sm abtn-danger gfin-del-ct" data-key="'+encodeURIComponent(JSON.stringify(key))+'" data-ctid="'+ct.id+'">&#10005;</button>'
+          +'</td></tr>';
+      }).join('')
+      +'</tbody></table>';
+  }catch(e){ wrap.innerHTML='<div style="color:var(--red)">Erro: '+e.message+'</div>'; }
+}
+
+function adminRemoveContract(key,ctId){
+  if(!confirm('Remover este contrato e as facturas associadas?')) return;
+  try{
+    const pds=JSON.parse(localStorage.getItem('pmo_pds_data')||'[]');
+    const plan=pds.find(function(p){return p.n0===key.n0&&p.plano===key.plano;});
+    if(!plan||!plan.finances){toast('Plano não encontrado.','var(--red)');return;}
+    plan.finances.contratos=(plan.finances.contratos||[]).filter(function(c){return c.id!==ctId;});
+    plan.finances.facturas=(plan.finances.facturas||[]).filter(function(f){return f.contrato_id!==ctId;});
+    localStorage.setItem('pmo_pds_data',JSON.stringify(pds));
+    toast('Contrato removido.','#3B6D11');
+    loadAdminContracts();
+  }catch(e){toast('Erro: '+e.message,'var(--red)');}
+}
+
+
+
+
+function forceDetectPrograms(){
+  // Show what's in localStorage for debugging
+  var n0sRaw = localStorage.getItem('pmo_n0s');
+  var cfgRaw = localStorage.getItem('pmo_cfg');
+  
+  if(!n0sRaw){
+    toast('Não foram encontrados dados. Abre o index.html, carrega os dados e volta aqui.','var(--red)',4000);
+    return;
+  }
+  
+  try{
+    var n0s = JSON.parse(n0sRaw);
+    if(!n0s.length){
+      toast('Lista de programas está vazia. Carrega um Excel no index.html primeiro.','var(--red)',4000);
+      return;
+    }
+    if(!CFG.programs) CFG.programs=[];
+    var added=0;
+    var nowYear=new Date().getFullYear();
+    n0s.forEach(function(nome){
+      if(!CFG.programs.find(function(p){return p.name===nome;})){
+        CFG.programs.push({
+          code: String(CFG.programs.length+1),
+          name: nome, desc: '',
+          finCats:[{nome:'Consultoria',capex:false},{nome:'Tecnologia',capex:true},{nome:'Comunicação',capex:false},{nome:'Formação',capex:false},{nome:'Outros',capex:false}],
+          finAnos:[nowYear, nowYear+1]
+        });
+        added++;
+      }
+    });
+    saveCfg();
+    renderFinAdmin();
+    renderEstrutura();
+    if(added>0) toast('Adicionados '+added+' programa(s): '+n0s.join(', '),'#3B6D11');
+    else toast('Programas já estavam todos presentes.','#2D5F75');
+  }catch(e){
+    toast('Erro: '+e.message,'var(--red)');
+  }
+}
+
+// ── UTILIZADORES PANEL ────────────────────────────────────────────────────────
+const ALL_TABS_DEF=[
+  {id:'resumo',label:'Resumo Executivo'},
+  {id:'actividades',label:'Actividades'},
+  {id:'gantt',label:'Gantt'},
+  {id:'evolucao',label:'Evolução'},
+  {id:'pds',label:'Ponto de Situação'},
+  {id:'exec-fin',label:'Execução Financeira'},
+  {id:'gestao',label:'Gestão de Iniciativas'},
+  {id:'gestao-pds',label:'Gestão PDS'},
+  {id:'gestao-riscos',label:'Gestão de Riscos'},
+  {id:'gestao-financeira',label:'Gestão Financeira'},
+];
+const PERM_OPTS=['none','read','edit'];
+const PERM_LABELS={'none':'Sem acesso','read':'Leitura','edit':'Edição'};
+
+function initUtilizadores(){
+  if(!CFG.profiles) CFG.profiles=[];
+  if(!CFG.users) CFG.users=[];
+  renderPerfis();
+  renderUsersList();
+}
+
+function renderPerfis(){
+  const wrap=document.getElementById('perfis-list');
+  if(!CFG.profiles.length){wrap.innerHTML='<p style="color:var(--text3);font-size:13px">Sem perfis.</p>';return;}
+  let html='';
+  CFG.profiles.forEach(function(prof){
+    html+='<div class="acard" style="margin-bottom:12px;border:1px solid var(--border)">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
+      +'<input class="ainput" style="font-weight:600;flex:1" data-pid="'+esc(prof.id)+'" data-field="name" value="'+esc(prof.name)+'" placeholder="Nome do perfil">'
+      +'<button class="abtn abtn-sm" style="color:var(--red,#E24B4A)" onclick="deletePerfil(\''+prof.id+'\')">Eliminar</button>'
+      +'</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      +'<thead><tr><th style="text-align:left;padding:4px 8px;color:var(--text2);font-weight:500">Componente</th>'
+      +'<th style="padding:4px 8px;color:var(--text2);font-weight:500;text-align:center">Acesso</th></tr></thead><tbody>';
+    ALL_TABS_DEF.forEach(function(td){
+      const cur=(prof.tabs&&prof.tabs[td.id])||'none';
+      const opts=PERM_OPTS.map(function(o){return'<option value="'+o+'"'+(cur===o?' selected':'')+'>'+PERM_LABELS[o]+'</option>';}).join('');
+      html+='<tr style="border-top:1px solid var(--border)">'
+        +'<td style="padding:5px 8px">'+esc(td.label)+'</td>'
+        +'<td style="padding:4px 8px;text-align:center"><select class="ainput" style="font-size:12px;padding:3px 6px" data-pid="'+esc(prof.id)+'" data-tab="'+td.id+'">'+opts+'</select></td>'
+        +'</tr>';
+    });
+    html+='</tbody></table>'
+      +'<button class="abtn abtn-primary abtn-sm" style="margin-top:10px" onclick="savePerfil(\''+prof.id+'\')">💾 Guardar perfil</button>'
+      +'</div>';
+  });
+  wrap.innerHTML=html;
+}
+
+function addPerfil(){
+  const tabs={};
+  ALL_TABS_DEF.forEach(function(t){tabs[t.id]='read';});
+  CFG.profiles.push({id:uid(),name:'Novo Perfil',tabs:tabs});
+  saveCfg(); renderPerfis();
+}
+
+function savePerfil(pid){
+  const prof=CFG.profiles.find(function(p){return p.id===pid;});
+  if(!prof) return;
+  const nameInp=document.querySelector('input[data-pid="'+pid+'"][data-field="name"]');
+  if(nameInp) prof.name=nameInp.value.trim()||prof.name;
+  document.querySelectorAll('select[data-pid="'+pid+'"][data-tab]').forEach(function(sel){
+    if(!prof.tabs) prof.tabs={};
+    prof.tabs[sel.dataset.tab]=sel.value;
+  });
+  saveCfg(); toast('Perfil guardado.'); renderUsersList();
+}
+
+function deletePerfil(pid){
+  const inUse=(CFG.users||[]).some(function(u){return u.profileId===pid;});
+  if(inUse){alert('Este perfil está atribuído a utilizadores. Remove ou reatribui primeiro.');return;}
+  CFG.profiles=CFG.profiles.filter(function(p){return p.id!==pid;});
+  saveCfg(); renderPerfis();
+}
+
+function renderUsersList(){
+  const wrap=document.getElementById('users-list');
+  if(!CFG.users.length){wrap.innerHTML='<p style="color:var(--text3);font-size:13px">Sem utilizadores.</p>';return;}
+  const profOpts=CFG.profiles.map(function(p){return'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>';}).join('');
+  let html='<table style="width:100%;border-collapse:collapse;font-size:13px">'
+    +'<thead><tr style="border-bottom:2px solid var(--border)">'
+    +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Nome</th>'
+    +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Username</th>'
+    +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Password</th>'
+    +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Perfil</th>'
+    +'<th></th>'
+    +'</tr></thead><tbody>';
+  CFG.users.forEach(function(u){
+    const pOpts=CFG.profiles.map(function(p){
+      return'<option value="'+esc(p.id)+'"'+(u.profileId===p.id?' selected':'')+'>'+esc(p.name)+'</option>';
+    }).join('');
+    html+='<tr style="border-bottom:1px solid var(--border)">'
+      +'<td style="padding:5px 6px"><input class="ainput" data-uid="'+esc(u.id)+'" data-field="name" value="'+esc(u.name||'')+'" placeholder="Nome"></td>'
+      +'<td style="padding:5px 6px"><input class="ainput" data-uid="'+esc(u.id)+'" data-field="username" value="'+esc(u.username||'')+'"></td>'
+      +'<td style="padding:5px 6px"><input class="ainput" type="password" data-uid="'+esc(u.id)+'" data-field="password" value="'+esc(u.password||'')+'" placeholder="••••••"></td>'
+      +'<td style="padding:5px 6px"><select class="ainput" data-uid="'+esc(u.id)+'" data-field="profileId">'+pOpts+'</select></td>'
+      +'<td style="padding:5px 6px;text-align:center">'
+      +'<button class="abtn abtn-sm" onclick="saveUser(\''+u.id+'\')">💾</button> '
+      +'<button class="abtn abtn-sm" style="color:var(--red,#E24B4A)" onclick="deleteUser(\''+u.id+'\')">✕</button>'
+      +'</td>'
+      +'</tr>';
+  });
+  html+='</tbody></table>';
+  wrap.innerHTML=html;
+}
+
+function addUser(){
+  const defaultProfile=CFG.profiles[0];
+  CFG.users.push({id:uid(),name:'',username:'',password:'',profileId:defaultProfile?defaultProfile.id:''});
+  saveCfg(); renderUsersList();
+}
+
+function saveUser(uid_val){
+  const u=CFG.users.find(function(x){return x.id===uid_val;});
+  if(!u) return;
+  document.querySelectorAll('[data-uid="'+uid_val+'"]').forEach(function(inp){
+    const f=inp.dataset.field;
+    if(f) u[f]=inp.value;
+  });
+  saveCfg(); toast('Utilizador guardado.');
+}
+
+function deleteUser(uid_val){
+  if(!confirm('Eliminar utilizador?')) return;
+  CFG.users=CFG.users.filter(function(u){return u.id!==uid_val;});
+  saveCfg(); renderUsersList();
+}
+
+// ── DADOS PANEL ───────────────────────────────────────────────────────────────
+function initDados(){
+  renderTagList('n2',   'tags-n2-list',    'n2');
+  renderTagList('owner','tags-owner-list', 'owner');
+  renderTagList('sponsor','tags-sponsor-list','sponsor');
+  initRotulos();
+}
+
+function initRotulos(){
+  const raw=localStorage.getItem('pmo_gantt_data')||localStorage.getItem('pmo_act');
+  const data=raw?JSON.parse(raw):[];
+  const n0s=[...new Set(data.map(function(r){return r.n0;}).filter(Boolean))].sort();
+  const wrap=document.getElementById('rotulos-wrap');
+  if(!n0s.length){wrap.innerHTML='<p style="color:var(--text3);font-size:13px">Sem dados carregados.</p>';return;}
+  if(!CFG.filterLabels) CFG.filterLabels={};
+  const dims=['n1','n2','owner','sponsor'];
+  const defs={n1:'Eixo',n2:'Plano de Acção',owner:'Owner',sponsor:'Sponsor'};
+  let html='<table style="width:100%;border-collapse:collapse;font-size:13px">'
+    +'<thead><tr style="border-bottom:2px solid var(--border)">'
+    +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Programa</th>'
+    +'<th style="padding:6px 8px;text-align:center;color:var(--text2)">Eixo (N1)</th>'
+    +'<th style="padding:6px 8px;text-align:center;color:var(--text2)">Plano (N2)</th>'
+    +'<th style="padding:6px 8px;text-align:center;color:var(--text2)">Owner</th>'
+    +'<th style="padding:6px 8px;text-align:center;color:var(--text2)">Sponsor</th>'
+    +'</tr></thead><tbody>';
+  n0s.forEach(function(n0){
+    const lbl=CFG.filterLabels[n0]||{};
+    html+='<tr style="border-bottom:1px solid var(--border)">'
+      +'<td style="padding:6px 8px;font-weight:600;white-space:nowrap">'+esc(n0)+'</td>';
+    dims.forEach(function(d){
+      html+='<td style="padding:4px 6px"><input class="ainput" data-n0="'+esc(n0)+'" data-dim="'+d
+        +'" style="width:100%;text-align:center" value="'+esc(lbl[d]||'')+'" placeholder="'+esc(defs[d])+'"></td>';
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  wrap.innerHTML=html;
+}
+
+function saveRotulos(){
+  if(!CFG.filterLabels) CFG.filterLabels={};
+  document.querySelectorAll('#rotulos-wrap input[data-n0]').forEach(function(inp){
+    const n0=inp.dataset.n0, dim=inp.dataset.dim, val=inp.value.trim();
+    if(!CFG.filterLabels[n0]) CFG.filterLabels[n0]={};
+    if(val) CFG.filterLabels[n0][dim]=val;
+    else delete CFG.filterLabels[n0][dim];
+  });
+  saveCfg();
+  toast('Rótulos guardados.');
+}
+
+function getActData(){
+  try{ const s=localStorage.getItem('pmo_act'); return s?JSON.parse(s):[]; }catch(e){ return []; }
+}
+function getGanttData(){
+  try{ const s=localStorage.getItem('pmo_gantt_data'); return s?JSON.parse(s):[]; }catch(e){ return []; }
+}
+function getPdsData(){
+  try{ const s=localStorage.getItem('pmo_pds_data'); return s?JSON.parse(s):[]; }catch(e){ return []; }
+}
+
+function renderTagList(field, containerId, label){
+  const act=getActData();
+  const gantt=getGanttData();
+  const vals=[...new Set([
+    ...act.map(function(d){return d[field]||'';}),
+    ...gantt.map(function(d){return d[field]||'';})
+  ].filter(Boolean))].sort();
+  const wrap=document.getElementById(containerId);
+  if(!vals.length){ wrap.innerHTML='<div style="color:var(--text3);font-size:12px">Sem valores.</div>'; return; }
+  wrap.innerHTML=vals.map(function(v){
+    return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">'
+      +'<input class="ainput" style="flex:1" data-orig="'+esc(v)+'" value="'+esc(v)+'">'
+      +'</div>';
+  }).join('');
+}
+
+function saveTags(field){
+  const containerId='tags-'+field+'-list';
+  const wrap=document.getElementById(containerId); if(!wrap) return;
+  const inputs=wrap.querySelectorAll('input[data-orig]');
+  const renames={};
+  inputs.forEach(function(inp){
+    const orig=inp.dataset.orig, newVal=inp.value.trim();
+    if(orig&&newVal&&orig!==newVal) renames[orig]=newVal;
+  });
+  if(!Object.keys(renames).length){ toast('Sem alterações.','var(--text2)'); return; }
+
+  const act=getActData();
+  const gantt=getGanttData();
+  act.forEach(function(d){ if(renames[d[field]]) d[field]=renames[d[field]]; });
+  gantt.forEach(function(d){ if(renames[d[field]]) d[field]=renames[d[field]]; });
+  try{
+    localStorage.setItem('pmo_act', JSON.stringify(act));
+    localStorage.setItem('pmo_gantt_data', JSON.stringify(gantt));
+    toast('Tags actualizadas. Volta à plataforma para ver o efeito.','#3B6D11');
+    renderTagList(field, containerId, field);
+  }catch(e){ toast('Erro ao guardar: '+e.message,'var(--red)'); }
+}
+
+function exportAllExcel(){
+  if(typeof XLSX==='undefined'){ toast('Biblioteca XLSX não disponível.','var(--red)'); return; }
+  const act=getActData();
+  const gantt=getGanttData();
+  const pds=getPdsData();
+
+  const wb=XLSX.utils.book_new();
+
+  // Sheet 1: Actividades
+  const actRows=[['ID0','ID1','ID2','Nome','N0','N1','N2','N3','% Exec','% Prev','Status','Início Base','Fim Base','Início Real','Fim Real','Owner','Sponsor']];
+  act.forEach(function(d){
+    actRows.push([d.id0||'',d.id1||'',d.id2||'',d.nome||'',d.n0||'',d.n1||'',d.n2||'',d.n3||'',
+      d.pct||0,d.pct_prev||0,d.status||'',d.bs||'',d.bf||'',d.rs||'',d.rf||'',d.owner||'',d.sponsor||'']);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(actRows), 'Actividades');
+
+  // Sheet 2: Gantt
+  const ganttRows=[['Nível','Nome','N0','N1','N2','N3','% Exec','% Prev','Status','Início Base','Fim Base','Início Real','Fim Real','Owner','Sponsor']];
+  gantt.forEach(function(d){
+    ganttRows.push([d.nivel||'',d.nome||'',d.n0||'',d.n1||'',d.n2||'',d.n3||'',
+      d.pct||0,d.pct_prev||0,d.status||'',d.bs||'',d.bf||'',d.rs||'',d.rf||'',d.owner||'',d.sponsor||'']);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ganttRows), 'Gantt');
+
+  // Sheet 3: Contratos
+  const ctRows=[['ID0','ID2','Plano','Fornecedor','Descrição','Categoria','Moeda','Câmbio','Valor Total','Data Adj.','Adenda','Adenda a']];
+  pds.forEach(function(p){
+    (p.finances&&p.finances.contratos||[]).forEach(function(ct){
+      ctRows.push([p.id0||'',p.id2||'',p.plano||'',ct.fornecedor||'',ct.descricao||'',ct.categoria||'',
+        ct.moeda||'',ct.cambio_ref||'',ct.valor_total||0,ct.data_adj||'',ct.adenda||'',ct.adenda_de||'']);
+    });
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ctRows), 'Contratos');
+
+  // Sheet 4: Facturas
+  const facRows=[['ID0','ID2','Plano','Fornecedor','# Contrato','Moeda','Câmbio','Valor','Data Emissão','Data Vencimento','Estado']];
+  pds.forEach(function(p){
+    const contratos=p.finances&&p.finances.contratos||[];
+    (p.finances&&p.finances.facturas||[]).forEach(function(fac){
+      const ct=contratos.find(function(c){return c.id===fac.contrato_id;})||{};
+      facRows.push([p.id0||'',p.id2||'',p.plano||'',fac.fornecedor||ct.fornecedor||'',
+        fac.ref||'',fac.moeda||'',fac.cambio||'',fac.valor||0,
+        fac.data_emissao||'',fac.data_vencimento||'',fac.estado||'']);
+    });
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(facRows), 'Facturas');
+
+  // Sheet 5: PDS
+  const pdsRows=[['ID0','ID2','Plano','N0','N1']];
+  pds.forEach(function(p){ pdsRows.push([p.id0||'',p.id2||'',p.plano||'',p.n0||'',p.n1||'']); });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pdsRows), 'PDS');
+
+  XLSX.writeFile(wb,'strategos_export_'+new Date().toISOString().split('T')[0]+'.xlsx');
+  toast('Excel exportado com sucesso.','#3B6D11');
+}
+</script>
+</body>
+</html>
