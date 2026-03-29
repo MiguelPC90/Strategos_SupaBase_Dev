@@ -483,9 +483,18 @@ END $$;
 
 
 -- ============================================================
--- REALTIME
+-- REALTIME (idempotente)
 -- ============================================================
-ALTER PUBLICATION supabase_realtime ADD TABLE public.activities;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.pds_entries;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.risks;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.snapshots;
+DO $$
+DECLARE t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['activities','pds_entries','risks','snapshots'] LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime' AND tablename = t
+    ) THEN
+      EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.' || quote_ident(t);
+    END IF;
+  END LOOP;
+END;
+$$;
