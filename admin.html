@@ -1209,16 +1209,38 @@ function initUtilizadores(){
   renderUsersList();
 }
 
+// Devolve lista de N0s disponíveis (lida do localStorage, preenchida quando index.html carrega dados)
+function getAvailableN0s(){
+  try{ return JSON.parse(localStorage.getItem('pmo_n0s')||'[]'); }catch(e){ return []; }
+}
+
 function renderPerfis(){
   const wrap=document.getElementById('perfis-list');
   if(!CFG.profiles.length){wrap.innerHTML='<p style="color:var(--text3);font-size:13px">Sem perfis.</p>';return;}
+  const availN0s = getAvailableN0s();
   let html='';
   CFG.profiles.forEach(function(prof){
+    const profN0s = prof.n0s || [];
     html+='<div class="acard" style="margin-bottom:12px;border:1px solid var(--border)">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
       +'<input class="ainput" style="font-weight:600;flex:1" data-pid="'+esc(prof.id)+'" data-field="name" value="'+esc(prof.name)+'" placeholder="Nome do perfil">'
       +'<button class="abtn abtn-sm" style="color:var(--red,#E24B4A)" onclick="deletePerfil(\''+prof.id+'\')">Eliminar</button>'
       +'</div>'
+      // ── Acesso a Programas (N0) ──
+      +(availN0s.length > 0
+        ? '<div style="margin-bottom:12px">'
+          +'<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px">Programas acessíveis <span style="font-weight:400;color:var(--text3)">(vazio = todos)</span></div>'
+          +'<div style="display:flex;flex-wrap:wrap;gap:8px">'
+          + availN0s.map(function(n0){
+              const checked = profN0s.includes(n0);
+              return '<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">'
+                +'<input type="checkbox" class="prof-n0-cb" data-pid="'+esc(prof.id)+'" data-n0="'+esc(n0)+'"'+(checked?' checked':'')+'>'
+                +esc(n0)+'</label>';
+            }).join('')
+          +'</div></div>'
+        : '<p style="font-size:11px;color:var(--text3);margin-bottom:10px">Importa dados para configurar acesso por programa.</p>')
+      // ── Acesso por Componente ──
+      +'<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px">Acesso por componente</div>'
       +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
       +'<thead><tr><th style="text-align:left;padding:4px 8px;color:var(--text2);font-weight:500">Componente</th>'
       +'<th style="padding:4px 8px;color:var(--text2);font-weight:500;text-align:center">Acesso</th></tr></thead><tbody>';
@@ -1240,7 +1262,7 @@ function renderPerfis(){
 function addPerfil(){
   const tabs={};
   ALL_TABS_DEF.forEach(function(t){tabs[t.id]='read';});
-  CFG.profiles.push({id:uid(),name:'Novo Perfil',tabs:tabs});
+  CFG.profiles.push({id:uid(),name:'Novo Perfil',tabs:tabs,n0s:[]});
   saveCfg(); renderPerfis();
 }
 
@@ -1249,10 +1271,17 @@ function savePerfil(pid){
   if(!prof) return;
   const nameInp=document.querySelector('input[data-pid="'+pid+'"][data-field="name"]');
   if(nameInp) prof.name=nameInp.value.trim()||prof.name;
+  // Guardar permissões por tab
   document.querySelectorAll('select[data-pid="'+pid+'"][data-tab]').forEach(function(sel){
     if(!prof.tabs) prof.tabs={};
     prof.tabs[sel.dataset.tab]=sel.value;
   });
+  // Guardar N0s permitidos (checkboxes)
+  const n0Checked = [];
+  document.querySelectorAll('.prof-n0-cb[data-pid="'+pid+'"]').forEach(function(cb){
+    if(cb.checked) n0Checked.push(cb.dataset.n0);
+  });
+  prof.n0s = n0Checked; // vazio = sem restrição = todos os programas
   saveCfg(); toast('Perfil guardado.'); renderUsersList();
 }
 

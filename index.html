@@ -542,7 +542,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
   <button class="tab" onclick="switchTab('gestao-pds',this)" style="color:var(--text2)">Gestão PDS</button>
   <button class="tab" onclick="switchTab('gestao-riscos',this)" style="color:var(--text2)">Gestão de Riscos</button>
   <button class="tab" onclick="switchTab('gestao-financeira',this)" style="color:var(--text2)">Gestão Financeira</button>
-  <a href="admin.html" class="tab" id="tab-admin" style="margin-left:auto;color:var(--text2);text-decoration:none">⚙ Admin</a>
+  <a href="admin.html" class="tab" id="tab-admin" style="margin-left:auto;color:var(--text2);text-decoration:none;display:none">⚙ Admin</a>
   </div>
 </div>
 
@@ -1449,25 +1449,30 @@ function cascadeN2(){
 }
 
 function buildAllFilters(src){
-  const n0vals=[...new Set(src.map(d=>d.n0||'').filter(Boolean))].sort();
+  // Aplicar restrição de N0 do perfil antes de construir os dropdowns
+  const profileN0s = getProfileN0s();
+  const filteredSrc = profileN0s ? src.filter(function(d){ return profileN0s.has(d.n0||''); }) : src;
+
+  const n0vals=[...new Set(filteredSrc.map(d=>d.n0||'').filter(Boolean))].sort();
   const n0wrap=document.getElementById('ms-n0-wrap');
-  if(n0vals.length){ buildMs('n0',n0vals); if(n0wrap) n0wrap.style.display=''; }
-  else if(n0wrap) n0wrap.style.display='none';
+  // Ocultar filtro N0 se o perfil só tem acesso a um programa (não há escolha a fazer)
+  if(n0vals.length > 1){ buildMs('n0',n0vals); if(n0wrap) n0wrap.style.display=''; }
+  else { if(n0wrap) n0wrap.style.display='none'; }
   // N1: ordered by N0 first, then by id1 within each N0
   const n1Ordered = [];
-  const n0ForOrder = [...new Set(src.map(function(d){return d.n0||'';}))].filter(Boolean).sort();
+  const n0ForOrder = [...new Set(filteredSrc.map(function(d){return d.n0||'';}))].filter(Boolean).sort();
   if(n0ForOrder.length > 1){
     n0ForOrder.forEach(function(n0){
-      const n1sForN0 = sortByHierarchy([...new Set(src.filter(function(d){return d.n0===n0;}).map(function(d){return d.n1;}))], src, 'n1', 'id1');
+      const n1sForN0 = sortByHierarchy([...new Set(filteredSrc.filter(function(d){return d.n0===n0;}).map(function(d){return d.n1;}))], filteredSrc, 'n1', 'id1');
       n1sForN0.forEach(function(n1){ if(!n1Ordered.includes(n1)) n1Ordered.push(n1); });
     });
   } else {
-    sortByHierarchy([...new Set(src.map(function(d){return d.n1;}))], src, 'n1', 'id1').forEach(function(n1){ n1Ordered.push(n1); });
+    sortByHierarchy([...new Set(filteredSrc.map(function(d){return d.n1;}))], filteredSrc, 'n1', 'id1').forEach(function(n1){ n1Ordered.push(n1); });
   }
   buildMs('n1', n1Ordered);
-  buildMs('n2', sortByHierarchy([...new Set(src.map(function(d){return d.n2;}))], src, 'n2', 'id2'));
-  buildMs('owner',[...new Set(src.map(d=>d.owner).filter(Boolean))].sort());
-  buildMs('sponsor',[...new Set(src.map(d=>d.sponsor).filter(Boolean))].sort());
+  buildMs('n2', sortByHierarchy([...new Set(filteredSrc.map(function(d){return d.n2;}))], filteredSrc, 'n2', 'id2'));
+  buildMs('owner',[...new Set(filteredSrc.map(d=>d.owner).filter(Boolean))].sort());
+  buildMs('sponsor',[...new Set(filteredSrc.map(d=>d.sponsor).filter(Boolean))].sort());
   buildMs('status',['Concluído','Em dia','Em atraso']);
 }
 
@@ -1539,7 +1544,7 @@ async function doLogin(){
       }
       err.style.display='none';
       currentUser = { id: authData.user.id, name: meta.display_name||uval, username: uval, role: meta.role };
-      currentProfile = { id: profile.id, name: profile.name, tabs: profile.tabs||{} };
+      currentProfile = { id: profile.id, name: profile.name, tabs: profile.tabs||{}, n0s: profile.n0s||[] };
       localStorage.setItem('pmo_session', JSON.stringify({userId: authData.user.id}));
       document.getElementById('login-screen').style.display='none';
       const nameEl=document.getElementById('topbar-user-name');
@@ -1563,7 +1568,8 @@ async function doLogin(){
   err.style.display='none';
   const profile=(CFG.profiles||[]).find(function(p){return p.id===user.profileId;});
   if(!profile){err.textContent='Perfil não encontrado.';err.style.display='block';return;}
-  currentUser=user; currentProfile=profile;
+  currentUser={...user, role: user.role||(profile.name==='Administrador'?'admin':'editor')};
+  currentProfile={id:profile.id, name:profile.name, tabs:profile.tabs||{}, n0s:profile.n0s||[]};
   localStorage.setItem('pmo_session',JSON.stringify({userId:user.id}));
   document.getElementById('login-screen').style.display='none';
   const nameEl=document.getElementById('topbar-user-name');
@@ -1596,9 +1602,25 @@ function applyProfile(profile){
   // Navigate to first accessible tab
   const firstTab=ALL_TABS_DEF.find(function(td){return (tabs[td.id]||'none')!=='none';});
   if(firstTab){
-    const btn=document.querySelector('.tab[onclick*="\''+firstTab.id+'\'"]');
+    const btn=document.querySelector('.tab[onclick*="\'"+firstTab.id+"\'"]');
     if(btn) switchTab(firstTab.id,btn);
   }
+
+  // Link Admin: apenas visível para utilizadores com role=admin
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  const adminLink = document.getElementById('tab-admin');
+  if(adminLink) adminLink.style.display = isAdmin ? '' : 'none';
+  const mobileAdminBtn = document.getElementById('mobile-tab-admin');
+  if(mobileAdminBtn) mobileAdminBtn.style.display = isAdmin ? '' : 'none';
+
+  // Aplicar restrições de N0 do perfil (se existirem)
+  if(ALL_ACT.length){ buildAllFilters(ALL_ACT); applyFilters(); }
+}
+
+// Devolve Set com N0s permitidos para o perfil actual (null = sem restrição = todos)
+function getProfileN0s(){
+  if(!currentProfile || !currentProfile.n0s || !currentProfile.n0s.length) return null;
+  return new Set(currentProfile.n0s);
 }
 
 function applyTabPermission(tabId){
@@ -1627,6 +1649,7 @@ function updateFilterLabels(){
 }
 
 function applyFilters(){
+  const profileN0s = getProfileN0s(); // restrição do perfil (null = sem restrição)
   const n0s=MS_STATE['n0']||new Set();
   const n1s=MS_STATE['n1']||new Set();
   const n2s=MS_STATE['n2']||new Set();
@@ -1637,6 +1660,7 @@ function applyFilters(){
   const de=document.getElementById('f-date-end').value;
 
   fAct=ALL_ACT.filter(d=>
+    (!profileN0s||profileN0s.has(d.n0||''))&&
     (!n0s.size||n0s.has(d.n0||''))&&(!n1s.size||n1s.has(d.n1))&&
     (!n2s.size||n2s.has(d.n2))&&(!owns.size||owns.has(d.owner))&&
     (!spns.size||spns.has(d.sponsor))&&(!stts.size||stts.has(d.status)));
@@ -1644,6 +1668,7 @@ function applyFilters(){
   // For Gantt: status filter applies to N4 rows only; parent rows are included if any child matches
   const activeN4keys=stts.size>0?new Set(fAct.map(a=>(a.id0||'')+'_'+a.id2+'_'+a.id1+'_'+(a.n3||'')+'_'+a.nome)):null;
   fGantt=ALL_GANTT.filter(r=>{
+    if(profileN0s&&!profileN0s.has(r.n0||''))return false;
     if(n0s.size&&!n0s.has(r.n0||''))return false;
     if(n1s.size&&!n1s.has(r.n1))return false;
     if(n2s.size&&r.n2&&!n2s.has(r.n2)&&r.nivel>1)return false;
@@ -1657,6 +1682,7 @@ function applyFilters(){
   // PDS filter: use composite (id0+id2) key to avoid cross-program collisions
   const activeKeys = n2s.size>0 ? new Set(fAct.map(d=>d.id0+'_'+d.id2)) : null;
   fPDS=ALL_PDS.filter(p=>{
+    if(profileN0s && !profileN0s.has(p.n0||'')) return false;
     if(n0s.size && !n0s.has(p.n0||'')) return false;
     if(n1s.size && !n1s.has(p.n1)) return false;
     if(activeKeys && !activeKeys.has((p.id0||'')+'_'+p.id2)) return false;
@@ -6037,7 +6063,7 @@ switchTab = function(id, btn){
       <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       Gestão PDS
     </button>
-    <button class="mobile-nav-btn" style="color:var(--text);min-height:56px" onclick="location.href='admin.html';closeMobileMore()">
+    <button id="mobile-tab-admin" class="mobile-nav-btn" style="color:var(--text);min-height:56px;display:none" onclick="location.href='admin.html';closeMobileMore()">
       <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       Admin
     </button>
