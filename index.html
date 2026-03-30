@@ -1542,7 +1542,7 @@ async function doLogin(){
         return;
       }
       err.style.display='none';
-      currentUser = { id: authData.user.id, name: meta.display_name||uval, username: uval, role: meta.role };
+      currentUser = { id: authData.user.id, name: meta.display_name||uval, username: uval, role: (meta.role||'').toLowerCase() };
       currentProfile = { id: profile.id, name: profile.name, tabs: profile.tabs||{}, n0s: profile.n0s||[] };
       localStorage.setItem('pmo_session', JSON.stringify({userId: authData.user.id}));
       document.getElementById('login-screen').style.display='none';
