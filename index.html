@@ -1551,9 +1551,11 @@ async function doLogin(){
       applyProfile(currentProfile);
       return;
     }catch(e){
-      // Se o login falhou (credenciais erradas) mostra erro; se foi erro de rede usa fallback
-      if(e.message && (e.message.includes('Invalid') || e.message.includes('credentials') || e.message.includes('password'))){
-        err.textContent='Utilizador ou password incorrectos.';
+      const msg = (e.message||'').toLowerCase();
+      // Erros de autenticação → mostrar mensagem e parar
+      if(msg.includes('invalid') || msg.includes('credentials') || msg.includes('password') ||
+         msg.includes('email') || msg.includes('confirmed') || msg.includes('not found')){
+        err.textContent = e.message || 'Utilizador ou password incorrectos.';
         err.style.display='block';
         return;
       }
