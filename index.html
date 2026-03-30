@@ -1548,6 +1548,7 @@ async function doLogin(){
       document.getElementById('login-screen').style.display='none';
       const nameEl=document.getElementById('topbar-user-name');
       if(nameEl) nameEl.textContent=meta.display_name||uval;
+      loadCfg(); // recarregar CFG do Supabase agora que estamos autenticados
       applyProfile(currentProfile);
       return;
     }catch(e){
@@ -2360,7 +2361,7 @@ function renderPDS(){
 
   if(hdrWrap) hdrWrap.innerHTML='<div style="background:var(--navy);border-radius:var(--rl);padding:12px 16px;margin-bottom:12px"><div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:2px">'+esc(p.n1)+'</div><div style="font-size:15px;font-weight:700;color:#fff">'+esc(p.plano)+'</div></div>';
 
-  const pAct=ALL_ACT.filter(d=>d.id2===p.id2);
+  const pAct=ALL_ACT.filter(d=>d.id2===p.id2&&(d.id0||'1')===(p.id0||'1'));
   const k=kpi(pAct);
   kpiWrap.innerHTML='<div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px;margin-bottom:1rem">'
     +'<div class="card" style="margin-bottom:0;padding:1rem"><div class="card-title" style="margin-bottom:.75rem">Dados gerais</div>'
@@ -3639,7 +3640,10 @@ function renderPMTable(){
   const _pmN0s = MS_STATE['n0']||new Set();
   const _pmN1s = MS_STATE['n1']||new Set();
   const _pmN2s = MS_STATE['n2']||new Set();
+  const _profileN0s = getProfileN0s();
   let rows = PM_DATA.filter(r => !r._deleted);
+  // Aplicar restrição de N0 do perfil
+  if(_profileN0s) rows = rows.filter(r => _profileN0s.has(r.n0||''));
   // Apply header filters
   if(_pmN0s.size) rows = rows.filter(r => !r.n0||_pmN0s.has(r.n0));
   if(_pmN1s.size) rows = rows.filter(r => !r.n1||_pmN1s.has(r.n1));
@@ -4084,8 +4088,9 @@ function formatDatePT(d){ if(!d) return ''; const p=d.split('-'); return p.lengt
 function initGPDS(){
   ensurePDSItems();
   const sel = document.getElementById('gpds-selector');
+  const pN0s = getProfileN0s();
   sel.innerHTML = '<option value="">— seleccionar plano —</option>' +
-    ALL_PDS.map(function(p){
+    ALL_PDS.filter(function(p){ return !pN0s||pN0s.has(p.n0||''); }).map(function(p){
       const key=(p.id0||'')+'_'+p.id2;
       const prefix = (p.n0 ? esc(p.n0)+' › ' : '') + (p.n1 ? esc(p.n1)+' › ' : '');
       return '<option value="'+esc(key)+'">'+prefix+esc(p.plano)+'</option>';
@@ -4313,8 +4318,9 @@ function riskLabel(grade){
 
 function initGRisk(){
   const sel = document.getElementById('grisk-selector');
+  const pN0s = getProfileN0s();
   sel.innerHTML = '<option value="">— seleccionar plano —</option>' +
-    ALL_PDS.map(function(p){
+    ALL_PDS.filter(function(p){ return !pN0s||pN0s.has(p.n0||''); }).map(function(p){
       const key=(p.id0||'')+'_'+p.id2;
       const prefix = (p.n0 ? esc(p.n0)+' › ' : '') + (p.n1 ? esc(p.n1)+' › ' : '');
       return '<option value="'+esc(key)+'">'+prefix+esc(p.plano)+'</option>';
@@ -5140,8 +5146,9 @@ function ensureFinance(p){
 
 function initGFin(){
   const sel=document.getElementById('gfin-selector');
+  const _gfinN0s=getProfileN0s();
   sel.innerHTML='<option value="">— seleccionar plano —</option>'+
-    ALL_PDS.map(function(p){
+    ALL_PDS.filter(function(p){ return !_gfinN0s||_gfinN0s.has(p.n0||''); }).map(function(p){
       const key=(p.id0||'')+'_'+p.id2;
       const prefix=(p.n0?esc(p.n0)+' › ':'')+esc(p.n1)+' › ';
       return '<option value="'+esc(key)+'">'+prefix+esc(p.plano)+'</option>';
