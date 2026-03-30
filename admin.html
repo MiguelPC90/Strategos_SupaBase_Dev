@@ -123,7 +123,8 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
 <div id="lock-screen">
   <div class="lock-box">
     <h2>⚙ Administração</h2>
-    <p>Introduz a password para aceder às definições</p>
+    <p>Introduz as credenciais de administrador</p>
+    <input class="lock-input" type="email" id="lock-email" placeholder="email" style="letter-spacing:normal;margin-bottom:8px" onkeydown="if(event.key==='Enter')document.getElementById('lock-pwd').focus()">
     <input class="lock-input" type="password" id="lock-pwd" placeholder="••••••" onkeydown="if(event.key==='Enter')unlock()">
     <div class="lock-error" id="lock-err"></div>
     <button class="abtn abtn-primary" style="width:100%" onclick="unlock()">Entrar</button>
@@ -515,7 +516,7 @@ async function unlock(){
       const email=emailInp ? emailInp.value : ('admin@strategos.local');
       const authData = await SB.signIn(email, pwd);
       const meta = await SB.getUserMeta(authData.user.id);
-      if(!meta || meta.role !== 'admin'){
+      if(!meta || (meta.role||'').toLowerCase() !== 'admin'){
         errEl.textContent='Sem permissões de administrador.';
         document.getElementById('lock-pwd').value='';
         await SB.signOut();
