@@ -1603,7 +1603,7 @@ function applyProfile(profile){
   // Navigate to first accessible tab
   const firstTab=ALL_TABS_DEF.find(function(td){return (tabs[td.id]||'none')!=='none';});
   if(firstTab){
-    const btn=document.querySelector('.tab[onclick*="\'"+firstTab.id+"\'"]');
+    const btn=document.querySelector('.tab[onclick*="\''+firstTab.id+'\'"]');
     if(btn) switchTab(firstTab.id,btn);
   }
 
