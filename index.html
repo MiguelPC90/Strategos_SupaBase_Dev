@@ -513,14 +513,6 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
       <button class="ms-btn" onclick="toggleMs('ms-status')"><span id="ms-status-lbl">Todos</span><span>&#9660;</span></button>
       <div class="ms-dropdown" id="ms-status"></div>
     </div>
-    <div class="ms-wrap gantt-date-filter" style="display:none">
-      <div class="ms-label">Data início ≥</div>
-      <input type="date" id="f-date-start" onchange="dApplyFilters()" style="padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit;width:100%">
-    </div>
-    <div class="ms-wrap gantt-date-filter" style="display:none">
-      <div class="ms-label">Data fim ≤</div>
-      <input type="date" id="f-date-end" onchange="dApplyFilters()" style="padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit;width:100%">
-    </div>
     <button class="btn" style="align-self:flex-end;font-size:11px;padding:6px 10px" onclick="resetFilters()">&#10005; Limpar</button>
   <div class="ms-wrap" style="max-width:160px">
     <div class="ms-label">Data de corte</div>
@@ -654,6 +646,14 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
         <span><b style="background:var(--navy);width:24px"></b>Real</span>
       </div>
       <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;align-items:center">
+        <div style="display:flex;flex-direction:column;gap:2px;margin-right:6px">
+          <span style="font-size:10px;color:var(--text2)">Data início ≥</span>
+          <input type="date" id="f-date-start" onchange="dApplyFilters()" style="padding:4px 6px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;margin-right:10px">
+          <span style="font-size:10px;color:var(--text2)">Data fim ≤</span>
+          <input type="date" id="f-date-end" onchange="dApplyFilters()" style="padding:4px 6px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit">
+        </div>
         <span style="font-size:11px;color:var(--text2)">Nível:</span>
         <button class="chip active" id="glvl-1" onclick="setGanttLevel(1,this)">N1</button>
         <button class="chip" id="glvl-2" onclick="setGanttLevel(2,this)">N2</button>
@@ -1654,6 +1654,16 @@ function applyFilters(){
   const n0s=MS_STATE['n0']||new Set();
   const n1s=MS_STATE['n1']||new Set();
   const n2s=MS_STATE['n2']||new Set();
+  // Rebuild owner/sponsor options filtered by current N0/N1/N2 selection
+  const hierSrc=ALL_ACT.filter(function(d){
+    return (!profileN0s||profileN0s.has(d.n0||''))&&
+           (!n0s.size||n0s.has(d.n0||''))&&
+           (!n1s.size||n1s.has(d.n1))&&
+           (!n2s.size||n2s.has(d.n2));
+  });
+  buildMs('owner',[...new Set(hierSrc.map(function(d){return d.owner;}).filter(Boolean))].sort());
+  buildMs('sponsor',[...new Set(hierSrc.map(function(d){return d.sponsor;}).filter(Boolean))].sort());
+
   const owns=MS_STATE['owner']||new Set();
   const spns=MS_STATE['sponsor']||new Set();
   const stts=MS_STATE['status']||new Set();
@@ -2258,25 +2268,22 @@ function renderGantt(data){
   });
   html+=`</tbody>`;
   tbl.innerHTML=html;
-  // Fix sticky left offsets and two-row header top positions
-  (function(){
+  // Fix sticky left offsets via CSS injection (deferred to avoid layout reflow blocking render)
+  requestAnimationFrame(function(){
     const trs=tbl.querySelectorAll('thead tr');
     const hrow=trs[0];
     if(!hrow) return;
-    // Left offsets for the 5 sticky columns
-    for(let ci=0;ci<5&&ci<hrow.children.length;ci++){
-      const left=hrow.children[ci].offsetLeft+'px';
-      hrow.children[ci].style.left=left;
-      tbl.querySelectorAll('tbody tr').forEach(function(tr){
-        if(tr.children[ci]) tr.children[ci].style.left=left;
-      });
-    }
-    // Month-label row must stick below the first header row
-    if(trs[1]){
-      const h=hrow.getBoundingClientRect().height+'px';
-      Array.from(trs[1].children).forEach(function(th){th.style.top=h;});
-    }
-  })();
+    // Read all positions first (single reflow), then inject one CSS rule
+    const lefts=[];
+    for(let ci=0;ci<5&&ci<hrow.children.length;ci++) lefts.push(hrow.children[ci].offsetLeft);
+    const h=hrow.getBoundingClientRect().height;
+    const cls=['g-sticky','g-sticky-2','g-sticky-3','g-sticky-4','g-sticky-5'];
+    let styleEl=document.getElementById('_gantt_sticky_css');
+    if(!styleEl){styleEl=document.createElement('style');styleEl.id='_gantt_sticky_css';document.head.appendChild(styleEl);}
+    styleEl.textContent=cls.map(function(c,i){
+      return i<lefts.length?'#gantt-table .'+c+'{left:'+lefts[i]+'px}':'';
+    }).join('')+(trs[1]?'#gantt-table thead tr:nth-child(2) th{top:'+h+'px}':'');
+  });
 }
 
 function gToggle(idx){GCOL[idx]=!GCOL[idx];renderGantt(fGantt);}
@@ -2473,7 +2480,6 @@ function switchTab(id,btn){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById(id).classList.add('active');btn.classList.add('active');
-  document.querySelectorAll('.gantt-date-filter').forEach(el=>el.style.display=id==='gantt'?'flex':'none');
   adjustSpacer();
   if(id==='resumo')setTimeout(()=>{renderCharts(fAct);renderKPIs(kpi(fAct));renderEixoTable(fAct);},50);
   if(id==='gantt')renderGantt(fGantt);
