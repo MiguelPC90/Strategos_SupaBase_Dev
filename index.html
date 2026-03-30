@@ -752,7 +752,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     <div style="margin-left:auto;display:flex;gap:8px">
       <button class="btn ro-hide" style="font-size:12px;font-weight:600;background:var(--bg2)" onclick="openNewProjectModal()">&#10010; Novo projecto</button>
       <button class="btn ro-hide" style="font-size:12px" onclick="addRow()">+ Nova linha</button>
-      <button class="btn ro-hide" style="font-size:12px;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="saveToSession()" title="Guarda na sessão actual (visível nos outros menus)">&#128190; Guardar</button>
+      <button class="btn ro-hide" style="font-size:12px;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="saveToSession()" title="Guardar (Ctrl+S)">&#128190; Guardar</button>
       <button class="btn" style="font-size:12px" onclick="exportToExcel()" title="Exporta para ficheiro Excel">&#8595; Exportar Excel</button>
     </div>
   </div>
@@ -1421,6 +1421,23 @@ function toggleMs(rawId){
 document.addEventListener('click',e=>{
   if(!e.target.closest('.ms-wrap') && !e.target.closest('.ms-dropdown'))
     document.querySelectorAll('.ms-dropdown').forEach(d=>d.classList.remove('open'));
+});
+
+// ── Atalhos de teclado globais ────────────────────────────────────────────────
+document.addEventListener('keydown', function(e){
+  if((e.ctrlKey||e.metaKey) && e.key==='s'){
+    e.preventDefault();
+    const active = document.querySelector('.section.active');
+    if(!active) return;
+    if(active.id==='gestao')            saveToSession();
+    else if(active.id==='gestao-pds')   saveGPDS();
+    else if(active.id==='gestao-riscos') saveGRisk();
+    else if(active.id==='gestao-financeira') saveGFin();
+  }
+  if(e.key==='Escape'){
+    const pmForm = document.getElementById('pm-form-content');
+    if(pmForm && pmForm.style.display!=='none') cancelForm();
+  }
 });
 
 function cascadeN1(){
@@ -3673,8 +3690,8 @@ function renderPMTable(){
       <td style="text-align:center;font-size:11px;color:var(--text2)">${dd(r.bf)}</td>
       <td style="text-align:center;font-size:11px;color:var(--text2)">${dd(r.rs)}</td>
       <td style="text-align:center;font-size:11px;color:var(--text2)">${dd(r.rf)}</td>
-      <td style="font-size:11px">${r.owner||'—'}</td>
-      <td style="font-size:11px">${r.sponsor||'—'}</td>
+      <td style="font-size:11px">${r.nivel>=3?(r.owner||'—'):''}</td>
+      <td style="font-size:11px">${r.nivel>=3?(r.sponsor||'—'):''}</td>
 
     </tr>`;
   }).join('');
@@ -3889,10 +3906,17 @@ function saveToSession(){
   }catch(e){}
   // Persistir na base de dados partilhada se online
   if(window.SB && SB.isOnline){
+    const badge = document.getElementById('pm-unsaved');
+    badge.textContent = '⏳ A guardar…';
+    badge.classList.add('show');
     SB.saveActivities(ALL_GANTT)
-      .then(function(){ showToast('Guardado na base de dados partilhada!', 'navy'); })
+      .then(function(){
+        badge.classList.remove('show');
+        showToast('Guardado na base de dados partilhada!', 'navy');
+      })
       .catch(function(err){
         console.warn('PMO: Supabase save activities falhou:', err);
+        badge.classList.remove('show');
         showToast('Guardado localmente (Supabase indisponível).', 'amber');
       });
   } else {
