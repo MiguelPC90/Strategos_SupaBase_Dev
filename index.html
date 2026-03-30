@@ -3895,17 +3895,14 @@ function saveToSession(){
   }catch(e){}
   // Persistir na base de dados partilhada se online
   if(window.SB && SB.isOnline){
-    const badge = document.getElementById('pm-unsaved');
-    badge.textContent = '⏳ A guardar…';
-    badge.classList.add('show');
+    showToast('A guardar…', 'amber');
     SB.saveActivities(ALL_GANTT)
       .then(function(){
-        badge.classList.remove('show');
+        document.getElementById('pm-unsaved').classList.remove('show');
         showToast('Guardado na base de dados partilhada!', 'navy');
       })
       .catch(function(err){
         console.warn('PMO: Supabase save activities falhou:', err);
-        badge.classList.remove('show');
         showToast('Guardado localmente (Supabase indisponível).', 'amber');
       });
   } else {
