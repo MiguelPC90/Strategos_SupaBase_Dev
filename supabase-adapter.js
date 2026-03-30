@@ -278,12 +278,17 @@
         };
       });
 
-      // Apagar todas as linhas gantt existentes
-      var delRes = await this.client
-        .from('activities')
-        .delete()
-        .eq('source', 'gantt');
-      if (delRes.error) throw delRes.error;
+      // Apagar apenas as linhas gantt do(s) id0 presentes nos dados enviados
+      // Isto garante que importações por programa não apagam outros programas
+      var id0sToReplace = [...new Set(rows.map(function(r){ return r.id0; }))];
+      for (var j = 0; j < id0sToReplace.length; j++) {
+        var delRes = await this.client
+          .from('activities')
+          .delete()
+          .eq('source', 'gantt')
+          .eq('id0', id0sToReplace[j]);
+        if (delRes.error) throw delRes.error;
+      }
 
       // Inserir em chunks de 500
       for (var i = 0; i < rows.length; i += 500) {
