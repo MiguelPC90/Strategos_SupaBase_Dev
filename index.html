@@ -2268,21 +2268,22 @@ function renderGantt(data){
   });
   html+=`</tbody>`;
   tbl.innerHTML=html;
-  // Fix sticky left offsets via CSS injection (deferred to avoid layout reflow blocking render)
+  // Fix sticky left offsets — deferred to avoid blocking initial render
   requestAnimationFrame(function(){
     const trs=tbl.querySelectorAll('thead tr');
     const hrow=trs[0];
     if(!hrow) return;
-    // Read all positions first (single reflow), then inject one CSS rule
+    // Read all positions first (single reflow), then batch all writes
     const lefts=[];
-    for(let ci=0;ci<5&&ci<hrow.children.length;ci++) lefts.push(hrow.children[ci].offsetLeft);
-    const h=hrow.getBoundingClientRect().height;
-    const cls=['g-sticky','g-sticky-2','g-sticky-3','g-sticky-4','g-sticky-5'];
-    let styleEl=document.getElementById('_gantt_sticky_css');
-    if(!styleEl){styleEl=document.createElement('style');styleEl.id='_gantt_sticky_css';document.head.appendChild(styleEl);}
-    styleEl.textContent=cls.map(function(c,i){
-      return i<lefts.length?'#gantt-table .'+c+'{left:'+lefts[i]+'px}':'';
-    }).join('')+(trs[1]?'#gantt-table thead tr:nth-child(2) th{top:'+h+'px}':'');
+    for(let ci=0;ci<5&&ci<hrow.children.length;ci++) lefts.push(hrow.children[ci].offsetLeft+'px');
+    const h=trs[1]?hrow.getBoundingClientRect().height+'px':null;
+    for(let ci=0;ci<lefts.length;ci++){
+      hrow.children[ci].style.left=lefts[ci];
+      tbl.querySelectorAll('tbody tr').forEach(function(tr){
+        if(tr.children[ci]) tr.children[ci].style.left=lefts[ci];
+      });
+    }
+    if(trs[1]) Array.from(trs[1].children).forEach(function(th){th.style.top=h;});
   });
 }
 
