@@ -1617,12 +1617,6 @@ function applyProfile(profile){
     const sec=document.getElementById(td.id);
     if(sec) sec.dataset.perm=perm;
   });
-  // Navigate to first accessible tab
-  const firstTab=ALL_TABS_DEF.find(function(td){return (tabs[td.id]||'none')!=='none';});
-  if(firstTab){
-    const btn=document.querySelector('.tab[onclick*="\''+firstTab.id+'\'"]');
-    if(btn) switchTab(firstTab.id,btn);
-  }
 
   // Link Admin: apenas visível para utilizadores com role=admin
   const isAdmin = currentUser && currentUser.role === 'admin';
@@ -1631,8 +1625,16 @@ function applyProfile(profile){
   const mobileAdminBtn = document.getElementById('mobile-tab-admin');
   if(mobileAdminBtn) mobileAdminBtn.style.display = isAdmin ? '' : 'none';
 
-  // Aplicar restrições de N0 do perfil (se existirem)
+  // Aplicar restrições de N0 do perfil ANTES de navegar para o primeiro tab,
+  // para que buildPdsSelector() e outros seletores já usem fPDS filtrado
   if(ALL_ACT.length){ buildAllFilters(ALL_ACT); applyFilters(); }
+
+  // Navegar para o primeiro tab acessível (fPDS já está correctamente filtrado)
+  const firstTab=ALL_TABS_DEF.find(function(td){return (tabs[td.id]||'none')!=='none';});
+  if(firstTab){
+    const btn=document.querySelector('.tab[onclick*="\''+firstTab.id+'\'"]');
+    if(btn) switchTab(firstTab.id,btn);
+  }
 }
 
 // Devolve Set com N0s permitidos para o perfil actual (null = sem restrição = todos)
