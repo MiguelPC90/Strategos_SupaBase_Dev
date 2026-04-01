@@ -848,28 +848,6 @@
     .empty-state-icon { font-size: 40px; margin-bottom: 4px; }
 
     /* ── DARK MODE ── */
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg:     #0F1923;
-        --card:   #1A2535;
-        --border: #2A3A50;
-        --text:   #E8EDF3;
-        --muted:  #8A9BB0;
-        --shadow: 0 2px 8px rgba(0,0,0,.35);
-      }
-      #topbar  { background: #001B3A; }
-      #bottom-nav { background: #001B3A; }
-      #login-screen { background: #001B3A; }
-      #login-card {
-        background: rgba(255,255,255,.05);
-        border-color: rgba(255,255,255,.10);
-      }
-      #act-search { background-color: var(--card); color: var(--text); }
-      #bottom-sheet { background: var(--card); }
-      #toast { background: #E8EDF3; color: #0F1923; }
-      #toast.toast-ok { background: #388E3C; color: #fff; }
-    }
-
     /* ── MEDIA QUERIES ── */
 
     /* Tablets (≥600px): aumentar espaçamento */
@@ -991,6 +969,62 @@
       border-radius: 4px;
       border: 1px solid var(--border);
     }
+
+    /* ── KPIs CONCRETIZAÇÃO 3×2 (Dashboard) ── */
+    .conc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .conc-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .conc-card.obj {
+      background: #F0F7E6;
+      border: 1px solid #C5DC8E;
+    }
+    .conc-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    .conc-value { font-size: 20px; font-weight: 800; color: var(--navy); line-height: 1.1; }
+    .conc-card.obj .conc-value { color: #3B6D11; }
+    .conc-row-label {
+      grid-column: 1 / -1;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      padding: 6px 2px 2px;
+    }
+
+    /* ── N1 CARD EXPANSÍVEL (Dashboard) ── */
+    .n1-card { padding: 0; overflow: hidden; margin-bottom: 10px; }
+    .n1-card-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .n1-card-hdr:active { background: #f5f6f8; }
+    .n1-card-body { padding: 0 14px 12px; }
+    .n1-card-body.collapsed { display: none; }
+
+    .n2-row {
+      padding: 8px 0;
+      border-top: 1px solid var(--border);
+    }
+    .n2-row:first-child { border-top: none; }
+    .n2-label { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .n2-meta  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
 
     /* ── GRUPOS DE ACTIVIDADES (Fase 3) ── */
     .act-group { margin-bottom: 4px; }
@@ -1801,20 +1835,22 @@
       if (!el) return;
 
       var data = fAct;
-
       if (!data.length) {
         el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Sem actividades</p></div>';
         return;
       }
 
       /* ── KPIs globais ── */
-      var n   = data.length;
-      var con = data.filter(function (d) { return d.status === 'Concluído'; }).length;
-      var dia = data.filter(function (d) { return d.status === 'Em dia';    }).length;
-      var atr = data.filter(function (d) { return d.status === 'Em atraso'; }).length;
-      var exe = n ? data.reduce(function (s, d) { return s + (d.pct || 0); }, 0) / n : 0;
+      var n      = data.length;
+      var con    = data.filter(function (d) { return d.status === 'Concluído'; }).length;
+      var atr    = data.filter(function (d) { return d.status === 'Em atraso'; }).length;
+      var exe    = n ? data.reduce(function (s, d) { return s + (d.pct || 0); }, 0) / n : 0;
+      var exeObj = n ? data.reduce(function (s, d) { return s + (d.pct_prev || 0); }, 0) / n : 0;
+      var cg     = n ? con / n : 0;
+      var cgObj  = n ? (con + atr) / n : 0;
+      var cd     = (con + atr) ? con / (con + atr) : 0;
 
-      /* ── Breakdown por N1 (programa) ── */
+      /* ── Breakdown por N1 — ordenação numérica ── */
       var n1Keys = [];
       var n1Map  = {};
       data.forEach(function (d) {
@@ -1822,43 +1858,37 @@
         if (!n1Map[key]) { n1Map[key] = []; n1Keys.push(key); }
         n1Map[key].push(d);
       });
-
-      /* Ordenar: mais atrasados primeiro */
       n1Keys.sort(function (a, b) {
-        var ga = n1Map[a].filter(function (d) { return d.status === 'Em atraso'; }).length;
-        var gb = n1Map[b].filter(function (d) { return d.status === 'Em atraso'; }).length;
-        return gb - ga;
+        return a.localeCompare(b, 'pt', { numeric: true, sensitivity: 'base' });
       });
-
-      /* ── 5 actividades mais atrasadas ── */
-      var lateItems = data
-        .filter(function (d) { return d.status === 'Em atraso'; })
-        .sort(function (a, b) { return (a.pct || 0) - (b.pct || 0); })
-        .slice(0, 5);
 
       /* ── HTML ── */
       var html = '';
 
-      /* KPI grid */
+      /* KPI 2×2: execução + concluídas */
       html += '<div class="kpi-grid">';
-      html += _kpiCard('Execução', _pct(exe), exe >= 75 ? 'green' : exe >= 40 ? '' : 'danger', n + ' actividades');
-      html += _kpiCard('Concluídas', con, 'green', _pct(n ? con/n : 0));
-      html += _kpiCard('Em dia', dia, '', '');
+      html += _kpiCard('Execução', _pct(exe), exe >= 75 ? 'green' : exe < 40 ? 'danger' : '', n + ' actividades');
+      html += _kpiCard('Concluídas', con, 'green', _pct(cg));
+      html += _kpiCard('Em dia', data.filter(function(d){return d.status==='Em dia';}).length, '', '');
       html += _kpiCard('Em atraso', atr, atr > 0 ? 'danger' : '', '');
       html += '</div>';
 
-      /* Barra de progresso global */
-      html += '<div class="card" style="padding:12px 16px 14px">';
-      html += '<div class="card-title">Progresso global</div>';
-      html += '<div class="flex-between mb-8"><span class="fs-sm text-muted">0%</span>';
-      html += '<span class="fw-bold" style="font-size:15px">' + _pct(exe) + '</span>';
-      html += '<span class="fs-sm text-muted">100%</span></div>';
-      var barCls = exe >= 100 ? 'done' : atr > 0 ? '' : '';
-      html += '<div class="progress-wrap"><div class="progress-bar ' + barCls + '" style="width:' + Math.min(100, exe).toFixed(1) + '%"></div></div>';
+      /* KPIs de concretização 3×2 */
+      html += '<div class="section-title" style="margin-top:4px">Concretização</div>';
+      html += '<div class="conc-grid">';
+      html += '<div class="conc-row-label">Grau de execução</div>';
+      html += '<div class="conc-card"><div class="conc-label">Real</div><div class="conc-value">' + _pct(exe) + '</div></div>';
+      html += '<div class="conc-card obj"><div class="conc-label">Objectivo</div><div class="conc-value">' + _pct(exeObj) + '</div></div>';
+      html += '<div class="conc-row-label">Concretização geral</div>';
+      html += '<div class="conc-card"><div class="conc-label">Real</div><div class="conc-value">' + _pct(cg * 100) + '</div></div>';
+      html += '<div class="conc-card obj"><div class="conc-label">Objectivo</div><div class="conc-value">' + _pct(cgObj * 100) + '</div></div>';
+      html += '<div class="conc-row-label">Concretização à data</div>';
+      html += '<div class="conc-card"><div class="conc-label">Real</div><div class="conc-value">' + _pct(cd * 100) + '</div></div>';
+      html += '<div class="conc-card obj"><div class="conc-label">Meta</div><div class="conc-value">100%</div></div>';
       html += '</div>';
 
-      /* Breakdown por programa */
-      html += '<div class="section-title">Por programa</div>';
+      /* Breakdown por programa — cards expansíveis com N2 */
+      html += '<div class="section-title">Por programa / eixo</div>';
       n1Keys.forEach(function (key) {
         var items = n1Map[key];
         var label = key.split('|||')[1] || '—';
@@ -1867,36 +1897,75 @@
         var kAtr  = items.filter(function (d) { return d.status === 'Em atraso'; }).length;
         var kExe  = items.reduce(function (s, d) { return s + (d.pct || 0); }, 0) / items.length;
 
-        html += '<div class="card" style="padding:12px 14px">';
-        html += '<div class="flex-between" style="margin-bottom:6px">';
+        var cardId = 'n1-' + key.replace(/[^a-z0-9]/gi, '_');
+
+        /* Agrupar por N2 dentro do eixo */
+        var n2Map = {}, n2Keys = [];
+        items.forEach(function (d) {
+          var k2 = d.n2 || '—';
+          if (!n2Map[k2]) { n2Map[k2] = []; n2Keys.push(k2); }
+          n2Map[k2].push(d);
+        });
+        n2Keys.sort(function (a, b) { return a.localeCompare(b, 'pt', { numeric: true }); });
+
+        html += '<div class="card n1-card">';
+        /* Cabeçalho */
+        html += '<div class="n1-card-hdr" data-n1="' + _esc(cardId) + '">';
         html += '<div>';
         html += '<div style="font-size:13px;font-weight:700;color:var(--text)">' + _esc(label) + '</div>';
-        if (n0lbl) html += '<div style="font-size:11px;color:var(--muted)">' + _esc(n0lbl) + '</div>';
+        if (n0lbl && n0lbl !== label) html += '<div style="font-size:11px;color:var(--muted)">' + _esc(n0lbl) + '</div>';
         html += '</div>';
-        if (kAtr > 0) html += '<span class="badge badge-late">' + kAtr + ' atraso</span>';
-        else if (kCon === items.length) html += '<span class="badge badge-done">Concluído</span>';
-        else html += '<span class="badge badge-ok">Em dia</span>';
-        html += '</div>';
-        html += '<div class="flex-between" style="margin-bottom:4px">';
-        html += '<span class="fs-sm text-muted">' + items.length + ' actividades</span>';
-        html += '<span class="fs-sm fw-bold">' + _pct(kExe) + '</span>';
-        html += '</div>';
-        html += '<div class="progress-wrap"><div class="progress-bar' + (kAtr > 0 ? ' late' : kCon === items.length ? ' done' : '') + '" style="width:' + Math.min(100, kExe).toFixed(1) + '%"></div></div>';
-        html += '</div>';
-      });
+        html += '<div style="display:flex;align-items:center;gap:8px">';
+        if (kAtr > 0)           html += '<span class="badge badge-late">' + kAtr + ' atraso</span>';
+        else if (kCon===items.length) html += '<span class="badge badge-done">Concluído</span>';
+        else                    html += '<span class="badge badge-ok">Em dia</span>';
+        html += '<span class="act-group-chevron">▾</span>';
+        html += '</div></div>';
 
-      /* Actividades em atraso */
-      if (lateItems.length) {
-        html += '<div class="section-title">Em atraso (' + lateItems.length + (lateItems.length === 5 && atr > 5 ? '+' : '') + ')</div>';
-        lateItems.forEach(function (act) {
-          html += _actItemHtml(act);
+        /* Barra de progresso resumo */
+        html += '<div style="padding:0 14px 10px">';
+        html += '<div class="flex-between mb-8"><span class="fs-sm text-muted">' + items.length + ' actividades</span>';
+        html += '<span class="fs-sm fw-bold">' + _pct(kExe) + '</span></div>';
+        html += '<div class="progress-wrap"><div class="progress-bar' + (kAtr>0?' late':kCon===items.length?' done':'') + '" style="width:' + Math.min(100,kExe).toFixed(1) + '%"></div></div>';
+        html += '</div>';
+
+        /* Corpo expansível — detalhes N2 */
+        html += '<div class="n1-card-body collapsed" id="' + _esc(cardId) + '">';
+        n2Keys.forEach(function (k2) {
+          var n2items = n2Map[k2];
+          var n2Con   = n2items.filter(function(d){return d.status==='Concluído';}).length;
+          var n2Atr   = n2items.filter(function(d){return d.status==='Em atraso';}).length;
+          var n2Exe   = n2items.reduce(function(s,d){return s+(d.pct||0);},0)/n2items.length;
+
+          html += '<div class="n2-row">';
+          html += '<div class="n2-label">' + _esc(k2) + '</div>';
+          html += '<div class="n2-meta">';
+          html += '<span class="fs-sm text-muted">' + n2items.length + ' act.</span>';
+          if (n2Atr>0)              html += '<span class="badge badge-late">' + n2Atr + ' atraso</span>';
+          else if(n2Con===n2items.length) html += '<span class="badge badge-done">Concluído</span>';
+          else                      html += '<span class="badge badge-ok">Em dia</span>';
+          html += '<span class="fs-sm fw-bold">' + _pct(n2Exe) + '</span>';
+          html += '</div>';
+          html += '<div class="progress-wrap"><div class="progress-bar' + (n2Atr>0?' late':n2Con===n2items.length?' done':'') + '" style="width:' + Math.min(100,n2Exe).toFixed(1) + '%"></div></div>';
+          html += '</div>';
         });
-      }
+        html += '</div>';  /* /n1-card-body */
+        html += '</div>';  /* /card */
+      });
 
       el.innerHTML = html;
 
-      /* Bind tap nos items de actividade */
-      _bindActItems(el);
+      /* Toggle expansão dos N1 cards */
+      el.querySelectorAll('.n1-card-hdr').forEach(function (hdr) {
+        hdr.addEventListener('click', function () {
+          var id   = hdr.dataset.n1;
+          var body = document.getElementById(id);
+          if (!body) return;
+          var col  = body.classList.toggle('collapsed');
+          var chev = hdr.querySelector('.act-group-chevron');
+          if (chev) chev.textContent = col ? '▸' : '▾';
+        });
+      });
     }
 
     /* ── Helpers de rendering ── */
