@@ -1417,8 +1417,249 @@
     }
 
     /* ─────────────────────────────────────────
-       SUBFASE 1d — Navigation + startApp  (a adicionar)
+       SUBFASE 1d — NAVIGATION + startApp
+       switchPanel · toast · bottom sheet · selects · startApp
     ───────────────────────────────────────── */
+
+    /* ── Referências DOM — navegação ── */
+    var allPanels  = document.querySelectorAll('.panel');
+    var allNavBtns = document.querySelectorAll('.nav-btn');
+    var activePanel = 'dashboard';
+
+    /* ── switchPanel ── */
+    function switchPanel(name) {
+      activePanel = name;
+      allPanels.forEach(function (p) {
+        p.classList.toggle('active', p.id === 'panel-' + name);
+      });
+      allNavBtns.forEach(function (b) {
+        var active = b.dataset.panel === name;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-current', active ? 'page' : 'false');
+      });
+      /* scroll topo do painel */
+      var mc = document.getElementById('main-content');
+      if (mc) mc.scrollTop = 0;
+    }
+
+    /* Ligar botões da bottom nav */
+    allNavBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var panel = btn.dataset.panel;
+        switchPanel(panel);
+        renderPanel(panel);
+      });
+    });
+
+    /* ── renderPanel — despachador central ── */
+    function renderPanel(name) {
+      if (name === 'dashboard')   renderDashboard();
+      if (name === 'actividades') renderActividades();
+      if (name === 'pds')         renderPDS();
+      if (name === 'financeiro')  renderFinanceiro();
+    }
+
+    /* ── Toast ── */
+    var _toastTimer = null;
+    function showToast(msg, type, duration) {
+      var el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className   = 'show' + (type ? ' toast-' + type : '');
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(function () {
+        el.className = '';
+      }, duration || 2500);
+    }
+
+    /* ── Bottom Sheet ── */
+    var _sheetAct = null;  /* actividade actualmente em edição */
+
+    var sheetBackdrop = document.getElementById('sheet-backdrop');
+    var bottomSheet   = document.getElementById('bottom-sheet');
+    var sheetNome     = document.getElementById('sheet-nome');
+    var sheetMeta     = document.getElementById('sheet-meta');
+    var sheetPct      = document.getElementById('sheet-pct');
+    var sheetPctVal   = document.getElementById('sheet-pct-val');
+    var sheetStatus   = document.getElementById('sheet-status');
+
+    function openSheet(act) {
+      _sheetAct = act;
+
+      /* Preencher campos */
+      sheetNome.textContent   = act.nome || '—';
+      sheetMeta.textContent   = _fmtDates(act.bs, act.bf);
+      sheetPct.value          = act.pct || 0;
+      sheetPctVal.textContent = (act.pct || 0) + '%';
+      sheetStatus.value       = act.status || 'Em dia';
+
+      /* Mostrar */
+      bottomSheet.setAttribute('aria-hidden', 'false');
+      bottomSheet.classList.add('open');
+      sheetBackdrop.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeSheet() {
+      bottomSheet.setAttribute('aria-hidden', 'true');
+      bottomSheet.classList.remove('open');
+      sheetBackdrop.classList.remove('open');
+      document.body.style.overflow = '';
+      _sheetAct = null;
+    }
+
+    /* Actualizar label do slider em tempo real */
+    sheetPct.addEventListener('input', function () {
+      sheetPctVal.textContent = sheetPct.value + '%';
+    });
+
+    /* Fechar ao clicar no backdrop */
+    sheetBackdrop.addEventListener('click', closeSheet);
+
+    /* Botão cancelar */
+    document.getElementById('sheet-close-btn').addEventListener('click', closeSheet);
+
+    /* Botão guardar */
+    document.getElementById('sheet-save-btn').addEventListener('click', async function () {
+      if (!_sheetAct) return;
+      var btn = this;
+      btn.disabled    = true;
+      btn.textContent = 'A guardar…';
+
+      var updated = Object.assign({}, _sheetAct, {
+        pct    : parseInt(sheetPct.value, 10),
+        status : sheetStatus.value
+      });
+
+      try {
+        await saveActivity(updated);
+        closeSheet();
+        showToast('Guardado!', 'ok');
+        renderPanel(activePanel);  /* re-renderizar painel activo */
+      } catch (err) {
+        console.error('[Sheet] save error:', err);
+        showToast('Erro ao guardar.', 'err');
+      } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Guardar';
+      }
+    });
+
+    /* ── Swipe-down para fechar bottom sheet ── */
+    (function () {
+      var startY = 0, dragging = false;
+      bottomSheet.addEventListener('touchstart', function (e) {
+        startY    = e.touches[0].clientY;
+        dragging  = false;
+      }, { passive: true });
+      bottomSheet.addEventListener('touchmove', function (e) {
+        var dy = e.touches[0].clientY - startY;
+        if (dy > 0) {
+          dragging = true;
+          bottomSheet.style.transform = 'translateY(' + dy + 'px)';
+        }
+      }, { passive: true });
+      bottomSheet.addEventListener('touchend', function (e) {
+        var dy = e.changedTouches[0].clientY - startY;
+        bottomSheet.style.transform = '';
+        if (dragging && dy > 80) {
+          closeSheet();
+        }
+        dragging = false;
+      });
+    })();
+
+    /* ── Selects de painel PDS / Financeiro ── */
+    function buildPlanSelects() {
+      /* Deduplica planos por id2 */
+      var seen = {};
+      var plans = fPDS.filter(function (p) {
+        if (seen[p.id2]) return false;
+        seen[p.id2] = true;
+        return true;
+      });
+
+      ['pds-select', 'fin-select'].forEach(function (selId) {
+        var sel = document.getElementById(selId);
+        if (!sel) return;
+        var prev = sel.value;
+        sel.innerHTML = plans.length
+          ? plans.map(function (p) {
+              return '<option value="' + _esc(p.id2) + '">' + _esc(p.n1 || p.id2) + '</option>';
+            }).join('')
+          : '<option value="">Sem planos disponíveis</option>';
+        /* restaurar selecção anterior se ainda existir */
+        if (prev && sel.querySelector('option[value="' + prev + '"]')) {
+          sel.value = prev;
+        }
+      });
+
+      /* Re-renderizar ao mudar selecção */
+      document.getElementById('pds-select').onchange = function () { renderPDS(); };
+      document.getElementById('fin-select').onchange = function () { renderFinanceiro(); };
+    }
+
+    /* ── Utilitários ── */
+    function _esc(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function _fmtDate(d) {
+      if (!d) return '—';
+      try {
+        var dt = new Date(d);
+        if (isNaN(dt)) return String(d);
+        return dt.toLocaleDateString('pt-PT', { day:'2-digit', month:'2-digit', year:'numeric' });
+      } catch (_) { return String(d); }
+    }
+
+    function _fmtDates(start, end) {
+      return _fmtDate(start) + ' → ' + _fmtDate(end);
+    }
+
+    function _statusClass(status) {
+      if (!status) return '';
+      if (status === 'Concluído') return 'done';
+      if (status === 'Em atraso') return 'late';
+      return 'ok';
+    }
+
+    function _statusBadge(status) {
+      var cls = _statusClass(status);
+      return '<span class="badge badge-' + cls + '">' + _esc(status || 'Em dia') + '</span>';
+    }
+
+    /* ── startApp (implementação real) ── */
+    async function startApp() {
+      /* Mostrar indicador de carregamento */
+      var panels = ['dashboard','actividades','pds','financeiro'];
+      panels.forEach(function (name) {
+        var p = document.getElementById('panel-' + name);
+        if (p) p.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>A carregar…</p></div>';
+      });
+
+      try {
+        var ok = await loadData();
+        if (!ok) {
+          showToast('Sem dados disponíveis.', 'warn');
+          panels.forEach(function (name) {
+            var p = document.getElementById('panel-' + name);
+            if (p) p.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Sem dados</p></div>';
+          });
+          return;
+        }
+
+        /* Construir selects de plano */
+        buildPlanSelects();
+
+        /* Navegar para o dashboard e renderizar */
+        switchPanel('dashboard');
+        renderDashboard();
+
+      } catch (err) {
+        console.error('[startApp] erro:', err);
+        showToast('Erro ao carregar dados.', 'err');
+      }
+    }
 
     /* ─────────────────────────────────────────
        FASES 2-5 — render functions  (a adicionar)
