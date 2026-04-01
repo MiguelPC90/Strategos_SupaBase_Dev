@@ -951,6 +951,52 @@
       white-space: pre-line;
     }
 
+    /* ── FINANCEIRO (Fase 5) ── */
+    .fin-type-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .fin-cap  { background: #E6F1FB; color: #185FA5; }
+    .fin-ope  { background: #EAF3DE; color: #3B6D11; }
+    .fin-porf { background: #FFF8E1; color: #E65100; }
+
+    .fin-row {
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .fin-row:last-child { border-bottom: none; }
+    .fin-row-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+    }
+    .fin-row-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy);
+      white-space: nowrap;
+    }
+    .fin-row-anos {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .fin-ano-chip {
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
     /* ── GRUPOS DE ACTIVIDADES (Fase 3) ── */
     .act-group { margin-bottom: 4px; }
 
@@ -2245,9 +2291,237 @@
     }
 
     /* ─────────────────────────────────────────
-       FASE 5 — render functions  (a adicionar)
+       FASE 5 — EXECUÇÃO FINANCEIRA
     ───────────────────────────────────────── */
-    function renderFinanceiro() { /* Fase 5 */ }
+
+    function renderFinanceiro() {
+      var bodyEl = document.getElementById('fin-body');
+      if (!bodyEl) return;
+
+      var selVal = document.getElementById('fin-select').value;
+      if (!selVal || !fPDS.length) {
+        bodyEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💶</div><p>Seleccione um plano</p></div>';
+        return;
+      }
+
+      var p = fPDS.find(function (x) { return (x.id0 || '') + '_' + x.id2 === selVal; });
+      if (!p) {
+        bodyEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💶</div><p>Plano não encontrado</p></div>';
+        return;
+      }
+
+      if (!p.finances) {
+        bodyEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💶</div><p>Sem dados financeiros</p></div>';
+        return;
+      }
+
+      var f         = p.finances;
+      var rubricas  = f.rubricas  || [];
+      var contratos = f.contratos || [];
+      var facturas  = f.facturas  || [];
+
+      /* ── Derivar anos directamente das rubricas ── */
+      var anosSet = {};
+      rubricas.forEach(function (r) {
+        Object.keys(r.valores || {}).forEach(function (a) { anosSet[a] = true; });
+      });
+      var anos = Object.keys(anosSet).map(Number).sort();
+      if (!anos.length) anos = [new Date().getFullYear()];
+
+      /* ── KPIs financeiros ── */
+      var totalOrc = 0, totalCap = 0, totalOpe = 0;
+      rubricas.forEach(function (r) {
+        anos.forEach(function (a) {
+          var v = r.valores && r.valores[a] ? _parseNum(r.valores[a]) : 0;
+          totalOrc += v;
+          if (r.capex) totalCap += v; else totalOpe += v;
+        });
+      });
+
+      var totalAdjudicado = 0;
+      contratos.forEach(function (ct) {
+        totalAdjudicado += _toBase(ct.valor_total, ct.moeda, ct.cambio_ref);
+      });
+
+      var totalPago = 0, totalEmPag = 0, totalPorFac = 0;
+      facturas.forEach(function (fac) {
+        var ct     = contratos.find(function (c) { return c.id === fac.contrato_id; });
+        var cambio = fac.cambio || (ct ? ct.cambio_ref : '');
+        var v      = _toBase(fac.valor, fac.moeda || '€', cambio);
+        if      (fac.estado === 'Paga')         totalPago   += v;
+        else if (fac.estado === 'Em pagamento') totalEmPag  += v;
+        else if (fac.estado === 'Por facturar' || fac.estado === 'Recebida') totalPorFac += v;
+      });
+
+      var pExec  = totalOrc ? Math.round(totalPago / totalOrc * 100) : 0;
+      var desvio = totalPago - totalOrc;
+
+      /* ── HTML ── */
+      var html = '';
+
+      /* Cabeçalho do plano */
+      html += '<div class="pds-plan-hdr">';
+      html += '<div class="pds-plan-eixo">' + _esc((p.n0 ? p.n0 + ' › ' : '') + (p.n1 || '')) + '</div>';
+      html += '<div class="pds-plan-nome">' + _esc(p.plano || p.id2 || '—') + '</div>';
+      html += '</div>';
+
+      /* KPI grid — 2 colunas */
+      html += '<div class="kpi-grid" style="margin-bottom:8px">';
+      html += _kpiCard('Orçamento', _fmtEur(totalOrc), '', '');
+      html += _kpiCard('Adjudicado', _fmtEur(totalAdjudicado), '', contratos.length + ' contratos');
+      html += _kpiCard('Pago', _fmtEur(totalPago), totalPago > 0 ? 'green' : '', pExec + '% exec.');
+      html += _kpiCard('Em pagamento', _fmtEur(totalEmPag), totalEmPag > 0 ? 'warn' : '', '');
+      html += '</div>';
+
+      /* Barra de execução */
+      if (totalOrc > 0) {
+        html += '<div class="card" style="padding:12px 16px 14px;margin-bottom:12px">';
+        html += '<div class="flex-between mb-8">';
+        html += '<span class="card-title" style="margin-bottom:0">Taxa de execução</span>';
+        html += '<span class="fw-bold">' + pExec + '%</span>';
+        html += '</div>';
+        html += '<div class="progress-wrap"><div class="progress-bar' + (pExec < 30 ? ' late' : '') + '" style="width:' + Math.min(100, pExec) + '%"></div></div>';
+        if (totalCap > 0 || totalOpe > 0) {
+          html += '<div class="flex-between" style="margin-top:10px;gap:8px;flex-wrap:wrap">';
+          html += '<span class="fin-type-badge fin-cap">CAP ' + _fmtEur(totalCap) + '</span>';
+          html += '<span class="fin-type-badge fin-ope">OPE ' + _fmtEur(totalOpe) + '</span>';
+          if (totalPorFac > 0)
+            html += '<span class="fin-type-badge fin-porf">Por facturar ' + _fmtEur(totalPorFac) + '</span>';
+          html += '</div>';
+        }
+        if (desvio !== 0) {
+          html += '<div class="flex-between" style="margin-top:8px">';
+          html += '<span class="fs-sm text-muted">Desvio (pago vs orçamento)</span>';
+          html += '<span class="fs-sm fw-bold" style="color:' + (desvio > 0 ? 'var(--danger)' : 'var(--green)') + '">'
+            + (desvio > 0 ? '+' : '') + _fmtEur(desvio) + '</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      /* ── Rubricas ── */
+      if (rubricas.length) {
+        html += '<div class="card pds-section-card" style="padding:0">';
+        html += '<div class="pds-sec-hdr" data-sec="fin-sec-rubricas" style="border-left:3px solid var(--navy)">';
+        html += '<span style="font-size:13px;font-weight:700;color:var(--navy)">Rubricas orçamentais</span>';
+        html += '<span class="act-group-chevron">▾</span></div>';
+        html += '<div class="pds-sec-body" id="fin-sec-rubricas">';
+        rubricas.forEach(function (r) {
+          var total = anos.reduce(function (s, a) { return s + (r.valores && r.valores[a] ? _parseNum(r.valores[a]) : 0); }, 0);
+          html += '<div class="fin-row">';
+          html += '<div class="flex-between">';
+          html += '<div>';
+          html += '<span class="fin-row-label">' + _esc(r.categoria || '—') + '</span>';
+          if (r.nota) html += '<span class="fs-sm text-muted" style="margin-left:6px">' + _esc(r.nota) + '</span>';
+          html += '</div>';
+          html += '<div style="display:flex;align-items:center;gap:6px">';
+          html += '<span class="fin-type-badge ' + (r.capex ? 'fin-cap' : 'fin-ope') + '">' + (r.capex ? 'CAP' : 'OPE') + '</span>';
+          html += '<span class="fin-row-val">' + _fmtEur(total, r.moeda) + '</span>';
+          html += '</div></div>';
+          /* Valores por ano */
+          if (anos.length > 1) {
+            html += '<div class="fin-row-anos">';
+            anos.forEach(function (a) {
+              var v = r.valores && r.valores[a] ? _parseNum(r.valores[a]) : 0;
+              if (v) html += '<span class="fin-ano-chip">' + a + ': ' + _fmtEur(v, r.moeda) + '</span>';
+            });
+            html += '</div>';
+          }
+          html += '</div>';
+        });
+        html += '</div></div>'; /* /pds-sec-body /card */
+      }
+
+      /* ── Contratos ── */
+      if (contratos.length) {
+        html += '<div class="card pds-section-card" style="padding:0">';
+        html += '<div class="pds-sec-hdr" data-sec="fin-sec-contratos" style="border-left:3px solid #185FA5">';
+        html += '<span style="font-size:13px;font-weight:700;color:#185FA5">Contratos (' + contratos.length + ')</span>';
+        html += '<span class="act-group-chevron">▾</span></div>';
+        html += '<div class="pds-sec-body" id="fin-sec-contratos">';
+        contratos.forEach(function (ct) {
+          var nFac = facturas.filter(function (f) { return f.contrato_id === ct.id; }).length;
+          html += '<div class="fin-row">';
+          html += '<div class="flex-between">';
+          html += '<div class="fin-row-label">' + _esc(ct.descricao || '—') + '</div>';
+          html += '<div class="fin-row-val">' + _fmtEur(ct.valor_total, ct.moeda) + '</div>';
+          html += '</div>';
+          html += '<div class="flex-between" style="margin-top:3px">';
+          html += '<span class="fs-sm text-muted">' + _esc(ct.fornecedor || '') + (ct.data_adjudicacao ? ' · ' + _fmtDate(ct.data_adjudicacao) : '') + '</span>';
+          html += '<span class="fs-sm text-muted">' + nFac + ' factura' + (nFac !== 1 ? 's' : '') + '</span>';
+          html += '</div></div>';
+        });
+        html += '</div></div>';
+      }
+
+      /* ── Facturas ── */
+      if (facturas.length) {
+        html += '<div class="card pds-section-card" style="padding:0">';
+        html += '<div class="pds-sec-hdr" data-sec="fin-sec-facturas" style="border-left:3px solid #2E7D32">';
+        html += '<span style="font-size:13px;font-weight:700;color:#2E7D32">Facturas (' + facturas.length + ')</span>';
+        html += '<span class="act-group-chevron">▾</span></div>';
+        html += '<div class="pds-sec-body" id="fin-sec-facturas">';
+
+        var estadoOrder = ['Paga', 'Em pagamento', 'Recebida', 'Por facturar', 'Cancelada'];
+        var sorted = facturas.slice().sort(function (a, b) {
+          return estadoOrder.indexOf(a.estado) - estadoOrder.indexOf(b.estado);
+        });
+
+        sorted.forEach(function (fac) {
+          var ct     = contratos.find(function (c) { return c.id === fac.contrato_id; });
+          var stColor = { 'Paga': '#2E7D32', 'Em pagamento': '#E65100', 'Recebida': '#1565C0', 'Por facturar': '#6B7A8D', 'Cancelada': '#C62828' }[fac.estado] || '#6B7A8D';
+          var stBg    = { 'Paga': '#E8F5E9', 'Em pagamento': '#FFF3E0', 'Recebida': '#E3F2FD', 'Por facturar': '#F4F6F9', 'Cancelada': '#FFEBEE'  }[fac.estado] || '#F4F6F9';
+          html += '<div class="fin-row">';
+          html += '<div class="flex-between">';
+          html += '<div class="fin-row-label">' + _esc(fac.numero || fac.descricao || '—') + '</div>';
+          html += '<div style="display:flex;align-items:center;gap:6px">';
+          html += '<span class="badge" style="background:' + stBg + ';color:' + stColor + '">' + _esc(fac.estado || '—') + '</span>';
+          html += '<span class="fin-row-val">' + _fmtEur(fac.valor, fac.moeda) + '</span>';
+          html += '</div></div>';
+          html += '<div class="flex-between" style="margin-top:3px">';
+          html += '<span class="fs-sm text-muted">' + (ct ? _esc(ct.descricao) : '') + '</span>';
+          if (fac.data_emissao) html += '<span class="fs-sm text-muted">' + _fmtDate(fac.data_emissao) + '</span>';
+          html += '</div></div>';
+        });
+        html += '</div></div>';
+      }
+
+      if (!rubricas.length && !contratos.length && !facturas.length) {
+        html += '<div class="empty-state"><div class="empty-state-icon">💶</div><p>Sem dados financeiros registados</p></div>';
+      }
+
+      bodyEl.innerHTML = html;
+      _bindPdsSections(bodyEl);  /* reutiliza o mesmo toggle das secções PDS */
+    }
+
+    /* ── Helpers financeiros ── */
+    function _parseNum(s) {
+      if (s == null || s === '') return 0;
+      var str = String(s).trim();
+      var lastComma = str.lastIndexOf(',');
+      var lastDot   = str.lastIndexOf('.');
+      if (lastComma > lastDot) {
+        str = str.replace(/\./g, '').replace(',', '.');
+      } else {
+        str = str.replace(/,/g, '');
+      }
+      return parseFloat(str.replace(/[^\d.\-]/g, '')) || 0;
+    }
+
+    function _toBase(v, fromMoeda, cambio) {
+      if (!fromMoeda || fromMoeda === '€') return Number(v) || 0;
+      var rate = _parseNum(cambio) || 1;
+      return (Number(v) || 0) * rate;
+    }
+
+    function _fmtEur(v, moeda) {
+      if (v == null || v === '') return '—';
+      var m = moeda || '€';
+      var n = Number(v);
+      if (m === '€') return n.toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
+      if (m === '$') return '$ ' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      return n.toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' ' + m;
+    }
 
     /* ─────────────────────────────────────────
        ARRANQUE
