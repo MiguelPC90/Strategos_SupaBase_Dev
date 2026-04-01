@@ -1243,6 +1243,36 @@
     .n2-label { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
     .n2-meta  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
 
+    /* ── HOME PANEL — program cards ── */
+    .prog-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: transform .12s, box-shadow .12s;
+      border-left: 4px solid var(--navy);
+    }
+    .prog-card:active { transform: scale(.98); box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .prog-card.has-late { border-left-color: var(--danger); }
+    .prog-card.all-done { border-left-color: var(--green); }
+    .prog-card-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .prog-card-meta  { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+    .prog-card-stats { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .prog-card-pct   { font-size: 20px; font-weight: 800; color: var(--navy); }
+    body.dark .prog-card-pct { color: #A8C8FF; }
+    .home-section-label {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .6px;
+      padding: 8px 4px 6px;
+    }
+
+    /* Nav com 5 botões: labels mais compactas em ecrãs estreitos */
+    @media (max-width: 380px) {
+      .nav-label { font-size: 9px; }
+    }
+
     /* ── STATUS CHIPS (Actividades) ── */
     .status-chips {
       display: flex; gap: 6px;
@@ -1351,14 +1381,6 @@
         </div>
       </div>
       <div id="topbar-right">
-        <button id="filter-btn" type="button" aria-label="Filtrar programa">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2.2"
-               stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-          </svg>
-          <span id="filter-badge" hidden></span>
-        </button>
         <button id="profile-btn" type="button" aria-label="Perfil e definições">
           <span id="profile-avatar">?</span>
         </button>
@@ -1370,8 +1392,17 @@
     <!-- ── CONTEÚDO PRINCIPAL ── -->
     <main id="main-content">
 
+      <!-- PAINEL: HOME — Seletor de Programas -->
+      <section id="panel-home" class="panel active" role="main" aria-label="Início">
+        <div class="panel-placeholder">
+          <div class="placeholder-icon">📊</div>
+          <p>Início</p>
+          <p class="placeholder-sub">a carregar…</p>
+        </div>
+      </section>
+
       <!-- PAINEL: DASHBOARD -->
-      <section id="panel-dashboard" class="panel active" role="main"
+      <section id="panel-dashboard" class="panel" role="main"
                aria-label="Dashboard">
         <!-- renderDashboard() preencherá este painel (Fase 2) -->
         <div class="panel-placeholder">
@@ -1441,8 +1472,20 @@
 
     <!-- ── BOTTOM NAVIGATION BAR ── -->
     <nav id="bottom-nav" role="navigation" aria-label="Navegação principal">
-      <button class="nav-btn active" data-panel="dashboard"
-              aria-label="Dashboard" aria-current="page">
+      <button class="nav-btn active" data-panel="home"
+              aria-label="Início" aria-current="page">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </span>
+        <span class="nav-label">Início</span>
+      </button>
+
+      <button class="nav-btn" data-panel="dashboard"
+              aria-label="Dashboard" aria-current="false">
         <span class="nav-icon">
           <!-- ícone dashboard (grelha 2×2) -->
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1938,6 +1981,14 @@
     allNavBtns.forEach(function (btn) {
       btn.addEventListener('click', function () {
         var panel = btn.dataset.panel;
+        /* Ao ir para Home, limpar filtro de programa */
+        if (panel === 'home') {
+          activeUserFilter = null;
+          _actStatusFilter = null;
+          applyProfileFilter();
+          _updateFilterBadge();
+          buildPlanSelects();
+        }
         switchPanel(panel);
         renderPanel(panel);
       });
@@ -1945,6 +1996,7 @@
 
     /* ── renderPanel — despachador central ── */
     function renderPanel(name) {
+      if (name === 'home')        renderHome();
       if (name === 'dashboard')   renderDashboard();
       if (name === 'actividades') renderActividades();
       if (name === 'pds')         renderPDS();
@@ -1963,30 +2015,19 @@
       }, duration || 2500);
     }
 
-    /* ── Filter Sheet ── */
+    /* ── Filter context (topbar subtitle mostra programa activo) ── */
     function _updateFilterBadge() {
-      var badge = document.getElementById('filter-badge');
-      var sub   = document.getElementById('topbar-sub');
+      var sub = document.getElementById('topbar-sub');
+      if (!sub) return;
       if (activeUserFilter) {
-        if (badge) badge.removeAttribute('hidden');
-        if (sub) {
-          sub.textContent = '× ' + activeUserFilter;
-          sub.removeAttribute('hidden');
-          sub.style.cursor = 'pointer';
-          sub.onclick = function () {
-            activeUserFilter = null;
-            applyProfileFilter();
-            renderPanel(activePanel);
-            _updateFilterBadge();
-          };
-        }
+        sub.textContent = activeUserFilter;
+        sub.removeAttribute('hidden');
+        sub.style.cursor = 'default';
+        sub.onclick = null;
       } else {
-        if (badge) badge.setAttribute('hidden', '');
-        if (sub) {
-          sub.textContent = '';
-          sub.setAttribute('hidden', '');
-          sub.onclick = null;
-        }
+        sub.textContent = '';
+        sub.setAttribute('hidden', '');
+        sub.onclick = null;
       }
     }
 
@@ -2025,8 +2066,7 @@
       document.getElementById('filter-modal').setAttribute('hidden', '');
     }
 
-    /* Ligar botão filtro + fechar */
-    document.getElementById('filter-btn').addEventListener('click', showFilterSheet);
+    /* Fechar filter modal (filter-btn removido da topbar — filtro feito via Home) */
     document.getElementById('filter-close-btn').addEventListener('click', closeFilterSheet);
     document.getElementById('filter-overlay').addEventListener('click', closeFilterSheet);
 
@@ -2264,6 +2304,71 @@
       return _fmtDate(start) + ' → ' + _fmtDate(end);
     }
 
+    /* ─────────────────────────────────────────
+       PAINEL HOME — Seletor de Programas
+    ───────────────────────────────────────── */
+    function renderHome() {
+      var el = document.getElementById('panel-home');
+      if (!el) return;
+
+      /* Base sem filtro de programa, mas com restrição de perfil */
+      var n0s  = getProfileN0s();
+      var base = n0s ? ALL_ACT.filter(function (d) { return n0s.has(d.n0 || ''); }) : ALL_ACT.slice();
+
+      if (!base.length) {
+        el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Sem programas disponíveis</p></div>';
+        return;
+      }
+
+      /* Agrupar por N0 */
+      var progMap = {}, progKeys = [];
+      base.forEach(function (d) {
+        var k = d.n0 || '—';
+        if (!progMap[k]) { progMap[k] = []; progKeys.push(k); }
+        progMap[k].push(d);
+      });
+      progKeys.sort(function (a, b) { return a.localeCompare(b, 'pt', { numeric: true, sensitivity: 'base' }); });
+
+      var html = '<div class="home-section-label">Programas — seleccione para explorar</div>';
+      progKeys.forEach(function (k) {
+        var items = progMap[k];
+        var n   = items.length;
+        var con = items.filter(function (d) { return d.status === 'Concluído'; }).length;
+        var atr = items.filter(function (d) { return d.status === 'Em atraso'; }).length;
+        var exe = n ? items.reduce(function (s, d) { return s + (d.pct || 0); }, 0) / n : 0;
+
+        var borderCls = atr > 0 ? ' has-late' : con === n ? ' all-done' : '';
+        html += '<div class="prog-card' + borderCls + '" data-prog="' + _esc(k) + '">';
+        html += '<div class="prog-card-title">' + _esc(k) + '</div>';
+        html += '<div class="prog-card-meta">' + n + ' actividades';
+        if (atr > 0) html += ' &nbsp;·&nbsp; <span style="color:var(--danger);font-weight:700">' + atr + ' em atraso</span>';
+        html += '</div>';
+        html += '<div class="prog-card-stats">';
+        html += '<span class="prog-card-pct">' + _pct(exe) + '</span>';
+        html += '<span class="fs-sm text-muted">' + con + '&thinsp;/&thinsp;' + n + ' concluídas</span>';
+        html += '</div>';
+        html += '<div class="progress-wrap"><div class="progress-bar'
+          + (atr > 0 ? ' late' : con === n ? ' done' : '')
+          + '" style="width:' + Math.min(100, exe).toFixed(1) + '%"></div></div>';
+        html += '</div>';
+      });
+
+      el.innerHTML = html;
+
+      /* Tap num card → filtrar + ir para Dashboard */
+      el.querySelectorAll('.prog-card').forEach(function (card) {
+        card.addEventListener('click', function () {
+          activeUserFilter = card.dataset.prog || null;
+          _actStatusFilter = null;
+          applyProfileFilter();
+          _updateFilterBadge();
+          buildPlanSelects();
+          switchPanel('dashboard');
+          renderDashboard();
+        });
+      });
+    }
+
     function _statusClass(status) {
       if (!status) return '';
       if (status === 'Concluído') return 'done';
@@ -2302,9 +2407,24 @@
         /* Construir selects de plano (pds-select e fin-select já existem no DOM) */
         buildPlanSelects();
 
-        /* Navegar para o dashboard e renderizar */
-        switchPanel('dashboard');
-        renderDashboard();
+        /* Garantir filtro limpo ao arrancar */
+        activeUserFilter = null;
+        applyProfileFilter();
+
+        /* Se perfil restrito a 1 programa, ir directo para o dashboard desse programa */
+        var _pn0s = getProfileN0s();
+        if (_pn0s && _pn0s.size === 1) {
+          activeUserFilter = Array.from(_pn0s)[0];
+          applyProfileFilter();
+          _updateFilterBadge();
+          buildPlanSelects();
+          switchPanel('dashboard');
+          renderDashboard();
+        } else {
+          /* Mostrar ecrã Home com cards por programa */
+          switchPanel('home');
+          renderHome();
+        }
 
       } catch (err) {
         console.error('[startApp] erro:', err);
