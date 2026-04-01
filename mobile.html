@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+  <!-- PWA / iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Strategos">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#002E5E">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+
+  <title>Strategos</title>
+
+  <!-- CSS será adicionado nas subfases 1a-ii, 1a-iii, 1a-iv -->
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════
+       ECRÃ DE LOGIN
+       Visível antes de autenticação
+  ══════════════════════════════════════════ -->
+  <div id="login-screen">
+    <div id="login-card">
+      <div id="login-logo-wrap">
+        <!-- logo ou ícone S -->
+        <div id="login-icon">S</div>
+      </div>
+      <h1 id="login-title">Strategos</h1>
+      <p id="login-subtitle">Plano Estratégico</p>
+
+      <form id="login-form" autocomplete="on">
+        <div class="field-wrap">
+          <label for="inp-email">E-mail</label>
+          <input id="inp-email" type="email" autocomplete="email"
+                 placeholder="utilizador@exemplo.pt" required>
+        </div>
+        <div class="field-wrap">
+          <label for="inp-pw">Password</label>
+          <input id="inp-pw" type="password" autocomplete="current-password"
+                 placeholder="••••••••" required>
+        </div>
+        <div id="login-error" class="login-msg" aria-live="polite"></div>
+        <button id="login-btn" type="submit">Entrar</button>
+      </form>
+    </div>
+  </div>
+  <!-- /login-screen -->
+
+
+  <!-- ══════════════════════════════════════════
+       APP SHELL
+       Oculto até autenticação
+  ══════════════════════════════════════════ -->
+  <div id="app" hidden>
+
+    <!-- ── TOP HEADER ── -->
+    <header id="topbar">
+      <div id="topbar-left">
+        <div id="topbar-icon">S</div>
+        <div id="topbar-titles">
+          <div id="topbar-title">Strategos</div>
+          <div id="topbar-sub">Plano Estratégico</div>
+        </div>
+      </div>
+      <div id="topbar-right">
+        <span id="topbar-user"></span>
+        <button id="logout-btn" type="button" aria-label="Sair">↩</button>
+      </div>
+    </header>
+    <!-- /topbar -->
+
+
+    <!-- ── CONTEÚDO PRINCIPAL ── -->
+    <main id="main-content">
+
+      <!-- PAINEL: DASHBOARD -->
+      <section id="panel-dashboard" class="panel active" role="main"
+               aria-label="Dashboard">
+        <!-- renderDashboard() preencherá este painel (Fase 2) -->
+        <div class="panel-placeholder">
+          <div class="placeholder-icon">📊</div>
+          <p>Dashboard</p>
+          <p class="placeholder-sub">a carregar…</p>
+        </div>
+      </section>
+
+      <!-- PAINEL: ACTIVIDADES -->
+      <section id="panel-actividades" class="panel" role="main"
+               aria-label="Actividades">
+        <!-- Searchbar -->
+        <div id="act-search-bar">
+          <input id="act-search" type="search" placeholder="Pesquisar actividade…"
+                 aria-label="Pesquisar actividade">
+        </div>
+        <!-- Lista de actividades: renderActividades() preencherá (Fase 3) -->
+        <div id="act-list">
+          <div class="panel-placeholder">
+            <div class="placeholder-icon">📋</div>
+            <p>Actividades</p>
+            <p class="placeholder-sub">a carregar…</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAINEL: PONTO DE SITUAÇÃO -->
+      <section id="panel-pds" class="panel" role="main"
+               aria-label="Ponto de Situação">
+        <!-- Selector de plano -->
+        <div id="pds-nav">
+          <select id="pds-select" aria-label="Seleccionar plano"></select>
+        </div>
+        <!-- Conteúdo do plano: renderPDS() preencherá (Fase 4) -->
+        <div id="pds-body">
+          <div class="panel-placeholder">
+            <div class="placeholder-icon">📄</div>
+            <p>Ponto de Situação</p>
+            <p class="placeholder-sub">a carregar…</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAINEL: EXECUÇÃO FINANCEIRA -->
+      <section id="panel-financeiro" class="panel" role="main"
+               aria-label="Execução Financeira">
+        <!-- Selector de plano (partilhado com PDS) -->
+        <div id="fin-nav">
+          <select id="fin-select" aria-label="Seleccionar plano (financeiro)"></select>
+        </div>
+        <!-- KPIs + contratos + facturas: renderFinanceiro() preencherá (Fase 5) -->
+        <div id="fin-body">
+          <div class="panel-placeholder">
+            <div class="placeholder-icon">💶</div>
+            <p>Execução Financeira</p>
+            <p class="placeholder-sub">a carregar…</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+    <!-- /main-content -->
+
+
+    <!-- ── BOTTOM NAVIGATION BAR ── -->
+    <nav id="bottom-nav" role="navigation" aria-label="Navegação principal">
+      <button class="nav-btn active" data-panel="dashboard"
+              aria-label="Dashboard" aria-current="page">
+        <span class="nav-icon">
+          <!-- ícone dashboard (grelha 2×2) -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+          </svg>
+        </span>
+        <span class="nav-label">Dashboard</span>
+      </button>
+
+      <button class="nav-btn" data-panel="actividades"
+              aria-label="Actividades">
+        <span class="nav-icon">
+          <!-- ícone lista com check -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/>
+            <line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <polyline points="3 6 4 7 6 5"/>
+            <polyline points="3 12 4 13 6 11"/>
+            <polyline points="3 18 4 19 6 17"/>
+          </svg>
+        </span>
+        <span class="nav-label">Actividades</span>
+      </button>
+
+      <button class="nav-btn" data-panel="pds"
+              aria-label="Ponto de Situação">
+        <span class="nav-icon">
+          <!-- ícone documento -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="8" y1="13" x2="16" y2="13"/>
+            <line x1="8" y1="17" x2="16" y2="17"/>
+            <line x1="8" y1="9" x2="10" y2="9"/>
+          </svg>
+        </span>
+        <span class="nav-label">Situação</span>
+      </button>
+
+      <button class="nav-btn" data-panel="financeiro"
+              aria-label="Execução Financeira">
+        <span class="nav-icon">
+          <!-- ícone euro / moeda -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M14.5 8.5a4 4 0 1 0 0 7"/>
+            <line x1="7" y1="12" x2="13" y2="12"/>
+            <line x1="7" y1="14.5" x2="11" y2="14.5"/>
+          </svg>
+        </span>
+        <span class="nav-label">Financeiro</span>
+      </button>
+    </nav>
+    <!-- /bottom-nav -->
+
+  </div>
+  <!-- /app -->
+
+
+  <!-- ══════════════════════════════════════════
+       BOTTOM SHEET — Quick Edit (Actividades)
+       Oculto por defeito; abre via openSheet()
+  ══════════════════════════════════════════ -->
+  <div id="sheet-backdrop" aria-hidden="true"></div>
+
+  <div id="bottom-sheet" role="dialog" aria-modal="true"
+       aria-labelledby="sheet-title" aria-hidden="true">
+    <div id="sheet-handle" aria-hidden="true"></div>
+
+    <h2 id="sheet-title">Editar Actividade</h2>
+    <p id="sheet-nome"></p>
+    <p id="sheet-meta"></p>
+
+    <div class="field-wrap">
+      <label for="sheet-pct">Conclusão: <strong id="sheet-pct-val">0%</strong></label>
+      <input id="sheet-pct" type="range" min="0" max="100" step="1" value="0"
+             aria-valuemin="0" aria-valuemax="100">
+    </div>
+
+    <div class="field-wrap">
+      <label for="sheet-status">Estado</label>
+      <select id="sheet-status">
+        <option value="Em dia">Em dia</option>
+        <option value="Em atraso">Em atraso</option>
+        <option value="Concluído">Concluído</option>
+      </select>
+    </div>
+
+    <div id="sheet-actions">
+      <button id="sheet-close-btn" type="button">Cancelar</button>
+      <button id="sheet-save-btn" type="button" class="btn-primary">Guardar</button>
+    </div>
+  </div>
+  <!-- /bottom-sheet -->
+
+
+  <!-- ══════════════════════════════════════════
+       TOAST — Notificações efémeras
+  ══════════════════════════════════════════ -->
+  <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+
+  <!-- ══════════════════════════════════════════
+       SCRIPTS
+  ══════════════════════════════════════════ -->
+  <!-- Supabase JS (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- Adaptador Strategos -->
+  <script src="supabase-adapter.js"></script>
+
+  <!-- App JS — será adicionado nas subfases 1b, 1c, 1d -->
+  <script>
+    // Subfase 1b: Auth (login, logout, session restore)
+    // Subfase 1c: Data loading (loadActivities, loadPDS, cache)
+    // Subfase 1d: Navigation (switchPanel, bottom sheet, toast, startApp)
+    // Fase 2-5: render functions
+
+    // Registo do Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js').catch(function (err) {
+          console.warn('SW registration failed:', err);
+        });
+      });
+    }
+  </script>
+
+</body>
+</html>
