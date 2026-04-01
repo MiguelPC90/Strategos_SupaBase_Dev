@@ -1,0 +1,19 @@
+{
+  "name": "Strategos PMO",
+  "short_name": "Strategos",
+  "description": "Plataforma de Gestão de Projectos Estratégicos",
+  "start_url": "./mobile.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#002E5E",
+  "theme_color": "#002E5E",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
