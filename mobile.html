@@ -166,11 +166,14 @@
 
     #topbar-sub {
       font-size: 11px;
-      opacity: .72;
+      color: var(--green);
+      font-weight: 700;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      max-width: 140px;
     }
+    #topbar-sub[hidden] { display: none !important; }
 
     #topbar-right {
       display: flex;
@@ -734,6 +737,117 @@
       border: none;
     }
 
+    /* ── PROFILE BTN (topbar) ── */
+    #profile-btn {
+      padding: 3px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    #profile-btn:active { background: rgba(255,255,255,.18); }
+    #profile-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.20);
+      border: 1.5px solid rgba(255,255,255,.40);
+      color: var(--white);
+      font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      letter-spacing: .5px;
+    }
+
+    /* ── PROFILE MODAL ── */
+    #profile-modal { position: fixed; inset: 0; z-index: 200; }
+    #profile-modal[hidden] { display: none !important; }
+    #profile-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,.45);
+    }
+    #profile-sheet {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: var(--card);
+      border-radius: var(--sheet-radius) var(--sheet-radius) 0 0;
+      padding: 12px 20px calc(20px + var(--sab));
+    }
+    #profile-sheet-handle {
+      width: 40px; height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+    #profile-header {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 6px; padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    #profile-avatar-lg {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--white);
+      font-size: 22px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 4px;
+    }
+    #profile-name { font-size: 16px; font-weight: 700; color: var(--text); }
+    #profile-email { font-size: 12px; color: var(--muted); }
+    .profile-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .profile-row-label { font-size: 14px; font-weight: 600; color: var(--text); }
+    #theme-toggle {
+      display: flex; gap: 6px;
+    }
+    .theme-opt {
+      display: flex; align-items: center; gap: 5px;
+      padding: 7px 14px;
+      border-radius: 20px;
+      font-size: 13px; font-weight: 600;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1.5px solid transparent;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .theme-opt.active {
+      background: #EEF4FF;
+      color: var(--navy);
+      border-color: var(--navy);
+    }
+    .theme-opt:active { opacity: .8; }
+    #profile-logout-btn {
+      display: flex; align-items: center; gap: 8px;
+      width: 100%; margin-top: 16px;
+      padding: 14px 0;
+      font-size: 14px; font-weight: 600;
+      color: var(--danger);
+      background: none; border: none;
+    }
+    #profile-logout-btn:active { opacity: .7; }
+
+    /* ── DARK MODE ── */
+    body.dark {
+      --bg:       #111921;
+      --card:     #1C2733;
+      --border:   #2C3E50;
+      --text:     #E8EDF3;
+      --muted:    #8A9BB0;
+      --shadow:   0 2px 8px rgba(0,0,0,.35);
+      --sc-ok-bg: #1A2E1A;   --sc-ok-tc:   #7BC47B;
+      --sc-late-bg: #2E1A1A; --sc-late-tc: #E07070;
+      --sc-done-bg: #1A2035; --sc-done-tc: #6A9FD8;
+    }
+    body.dark .conc-card.obj { background: #1C2E18; border-color: #3A5820; }
+    body.dark .conc-card.obj .conc-value { color: #7BC47B; }
+    body.dark .filter-opt { background: var(--bg); color: var(--text); }
+    body.dark .filter-opt.active { background: #1A2540; border-color: #4A7AC8; color: #A8C8FF; }
+    body.dark .theme-opt.active { background: #1A2540; border-color: #4A7AC8; color: #A8C8FF; }
+    body.dark #login-screen { background: #0D1520; }
+    body.dark #login-box { background: #1C2733; }
+    body.dark input { background: #111921; color: var(--text); border-color: var(--border); }
+
     /* ── BOTTOM SHEET ── */
     #sheet-backdrop {
       position: fixed;
@@ -1101,6 +1215,30 @@
     .n2-label { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
     .n2-meta  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
 
+    /* ── STATUS CHIPS (Actividades) ── */
+    .status-chips {
+      display: flex; gap: 6px;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      padding: 0 0 10px;
+      scrollbar-width: none;
+    }
+    .status-chips::-webkit-scrollbar { display: none; }
+    .status-chip {
+      flex-shrink: 0;
+      padding: 7px 14px;
+      border-radius: 20px;
+      font-size: 12px; font-weight: 600;
+      background: var(--card);
+      color: var(--muted);
+      border: 1.5px solid var(--border);
+      white-space: nowrap;
+      transition: background .1s, color .1s, border-color .1s;
+    }
+    .status-chip.active            { background: var(--navy); color: var(--white); border-color: var(--navy); }
+    .status-chip.chip-done.active  { background: var(--sc-done-tc); border-color: var(--sc-done-tc); }
+    .status-chip.chip-ok.active    { background: #2E7D32; border-color: #2E7D32; }
+    .status-chip.chip-late.active  { background: var(--danger); border-color: var(--danger); }
+
     /* ── GRUPOS DE ACTIVIDADES (Fase 3) ── */
     .act-group { margin-bottom: 4px; }
 
@@ -1181,11 +1319,10 @@
         <img id="topbar-icon" src="logo.png" alt="Strategos">
         <div id="topbar-titles">
           <div id="topbar-title">Strategos</div>
-          <div id="topbar-sub">Plano Estratégico</div>
+          <div id="topbar-sub" hidden></div>
         </div>
       </div>
       <div id="topbar-right">
-        <span id="topbar-user"></span>
         <button id="filter-btn" type="button" aria-label="Filtrar programa">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" stroke-width="2.2"
@@ -1194,7 +1331,9 @@
           </svg>
           <span id="filter-badge" hidden></span>
         </button>
-        <button id="logout-btn" type="button" aria-label="Sair">↩</button>
+        <button id="profile-btn" type="button" aria-label="Perfil e definições">
+          <span id="profile-avatar">?</span>
+        </button>
       </div>
     </header>
     <!-- /topbar -->
@@ -1397,6 +1536,56 @@
 
 
   <!-- ══════════════════════════════════════════
+       PROFILE MODAL — perfil + tema
+  ══════════════════════════════════════════ -->
+  <div id="profile-modal" hidden>
+    <div id="profile-overlay"></div>
+    <div id="profile-sheet">
+      <div id="profile-sheet-handle"></div>
+      <div id="profile-header">
+        <div id="profile-avatar-lg">?</div>
+        <div id="profile-name">—</div>
+        <div id="profile-email">—</div>
+      </div>
+      <div class="profile-row">
+        <span class="profile-row-label">Tema</span>
+        <div id="theme-toggle">
+          <button class="theme-opt active" data-theme="light" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+            Claro
+          </button>
+          <button class="theme-opt" data-theme="dark" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+            Escuro
+          </button>
+        </div>
+      </div>
+      <button id="profile-logout-btn" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Sair da conta
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
        SCRIPTS
   ══════════════════════════════════════════ -->
   <!-- Credenciais Supabase (antes do adapter) -->
@@ -1433,9 +1622,6 @@
     var inpPw        = document.getElementById('inp-pw');
     var loginBtn     = document.getElementById('login-btn');
     var loginError   = document.getElementById('login-error');
-    var logoutBtn    = document.getElementById('logout-btn');
-    var topbarUser   = document.getElementById('topbar-user');
-
     /* ── Mostrar/esconder ecrãs ── */
     function showLogin() {
       loginScreen.removeAttribute('hidden');
@@ -1447,7 +1633,11 @@
     function showApp(user) {
       loginScreen.setAttribute('hidden', '');
       appShell.removeAttribute('hidden');
-      topbarUser.textContent = user.name || user.email || '';
+      /* Avatar com iniciais */
+      var name = (user && (user.name || user.email)) || '?';
+      var initials = name.trim().split(/\s+/).slice(0, 2)
+        .map(function (w) { return w[0] || ''; }).join('').toUpperCase() || '?';
+      document.getElementById('profile-avatar').textContent = initials;
     }
 
     /* ── Login (form submit) ── */
@@ -1494,13 +1684,13 @@
     });
 
     /* ── Logout ── */
-    logoutBtn.addEventListener('click', async function () {
+    async function doLogout() {
       try { localStorage.removeItem('pmo_session'); } catch (_) {}
       currentUser    = null;
       currentProfile = null;
       try { await SB.signOut(); } catch (_) {}
       showLogin();
-    });
+    }
 
     /* ── Restore de sessão ao arranque ── */
     async function tryRestoreSession() {
@@ -1562,6 +1752,9 @@
 
     /* Filtro manual por programa (N0) — null = todos */
     var activeUserFilter = null;
+
+    /* Tema claro/escuro */
+    var _currentTheme = 'light';
 
     /* ── Filtro de perfil (N0s permitidos) ── */
     function getProfileN0s() {
@@ -1738,9 +1931,28 @@
     /* ── Filter Sheet ── */
     function _updateFilterBadge() {
       var badge = document.getElementById('filter-badge');
-      if (!badge) return;
-      if (activeUserFilter) { badge.removeAttribute('hidden'); }
-      else                   { badge.setAttribute('hidden', ''); }
+      var sub   = document.getElementById('topbar-sub');
+      if (activeUserFilter) {
+        if (badge) badge.removeAttribute('hidden');
+        if (sub) {
+          sub.textContent = '× ' + activeUserFilter;
+          sub.removeAttribute('hidden');
+          sub.style.cursor = 'pointer';
+          sub.onclick = function () {
+            activeUserFilter = null;
+            applyProfileFilter();
+            renderPanel(activePanel);
+            _updateFilterBadge();
+          };
+        }
+      } else {
+        if (badge) badge.setAttribute('hidden', '');
+        if (sub) {
+          sub.textContent = '';
+          sub.setAttribute('hidden', '');
+          sub.onclick = null;
+        }
+      }
     }
 
     function showFilterSheet() {
@@ -1763,6 +1975,7 @@
       list.querySelectorAll('.filter-opt').forEach(function (btn) {
         btn.addEventListener('click', function () {
           activeUserFilter = btn.dataset.val || null;
+          _actStatusFilter = null; /* reset estado ao mudar programa */
           applyProfileFilter();
           renderPanel(activePanel);
           _updateFilterBadge();
@@ -1781,6 +1994,46 @@
     document.getElementById('filter-btn').addEventListener('click', showFilterSheet);
     document.getElementById('filter-close-btn').addEventListener('click', closeFilterSheet);
     document.getElementById('filter-overlay').addEventListener('click', closeFilterSheet);
+
+    /* ── Profile Sheet ── */
+    function applyTheme(theme) {
+      _currentTheme = theme;
+      document.body.classList.toggle('dark', theme === 'dark');
+      document.querySelectorAll('.theme-opt').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.theme === theme);
+      });
+      try { localStorage.setItem('pmo_theme', theme); } catch (_) {}
+    }
+
+    function showProfileSheet() {
+      var user = currentUser || {};
+      var name  = user.name  || user.email || '—';
+      var email = user.email || '—';
+      var initials = name.trim().split(/\s+/).slice(0, 2)
+        .map(function (w) { return w[0] || ''; }).join('').toUpperCase() || '?';
+      document.getElementById('profile-avatar-lg').textContent = initials;
+      document.getElementById('profile-name').textContent  = name;
+      document.getElementById('profile-email').textContent = email;
+      /* Sincronizar toggle com tema atual */
+      document.querySelectorAll('.theme-opt').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.theme === _currentTheme);
+      });
+      document.getElementById('profile-modal').removeAttribute('hidden');
+    }
+
+    function closeProfileSheet() {
+      document.getElementById('profile-modal').setAttribute('hidden', '');
+    }
+
+    document.getElementById('profile-btn').addEventListener('click', showProfileSheet);
+    document.getElementById('profile-overlay').addEventListener('click', closeProfileSheet);
+    document.getElementById('profile-logout-btn').addEventListener('click', function () {
+      closeProfileSheet();
+      doLogout();
+    });
+    document.querySelectorAll('.theme-opt').forEach(function (b) {
+      b.addEventListener('click', function () { applyTheme(b.dataset.theme); });
+    });
 
     /* ── Bottom Sheet ── */
     var _sheetAct = null;  /* actividade actualmente em edição */
@@ -1879,6 +2132,9 @@
       });
     })();
 
+    /* Plano activo partilhado entre PDS e Financeiro */
+    var _activePlanId = null;
+
     /* ── Selects de painel PDS / Financeiro ── */
     function buildPlanSelects() {
       /* Deduplica planos por id2 */
@@ -1889,24 +2145,37 @@
         return true;
       });
 
+      var opts = plans.length
+        ? plans.map(function (p) {
+            return '<option value="' + _esc(p.id2) + '">' + _esc(p.n1 || p.id2) + '</option>';
+          }).join('')
+        : '<option value="">Sem planos disponíveis</option>';
+
       ['pds-select', 'fin-select'].forEach(function (selId) {
         var sel = document.getElementById(selId);
         if (!sel) return;
-        var prev = sel.value;
-        sel.innerHTML = plans.length
-          ? plans.map(function (p) {
-              return '<option value="' + _esc(p.id2) + '">' + _esc(p.n1 || p.id2) + '</option>';
-            }).join('')
-          : '<option value="">Sem planos disponíveis</option>';
-        /* restaurar selecção anterior se ainda existir */
-        if (prev && sel.querySelector('option[value="' + prev + '"]')) {
-          sel.value = prev;
+        sel.innerHTML = opts;
+        /* restaurar plano activo se ainda existir */
+        if (_activePlanId && sel.querySelector('option[value="' + _activePlanId + '"]')) {
+          sel.value = _activePlanId;
+        } else if (plans.length) {
+          _activePlanId = plans[0].id2;
         }
       });
 
-      /* Re-renderizar ao mudar selecção */
-      document.getElementById('pds-select').onchange = function () { renderPDS(); };
-      document.getElementById('fin-select').onchange = function () { renderFinanceiro(); };
+      /* Sync: mudar em qualquer um actualiza o outro + re-renderiza */
+      document.getElementById('pds-select').onchange = function () {
+        _activePlanId = this.value;
+        var fin = document.getElementById('fin-select');
+        if (fin) fin.value = _activePlanId;
+        renderPDS();
+      };
+      document.getElementById('fin-select').onchange = function () {
+        _activePlanId = this.value;
+        var pds = document.getElementById('pds-select');
+        if (pds) pds.value = _activePlanId;
+        renderFinanceiro();
+      };
     }
 
     /* ── Utilitários ── */
@@ -2038,7 +2307,7 @@
 
       /* Breakdown por programa — cards expansíveis com N2 */
       html += '<div class="section-title">Por programa / eixo</div>';
-      n1Keys.forEach(function (key) {
+      n1Keys.forEach(function (key, idx) {
         var items = n1Map[key];
         var label = key.split('|||')[1] || '—';
         var n0lbl = key.split('|||')[0] || '';
@@ -2058,9 +2327,9 @@
         n2Keys.sort(function (a, b) { return a.localeCompare(b, 'pt', { numeric: true }); });
 
         html += '<div class="card n1-card">';
-        /* Cabeçalho */
+        /* Cabeçalho — tocável para expandir */
         html += '<div class="n1-card-hdr" data-n1="' + _esc(cardId) + '">';
-        html += '<div>';
+        html += '<div style="min-width:0;flex:1">';
         html += '<div style="font-size:13px;font-weight:700;color:var(--text)">' + _esc(label) + '</div>';
         if (n0lbl && n0lbl !== label) html += '<div style="font-size:11px;color:var(--muted)">' + _esc(n0lbl) + '</div>';
         html += '</div>';
@@ -2071,15 +2340,16 @@
         html += '<span class="act-group-chevron">▾</span>';
         html += '</div></div>';
 
-        /* Barra de progresso resumo */
+        /* Barra de progresso resumo + deep-link */
         html += '<div style="padding:0 14px 10px">';
         html += '<div class="flex-between mb-8"><span class="fs-sm text-muted">' + items.length + ' actividades</span>';
         html += '<span class="fs-sm fw-bold">' + _pct(kExe) + '</span></div>';
         html += '<div class="progress-wrap"><div class="progress-bar' + (kAtr>0?' late':kCon===items.length?' done':'') + '" style="width:' + Math.min(100,kExe).toFixed(1) + '%"></div></div>';
+        html += '<button class="n1-goto-act fs-sm" data-n0="' + _esc(n0lbl) + '" style="margin-top:8px;color:var(--navy);font-weight:600;padding:0;background:none;border:none;">Ver actividades →</button>';
         html += '</div>';
 
-        /* Corpo expansível — detalhes N2 */
-        html += '<div class="n1-card-body collapsed" id="' + _esc(cardId) + '">';
+        /* Corpo expansível — 1.º card aberto por defeito, restantes colapsados */
+        html += '<div class="n1-card-body' + (idx > 0 ? ' collapsed' : '') + '" id="' + _esc(cardId) + '">';
         n2Keys.forEach(function (k2) {
           var n2items = n2Map[k2];
           var n2Con   = n2items.filter(function(d){return d.status==='Concluído';}).length;
@@ -2113,6 +2383,18 @@
           var col  = body.classList.toggle('collapsed');
           var chev = hdr.querySelector('.act-group-chevron');
           if (chev) chev.textContent = col ? '▸' : '▾';
+        });
+      });
+
+      /* Deep-link "Ver actividades →" */
+      el.querySelectorAll('.n1-goto-act').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          activeUserFilter = btn.dataset.n0 || null;
+          applyProfileFilter();
+          _updateFilterBadge();
+          switchPanel('actividades');
+          renderActividades();
         });
       });
     }
@@ -2160,7 +2442,8 @@
        FASE 3 — ACTIVIDADES + PESQUISA
     ───────────────────────────────────────── */
 
-    var _actSearch = '';   /* termo de pesquisa activo */
+    var _actSearch       = '';   /* termo de pesquisa activo */
+    var _actStatusFilter = null; /* null = todos | 'Concluído' | 'Em dia' | 'Em atraso' */
 
     function renderActividades() {
       var listEl = document.getElementById('act-list');
@@ -2170,6 +2453,10 @@
       _initActSearch();
 
       var data = _filterActSearch(fAct, _actSearch);
+      /* Filtro de estado */
+      if (_actStatusFilter) {
+        data = data.filter(function (d) { return d.status === _actStatusFilter; });
+      }
 
       if (!fAct.length) {
         listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Sem actividades</p></div>';
@@ -2208,19 +2495,24 @@
       var nDia  = data.filter(function (d) { return d.status === 'Em dia';    }).length;
       var nAtr  = data.filter(function (d) { return d.status === 'Em atraso'; }).length;
 
+      /* Contagens baseadas em fAct (não em data filtrada) para chips sempre actualizados */
+      var totalAll = fAct.length;
+      var nConAll  = fAct.filter(function (d) { return d.status === 'Concluído'; }).length;
+      var nDiaAll  = fAct.filter(function (d) { return d.status === 'Em dia';    }).length;
+      var nAtrAll  = fAct.filter(function (d) { return d.status === 'Em atraso'; }).length;
+
       var html = '';
 
-      /* Barra de sumário rápido */
-      html += '<div class="card" style="padding:10px 14px">';
-      html += '<div class="flex-between" style="gap:6px;flex-wrap:wrap">';
-      html += '<span class="badge badge-done">' + nCon + ' Concluídas</span>';
-      html += '<span class="badge badge-ok">'   + nDia + ' Em dia</span>';
-      html += '<span class="badge badge-late">' + nAtr + ' Em atraso</span>';
-      html += '<span class="fs-sm text-muted" style="margin-left:auto">' + total + ' total</span>';
-      html += '</div></div>';
+      /* Chips de filtro por estado */
+      html += '<div class="status-chips">';
+      html += '<button class="status-chip' + (!_actStatusFilter ? ' active' : '') + '" data-sf="">Todas ' + totalAll + '</button>';
+      html += '<button class="status-chip chip-done' + (_actStatusFilter === 'Concluído' ? ' active' : '') + '" data-sf="Concluído">Concluídas ' + nConAll + '</button>';
+      html += '<button class="status-chip chip-ok'  + (_actStatusFilter === 'Em dia'    ? ' active' : '') + '" data-sf="Em dia">Em dia ' + nDiaAll + '</button>';
+      html += '<button class="status-chip chip-late'+ (_actStatusFilter === 'Em atraso' ? ' active' : '') + '" data-sf="Em atraso">Em atraso ' + nAtrAll + '</button>';
+      html += '</div>';
 
       /* ── Grupos ── */
-      groups.forEach(function (g) {
+      groups.forEach(function (g, gIdx) {
         /* Cabeçalho do grupo (colapsável via click) */
         var gAtr  = g.items.filter(function (d) { return d.status === 'Em atraso'; }).length;
         var gCon  = g.items.filter(function (d) { return d.status === 'Concluído'; }).length;
@@ -2229,10 +2521,12 @@
         else if (gCon===g.items.length) gBadge = '<span class="badge badge-done">Concluído</span>';
         else                        gBadge = '<span class="badge badge-ok">Em dia</span>';
 
-        var groupId = 'grp-' + g.key.replace(/[^a-z0-9]/gi, '_');
+        var groupId  = 'grp-' + g.key.replace(/[^a-z0-9]/gi, '_');
+        /* Primeiro grupo aberto por defeito, restantes colapsados */
+        var bodyHidden = gIdx > 0 ? ' hidden' : '';
 
         html += '<div class="act-group">';
-        html += '<div class="act-group-header" data-group="' + _esc(groupId) + '">';
+        html += '<div class="act-group-header' + (gIdx === 0 ? ' open' : '') + '" data-group="' + _esc(groupId) + '">';
         html += '<div>';
         html += '<div style="font-size:13px;font-weight:700">' + _esc(g.label) + '</div>';
         if (g.n0 && g.n0 !== g.label) {
@@ -2242,11 +2536,11 @@
         html += '<div style="display:flex;align-items:center;gap:8px">';
         html += gBadge;
         html += '<span class="fs-sm text-muted">' + g.items.length + '</span>';
-        html += '<span class="act-group-chevron">▾</span>';
+        html += '<span class="act-group-chevron">' + (gIdx === 0 ? '▾' : '▸') + '</span>';
         html += '</div></div>';
 
         /* Lista de items */
-        html += '<div class="act-group-body" id="' + groupId + '">';
+        html += '<div class="act-group-body"' + bodyHidden + ' id="' + groupId + '">';
         g.items.forEach(function (act) {
           html += _actItemHtml(act);
         });
@@ -2255,6 +2549,14 @@
       });
 
       listEl.innerHTML = html;
+
+      /* Ligar chips de filtro */
+      listEl.querySelectorAll('.status-chip').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          _actStatusFilter = chip.dataset.sf || null;
+          renderActividades();
+        });
+      });
 
       /* Ligar eventos */
       _bindActItems(listEl);
@@ -2752,6 +3054,13 @@
         console.warn('[SW] registration failed:', err);
       });
     }
+
+    /* Aplicar tema guardado */
+    (function () {
+      var saved = null;
+      try { saved = localStorage.getItem('pmo_theme'); } catch (_) {}
+      applyTheme(saved === 'dark' ? 'dark' : 'light');
+    })();
 
     /* Iniciar restore de sessão assim que o DOM estiver pronto */
     if (document.readyState === 'loading') {
