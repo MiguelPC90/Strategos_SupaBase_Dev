@@ -511,7 +511,35 @@
     #fin-select:focus { border-color: var(--navy); }
 
     #pds-nav,
-    #fin-nav { padding: 8px 0 4px; }
+    #fin-nav { padding: 6px 0 2px; }
+
+    /* ── PLAN CHIPS ── */
+    .plan-chips-wrap {
+      display: flex; gap: 8px;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      padding: 4px 0 8px;
+      scrollbar-width: none;
+    }
+    .plan-chips-wrap::-webkit-scrollbar { display: none; }
+    .plan-chip {
+      flex-shrink: 0;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px; font-weight: 600;
+      color: var(--muted);
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      white-space: nowrap;
+      transition: background .12s, color .12s, border-color .12s;
+    }
+    .plan-chip.active {
+      background: var(--navy);
+      color: var(--white);
+      border-color: var(--navy);
+    }
+    .plan-chip:active { opacity: .8; }
+    body.dark .plan-chip { background: var(--card); color: var(--muted); border-color: var(--border); }
+    body.dark .plan-chip.active { background: #1E3A6A; color: #A8C8FF; border-color: #4A7AC8; }
 
     /* ── UTILITY ── */
     .text-muted   { color: var(--muted); }
@@ -1376,7 +1404,8 @@
                aria-label="Ponto de Situação">
         <!-- Selector de plano -->
         <div id="pds-nav">
-          <select id="pds-select" aria-label="Seleccionar plano"></select>
+          <select id="pds-select" aria-label="Seleccionar plano" hidden></select>
+          <div id="pds-chips-wrap" class="plan-chips-wrap"></div>
         </div>
         <!-- Conteúdo do plano: renderPDS() preencherá (Fase 4) -->
         <div id="pds-body">
@@ -1393,7 +1422,8 @@
                aria-label="Execução Financeira">
         <!-- Selector de plano (partilhado com PDS) -->
         <div id="fin-nav">
-          <select id="fin-select" aria-label="Seleccionar plano (financeiro)"></select>
+          <select id="fin-select" aria-label="Seleccionar plano (financeiro)" hidden></select>
+          <div id="fin-chips-wrap" class="plan-chips-wrap"></div>
         </div>
         <!-- KPIs + contratos + facturas: renderFinanceiro() preencherá (Fase 5) -->
         <div id="fin-body">
@@ -1571,6 +1601,10 @@
             Escuro
           </button>
         </div>
+      </div>
+      <div id="profile-sync-row" class="profile-row" hidden>
+        <span class="profile-row-label">Última sincronização</span>
+        <span id="profile-sync-time" style="font-size:12px;color:var(--muted)"></span>
       </div>
       <button id="profile-logout-btn" type="button">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -1799,6 +1833,7 @@
               localStorage.setItem('pmo_act',        JSON.stringify(ALL_ACT));
               localStorage.setItem('pmo_pds_data',   JSON.stringify(ALL_PDS));
               localStorage.setItem('pmo_data_ver',   '2');
+              localStorage.setItem('pmo_last_sync',  new Date().toISOString());
             } catch (_) {}
 
             applyProfileFilter();
@@ -2018,6 +2053,21 @@
       document.querySelectorAll('.theme-opt').forEach(function (b) {
         b.classList.toggle('active', b.dataset.theme === _currentTheme);
       });
+      /* Timestamp de última sincronização */
+      var syncRow  = document.getElementById('profile-sync-row');
+      var syncTime = document.getElementById('profile-sync-time');
+      var lastSync = null;
+      try { lastSync = localStorage.getItem('pmo_last_sync'); } catch (_) {}
+      if (lastSync && syncRow && syncTime) {
+        try {
+          var dt = new Date(lastSync);
+          syncTime.textContent = dt.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+            + ' · ' + dt.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' });
+          syncRow.removeAttribute('hidden');
+        } catch (_) {}
+      } else if (syncRow) {
+        syncRow.setAttribute('hidden', '');
+      }
       document.getElementById('profile-modal').removeAttribute('hidden');
     }
 
@@ -2135,7 +2185,7 @@
     /* Plano activo partilhado entre PDS e Financeiro */
     var _activePlanId = null;
 
-    /* ── Selects de painel PDS / Financeiro ── */
+    /* ── Selects + Chips de painel PDS / Financeiro ── */
     function buildPlanSelects() {
       /* Deduplica planos por id2 */
       var seen = {};
@@ -2145,37 +2195,55 @@
         return true;
       });
 
+      /* Determinar plano activo */
+      if (!_activePlanId && plans.length) {
+        _activePlanId = plans[0].id2;
+      }
+
+      /* Actualizar selects ocultos (mantidos para compatibilidade com renderPDS/renderFinanceiro) */
       var opts = plans.length
         ? plans.map(function (p) {
             return '<option value="' + _esc(p.id2) + '">' + _esc(p.n1 || p.id2) + '</option>';
           }).join('')
         : '<option value="">Sem planos disponíveis</option>';
-
       ['pds-select', 'fin-select'].forEach(function (selId) {
         var sel = document.getElementById(selId);
         if (!sel) return;
         sel.innerHTML = opts;
-        /* restaurar plano activo se ainda existir */
-        if (_activePlanId && sel.querySelector('option[value="' + _activePlanId + '"]')) {
-          sel.value = _activePlanId;
-        } else if (plans.length) {
-          _activePlanId = plans[0].id2;
-        }
+        if (_activePlanId) sel.value = _activePlanId;
       });
 
-      /* Sync: mudar em qualquer um actualiza o outro + re-renderiza */
-      document.getElementById('pds-select').onchange = function () {
-        _activePlanId = this.value;
-        var fin = document.getElementById('fin-select');
-        if (fin) fin.value = _activePlanId;
-        renderPDS();
-      };
-      document.getElementById('fin-select').onchange = function () {
-        _activePlanId = this.value;
-        var pds = document.getElementById('pds-select');
-        if (pds) pds.value = _activePlanId;
-        renderFinanceiro();
-      };
+      /* Gerar chips tocáveis em ambos os painéis */
+      _renderPlanChips('pds-chips-wrap', plans, 'pds');
+      _renderPlanChips('fin-chips-wrap', plans, 'fin');
+    }
+
+    function _renderPlanChips(wrapperId, plans, panel) {
+      var wrap = document.getElementById(wrapperId);
+      if (!wrap) return;
+      if (!plans.length) {
+        wrap.innerHTML = '<span style="font-size:12px;color:var(--muted);padding:8px 4px">Sem planos</span>';
+        return;
+      }
+      wrap.innerHTML = plans.map(function (p) {
+        var active = _activePlanId === p.id2 ? ' active' : '';
+        return '<button class="plan-chip' + active + '" type="button" data-plan="' + _esc(p.id2) + '" data-panel="' + panel + '">'
+          + _esc(p.n1 || p.id2) + '</button>';
+      }).join('');
+      wrap.querySelectorAll('.plan-chip').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          _activePlanId = chip.dataset.plan;
+          /* Sincronizar ambos os selects e chips */
+          ['pds-select', 'fin-select'].forEach(function (sid) {
+            var s = document.getElementById(sid);
+            if (s) s.value = _activePlanId;
+          });
+          _renderPlanChips('pds-chips-wrap', plans, 'pds');
+          _renderPlanChips('fin-chips-wrap', plans, 'fin');
+          if (chip.dataset.panel === 'pds') renderPDS();
+          else                              renderFinanceiro();
+        });
+      });
     }
 
     /* ── Utilitários ── */
