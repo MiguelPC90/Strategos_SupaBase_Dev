@@ -1330,17 +1330,18 @@
         /* 1. Autenticar via Supabase */
         var authData = await SB.signIn(email, pw);
 
-        /* 2. Carregar metadados do utilizador */
-        var meta = await SB.getUserMeta(authData.user.id);
+        /* 2. Carregar metadados (opcional — pode não existir para todos os utilizadores) */
+        var meta = null;
+        try { meta = await SB.getUserMeta(authData.user.id); } catch (_) {}
 
         /* 3. Guardar sessão em localStorage (compatível com desktop) */
         currentUser = {
           id    : authData.user.id,
-          name  : meta.display_name || email,
+          name  : (meta && meta.display_name) || email,
           email : email,
-          role  : (meta.role || 'viewer').toLowerCase()
+          role  : (meta && meta.role ? meta.role : 'viewer').toLowerCase()
         };
-        currentProfile = (meta.user_profiles && meta.user_profiles[0]) || null;
+        currentProfile = (meta && meta.user_profiles && meta.user_profiles[0]) || null;
         localStorage.setItem('pmo_session', JSON.stringify({ userId: authData.user.id }));
 
         showApp(currentUser);
@@ -1382,15 +1383,16 @@
         var session = await SB.getSession();
 
         if (session && session.user) {
-          var meta = await SB.getUserMeta(session.user.id);
+          var meta = null;
+          try { meta = await SB.getUserMeta(session.user.id); } catch (_) {}
 
           currentUser = {
             id    : session.user.id,
-            name  : meta.display_name || session.user.email,
+            name  : (meta && meta.display_name) || session.user.email,
             email : session.user.email,
-            role  : (meta.role || 'viewer').toLowerCase()
+            role  : (meta && meta.role ? meta.role : 'viewer').toLowerCase()
           };
-          currentProfile = (meta.user_profiles && meta.user_profiles[0]) || null;
+          currentProfile = (meta && meta.user_profiles && meta.user_profiles[0]) || null;
           localStorage.setItem('pmo_session', JSON.stringify({ userId: session.user.id }));
 
           showApp(currentUser);
