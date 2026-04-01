@@ -2650,8 +2650,34 @@
         listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Sem actividades</p></div>';
         return;
       }
+
+      /* Contagens baseadas em fAct para chips — calculadas antes de qualquer early-return */
+      var totalAll = fAct.length;
+      var nConAll  = fAct.filter(function (d) { return d.status === 'Concluído'; }).length;
+      var nDiaAll  = fAct.filter(function (d) { return d.status === 'Em dia';    }).length;
+      var nAtrAll  = fAct.filter(function (d) { return d.status === 'Em atraso'; }).length;
+
+      /* Chips de filtro por estado — renderizados SEMPRE, mesmo sem resultados */
+      var chipsHtml = '<div class="status-chips">';
+      chipsHtml += '<button class="status-chip' + (!_actStatusFilter ? ' active' : '') + '" data-sf="">Todas ' + totalAll + '</button>';
+      chipsHtml += '<button class="status-chip chip-done' + (_actStatusFilter === 'Concluído' ? ' active' : '') + '" data-sf="Concluído">Concluídas ' + nConAll + '</button>';
+      chipsHtml += '<button class="status-chip chip-ok'  + (_actStatusFilter === 'Em dia'    ? ' active' : '') + '" data-sf="Em dia">Em dia ' + nDiaAll + '</button>';
+      chipsHtml += '<button class="status-chip chip-late'+ (_actStatusFilter === 'Em atraso' ? ' active' : '') + '" data-sf="Em atraso">Em atraso ' + nAtrAll + '</button>';
+      chipsHtml += '</div>';
+
       if (!data.length) {
-        listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><p>Sem resultados para<br><strong>' + _esc(_actSearch) + '</strong></p></div>';
+        var emptyMsg = _actStatusFilter
+          ? 'Nenhuma actividade com estado <strong>' + _esc(_actStatusFilter) + '</strong>'
+          : 'Sem resultados para <strong>' + _esc(_actSearch) + '</strong>';
+        listEl.innerHTML = chipsHtml
+          + '<div class="empty-state"><div class="empty-state-icon">🔍</div><p>' + emptyMsg + '</p></div>';
+        /* Ligar chips mesmo no estado vazio */
+        listEl.querySelectorAll('.status-chip').forEach(function (chip) {
+          chip.addEventListener('click', function () {
+            _actStatusFilter = chip.dataset.sf || null;
+            renderActividades();
+          });
+        });
         return;
       }
 
@@ -2677,27 +2703,7 @@
         return gb - ga;
       });
 
-      /* ── Sumário de estado (topo, acima dos grupos) ── */
-      var total = data.length;
-      var nCon  = data.filter(function (d) { return d.status === 'Concluído'; }).length;
-      var nDia  = data.filter(function (d) { return d.status === 'Em dia';    }).length;
-      var nAtr  = data.filter(function (d) { return d.status === 'Em atraso'; }).length;
-
-      /* Contagens baseadas em fAct (não em data filtrada) para chips sempre actualizados */
-      var totalAll = fAct.length;
-      var nConAll  = fAct.filter(function (d) { return d.status === 'Concluído'; }).length;
-      var nDiaAll  = fAct.filter(function (d) { return d.status === 'Em dia';    }).length;
-      var nAtrAll  = fAct.filter(function (d) { return d.status === 'Em atraso'; }).length;
-
-      var html = '';
-
-      /* Chips de filtro por estado */
-      html += '<div class="status-chips">';
-      html += '<button class="status-chip' + (!_actStatusFilter ? ' active' : '') + '" data-sf="">Todas ' + totalAll + '</button>';
-      html += '<button class="status-chip chip-done' + (_actStatusFilter === 'Concluído' ? ' active' : '') + '" data-sf="Concluído">Concluídas ' + nConAll + '</button>';
-      html += '<button class="status-chip chip-ok'  + (_actStatusFilter === 'Em dia'    ? ' active' : '') + '" data-sf="Em dia">Em dia ' + nDiaAll + '</button>';
-      html += '<button class="status-chip chip-late'+ (_actStatusFilter === 'Em atraso' ? ' active' : '') + '" data-sf="Em atraso">Em atraso ' + nAtrAll + '</button>';
-      html += '</div>';
+      var html = chipsHtml;
 
       /* ── Grupos ── */
       groups.forEach(function (g, gIdx) {
