@@ -895,6 +895,62 @@
       .kpi-value { font-size: 20px; }
     }
 
+    /* ── PDS (Fase 4) ── */
+    .pds-plan-hdr {
+      background: var(--navy);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      color: var(--white);
+    }
+    .pds-plan-eixo { font-size: 11px; opacity: .70; margin-bottom: 2px; }
+    .pds-plan-nome { font-size: 15px; font-weight: 700; }
+
+    .pds-section-card {
+      padding: 0;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .pds-sec-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .pds-sec-hdr:active { background: #f0f2f5; }
+    .pds-sec-body { padding: 0 14px 12px; }
+    .pds-sec-body.collapsed { display: none; }
+    .pds-sec-empty { font-size: 13px; color: var(--muted); font-style: italic; }
+
+    .pds-items-list { display: flex; flex-direction: column; gap: 6px; }
+    .pds-item {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .pds-item:last-child { border-bottom: none; }
+    .pds-item-text {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .pds-item-foot {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .pds-item-date   { font-size: 11px; color: var(--muted); }
+    .pds-item-status { font-size: 11px; font-weight: 600; }
+    .pds-legacy-text {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.65;
+      white-space: pre-line;
+    }
+
     /* ── GRUPOS DE ACTIVIDADES (Fase 3) ── */
     .act-group { margin-bottom: 4px; }
 
@@ -1985,9 +2041,212 @@
     }
 
     /* ─────────────────────────────────────────
-       FASES 4-5 — render functions  (a adicionar)
+       FASE 4 — PONTO DE SITUAÇÃO (PDS)
     ───────────────────────────────────────── */
-    function renderPDS()        { /* Fase 4 */ }
+
+    var PDS_SEC = [
+      { key: 'compromissos', label: 'Compromissos anteriores', color: '#185FA5', hasDates: true  },
+      { key: 'avancos',      label: 'Principais avanços',      color: '#95BB42', hasDates: false },
+      { key: 'proximos',     label: 'Próximos passos',         color: '#854F0B', hasDates: true  },
+      { key: 'atencao',      label: 'Pontos de atenção',       color: '#E24B4A', hasDates: false },
+    ];
+
+    function renderPDS() {
+      var bodyEl = document.getElementById('pds-body');
+      if (!bodyEl) return;
+
+      var selVal = document.getElementById('pds-select').value;
+      if (!selVal || !fPDS.length) {
+        bodyEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📄</div><p>Seleccione um plano</p></div>';
+        return;
+      }
+
+      var p = fPDS.find(function (x) { return (x.id0 || '') + '_' + x.id2 === selVal; });
+      if (!p) {
+        bodyEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📄</div><p>Plano não encontrado</p></div>';
+        return;
+      }
+
+      /* ── Actividades deste plano ── */
+      var pAct = fAct.filter(function (d) { return d.id2 === p.id2; });
+      var n    = pAct.length;
+      var con  = pAct.filter(function (d) { return d.status === 'Concluído'; }).length;
+      var dia  = pAct.filter(function (d) { return d.status === 'Em dia';    }).length;
+      var atr  = pAct.filter(function (d) { return d.status === 'Em atraso'; }).length;
+      var exe  = n ? pAct.reduce(function (s, d) { return s + (d.pct || 0); }, 0) / n : 0;
+      var exeObj = n ? pAct.reduce(function (s, d) { return s + (d.pct_prev || 0); }, 0) / n : 0;
+
+      /* ── Garantir items estruturados ── */
+      _ensurePDSItems(p);
+
+      var html = '';
+
+      /* Cabeçalho do plano */
+      html += '<div class="pds-plan-hdr">';
+      html += '<div class="pds-plan-eixo">' + _esc((p.n0 ? p.n0 + ' › ' : '') + (p.n1 || '')) + '</div>';
+      html += '<div class="pds-plan-nome">' + _esc(p.plano || p.id2 || '—') + '</div>';
+      html += '</div>';
+
+      /* KPI grid */
+      html += '<div class="kpi-grid" style="margin-bottom:12px">';
+      html += _kpiCard('Execução',   _pct(exe),    exe >= 75 ? 'green' : exe < 40 ? 'danger' : '', 'realizado');
+      html += _kpiCard('Objectivo',  _pct(exeObj), '', 'esperado');
+      html += _kpiCard('Concluídas', con,           'green',  n + ' total');
+      html += _kpiCard('Em atraso',  atr,           atr > 0 ? 'danger' : '', '');
+      html += '</div>';
+
+      /* Barra de progresso (real vs objectivo) */
+      html += '<div class="card" style="padding:12px 16px 14px;margin-bottom:12px">';
+      html += '<div class="card-title">Progresso</div>';
+      html += '<div class="flex-between mb-8"><span class="fs-sm text-muted">Realizado</span>';
+      html += '<span class="fw-bold">' + _pct(exe) + '</span></div>';
+      html += '<div class="progress-wrap"><div class="progress-bar' + (atr > 0 ? ' late' : '') + '" style="width:' + Math.min(100, exe).toFixed(1) + '%"></div></div>';
+      if (exeObj > 0) {
+        html += '<div class="flex-between mb-8" style="margin-top:8px"><span class="fs-sm text-muted">Objectivo</span>';
+        html += '<span class="fs-sm fw-bold text-green">' + _pct(exeObj) + '</span></div>';
+        html += '<div class="progress-wrap"><div class="progress-bar done" style="width:' + Math.min(100, exeObj).toFixed(1) + '%"></div></div>';
+      }
+      html += '</div>';
+
+      /* Secções PDS */
+      PDS_SEC.forEach(function (sec) {
+        var items   = p[sec.key + '_items'];
+        var legText = p[sec.key] || '';
+        var isEmpty = (!items || !items.length) && _isNA(legText);
+
+        var secId = 'pds-sec-' + sec.key;
+        html += '<div class="pds-section-card card">';
+        html += '<div class="pds-sec-hdr" data-sec="' + secId + '" style="border-left:3px solid ' + sec.color + '">';
+        html += '<span style="color:' + sec.color + ';font-size:13px;font-weight:700">' + _esc(sec.label) + '</span>';
+        html += '<span class="act-group-chevron">▾</span>';
+        html += '</div>';
+        html += '<div class="pds-sec-body" id="' + secId + '">';
+
+        if (isEmpty) {
+          html += '<div class="pds-sec-empty">N/A</div>';
+        } else if (items && items.length) {
+          if (sec.hasDates) {
+            /* Tabela com data + estado */
+            html += '<div class="pds-items-list">';
+            items.forEach(function (it) {
+              var stColor = { 'Concluído': '#1565C0', 'Em curso': '#2E7D32', 'Atrasado': '#C62828', 'Pendente': '#6B7A8D' }[it.status] || '#6B7A8D';
+              html += '<div class="pds-item">';
+              html += '<div class="pds-item-text">' + _mdToHtml(it.text) + '</div>';
+              html += '<div class="pds-item-foot">';
+              if (it.date) html += '<span class="pds-item-date">' + _esc(_fmtDatePT(it.date)) + '</span>';
+              if (it.status) html += '<span class="pds-item-status" style="color:' + stColor + '">' + _esc(it.status) + '</span>';
+              html += '</div></div>';
+            });
+            html += '</div>';
+          } else {
+            /* Lista simples */
+            html += '<div class="pds-items-list">';
+            items.forEach(function (it) {
+              html += '<div class="pds-item"><div class="pds-item-text">' + _mdToHtml(it.text) + '</div></div>';
+            });
+            html += '</div>';
+          }
+        } else {
+          /* Texto legado */
+          html += '<div class="pds-legacy-text">' + _mdToHtml(legText) + '</div>';
+        }
+
+        html += '</div></div>'; /* /pds-sec-body /pds-section-card */
+      });
+
+      /* Riscos */
+      var risks = p.risks || [];
+      if (risks.length) {
+        html += '<div class="section-title">Riscos (' + risks.length + ')</div>';
+        risks.forEach(function (r) {
+          var grade = _riskGrade(r.impact, r.prob);
+          var lbl   = _riskLabel(grade);
+          var bgMap = { Baixo: '#E8F5E9', Médio: '#FFF8E1', Alto: '#FFF3E0', Crítico: '#FFEBEE' };
+          var tcMap = { Baixo: '#2E7D32', Médio: '#E65100', Alto: '#BF360C', Crítico: '#B71C1C' };
+          var bg = bgMap[lbl] || '#F4F6F9';
+          var tc = tcMap[lbl] || '#6B7A8D';
+          html += '<div class="card" style="padding:12px 14px;margin-bottom:8px">';
+          html += '<div class="flex-between" style="margin-bottom:6px">';
+          html += '<span class="badge" style="background:' + bg + ';color:' + tc + '">' + grade + ' — ' + lbl + '</span>';
+          if (r.status) html += '<span class="fs-sm text-muted">' + _esc(r.status) + '</span>';
+          html += '</div>';
+          html += '<div style="font-size:13px;color:var(--text);line-height:1.4;margin-bottom:4px">' + _esc(r.desc || '—') + '</div>';
+          if (r.mitigation) html += '<div class="fs-sm text-muted" style="margin-top:4px">' + _esc(r.mitigation) + '</div>';
+          html += '</div>';
+        });
+      }
+
+      bodyEl.innerHTML = html;
+      _bindPdsSections(bodyEl);
+    }
+
+    /* ── Helpers PDS ── */
+
+    function _ensurePDSItems(p) {
+      /* já processado */
+      if (p._pdsItemsDone) return;
+      p._pdsItemsDone = true;
+      PDS_SEC.forEach(function (sec) {
+        var key = sec.key + '_items';
+        if (p[key] && p[key].length) return; /* já tem items estruturados */
+        /* Tentar parsear texto legado */
+        var raw = p[sec.key] || '';
+        if (_isNA(raw)) { p[key] = []; return; }
+        p[key] = raw.split('\n')
+          .map(function (l) { return l.replace(/^[-•*]\s*/, '').trim(); })
+          .filter(Boolean)
+          .map(function (text) { return { text: text, date: null, status: '' }; });
+      });
+    }
+
+    function _isNA(v) {
+      return !v || v.trim() === 'N/A' || v.trim() === '';
+    }
+
+    function _mdToHtml(s) {
+      if (!s) return '';
+      var t = String(s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      t = t.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      t = t.replace(/\n/g, '<br>');
+      return t;
+    }
+
+    function _fmtDatePT(d) {
+      if (!d) return '';
+      var p = d.split('-');
+      return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : d;
+    }
+
+    function _riskGrade(impact, prob) {
+      return (parseInt(impact) || 0) * (parseInt(prob) || 0);
+    }
+
+    function _riskLabel(grade) {
+      if (grade === 0)  return '—';
+      if (grade <= 4)   return 'Baixo';
+      if (grade <= 9)   return 'Médio';
+      if (grade <= 16)  return 'Alto';
+      return 'Crítico';
+    }
+
+    function _bindPdsSections(container) {
+      container.querySelectorAll('.pds-sec-hdr').forEach(function (hdr) {
+        hdr.addEventListener('click', function () {
+          var id   = hdr.dataset.sec;
+          var body = document.getElementById(id);
+          if (!body) return;
+          var col  = body.classList.toggle('collapsed');
+          var chev = hdr.querySelector('.act-group-chevron');
+          if (chev) chev.textContent = col ? '▸' : '▾';
+        });
+      });
+    }
+
+    /* ─────────────────────────────────────────
+       FASE 5 — render functions  (a adicionar)
+    ───────────────────────────────────────── */
     function renderFinanceiro() { /* Fase 5 */ }
 
     /* ─────────────────────────────────────────
