@@ -1326,15 +1326,23 @@
       loginBtn.disabled      = true;
       loginBtn.textContent   = 'A entrar…';
 
+      function _dbg(msg, ok) {
+        loginError.style.color = ok ? '#95BB42' : '#FF8A80';
+        loginError.textContent = msg;
+      }
+
       try {
         /* 1. Autenticar via Supabase */
+        _dbg('1/4 A autenticar…', true);
         var authData = await SB.signIn(email, pw);
+        _dbg('2/4 Login OK — a carregar perfil…', true);
 
-        /* 2. Carregar metadados (opcional — pode não existir para todos os utilizadores) */
+        /* 2. Carregar metadados (opcional) */
         var meta = null;
         try { meta = await SB.getUserMeta(authData.user.id); } catch (_) {}
+        _dbg('3/4 Perfil OK — a abrir app…', true);
 
-        /* 3. Guardar sessão em localStorage (compatível com desktop) */
+        /* 3. Guardar sessão */
         currentUser = {
           id    : authData.user.id,
           name  : (meta && meta.display_name) || email,
@@ -1344,12 +1352,13 @@
         currentProfile = (meta && meta.user_profiles && meta.user_profiles[0]) || null;
         try { localStorage.setItem('pmo_session', JSON.stringify({ userId: authData.user.id })); } catch (_) {}
 
+        _dbg('4/4 A carregar dados…', true);
         showApp(currentUser);
         startApp();
 
       } catch (err) {
         console.error('[Auth] signIn error:', err);
-        loginError.textContent = err.message || err.error_description || JSON.stringify(err);
+        _dbg('Erro: ' + (err.message || err.error_description || JSON.stringify(err)), false);
         inpPw.value = '';
         inpPw.focus();
       } finally {
