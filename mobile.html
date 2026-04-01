@@ -1342,10 +1342,10 @@
           role  : (meta && meta.role ? meta.role : 'viewer').toLowerCase()
         };
         currentProfile = (meta && meta.user_profiles && meta.user_profiles[0]) || null;
-        localStorage.setItem('pmo_session', JSON.stringify({ userId: authData.user.id }));
+        try { localStorage.setItem('pmo_session', JSON.stringify({ userId: authData.user.id })); } catch (_) {}
 
         showApp(currentUser);
-        startApp();            /* Subfase 1d preencherá esta função */
+        startApp();
 
       } catch (err) {
         console.error('[Auth] signIn error:', err);
@@ -1360,7 +1360,7 @@
 
     /* ── Logout ── */
     logoutBtn.addEventListener('click', async function () {
-      localStorage.removeItem('pmo_session');
+      try { localStorage.removeItem('pmo_session'); } catch (_) {}
       currentUser    = null;
       currentProfile = null;
       try { await SB.signOut(); } catch (_) {}
@@ -1393,7 +1393,7 @@
             role  : (meta && meta.role ? meta.role : 'viewer').toLowerCase()
           };
           currentProfile = (meta && meta.user_profiles && meta.user_profiles[0]) || null;
-          localStorage.setItem('pmo_session', JSON.stringify({ userId: session.user.id }));
+          try { localStorage.setItem('pmo_session', JSON.stringify({ userId: session.user.id })); } catch (_) {}
 
           showApp(currentUser);
           startApp();
