@@ -895,6 +895,34 @@
       .kpi-value { font-size: 20px; }
     }
 
+    /* ── GRUPOS DE ACTIVIDADES (Fase 3) ── */
+    .act-group { margin-bottom: 4px; }
+
+    .act-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 10px 14px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+      transition: background .15s;
+    }
+    .act-group-header:active { background: #eef0f4; }
+
+    .act-group-chevron {
+      font-size: 13px;
+      color: var(--muted);
+      transition: transform .2s;
+    }
+
+    .act-group-body { overflow: hidden; }
+    .act-group-body.collapsed { display: none; }
+
     /* Redução de movimento */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
@@ -1808,13 +1836,159 @@
     }
 
     /* ─────────────────────────────────────────
-       FASES 3-5 — render functions  (a adicionar)
+       FASE 3 — ACTIVIDADES + PESQUISA
     ───────────────────────────────────────── */
 
-    /* Stubs para não quebrar renderPanel() */
-    function renderActividades() { /* Fase 3 */ }
-    function renderPDS()         { /* Fase 4 */ }
-    function renderFinanceiro()  { /* Fase 5 */ }
+    var _actSearch = '';   /* termo de pesquisa activo */
+
+    function renderActividades() {
+      var listEl = document.getElementById('act-list');
+      if (!listEl) return;
+
+      /* Garantir que o searchbar está ligado (idempotente) */
+      _initActSearch();
+
+      var data = _filterActSearch(fAct, _actSearch);
+
+      if (!fAct.length) {
+        listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Sem actividades</p></div>';
+        return;
+      }
+      if (!data.length) {
+        listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><p>Sem resultados para<br><strong>' + _esc(_actSearch) + '</strong></p></div>';
+        return;
+      }
+
+      /* ── Agrupar por N1 (programa) ── */
+      var groups   = [];   /* [{ key, label, n0, items }] */
+      var groupMap = {};
+
+      data.forEach(function (d) {
+        var key   = (d.n0 || '') + '|||' + (d.n1 || d.n0 || '—');
+        var label = d.n1 || d.n0 || '—';
+        var n0lbl = d.n0 || '';
+        if (!groupMap[key]) {
+          groupMap[key] = { key: key, label: label, n0: n0lbl, items: [] };
+          groups.push(groupMap[key]);
+        }
+        groupMap[key].items.push(d);
+      });
+
+      /* Ordenar grupos: mais atrasados primeiro */
+      groups.sort(function (a, b) {
+        var ga = a.items.filter(function (d) { return d.status === 'Em atraso'; }).length;
+        var gb = b.items.filter(function (d) { return d.status === 'Em atraso'; }).length;
+        return gb - ga;
+      });
+
+      /* ── Sumário de estado (topo, acima dos grupos) ── */
+      var total = data.length;
+      var nCon  = data.filter(function (d) { return d.status === 'Concluído'; }).length;
+      var nDia  = data.filter(function (d) { return d.status === 'Em dia';    }).length;
+      var nAtr  = data.filter(function (d) { return d.status === 'Em atraso'; }).length;
+
+      var html = '';
+
+      /* Barra de sumário rápido */
+      html += '<div class="card" style="padding:10px 14px">';
+      html += '<div class="flex-between" style="gap:6px;flex-wrap:wrap">';
+      html += '<span class="badge badge-done">' + nCon + ' Concluídas</span>';
+      html += '<span class="badge badge-ok">'   + nDia + ' Em dia</span>';
+      html += '<span class="badge badge-late">' + nAtr + ' Em atraso</span>';
+      html += '<span class="fs-sm text-muted" style="margin-left:auto">' + total + ' total</span>';
+      html += '</div></div>';
+
+      /* ── Grupos ── */
+      groups.forEach(function (g) {
+        /* Cabeçalho do grupo (colapsável via click) */
+        var gAtr  = g.items.filter(function (d) { return d.status === 'Em atraso'; }).length;
+        var gCon  = g.items.filter(function (d) { return d.status === 'Concluído'; }).length;
+        var gBadge;
+        if (gAtr > 0)               gBadge = '<span class="badge badge-late">'+ gAtr +' atraso</span>';
+        else if (gCon===g.items.length) gBadge = '<span class="badge badge-done">Concluído</span>';
+        else                        gBadge = '<span class="badge badge-ok">Em dia</span>';
+
+        var groupId = 'grp-' + g.key.replace(/[^a-z0-9]/gi, '_');
+
+        html += '<div class="act-group">';
+        html += '<div class="act-group-header" data-group="' + _esc(groupId) + '">';
+        html += '<div>';
+        html += '<div style="font-size:13px;font-weight:700">' + _esc(g.label) + '</div>';
+        if (g.n0 && g.n0 !== g.label) {
+          html += '<div style="font-size:11px;color:var(--muted)">' + _esc(g.n0) + '</div>';
+        }
+        html += '</div>';
+        html += '<div style="display:flex;align-items:center;gap:8px">';
+        html += gBadge;
+        html += '<span class="fs-sm text-muted">' + g.items.length + '</span>';
+        html += '<span class="act-group-chevron">▾</span>';
+        html += '</div></div>';
+
+        /* Lista de items */
+        html += '<div class="act-group-body" id="' + groupId + '">';
+        g.items.forEach(function (act) {
+          html += _actItemHtml(act);
+        });
+        html += '</div>';  /* /act-group-body */
+        html += '</div>';  /* /act-group */
+      });
+
+      listEl.innerHTML = html;
+
+      /* Ligar eventos */
+      _bindActItems(listEl);
+      _bindGroupHeaders(listEl);
+    }
+
+    /* ── Pesquisa ── */
+    function _initActSearch() {
+      var inp = document.getElementById('act-search');
+      if (!inp || inp._bound) return;
+      inp._bound = true;
+      inp.addEventListener('input', function () {
+        _actSearch = inp.value.trim().toLowerCase();
+        renderActividades();
+      });
+      /* Limpar com Escape */
+      inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          inp.value  = '';
+          _actSearch = '';
+          renderActividades();
+          inp.blur();
+        }
+      });
+    }
+
+    function _filterActSearch(data, q) {
+      if (!q) return data;
+      return data.filter(function (d) {
+        return (d.nome   || '').toLowerCase().indexOf(q) >= 0
+            || (d.n1     || '').toLowerCase().indexOf(q) >= 0
+            || (d.n0     || '').toLowerCase().indexOf(q) >= 0
+            || (d.status || '').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+
+    /* ── Collapse/expand de grupos ── */
+    function _bindGroupHeaders(container) {
+      container.querySelectorAll('.act-group-header').forEach(function (hdr) {
+        hdr.addEventListener('click', function () {
+          var id   = hdr.dataset.group;
+          var body = document.getElementById(id);
+          if (!body) return;
+          var collapsed = body.classList.toggle('collapsed');
+          var chev = hdr.querySelector('.act-group-chevron');
+          if (chev) chev.textContent = collapsed ? '▸' : '▾';
+        });
+      });
+    }
+
+    /* ─────────────────────────────────────────
+       FASES 4-5 — render functions  (a adicionar)
+    ───────────────────────────────────────── */
+    function renderPDS()        { /* Fase 4 */ }
+    function renderFinanceiro() { /* Fase 5 */ }
 
     /* ─────────────────────────────────────────
        ARRANQUE
