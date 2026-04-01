@@ -1143,25 +1143,178 @@
   <!-- ══════════════════════════════════════════
        SCRIPTS
   ══════════════════════════════════════════ -->
+  <!-- Credenciais Supabase (antes do adapter) -->
+  <script>
+    window.SUPABASE_URL      = 'https://wirokqtgrvlxwvypmbej.supabase.co';
+    window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpcm9rcXRncnZseHd2eXBtYmVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MDQ3NzQsImV4cCI6MjA5MDI4MDc3NH0.QuWS6kM_mrTMjzgvaZCM7qnDBYuEhoqItATI14atApg';
+  </script>
+
   <!-- Supabase JS (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <!-- Adaptador Strategos -->
   <script src="supabase-adapter.js"></script>
 
-  <!-- App JS — será adicionado nas subfases 1b, 1c, 1d -->
+  <!-- ══════════════════════════════════════════
+       APP JS
+  ══════════════════════════════════════════ -->
   <script>
-    // Subfase 1b: Auth (login, logout, session restore)
-    // Subfase 1c: Data loading (loadActivities, loadPDS, cache)
-    // Subfase 1d: Navigation (switchPanel, bottom sheet, toast, startApp)
-    // Fase 2-5: render functions
+    /* ─────────────────────────────────────────
+       ESTADO GLOBAL
+    ───────────────────────────────────────── */
+    var currentUser    = null;   // { id, name, email, role }
+    var currentProfile = null;   // user_profiles row (tabs permitidos, etc.)
 
-    // Registo do Service Worker
+    /* ─────────────────────────────────────────
+       SUBFASE 1b — AUTH
+       login · logout · session restore
+    ───────────────────────────────────────── */
+
+    /* Referências DOM — auth */
+    var loginScreen  = document.getElementById('login-screen');
+    var appShell     = document.getElementById('app');
+    var loginForm    = document.getElementById('login-form');
+    var inpEmail     = document.getElementById('inp-email');
+    var inpPw        = document.getElementById('inp-pw');
+    var loginBtn     = document.getElementById('login-btn');
+    var loginError   = document.getElementById('login-error');
+    var logoutBtn    = document.getElementById('logout-btn');
+    var topbarUser   = document.getElementById('topbar-user');
+
+    /* ── Mostrar/esconder ecrãs ── */
+    function showLogin() {
+      loginScreen.removeAttribute('hidden');
+      appShell.setAttribute('hidden', '');
+      loginError.textContent = '';
+      inpEmail.focus();
+    }
+
+    function showApp(user) {
+      loginScreen.setAttribute('hidden', '');
+      appShell.removeAttribute('hidden');
+      topbarUser.textContent = user.name || user.email || '';
+    }
+
+    /* ── Login (form submit) ── */
+    loginForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var email = inpEmail.value.trim();
+      var pw    = inpPw.value;
+
+      loginError.textContent = '';
+      loginBtn.disabled      = true;
+      loginBtn.textContent   = 'A entrar…';
+
+      try {
+        /* 1. Autenticar via Supabase */
+        var authData = await SB.signIn(email, pw);
+
+        /* 2. Carregar metadados do utilizador */
+        var meta = await SB.getUserMeta(authData.user.id);
+
+        /* 3. Guardar sessão em localStorage (compatível com desktop) */
+        currentUser = {
+          id    : authData.user.id,
+          name  : meta.display_name || email,
+          email : email,
+          role  : (meta.role || 'viewer').toLowerCase()
+        };
+        currentProfile = (meta.user_profiles && meta.user_profiles[0]) || null;
+        localStorage.setItem('pmo_session', JSON.stringify({ userId: authData.user.id }));
+
+        showApp(currentUser);
+        startApp();            /* Subfase 1d preencherá esta função */
+
+      } catch (err) {
+        console.error('[Auth] signIn error:', err);
+        loginError.textContent = 'E-mail ou password incorrectos.';
+        inpPw.value = '';
+        inpPw.focus();
+      } finally {
+        loginBtn.disabled    = false;
+        loginBtn.textContent = 'Entrar';
+      }
+    });
+
+    /* ── Logout ── */
+    logoutBtn.addEventListener('click', async function () {
+      localStorage.removeItem('pmo_session');
+      currentUser    = null;
+      currentProfile = null;
+      try { await SB.signOut(); } catch (_) {}
+      showLogin();
+    });
+
+    /* ── Restore de sessão ao arranque ── */
+    async function tryRestoreSession() {
+      /* Inicializar adaptador Supabase */
+      await SB.init();
+
+      if (!SB.isOnline) {
+        /* Sem ligação ao Supabase — mostrar login directo */
+        showLogin();
+        return;
+      }
+
+      try {
+        /* Verificar sessão activa no Supabase (cookie / token) */
+        var session = await SB.getSession();
+
+        if (session && session.user) {
+          var meta = await SB.getUserMeta(session.user.id);
+
+          currentUser = {
+            id    : session.user.id,
+            name  : meta.display_name || session.user.email,
+            email : session.user.email,
+            role  : (meta.role || 'viewer').toLowerCase()
+          };
+          currentProfile = (meta.user_profiles && meta.user_profiles[0]) || null;
+          localStorage.setItem('pmo_session', JSON.stringify({ userId: session.user.id }));
+
+          showApp(currentUser);
+          startApp();
+          return;
+        }
+      } catch (err) {
+        console.warn('[Auth] restore failed:', err);
+      }
+
+      showLogin();
+    }
+
+    /* Stub — será substituído na subfase 1d */
+    function startApp() {
+      console.log('[App] startApp() — aguarda subfases 1c e 1d');
+    }
+
+    /* ─────────────────────────────────────────
+       SUBFASE 1c — Data Loading  (a adicionar)
+    ───────────────────────────────────────── */
+
+    /* ─────────────────────────────────────────
+       SUBFASE 1d — Navigation + startApp  (a adicionar)
+    ───────────────────────────────────────── */
+
+    /* ─────────────────────────────────────────
+       FASES 2-5 — render functions  (a adicionar)
+    ───────────────────────────────────────── */
+
+    /* ─────────────────────────────────────────
+       ARRANQUE
+    ───────────────────────────────────────── */
+
+    /* Registo do Service Worker */
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js').catch(function (err) {
-          console.warn('SW registration failed:', err);
-        });
+      navigator.serviceWorker.register('./sw.js').catch(function (err) {
+        console.warn('[SW] registration failed:', err);
       });
+    }
+
+    /* Iniciar restore de sessão assim que o DOM estiver pronto */
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tryRestoreSession);
+    } else {
+      tryRestoreSession();
     }
   </script>
 
