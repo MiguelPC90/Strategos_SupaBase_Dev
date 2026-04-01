@@ -1288,8 +1288,133 @@
     }
 
     /* ─────────────────────────────────────────
-       SUBFASE 1c — Data Loading  (a adicionar)
+       SUBFASE 1c — DATA LOADING
+       loadData · cache localStorage · filtros de perfil
     ───────────────────────────────────────── */
+
+    /* Arrays globais de dados (espelho do desktop) */
+    var ALL_GANTT = [];   /* todas as linhas (nivel 1-4) */
+    var ALL_ACT   = [];   /* nivel 4 — actividades folha */
+    var ALL_PDS   = [];   /* planos PDS */
+
+    /* Arrays filtrados (por perfil + pesquisa/N0) */
+    var fAct  = [];
+    var fPDS  = [];
+
+    /* ── Filtro de perfil (N0s permitidos) ── */
+    function getProfileN0s() {
+      if (!currentProfile || !currentProfile.n0s || !currentProfile.n0s.length) return null;
+      return new Set(currentProfile.n0s);
+    }
+
+    /* Aplica restrição de perfil a ALL_ACT / ALL_GANTT / ALL_PDS */
+    function applyProfileFilter() {
+      var n0s = getProfileN0s();
+      if (!n0s) {
+        fAct = ALL_ACT.slice();
+        fPDS = ALL_PDS.slice();
+      } else {
+        fAct = ALL_ACT.filter(function (d) { return n0s.has(d.n0 || ''); });
+        fPDS = ALL_PDS.filter(function (p) { return n0s.has(p.n0 || ''); });
+      }
+    }
+
+    /* ── Carregar dados ── */
+    async function loadData() {
+      /* 1 — Supabase (online) */
+      if (window.SB && SB.isOnline) {
+        try {
+          var results  = await Promise.all([SB.loadActivities(), SB.loadPDS()]);
+          var ganttRows = results[0];
+          var pdsRows   = results[1];
+
+          if (ganttRows && ganttRows.length) {
+            ALL_GANTT = ganttRows;
+            ALL_ACT   = ALL_GANTT.filter(function (r) { return r.nivel === 4; });
+            ALL_PDS   = pdsRows || [];
+
+            /* Sincronizar n0/n1 do ALL_ACT para ALL_PDS */
+            _syncN0toPDS();
+
+            /* Guardar cache offline */
+            try {
+              localStorage.setItem('pmo_gantt_data', JSON.stringify(ALL_GANTT));
+              localStorage.setItem('pmo_act',        JSON.stringify(ALL_ACT));
+              localStorage.setItem('pmo_pds_data',   JSON.stringify(ALL_PDS));
+              localStorage.setItem('pmo_data_ver',   '2');
+            } catch (_) {}
+
+            applyProfileFilter();
+            return true;
+          }
+        } catch (err) {
+          console.warn('[Data] Supabase falhou, a usar cache.', err);
+        }
+      }
+
+      /* 2 — Fallback: localStorage (cache offline) */
+      try {
+        var _act   = localStorage.getItem('pmo_act');
+        var _gantt = localStorage.getItem('pmo_gantt_data');
+        var _pds   = localStorage.getItem('pmo_pds_data');
+        var _ver   = localStorage.getItem('pmo_data_ver');
+
+        if (_act && _gantt && _pds && _ver === '2') {
+          var a = JSON.parse(_act);
+          var g = JSON.parse(_gantt);
+          var p = JSON.parse(_pds);
+          if (a.length) {
+            ALL_ACT   = a;
+            ALL_GANTT = g;
+            ALL_PDS   = p;
+            _syncN0toPDS();
+            applyProfileFilter();
+            return true;
+          }
+        }
+      } catch (e) {
+        console.warn('[Data] cache restore failed:', e);
+      }
+
+      return false;  /* sem dados disponíveis */
+    }
+
+    /* Sincronizar n0/n1 de actividades para planos PDS (como no desktop) */
+    function _syncN0toPDS() {
+      var n1map = {}, n0map = {};
+      ALL_ACT.forEach(function (d) {
+        var k = (d.id0 || '') + '_' + d.id2;
+        n1map[k] = d.n1;
+        n0map[k] = d.n0 || '';
+      });
+      ALL_PDS.forEach(function (p) {
+        var k = (p.id0 || '') + '_' + p.id2;
+        if (n1map[k]) { p.n1 = n1map[k]; p.n0 = n0map[k]; }
+      });
+    }
+
+    /* ── Guardar alteração a uma actividade (quick-edit) ── */
+    async function saveActivity(act) {
+      /* Actualizar arrays em memória */
+      var idxAct   = ALL_ACT.findIndex(function (a) { return a._supabase_id === act._supabase_id; });
+      var idxGantt = ALL_GANTT.findIndex(function (a) { return a._supabase_id === act._supabase_id; });
+      if (idxAct   >= 0) ALL_ACT[idxAct]     = act;
+      if (idxGantt >= 0) ALL_GANTT[idxGantt] = act;
+
+      /* Actualizar cache local imediatamente */
+      try {
+        localStorage.setItem('pmo_act',        JSON.stringify(ALL_ACT));
+        localStorage.setItem('pmo_gantt_data', JSON.stringify(ALL_GANTT));
+      } catch (_) {}
+
+      /* Persistir no Supabase (se online) */
+      if (window.SB && SB.isOnline) {
+        await SB.saveActivities([act]);
+      }
+
+      /* Actualizar filtrados */
+      applyProfileFilter();
+    }
 
     /* ─────────────────────────────────────────
        SUBFASE 1d — Navigation + startApp  (a adicionar)
