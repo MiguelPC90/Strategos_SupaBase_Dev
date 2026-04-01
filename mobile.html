@@ -85,6 +85,9 @@
     /* ── 3. LAYOUT GERAL ── */
 
     /* Login ocupa o ecrã todo por cima do app */
+    /* hidden attribute precisa de !important para vencer display: flex/grid */
+    [hidden] { display: none !important; }
+
     #login-screen {
       position: fixed;
       inset: 0;
