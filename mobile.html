@@ -1,0 +1,2546 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+  <!-- PWA / iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Strategos">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#002E5E">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+
+  <title>Strategos</title>
+
+  <style>
+    /* ══════════════════════════════════════════
+       SUBFASE 1a-ii — CSS BASE
+       Variáveis · Reset · Layout · Topbar · Bottom nav · Panels (base)
+    ══════════════════════════════════════════ */
+
+    /* ── 1. VARIÁVEIS ── */
+    :root {
+      /* Cores principais */
+      --navy:        #002E5E;
+      --green:       #95BB42;
+      --white:       #FFFFFF;
+      --bg:          #F4F6F9;
+      --card:        #FFFFFF;
+      --border:      #DDE3EC;
+      --text:        #1A2B3C;
+      --muted:       #6B7A8D;
+      --danger:      #D94F3D;
+      --warn:        #E8A020;
+
+      /* Status */
+      --sc-ok-bg:    #E8F5E9; --sc-ok-tc:   #2E7D32;
+      --sc-late-bg:  #FFEBEE; --sc-late-tc: #C62828;
+      --sc-done-bg:  #E3F2FD; --sc-done-tc: #1565C0;
+
+      /* Layout */
+      --topbar-h:      56px;
+      --bottomnav-h:   64px;
+      --sheet-radius:  20px;
+      --radius:        10px;
+      --shadow:        0 2px 8px rgba(0,0,0,.10);
+
+      /* Safe areas (iOS notch / home bar) */
+      --sat: env(safe-area-inset-top,    0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left,   0px);
+      --sar: env(safe-area-inset-right,  0px);
+    }
+
+    /* ── 2. RESET + BASE ── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-size: 15px;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-tap-highlight-color: transparent;
+      -webkit-text-size-adjust: 100%;
+    }
+    button {
+      cursor: pointer;
+      border: none;
+      background: none;
+      font: inherit;
+      touch-action: manipulation;
+    }
+    input, select, textarea { font: inherit; }
+    a { color: inherit; text-decoration: none; }
+    img, svg { display: block; }
+
+    /* ── 3. LAYOUT GERAL ── */
+
+    /* Login ocupa o ecrã todo por cima do app */
+    #login-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--navy);
+      z-index: 100;
+      padding: 24px;
+    }
+
+    /* App shell: coluna vertical full-height */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh; /* dynamic viewport height, evita barra endereço */
+      padding-top: var(--sat);
+      padding-left: var(--sal);
+      padding-right: var(--sar);
+    }
+
+    /* Área de conteúdo: preenche entre topbar e bottomnav, scroll vertical */
+    #main-content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+      background: var(--bg);
+      /* espaço para o bottom nav fixo */
+      padding-bottom: calc(var(--bottomnav-h) + var(--sab) + 8px);
+    }
+
+    /* ── 4. TOPBAR ── */
+    #topbar {
+      height: var(--topbar-h);
+      background: var(--navy);
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+      z-index: 10;
+    }
+
+    #topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    #topbar-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--green);
+      color: var(--navy);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    #topbar-titles { min-width: 0; }
+
+    #topbar-title {
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #topbar-sub {
+      font-size: 11px;
+      opacity: .72;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    #topbar-user {
+      font-size: 12px;
+      opacity: .80;
+      max-width: 110px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #logout-btn {
+      color: var(--white);
+      opacity: .80;
+      font-size: 18px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      line-height: 1;
+      transition: opacity .15s, background .15s;
+    }
+    #logout-btn:active {
+      opacity: 1;
+      background: rgba(255,255,255,.18);
+    }
+
+    /* ── 5. BOTTOM NAV ── */
+    #bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: var(--sal);
+      right: var(--sar);
+      height: calc(var(--bottomnav-h) + var(--sab));
+      padding-bottom: var(--sab);
+      background: var(--navy);
+      display: flex;
+      box-shadow: 0 -2px 10px rgba(0,0,0,.22);
+      z-index: 20;
+    }
+
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      color: rgba(255,255,255,.50);
+      padding: 6px 2px;
+      transition: color .15s;
+      position: relative;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .nav-btn.active {
+      color: var(--green);
+    }
+
+    /* indicador superior para aba activa */
+    .nav-btn.active::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 18%;
+      right: 18%;
+      height: 3px;
+      border-radius: 0 0 3px 3px;
+      background: var(--green);
+    }
+
+    .nav-btn:active { opacity: .75; }
+
+    .nav-icon {
+      width: 24px;
+      height: 24px;
+    }
+    .nav-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .25px;
+    }
+
+    /* ── 6. PANELS (base) ── */
+    .panel {
+      display: none;
+      padding: 12px;
+      min-height: 100%;
+      animation: fadeIn .15s ease;
+    }
+    .panel.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0);   }
+    }
+
+    /* Placeholder (enquanto as fases 2-5 não preenchem o conteúdo) */
+    .panel-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 55vh;
+      gap: 10px;
+      color: var(--muted);
+    }
+    .placeholder-icon { font-size: 52px; }
+    .panel-placeholder p { font-size: 15px; font-weight: 600; }
+    .placeholder-sub   { font-size: 13px; font-weight: 400 !important; }
+
+    /* ══════════════════════════════════════════
+       SUBFASE 1a-iii — CSS COMPONENTES
+       Cards · KPI grid · Badges · Progress bars
+       Section titles · Activity list · Selects de painel
+    ══════════════════════════════════════════ */
+
+    /* ── CARD ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 10px;
+    }
+
+    /* ── SECTION TITLE (separador entre grupos) ── */
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      padding: 10px 4px 4px;
+    }
+
+    /* ── KPI GRID (2 colunas) ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .kpi-grid.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+
+    .kpi-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+    .kpi-value {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--navy);
+      line-height: 1.1;
+    }
+    .kpi-value.green  { color: var(--green); }
+    .kpi-value.danger { color: var(--danger); }
+    .kpi-value.warn   { color: var(--warn); }
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* ── BADGES / STATUS PILLS ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .badge-ok   { background: var(--sc-ok-bg);   color: var(--sc-ok-tc); }
+    .badge-late { background: var(--sc-late-bg);  color: var(--sc-late-tc); }
+    .badge-done { background: var(--sc-done-bg);  color: var(--sc-done-tc); }
+    .badge-warn { background: #FFF8E1; color: #E65100; }
+
+    /* ── PROGRESS BAR ── */
+    .progress-wrap {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--border);
+      overflow: hidden;
+      margin: 4px 0;
+    }
+    .progress-bar {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--green);
+      transition: width .3s ease;
+    }
+    .progress-bar.late { background: var(--danger); }
+    .progress-bar.done { background: #1565C0; }
+
+    /* ── LISTA DE ACTIVIDADES ── */
+
+    /* searchbar */
+    #act-search-bar {
+      padding: 8px 0 4px;
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 5;
+    }
+    #act-search {
+      width: 100%;
+      padding: 9px 14px 9px 36px;
+      border: 1.5px solid var(--border);
+      border-radius: 22px;
+      background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7A8D' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 12px center;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color .15s;
+    }
+    #act-search:focus { border-color: var(--navy); }
+
+    /* item da lista */
+    .act-item {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+      transition: box-shadow .15s, transform .1s;
+      -webkit-user-select: none;
+      user-select: none;
+      border-left: 4px solid transparent;
+    }
+    .act-item:active {
+      transform: scale(.99);
+      box-shadow: 0 1px 4px rgba(0,0,0,.10);
+    }
+    .act-item.ok   { border-left-color: var(--sc-ok-tc); }
+    .act-item.late { border-left-color: var(--sc-late-tc); }
+    .act-item.done { border-left-color: var(--sc-done-tc); }
+
+    .act-item-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .act-item-nome {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.35;
+      flex: 1;
+    }
+    .act-item-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--muted);
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .act-item-pct {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy);
+      white-space: nowrap;
+    }
+    .act-item-dates { font-size: 11px; color: var(--muted); }
+
+    /* ── SELECTS DE PAINEL (PDS / Financeiro) ── */
+    .panel-select-bar {
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      padding: 8px 0 6px;
+      z-index: 5;
+    }
+    .panel-select-bar select,
+    #pds-select,
+    #fin-select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B7A8D' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 14px;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .panel-select-bar select:focus,
+    #pds-select:focus,
+    #fin-select:focus { border-color: var(--navy); }
+
+    #pds-nav,
+    #fin-nav { padding: 8px 0 4px; }
+
+    /* ── UTILITY ── */
+    .text-muted   { color: var(--muted); }
+    .text-danger  { color: var(--danger); }
+    .text-green   { color: var(--green); }
+    .text-navy    { color: var(--navy); }
+    .fw-bold      { font-weight: 700; }
+    .fs-sm        { font-size: 12px; }
+    .mt-8         { margin-top: 8px; }
+    .mb-8         { margin-bottom: 8px; }
+    .flex-between {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 8px 0;
+    }
+
+    /* ══════════════════════════════════════════
+       SUBFASE 1a-iv — CSS AVANÇADO
+       Login screen · Bottom sheet · Toast
+       Botões · Inputs · Dark mode · Media queries
+    ══════════════════════════════════════════ */
+
+    /* ── LOGIN SCREEN ── */
+    #login-card {
+      width: 100%;
+      max-width: 360px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 18px;
+      padding: 36px 28px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #login-logo-wrap { margin-bottom: 4px; }
+
+    #login-icon {
+      width: 68px;
+      height: 68px;
+      border-radius: 16px;
+      background: var(--green);
+      color: var(--navy);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 40px;
+      box-shadow: 0 4px 16px rgba(149,187,66,.40);
+    }
+
+    #login-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--white);
+      margin-top: 8px;
+    }
+
+    #login-subtitle {
+      font-size: 13px;
+      color: rgba(255,255,255,.60);
+      margin-bottom: 12px;
+    }
+
+    #login-form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .field-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field-wrap label {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,.75);
+      letter-spacing: .3px;
+    }
+
+    /* inputs dentro do login */
+    #login-form input {
+      padding: 11px 14px;
+      border-radius: 10px;
+      border: 1.5px solid rgba(255,255,255,.20);
+      background: rgba(255,255,255,.10);
+      color: var(--white);
+      font-size: 15px;
+      outline: none;
+      transition: border-color .15s, background .15s;
+    }
+    #login-form input::placeholder { color: rgba(255,255,255,.40); }
+    #login-form input:focus {
+      border-color: var(--green);
+      background: rgba(255,255,255,.14);
+    }
+
+    .login-msg {
+      font-size: 13px;
+      color: #FF8A80;
+      min-height: 18px;
+      text-align: center;
+    }
+
+    #login-btn {
+      margin-top: 4px;
+      padding: 13px;
+      border-radius: 10px;
+      background: var(--green);
+      color: var(--navy);
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: .3px;
+      transition: opacity .15s, transform .1s;
+    }
+    #login-btn:active { opacity: .85; transform: scale(.98); }
+    #login-btn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    /* ── BOTÕES GERAIS ── */
+    .btn-primary {
+      padding: 11px 20px;
+      border-radius: var(--radius);
+      background: var(--navy);
+      color: var(--white);
+      font-size: 14px;
+      font-weight: 700;
+      transition: opacity .15s;
+    }
+    .btn-primary:active { opacity: .80; }
+
+    .btn-secondary {
+      padding: 11px 20px;
+      border-radius: var(--radius);
+      background: var(--border);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      transition: background .15s;
+    }
+    .btn-secondary:active { background: #c8d0dc; }
+
+    /* ── BOTTOM SHEET ── */
+    #sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 40;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s ease;
+    }
+    #sheet-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #bottom-sheet {
+      position: fixed;
+      bottom: 0;
+      left: var(--sal);
+      right: var(--sar);
+      padding: 0 20px calc(20px + var(--sab));
+      background: var(--card);
+      border-radius: var(--sheet-radius) var(--sheet-radius) 0 0;
+      box-shadow: 0 -4px 24px rgba(0,0,0,.18);
+      z-index: 50;
+      transform: translateY(100%);
+      transition: transform .3s cubic-bezier(.32,.72,0,1);
+      max-height: 90vh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    #bottom-sheet.open {
+      transform: translateY(0);
+    }
+    #bottom-sheet[aria-hidden="false"] { transform: translateY(0); }
+
+    #sheet-handle {
+      width: 40px;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      margin: 14px auto 18px;
+    }
+
+    #sheet-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    #sheet-nome {
+      font-size: 14px;
+      color: var(--text);
+      font-weight: 500;
+      margin-bottom: 2px;
+      line-height: 1.4;
+    }
+
+    #sheet-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+
+    /* slider de percentagem */
+    #bottom-sheet .field-wrap label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    #bottom-sheet .field-wrap select {
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B7A8D' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      width: 100%;
+      cursor: pointer;
+    }
+    #bottom-sheet .field-wrap select:focus { border-color: var(--navy); }
+
+    /* range slider */
+    #sheet-pct {
+      width: 100%;
+      accent-color: var(--navy);
+      height: 4px;
+      cursor: pointer;
+    }
+
+    #sheet-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    #sheet-actions button { flex: 1; }
+    #sheet-close-btn {
+      padding: 12px;
+      border-radius: var(--radius);
+      background: var(--border);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    #sheet-save-btn {
+      padding: 12px;
+      border-radius: var(--radius);
+      background: var(--navy);
+      color: var(--white);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    #sheet-save-btn:active  { opacity: .85; }
+    #sheet-close-btn:active { opacity: .75; }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: calc(var(--bottomnav-h) + var(--sab) + 12px);
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: #1A2B3C;
+      color: var(--white);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 20px;
+      border-radius: 24px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.30);
+      white-space: nowrap;
+      z-index: 60;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    #toast.toast-ok   { background: #2E7D32; }
+    #toast.toast-err  { background: var(--danger); }
+    #toast.toast-warn { background: var(--warn); color: #1A2B3C; }
+
+    /* ── LOADING SPINNER ── */
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--navy);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 40vh;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 30vh;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      padding: 20px;
+    }
+    .empty-state-icon { font-size: 40px; margin-bottom: 4px; }
+
+    /* ── DARK MODE ── */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:     #0F1923;
+        --card:   #1A2535;
+        --border: #2A3A50;
+        --text:   #E8EDF3;
+        --muted:  #8A9BB0;
+        --shadow: 0 2px 8px rgba(0,0,0,.35);
+      }
+      #topbar  { background: #001B3A; }
+      #bottom-nav { background: #001B3A; }
+      #login-screen { background: #001B3A; }
+      #login-card {
+        background: rgba(255,255,255,.05);
+        border-color: rgba(255,255,255,.10);
+      }
+      #act-search { background-color: var(--card); color: var(--text); }
+      #bottom-sheet { background: var(--card); }
+      #toast { background: #E8EDF3; color: #0F1923; }
+      #toast.toast-ok { background: #388E3C; color: #fff; }
+    }
+
+    /* ── MEDIA QUERIES ── */
+
+    /* Tablets (≥600px): aumentar espaçamento */
+    @media (min-width: 600px) {
+      #main-content { max-width: 640px; margin: 0 auto; }
+      #bottom-nav   { max-width: 640px; left: 50%; transform: translateX(-50%); }
+      #bottom-sheet { max-width: 640px; left: 50%; transform: translateX(-50%) translateY(100%); }
+      #bottom-sheet.open { transform: translateX(-50%) translateY(0); }
+      #toast { font-size: 14px; }
+      .kpi-grid { gap: 14px; }
+      .act-item { padding: 14px 16px; }
+    }
+
+    /* Landscape com altura reduzida */
+    @media (max-height: 500px) and (orientation: landscape) {
+      :root { --topbar-h: 46px; --bottomnav-h: 52px; }
+      .panel { padding: 8px; }
+      .kpi-value { font-size: 20px; }
+    }
+
+    /* ── PDS (Fase 4) ── */
+    .pds-plan-hdr {
+      background: var(--navy);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      color: var(--white);
+    }
+    .pds-plan-eixo { font-size: 11px; opacity: .70; margin-bottom: 2px; }
+    .pds-plan-nome { font-size: 15px; font-weight: 700; }
+
+    .pds-section-card {
+      padding: 0;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .pds-sec-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .pds-sec-hdr:active { background: #f0f2f5; }
+    .pds-sec-body { padding: 0 14px 12px; }
+    .pds-sec-body.collapsed { display: none; }
+    .pds-sec-empty { font-size: 13px; color: var(--muted); font-style: italic; }
+
+    .pds-items-list { display: flex; flex-direction: column; gap: 6px; }
+    .pds-item {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .pds-item:last-child { border-bottom: none; }
+    .pds-item-text {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .pds-item-foot {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .pds-item-date   { font-size: 11px; color: var(--muted); }
+    .pds-item-status { font-size: 11px; font-weight: 600; }
+    .pds-legacy-text {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.65;
+      white-space: pre-line;
+    }
+
+    /* ── FINANCEIRO (Fase 5) ── */
+    .fin-type-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .fin-cap  { background: #E6F1FB; color: #185FA5; }
+    .fin-ope  { background: #EAF3DE; color: #3B6D11; }
+    .fin-porf { background: #FFF8E1; color: #E65100; }
+
+    .fin-row {
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .fin-row:last-child { border-bottom: none; }
+    .fin-row-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+    }
+    .fin-row-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy);
+      white-space: nowrap;
+    }
+    .fin-row-anos {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .fin-ano-chip {
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    /* ── GRUPOS DE ACTIVIDADES (Fase 3) ── */
+    .act-group { margin-bottom: 4px; }
+
+    .act-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 10px 14px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+      transition: background .15s;
+    }
+    .act-group-header:active { background: #eef0f4; }
+
+    .act-group-chevron {
+      font-size: 13px;
+      color: var(--muted);
+      transition: transform .2s;
+    }
+
+    .act-group-body { overflow: hidden; }
+    .act-group-body.collapsed { display: none; }
+
+    /* Redução de movimento */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════
+       ECRÃ DE LOGIN
+       Visível antes de autenticação
+  ══════════════════════════════════════════ -->
+  <div id="login-screen">
+    <div id="login-card">
+      <div id="login-logo-wrap">
+        <!-- logo ou ícone S -->
+        <div id="login-icon">S</div>
+      </div>
+      <h1 id="login-title">Strategos</h1>
+      <p id="login-subtitle">Plano Estratégico</p>
+
+      <form id="login-form" autocomplete="on">
+        <div class="field-wrap">
+          <label for="inp-email">E-mail</label>
+          <input id="inp-email" type="email" autocomplete="email"
+                 placeholder="utilizador@exemplo.pt" required>
+        </div>
+        <div class="field-wrap">
+          <label for="inp-pw">Password</label>
+          <input id="inp-pw" type="password" autocomplete="current-password"
+                 placeholder="••••••••" required>
+        </div>
+        <div id="login-error" class="login-msg" aria-live="polite"></div>
+        <button id="login-btn" type="submit">Entrar</button>
+      </form>
+    </div>
+  </div>
+  <!-- /login-screen -->
+
+
+  <!-- ══════════════════════════════════════════
+       APP SHELL
+       Oculto até autenticação
+  ══════════════════════════════════════════ -->
+  <div id="app" hidden>
+
+    <!-- ── TOP HEADER ── -->
+    <header id="topbar">
+      <div id="topbar-left">
+        <div id="topbar-icon">S</div>
+        <div id="topbar-titles">
+          <div id="topbar-title">Strategos</div>
+          <div id="topbar-sub">Plano Estratégico</div>
+        </div>
+      </div>
+      <div id="topbar-right">
+        <span id="topbar-user"></span>
+        <button id="logout-btn" type="button" aria-label="Sair">↩</button>
+      </div>
+    </header>
+    <!-- /topbar -->
+
+
+    <!-- ── CONTEÚDO PRINCIPAL ── -->
+    <main id="main-content">
+
+      <!-- PAINEL: DASHBOARD -->
+      <section id="panel-dashboard" class="panel active" role="main"
+               aria-label="Dashboard">
+        <!-- renderDashboard() preencherá este painel (Fase 2) -->
+        <div class="panel-placeholder">
+          <div class="placeholder-icon">📊</div>
+          <p>Dashboard</p>
+          <p class="placeholder-sub">a carregar…</p>
+        </div>
+      </section>
+
+      <!-- PAINEL: ACTIVIDADES -->
+      <section id="panel-actividades" class="panel" role="main"
+               aria-label="Actividades">
+        <!-- Searchbar -->
+        <div id="act-search-bar">
+          <input id="act-search" type="search" placeholder="Pesquisar actividade…"
+                 aria-label="Pesquisar actividade">
+        </div>
+        <!-- Lista de actividades: renderActividades() preencherá (Fase 3) -->
+        <div id="act-list">
+          <div class="panel-placeholder">
+            <div class="placeholder-icon">📋</div>
+            <p>Actividades</p>
+            <p class="placeholder-sub">a carregar…</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAINEL: PONTO DE SITUAÇÃO -->
+      <section id="panel-pds" class="panel" role="main"
+               aria-label="Ponto de Situação">
+        <!-- Selector de plano -->
+        <div id="pds-nav">
+          <select id="pds-select" aria-label="Seleccionar plano"></select>
+        </div>
+        <!-- Conteúdo do plano: renderPDS() preencherá (Fase 4) -->
+        <div id="pds-body">
+          <div class="panel-placeholder">
+            <div class="placeholder-icon">📄</div>
+            <p>Ponto de Situação</p>
+            <p class="placeholder-sub">a carregar…</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAINEL: EXECUÇÃO FINANCEIRA -->
+      <section id="panel-financeiro" class="panel" role="main"
+               aria-label="Execução Financeira">
+        <!-- Selector de plano (partilhado com PDS) -->
+        <div id="fin-nav">
+          <select id="fin-select" aria-label="Seleccionar plano (financeiro)"></select>
+        </div>
+        <!-- KPIs + contratos + facturas: renderFinanceiro() preencherá (Fase 5) -->
+        <div id="fin-body">
+          <div class="panel-placeholder">
+            <div class="placeholder-icon">💶</div>
+            <p>Execução Financeira</p>
+            <p class="placeholder-sub">a carregar…</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+    <!-- /main-content -->
+
+
+    <!-- ── BOTTOM NAVIGATION BAR ── -->
+    <nav id="bottom-nav" role="navigation" aria-label="Navegação principal">
+      <button class="nav-btn active" data-panel="dashboard"
+              aria-label="Dashboard" aria-current="page">
+        <span class="nav-icon">
+          <!-- ícone dashboard (grelha 2×2) -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+          </svg>
+        </span>
+        <span class="nav-label">Dashboard</span>
+      </button>
+
+      <button class="nav-btn" data-panel="actividades"
+              aria-label="Actividades">
+        <span class="nav-icon">
+          <!-- ícone lista com check -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/>
+            <line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <polyline points="3 6 4 7 6 5"/>
+            <polyline points="3 12 4 13 6 11"/>
+            <polyline points="3 18 4 19 6 17"/>
+          </svg>
+        </span>
+        <span class="nav-label">Actividades</span>
+      </button>
+
+      <button class="nav-btn" data-panel="pds"
+              aria-label="Ponto de Situação">
+        <span class="nav-icon">
+          <!-- ícone documento -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="8" y1="13" x2="16" y2="13"/>
+            <line x1="8" y1="17" x2="16" y2="17"/>
+            <line x1="8" y1="9" x2="10" y2="9"/>
+          </svg>
+        </span>
+        <span class="nav-label">Situação</span>
+      </button>
+
+      <button class="nav-btn" data-panel="financeiro"
+              aria-label="Execução Financeira">
+        <span class="nav-icon">
+          <!-- ícone euro / moeda -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M14.5 8.5a4 4 0 1 0 0 7"/>
+            <line x1="7" y1="12" x2="13" y2="12"/>
+            <line x1="7" y1="14.5" x2="11" y2="14.5"/>
+          </svg>
+        </span>
+        <span class="nav-label">Financeiro</span>
+      </button>
+    </nav>
+    <!-- /bottom-nav -->
+
+  </div>
+  <!-- /app -->
+
+
+  <!-- ══════════════════════════════════════════
+       BOTTOM SHEET — Quick Edit (Actividades)
+       Oculto por defeito; abre via openSheet()
+  ══════════════════════════════════════════ -->
+  <div id="sheet-backdrop" aria-hidden="true"></div>
+
+  <div id="bottom-sheet" role="dialog" aria-modal="true"
+       aria-labelledby="sheet-title" aria-hidden="true">
+    <div id="sheet-handle" aria-hidden="true"></div>
+
+    <h2 id="sheet-title">Editar Actividade</h2>
+    <p id="sheet-nome"></p>
+    <p id="sheet-meta"></p>
+
+    <div class="field-wrap">
+      <label for="sheet-pct">Conclusão: <strong id="sheet-pct-val">0%</strong></label>
+      <input id="sheet-pct" type="range" min="0" max="100" step="1" value="0"
+             aria-valuemin="0" aria-valuemax="100">
+    </div>
+
+    <div class="field-wrap">
+      <label for="sheet-status">Estado</label>
+      <select id="sheet-status">
+        <option value="Em dia">Em dia</option>
+        <option value="Em atraso">Em atraso</option>
+        <option value="Concluído">Concluído</option>
+      </select>
+    </div>
+
+    <div id="sheet-actions">
+      <button id="sheet-close-btn" type="button">Cancelar</button>
+      <button id="sheet-save-btn" type="button" class="btn-primary">Guardar</button>
+    </div>
+  </div>
+  <!-- /bottom-sheet -->
+
+
+  <!-- ══════════════════════════════════════════
+       TOAST — Notificações efémeras
+  ══════════════════════════════════════════ -->
+  <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+
+  <!-- ══════════════════════════════════════════
+       SCRIPTS
+  ══════════════════════════════════════════ -->
+  <!-- Credenciais Supabase (antes do adapter) -->
+  <script>
+    window.SUPABASE_URL      = 'https://wirokqtgrvlxwvypmbej.supabase.co';
+    window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpcm9rcXRncnZseHd2eXBtYmVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MDQ3NzQsImV4cCI6MjA5MDI4MDc3NH0.QuWS6kM_mrTMjzgvaZCM7qnDBYuEhoqItATI14atApg';
+  </script>
+
+  <!-- Supabase JS (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- Adaptador Strategos -->
+  <script src="supabase-adapter.js"></script>
+
+  <!-- ══════════════════════════════════════════
+       APP JS
+  ══════════════════════════════════════════ -->
+  <script>
+    /* ─────────────────────────────────────────
+       ESTADO GLOBAL
+    ───────────────────────────────────────── */
+    var currentUser    = null;   // { id, name, email, role }
+    var currentProfile = null;   // user_profiles row (tabs permitidos, etc.)
+
+    /* ─────────────────────────────────────────
+       SUBFASE 1b — AUTH
+       login · logout · session restore
+    ───────────────────────────────────────── */
+
+    /* Referências DOM — auth */
+    var loginScreen  = document.getElementById('login-screen');
+    var appShell     = document.getElementById('app');
+    var loginForm    = document.getElementById('login-form');
+    var inpEmail     = document.getElementById('inp-email');
+    var inpPw        = document.getElementById('inp-pw');
+    var loginBtn     = document.getElementById('login-btn');
+    var loginError   = document.getElementById('login-error');
+    var logoutBtn    = document.getElementById('logout-btn');
+    var topbarUser   = document.getElementById('topbar-user');
+
+    /* ── Mostrar/esconder ecrãs ── */
+    function showLogin() {
+      loginScreen.removeAttribute('hidden');
+      appShell.setAttribute('hidden', '');
+      loginError.textContent = '';
+      inpEmail.focus();
+    }
+
+    function showApp(user) {
+      loginScreen.setAttribute('hidden', '');
+      appShell.removeAttribute('hidden');
+      topbarUser.textContent = user.name || user.email || '';
+    }
+
+    /* ── Login (form submit) ── */
+    loginForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var email = inpEmail.value.trim();
+      var pw    = inpPw.value;
+
+      loginError.textContent = '';
+      loginBtn.disabled      = true;
+      loginBtn.textContent   = 'A entrar…';
+
+      try {
+        /* 1. Autenticar via Supabase */
+        var authData = await SB.signIn(email, pw);
+
+        /* 2. Carregar metadados do utilizador */
+        var meta = await SB.getUserMeta(authData.user.id);
+
+        /* 3. Guardar sessão em localStorage (compatível com desktop) */
+        currentUser = {
+          id    : authData.user.id,
+          name  : meta.display_name || email,
+          email : email,
+          role  : (meta.role || 'viewer').toLowerCase()
+        };
+        currentProfile = (meta.user_profiles && meta.user_profiles[0]) || null;
+        localStorage.setItem('pmo_session', JSON.stringify({ userId: authData.user.id }));
+
+        showApp(currentUser);
+        startApp();            /* Subfase 1d preencherá esta função */
+
+      } catch (err) {
+        console.error('[Auth] signIn error:', err);
+        loginError.textContent = 'E-mail ou password incorrectos.';
+        inpPw.value = '';
+        inpPw.focus();
+      } finally {
+        loginBtn.disabled    = false;
+        loginBtn.textContent = 'Entrar';
+      }
+    });
+
+    /* ── Logout ── */
+    logoutBtn.addEventListener('click', async function () {
+      localStorage.removeItem('pmo_session');
+      currentUser    = null;
+      currentProfile = null;
+      try { await SB.signOut(); } catch (_) {}
+      showLogin();
+    });
+
+    /* ── Restore de sessão ao arranque ── */
+    async function tryRestoreSession() {
+      /* Inicializar adaptador Supabase */
+      await SB.init();
+
+      if (!SB.isOnline) {
+        /* Sem ligação ao Supabase — mostrar login directo */
+        showLogin();
+        return;
+      }
+
+      try {
+        /* Verificar sessão activa no Supabase (cookie / token) */
+        var session = await SB.getSession();
+
+        if (session && session.user) {
+          var meta = await SB.getUserMeta(session.user.id);
+
+          currentUser = {
+            id    : session.user.id,
+            name  : meta.display_name || session.user.email,
+            email : session.user.email,
+            role  : (meta.role || 'viewer').toLowerCase()
+          };
+          currentProfile = (meta.user_profiles && meta.user_profiles[0]) || null;
+          localStorage.setItem('pmo_session', JSON.stringify({ userId: session.user.id }));
+
+          showApp(currentUser);
+          startApp();
+          return;
+        }
+      } catch (err) {
+        console.warn('[Auth] restore failed:', err);
+      }
+
+      showLogin();
+    }
+
+    /* Stub — será substituído na subfase 1d */
+    function startApp() {
+      console.log('[App] startApp() — aguarda subfases 1c e 1d');
+    }
+
+    /* ─────────────────────────────────────────
+       SUBFASE 1c — DATA LOADING
+       loadData · cache localStorage · filtros de perfil
+    ───────────────────────────────────────── */
+
+    /* Arrays globais de dados (espelho do desktop) */
+    var ALL_GANTT = [];   /* todas as linhas (nivel 1-4) */
+    var ALL_ACT   = [];   /* nivel 4 — actividades folha */
+    var ALL_PDS   = [];   /* planos PDS */
+
+    /* Arrays filtrados (por perfil + pesquisa/N0) */
+    var fAct  = [];
+    var fPDS  = [];
+
+    /* ── Filtro de perfil (N0s permitidos) ── */
+    function getProfileN0s() {
+      if (!currentProfile || !currentProfile.n0s || !currentProfile.n0s.length) return null;
+      return new Set(currentProfile.n0s);
+    }
+
+    /* Aplica restrição de perfil a ALL_ACT / ALL_GANTT / ALL_PDS */
+    function applyProfileFilter() {
+      var n0s = getProfileN0s();
+      if (!n0s) {
+        fAct = ALL_ACT.slice();
+        fPDS = ALL_PDS.slice();
+      } else {
+        fAct = ALL_ACT.filter(function (d) { return n0s.has(d.n0 || ''); });
+        fPDS = ALL_PDS.filter(function (p) { return n0s.has(p.n0 || ''); });
+      }
+    }
+
+    /* ── Carregar dados ── */
+    async function loadData() {
+      /* 1 — Supabase (online) */
+      if (window.SB && SB.isOnline) {
+        try {
+          var results  = await Promise.all([SB.loadActivities(), SB.loadPDS()]);
+          var ganttRows = results[0];
+          var pdsRows   = results[1];
+
+          if (ganttRows && ganttRows.length) {
+            ALL_GANTT = ganttRows;
+            ALL_ACT   = ALL_GANTT.filter(function (r) { return r.nivel === 4; });
+            ALL_PDS   = pdsRows || [];
+
+            /* Sincronizar n0/n1 do ALL_ACT para ALL_PDS */
+            _syncN0toPDS();
+
+            /* Guardar cache offline */
+            try {
+              localStorage.setItem('pmo_gantt_data', JSON.stringify(ALL_GANTT));
+              localStorage.setItem('pmo_act',        JSON.stringify(ALL_ACT));
+              localStorage.setItem('pmo_pds_data',   JSON.stringify(ALL_PDS));
+              localStorage.setItem('pmo_data_ver',   '2');
+            } catch (_) {}
+
+            applyProfileFilter();
+            return true;
+          }
+        } catch (err) {
+          console.warn('[Data] Supabase falhou, a usar cache.', err);
+        }
+      }
+
+      /* 2 — Fallback: localStorage (cache offline) */
+      try {
+        var _act   = localStorage.getItem('pmo_act');
+        var _gantt = localStorage.getItem('pmo_gantt_data');
+        var _pds   = localStorage.getItem('pmo_pds_data');
+        var _ver   = localStorage.getItem('pmo_data_ver');
+
+        if (_act && _gantt && _pds && _ver === '2') {
+          var a = JSON.parse(_act);
+          var g = JSON.parse(_gantt);
+          var p = JSON.parse(_pds);
+          if (a.length) {
+            ALL_ACT   = a;
+            ALL_GANTT = g;
+            ALL_PDS   = p;
+            _syncN0toPDS();
+            applyProfileFilter();
+            return true;
+          }
+        }
+      } catch (e) {
+        console.warn('[Data] cache restore failed:', e);
+      }
+
+      return false;  /* sem dados disponíveis */
+    }
+
+    /* Sincronizar n0/n1 de actividades para planos PDS (como no desktop) */
+    function _syncN0toPDS() {
+      var n1map = {}, n0map = {};
+      ALL_ACT.forEach(function (d) {
+        var k = (d.id0 || '') + '_' + d.id2;
+        n1map[k] = d.n1;
+        n0map[k] = d.n0 || '';
+      });
+      ALL_PDS.forEach(function (p) {
+        var k = (p.id0 || '') + '_' + p.id2;
+        if (n1map[k]) { p.n1 = n1map[k]; p.n0 = n0map[k]; }
+      });
+    }
+
+    /* ── Guardar alteração a uma actividade (quick-edit) ── */
+    async function saveActivity(act) {
+      /* Actualizar arrays em memória */
+      var idxAct   = ALL_ACT.findIndex(function (a) { return a._supabase_id === act._supabase_id; });
+      var idxGantt = ALL_GANTT.findIndex(function (a) { return a._supabase_id === act._supabase_id; });
+      if (idxAct   >= 0) ALL_ACT[idxAct]     = act;
+      if (idxGantt >= 0) ALL_GANTT[idxGantt] = act;
+
+      /* Actualizar cache local imediatamente */
+      try {
+        localStorage.setItem('pmo_act',        JSON.stringify(ALL_ACT));
+        localStorage.setItem('pmo_gantt_data', JSON.stringify(ALL_GANTT));
+      } catch (_) {}
+
+      /* Persistir no Supabase (se online) */
+      if (window.SB && SB.isOnline) {
+        await SB.saveActivities([act]);
+      }
+
+      /* Actualizar filtrados */
+      applyProfileFilter();
+    }
+
+    /* ─────────────────────────────────────────
+       SUBFASE 1d — NAVIGATION + startApp
+       switchPanel · toast · bottom sheet · selects · startApp
+    ───────────────────────────────────────── */
+
+    /* ── Referências DOM — navegação ── */
+    var allPanels  = document.querySelectorAll('.panel');
+    var allNavBtns = document.querySelectorAll('.nav-btn');
+    var activePanel = 'dashboard';
+
+    /* ── switchPanel ── */
+    function switchPanel(name) {
+      activePanel = name;
+      allPanels.forEach(function (p) {
+        p.classList.toggle('active', p.id === 'panel-' + name);
+      });
+      allNavBtns.forEach(function (b) {
+        var active = b.dataset.panel === name;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-current', active ? 'page' : 'false');
+      });
+      /* scroll topo do painel */
+      var mc = document.getElementById('main-content');
+      if (mc) mc.scrollTop = 0;
+    }
+
+    /* Ligar botões da bottom nav */
+    allNavBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var panel = btn.dataset.panel;
+        switchPanel(panel);
+        renderPanel(panel);
+      });
+    });
+
+    /* ── renderPanel — despachador central ── */
+    function renderPanel(name) {
+      if (name === 'dashboard')   renderDashboard();
+      if (name === 'actividades') renderActividades();
+      if (name === 'pds')         renderPDS();
+      if (name === 'financeiro')  renderFinanceiro();
+    }
+
+    /* ── Toast ── */
+    var _toastTimer = null;
+    function showToast(msg, type, duration) {
+      var el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className   = 'show' + (type ? ' toast-' + type : '');
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(function () {
+        el.className = '';
+      }, duration || 2500);
+    }
+
+    /* ── Bottom Sheet ── */
+    var _sheetAct = null;  /* actividade actualmente em edição */
+
+    var sheetBackdrop = document.getElementById('sheet-backdrop');
+    var bottomSheet   = document.getElementById('bottom-sheet');
+    var sheetNome     = document.getElementById('sheet-nome');
+    var sheetMeta     = document.getElementById('sheet-meta');
+    var sheetPct      = document.getElementById('sheet-pct');
+    var sheetPctVal   = document.getElementById('sheet-pct-val');
+    var sheetStatus   = document.getElementById('sheet-status');
+
+    function openSheet(act) {
+      _sheetAct = act;
+
+      /* Preencher campos */
+      sheetNome.textContent   = act.nome || '—';
+      sheetMeta.textContent   = _fmtDates(act.bs, act.bf);
+      sheetPct.value          = act.pct || 0;
+      sheetPctVal.textContent = (act.pct || 0) + '%';
+      sheetStatus.value       = act.status || 'Em dia';
+
+      /* Mostrar */
+      bottomSheet.setAttribute('aria-hidden', 'false');
+      bottomSheet.classList.add('open');
+      sheetBackdrop.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeSheet() {
+      bottomSheet.setAttribute('aria-hidden', 'true');
+      bottomSheet.classList.remove('open');
+      sheetBackdrop.classList.remove('open');
+      document.body.style.overflow = '';
+      _sheetAct = null;
+    }
+
+    /* Actualizar label do slider em tempo real */
+    sheetPct.addEventListener('input', function () {
+      sheetPctVal.textContent = sheetPct.value + '%';
+    });
+
+    /* Fechar ao clicar no backdrop */
+    sheetBackdrop.addEventListener('click', closeSheet);
+
+    /* Botão cancelar */
+    document.getElementById('sheet-close-btn').addEventListener('click', closeSheet);
+
+    /* Botão guardar */
+    document.getElementById('sheet-save-btn').addEventListener('click', async function () {
+      if (!_sheetAct) return;
+      var btn = this;
+      btn.disabled    = true;
+      btn.textContent = 'A guardar…';
+
+      var updated = Object.assign({}, _sheetAct, {
+        pct    : parseInt(sheetPct.value, 10),
+        status : sheetStatus.value
+      });
+
+      try {
+        await saveActivity(updated);
+        closeSheet();
+        showToast('Guardado!', 'ok');
+        renderPanel(activePanel);  /* re-renderizar painel activo */
+      } catch (err) {
+        console.error('[Sheet] save error:', err);
+        showToast('Erro ao guardar.', 'err');
+      } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Guardar';
+      }
+    });
+
+    /* ── Swipe-down para fechar bottom sheet ── */
+    (function () {
+      var startY = 0, dragging = false;
+      bottomSheet.addEventListener('touchstart', function (e) {
+        startY    = e.touches[0].clientY;
+        dragging  = false;
+      }, { passive: true });
+      bottomSheet.addEventListener('touchmove', function (e) {
+        var dy = e.touches[0].clientY - startY;
+        if (dy > 0) {
+          dragging = true;
+          bottomSheet.style.transform = 'translateY(' + dy + 'px)';
+        }
+      }, { passive: true });
+      bottomSheet.addEventListener('touchend', function (e) {
+        var dy = e.changedTouches[0].clientY - startY;
+        bottomSheet.style.transform = '';
+        if (dragging && dy > 80) {
+          closeSheet();
+        }
+        dragging = false;
+      });
+    })();
+
+    /* ── Selects de painel PDS / Financeiro ── */
+    function buildPlanSelects() {
+      /* Deduplica planos por id2 */
+      var seen = {};
+      var plans = fPDS.filter(function (p) {
+        if (seen[p.id2]) return false;
+        seen[p.id2] = true;
+        return true;
+      });
+
+      ['pds-select', 'fin-select'].forEach(function (selId) {
+        var sel = document.getElementById(selId);
+        if (!sel) return;
+        var prev = sel.value;
+        sel.innerHTML = plans.length
+          ? plans.map(function (p) {
+              return '<option value="' + _esc(p.id2) + '">' + _esc(p.n1 || p.id2) + '</option>';
+            }).join('')
+          : '<option value="">Sem planos disponíveis</option>';
+        /* restaurar selecção anterior se ainda existir */
+        if (prev && sel.querySelector('option[value="' + prev + '"]')) {
+          sel.value = prev;
+        }
+      });
+
+      /* Re-renderizar ao mudar selecção */
+      document.getElementById('pds-select').onchange = function () { renderPDS(); };
+      document.getElementById('fin-select').onchange = function () { renderFinanceiro(); };
+    }
+
+    /* ── Utilitários ── */
+    function _esc(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function _fmtDate(d) {
+      if (!d) return '—';
+      try {
+        var dt = new Date(d);
+        if (isNaN(dt)) return String(d);
+        return dt.toLocaleDateString('pt-PT', { day:'2-digit', month:'2-digit', year:'numeric' });
+      } catch (_) { return String(d); }
+    }
+
+    function _fmtDates(start, end) {
+      return _fmtDate(start) + ' → ' + _fmtDate(end);
+    }
+
+    function _statusClass(status) {
+      if (!status) return '';
+      if (status === 'Concluído') return 'done';
+      if (status === 'Em atraso') return 'late';
+      return 'ok';
+    }
+
+    function _statusBadge(status) {
+      var cls = _statusClass(status);
+      return '<span class="badge badge-' + cls + '">' + _esc(status || 'Em dia') + '</span>';
+    }
+
+    /* ── startApp (implementação real) ── */
+    async function startApp() {
+      /* Mostrar indicador de carregamento */
+      var panels = ['dashboard','actividades','pds','financeiro'];
+      panels.forEach(function (name) {
+        var p = document.getElementById('panel-' + name);
+        if (p) p.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>A carregar…</p></div>';
+      });
+
+      try {
+        var ok = await loadData();
+        if (!ok) {
+          showToast('Sem dados disponíveis.', 'warn');
+          panels.forEach(function (name) {
+            var p = document.getElementById('panel-' + name);
+            if (p) p.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Sem dados</p></div>';
+          });
+          return;
+        }
+
+        /* Construir selects de plano */
+        buildPlanSelects();
+
+        /* Navegar para o dashboard e renderizar */
+        switchPanel('dashboard');
+        renderDashboard();
+
+      } catch (err) {
+        console.error('[startApp] erro:', err);
+        showToast('Erro ao carregar dados.', 'err');
+      }
+    }
+
+    /* ─────────────────────────────────────────
+       FASE 2 — DASHBOARD
+    ───────────────────────────────────────── */
+
+    function renderDashboard() {
+      var el = document.getElementById('panel-dashboard');
+      if (!el) return;
+
+      var data = fAct;
+
+      if (!data.length) {
+        el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Sem actividades</p></div>';
+        return;
+      }
+
+      /* ── KPIs globais ── */
+      var n   = data.length;
+      var con = data.filter(function (d) { return d.status === 'Concluído'; }).length;
+      var dia = data.filter(function (d) { return d.status === 'Em dia';    }).length;
+      var atr = data.filter(function (d) { return d.status === 'Em atraso'; }).length;
+      var exe = n ? data.reduce(function (s, d) { return s + (d.pct || 0); }, 0) / n : 0;
+
+      /* ── Breakdown por N1 (programa) ── */
+      var n1Keys = [];
+      var n1Map  = {};
+      data.forEach(function (d) {
+        var key = (d.n0 || '') + '|||' + (d.n1 || d.n0 || '—');
+        if (!n1Map[key]) { n1Map[key] = []; n1Keys.push(key); }
+        n1Map[key].push(d);
+      });
+
+      /* Ordenar: mais atrasados primeiro */
+      n1Keys.sort(function (a, b) {
+        var ga = n1Map[a].filter(function (d) { return d.status === 'Em atraso'; }).length;
+        var gb = n1Map[b].filter(function (d) { return d.status === 'Em atraso'; }).length;
+        return gb - ga;
+      });
+
+      /* ── 5 actividades mais atrasadas ── */
+      var lateItems = data
+        .filter(function (d) { return d.status === 'Em atraso'; })
+        .sort(function (a, b) { return (a.pct || 0) - (b.pct || 0); })
+        .slice(0, 5);
+
+      /* ── HTML ── */
+      var html = '';
+
+      /* KPI grid */
+      html += '<div class="kpi-grid">';
+      html += _kpiCard('Execução', _pct(exe), exe >= 75 ? 'green' : exe >= 40 ? '' : 'danger', n + ' actividades');
+      html += _kpiCard('Concluídas', con, 'green', _pct(n ? con/n : 0));
+      html += _kpiCard('Em dia', dia, '', '');
+      html += _kpiCard('Em atraso', atr, atr > 0 ? 'danger' : '', '');
+      html += '</div>';
+
+      /* Barra de progresso global */
+      html += '<div class="card" style="padding:12px 16px 14px">';
+      html += '<div class="card-title">Progresso global</div>';
+      html += '<div class="flex-between mb-8"><span class="fs-sm text-muted">0%</span>';
+      html += '<span class="fw-bold" style="font-size:15px">' + _pct(exe) + '</span>';
+      html += '<span class="fs-sm text-muted">100%</span></div>';
+      var barCls = exe >= 100 ? 'done' : atr > 0 ? '' : '';
+      html += '<div class="progress-wrap"><div class="progress-bar ' + barCls + '" style="width:' + Math.min(100, exe).toFixed(1) + '%"></div></div>';
+      html += '</div>';
+
+      /* Breakdown por programa */
+      html += '<div class="section-title">Por programa</div>';
+      n1Keys.forEach(function (key) {
+        var items = n1Map[key];
+        var label = key.split('|||')[1] || '—';
+        var n0lbl = key.split('|||')[0] || '';
+        var kCon  = items.filter(function (d) { return d.status === 'Concluído'; }).length;
+        var kAtr  = items.filter(function (d) { return d.status === 'Em atraso'; }).length;
+        var kExe  = items.reduce(function (s, d) { return s + (d.pct || 0); }, 0) / items.length;
+
+        html += '<div class="card" style="padding:12px 14px">';
+        html += '<div class="flex-between" style="margin-bottom:6px">';
+        html += '<div>';
+        html += '<div style="font-size:13px;font-weight:700;color:var(--text)">' + _esc(label) + '</div>';
+        if (n0lbl) html += '<div style="font-size:11px;color:var(--muted)">' + _esc(n0lbl) + '</div>';
+        html += '</div>';
+        if (kAtr > 0) html += '<span class="badge badge-late">' + kAtr + ' atraso</span>';
+        else if (kCon === items.length) html += '<span class="badge badge-done">Concluído</span>';
+        else html += '<span class="badge badge-ok">Em dia</span>';
+        html += '</div>';
+        html += '<div class="flex-between" style="margin-bottom:4px">';
+        html += '<span class="fs-sm text-muted">' + items.length + ' actividades</span>';
+        html += '<span class="fs-sm fw-bold">' + _pct(kExe) + '</span>';
+        html += '</div>';
+        html += '<div class="progress-wrap"><div class="progress-bar' + (kAtr > 0 ? ' late' : kCon === items.length ? ' done' : '') + '" style="width:' + Math.min(100, kExe).toFixed(1) + '%"></div></div>';
+        html += '</div>';
+      });
+
+      /* Actividades em atraso */
+      if (lateItems.length) {
+        html += '<div class="section-title">Em atraso (' + lateItems.length + (lateItems.length === 5 && atr > 5 ? '+' : '') + ')</div>';
+        lateItems.forEach(function (act) {
+          html += _actItemHtml(act);
+        });
+      }
+
+      el.innerHTML = html;
+
+      /* Bind tap nos items de actividade */
+      _bindActItems(el);
+    }
+
+    /* ── Helpers de rendering ── */
+    function _pct(v) {
+      return (Math.round((v || 0) * 10) / 10).toFixed(1) + '%';
+    }
+
+    function _kpiCard(label, value, colorCls, sub) {
+      return '<div class="kpi-card">'
+        + '<div class="kpi-label">' + _esc(label) + '</div>'
+        + '<div class="kpi-value' + (colorCls ? ' ' + colorCls : '') + '">' + _esc(String(value)) + '</div>'
+        + (sub ? '<div class="kpi-sub">' + _esc(String(sub)) + '</div>' : '')
+        + '</div>';
+    }
+
+    function _actItemHtml(act) {
+      var cls = _statusClass(act.status);
+      var pct = act.pct || 0;
+      return '<div class="act-item ' + cls + '" data-id="' + _esc(String(act._supabase_id || '')) + '">'
+        + '<div class="act-item-header">'
+        + '<div class="act-item-nome">' + _esc(act.nome || '—') + '</div>'
+        + _statusBadge(act.status)
+        + '</div>'
+        + '<div class="progress-wrap"><div class="progress-bar' + (cls ? ' ' + cls : '') + '" style="width:' + Math.min(100, pct) + '%"></div></div>'
+        + '<div class="act-item-meta">'
+        + '<span class="act-item-dates">' + _esc(_fmtDates(act.bs, act.bf)) + '</span>'
+        + '<span class="act-item-pct">' + pct + '%</span>'
+        + '</div>'
+        + '</div>';
+    }
+
+    function _bindActItems(container) {
+      container.querySelectorAll('.act-item[data-id]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          var id = el.dataset.id;
+          var act = fAct.find(function (a) { return String(a._supabase_id) === id; });
+          if (act) openSheet(act);
+        });
+      });
+    }
+
+    /* ─────────────────────────────────────────
+       FASE 3 — ACTIVIDADES + PESQUISA
+    ───────────────────────────────────────── */
+
+    var _actSearch = '';   /* termo de pesquisa activo */
+
+    function renderActividades() {
+      var listEl = document.getElementById('act-list');
+      if (!listEl) return;
+
+      /* Garantir que o searchbar está ligado (idempotente) */
+      _initActSearch();
+
+      var data = _filterActSearch(fAct, _actSearch);
+
+      if (!fAct.length) {
+        listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Sem actividades</p></div>';
+        return;
+      }
+      if (!data.length) {
+        listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><p>Sem resultados para<br><strong>' + _esc(_actSearch) + '</strong></p></div>';
+        return;
+      }
+
+      /* ── Agrupar por N1 (programa) ── */
+      var groups   = [];   /* [{ key, label, n0, items }] */
+      var groupMap = {};
+
+      data.forEach(function (d) {
+        var key   = (d.n0 || '') + '|||' + (d.n1 || d.n0 || '—');
+        var label = d.n1 || d.n0 || '—';
+        var n0lbl = d.n0 || '';
+        if (!groupMap[key]) {
+          groupMap[key] = { key: key, label: label, n0: n0lbl, items: [] };
+          groups.push(groupMap[key]);
+        }
+        groupMap[key].items.push(d);
+      });
+
+      /* Ordenar grupos: mais atrasados primeiro */
+      groups.sort(function (a, b) {
+        var ga = a.items.filter(function (d) { return d.status === 'Em atraso'; }).length;
+        var gb = b.items.filter(function (d) { return d.status === 'Em atraso'; }).length;
+        return gb - ga;
+      });
+
+      /* ── Sumário de estado (topo, acima dos grupos) ── */
+      var total = data.length;
+      var nCon  = data.filter(function (d) { return d.status === 'Concluído'; }).length;
+      var nDia  = data.filter(function (d) { return d.status === 'Em dia';    }).length;
+      var nAtr  = data.filter(function (d) { return d.status === 'Em atraso'; }).length;
+
+      var html = '';
+
+      /* Barra de sumário rápido */
+      html += '<div class="card" style="padding:10px 14px">';
+      html += '<div class="flex-between" style="gap:6px;flex-wrap:wrap">';
+      html += '<span class="badge badge-done">' + nCon + ' Concluídas</span>';
+      html += '<span class="badge badge-ok">'   + nDia + ' Em dia</span>';
+      html += '<span class="badge badge-late">' + nAtr + ' Em atraso</span>';
+      html += '<span class="fs-sm text-muted" style="margin-left:auto">' + total + ' total</span>';
+      html += '</div></div>';
+
+      /* ── Grupos ── */
+      groups.forEach(function (g) {
+        /* Cabeçalho do grupo (colapsável via click) */
+        var gAtr  = g.items.filter(function (d) { return d.status === 'Em atraso'; }).length;
+        var gCon  = g.items.filter(function (d) { return d.status === 'Concluído'; }).length;
+        var gBadge;
+        if (gAtr > 0)               gBadge = '<span class="badge badge-late">'+ gAtr +' atraso</span>';
+        else if (gCon===g.items.length) gBadge = '<span class="badge badge-done">Concluído</span>';
+        else                        gBadge = '<span class="badge badge-ok">Em dia</span>';
+
+        var groupId = 'grp-' + g.key.replace(/[^a-z0-9]/gi, '_');
+
+        html += '<div class="act-group">';
+        html += '<div class="act-group-header" data-group="' + _esc(groupId) + '">';
+        html += '<div>';
+        html += '<div style="font-size:13px;font-weight:700">' + _esc(g.label) + '</div>';
+        if (g.n0 && g.n0 !== g.label) {
+          html += '<div style="font-size:11px;color:var(--muted)">' + _esc(g.n0) + '</div>';
+        }
+        html += '</div>';
+        html += '<div style="display:flex;align-items:center;gap:8px">';
+        html += gBadge;
+        html += '<span class="fs-sm text-muted">' + g.items.length + '</span>';
+        html += '<span class="act-group-chevron">▾</span>';
+        html += '</div></div>';
+
+        /* Lista de items */
+        html += '<div class="act-group-body" id="' + groupId + '">';
+        g.items.forEach(function (act) {
+          html += _actItemHtml(act);
+        });
+        html += '</div>';  /* /act-group-body */
+        html += '</div>';  /* /act-group */
+      });
+
+      listEl.innerHTML = html;
+
+      /* Ligar eventos */
+      _bindActItems(listEl);
+      _bindGroupHeaders(listEl);
+    }
+
+    /* ── Pesquisa ── */
+    function _initActSearch() {
+      var inp = document.getElementById('act-search');
+      if (!inp || inp._bound) return;
+      inp._bound = true;
+      inp.addEventListener('input', function () {
+        _actSearch = inp.value.trim().toLowerCase();
+        renderActividades();
+      });
+      /* Limpar com Escape */
+      inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          inp.value  = '';
+          _actSearch = '';
+          renderActividades();
+          inp.blur();
+        }
+      });
+    }
+
+    function _filterActSearch(data, q) {
+      if (!q) return data;
+      return data.filter(function (d) {
+        return (d.nome   || '').toLowerCase().indexOf(q) >= 0
+            || (d.n1     || '').toLowerCase().indexOf(q) >= 0
+            || (d.n0     || '').toLowerCase().indexOf(q) >= 0
+            || (d.status || '').toLowerCase().indexOf(q) >= 0;
+      });
+    }
+
+    /* ── Collapse/expand de grupos ── */
+    function _bindGroupHeaders(container) {
+      container.querySelectorAll('.act-group-header').forEach(function (hdr) {
+        hdr.addEventListener('click', function () {
+          var id   = hdr.dataset.group;
+          var body = document.getElementById(id);
+          if (!body) return;
+          var collapsed = body.classList.toggle('collapsed');
+          var chev = hdr.querySelector('.act-group-chevron');
+          if (chev) chev.textContent = collapsed ? '▸' : '▾';
+        });
+      });
+    }
+
+    /* ─────────────────────────────────────────
+       FASE 4 — PONTO DE SITUAÇÃO (PDS)
+    ───────────────────────────────────────── */
+
+    var PDS_SEC = [
+      { key: 'compromissos', label: 'Compromissos anteriores', color: '#185FA5', hasDates: true  },
+      { key: 'avancos',      label: 'Principais avanços',      color: '#95BB42', hasDates: false },
+      { key: 'proximos',     label: 'Próximos passos',         color: '#854F0B', hasDates: true  },
+      { key: 'atencao',      label: 'Pontos de atenção',       color: '#E24B4A', hasDates: false },
+    ];
+
+    function renderPDS() {
+      var bodyEl = document.getElementById('pds-body');
+      if (!bodyEl) return;
+
+      var selVal = document.getElementById('pds-select').value;
+      if (!selVal || !fPDS.length) {
+        bodyEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📄</div><p>Seleccione um plano</p></div>';
+        return;
+      }
+
+      var p = fPDS.find(function (x) { return (x.id0 || '') + '_' + x.id2 === selVal; });
+      if (!p) {
+        bodyEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📄</div><p>Plano não encontrado</p></div>';
+        return;
+      }
+
+      /* ── Actividades deste plano ── */
+      var pAct = fAct.filter(function (d) { return d.id2 === p.id2; });
+      var n    = pAct.length;
+      var con  = pAct.filter(function (d) { return d.status === 'Concluído'; }).length;
+      var dia  = pAct.filter(function (d) { return d.status === 'Em dia';    }).length;
+      var atr  = pAct.filter(function (d) { return d.status === 'Em atraso'; }).length;
+      var exe  = n ? pAct.reduce(function (s, d) { return s + (d.pct || 0); }, 0) / n : 0;
+      var exeObj = n ? pAct.reduce(function (s, d) { return s + (d.pct_prev || 0); }, 0) / n : 0;
+
+      /* ── Garantir items estruturados ── */
+      _ensurePDSItems(p);
+
+      var html = '';
+
+      /* Cabeçalho do plano */
+      html += '<div class="pds-plan-hdr">';
+      html += '<div class="pds-plan-eixo">' + _esc((p.n0 ? p.n0 + ' › ' : '') + (p.n1 || '')) + '</div>';
+      html += '<div class="pds-plan-nome">' + _esc(p.plano || p.id2 || '—') + '</div>';
+      html += '</div>';
+
+      /* KPI grid */
+      html += '<div class="kpi-grid" style="margin-bottom:12px">';
+      html += _kpiCard('Execução',   _pct(exe),    exe >= 75 ? 'green' : exe < 40 ? 'danger' : '', 'realizado');
+      html += _kpiCard('Objectivo',  _pct(exeObj), '', 'esperado');
+      html += _kpiCard('Concluídas', con,           'green',  n + ' total');
+      html += _kpiCard('Em atraso',  atr,           atr > 0 ? 'danger' : '', '');
+      html += '</div>';
+
+      /* Barra de progresso (real vs objectivo) */
+      html += '<div class="card" style="padding:12px 16px 14px;margin-bottom:12px">';
+      html += '<div class="card-title">Progresso</div>';
+      html += '<div class="flex-between mb-8"><span class="fs-sm text-muted">Realizado</span>';
+      html += '<span class="fw-bold">' + _pct(exe) + '</span></div>';
+      html += '<div class="progress-wrap"><div class="progress-bar' + (atr > 0 ? ' late' : '') + '" style="width:' + Math.min(100, exe).toFixed(1) + '%"></div></div>';
+      if (exeObj > 0) {
+        html += '<div class="flex-between mb-8" style="margin-top:8px"><span class="fs-sm text-muted">Objectivo</span>';
+        html += '<span class="fs-sm fw-bold text-green">' + _pct(exeObj) + '</span></div>';
+        html += '<div class="progress-wrap"><div class="progress-bar done" style="width:' + Math.min(100, exeObj).toFixed(1) + '%"></div></div>';
+      }
+      html += '</div>';
+
+      /* Secções PDS */
+      PDS_SEC.forEach(function (sec) {
+        var items   = p[sec.key + '_items'];
+        var legText = p[sec.key] || '';
+        var isEmpty = (!items || !items.length) && _isNA(legText);
+
+        var secId = 'pds-sec-' + sec.key;
+        html += '<div class="pds-section-card card">';
+        html += '<div class="pds-sec-hdr" data-sec="' + secId + '" style="border-left:3px solid ' + sec.color + '">';
+        html += '<span style="color:' + sec.color + ';font-size:13px;font-weight:700">' + _esc(sec.label) + '</span>';
+        html += '<span class="act-group-chevron">▾</span>';
+        html += '</div>';
+        html += '<div class="pds-sec-body" id="' + secId + '">';
+
+        if (isEmpty) {
+          html += '<div class="pds-sec-empty">N/A</div>';
+        } else if (items && items.length) {
+          if (sec.hasDates) {
+            /* Tabela com data + estado */
+            html += '<div class="pds-items-list">';
+            items.forEach(function (it) {
+              var stColor = { 'Concluído': '#1565C0', 'Em curso': '#2E7D32', 'Atrasado': '#C62828', 'Pendente': '#6B7A8D' }[it.status] || '#6B7A8D';
+              html += '<div class="pds-item">';
+              html += '<div class="pds-item-text">' + _mdToHtml(it.text) + '</div>';
+              html += '<div class="pds-item-foot">';
+              if (it.date) html += '<span class="pds-item-date">' + _esc(_fmtDatePT(it.date)) + '</span>';
+              if (it.status) html += '<span class="pds-item-status" style="color:' + stColor + '">' + _esc(it.status) + '</span>';
+              html += '</div></div>';
+            });
+            html += '</div>';
+          } else {
+            /* Lista simples */
+            html += '<div class="pds-items-list">';
+            items.forEach(function (it) {
+              html += '<div class="pds-item"><div class="pds-item-text">' + _mdToHtml(it.text) + '</div></div>';
+            });
+            html += '</div>';
+          }
+        } else {
+          /* Texto legado */
+          html += '<div class="pds-legacy-text">' + _mdToHtml(legText) + '</div>';
+        }
+
+        html += '</div></div>'; /* /pds-sec-body /pds-section-card */
+      });
+
+      /* Riscos */
+      var risks = p.risks || [];
+      if (risks.length) {
+        html += '<div class="section-title">Riscos (' + risks.length + ')</div>';
+        risks.forEach(function (r) {
+          var grade = _riskGrade(r.impact, r.prob);
+          var lbl   = _riskLabel(grade);
+          var bgMap = { Baixo: '#E8F5E9', Médio: '#FFF8E1', Alto: '#FFF3E0', Crítico: '#FFEBEE' };
+          var tcMap = { Baixo: '#2E7D32', Médio: '#E65100', Alto: '#BF360C', Crítico: '#B71C1C' };
+          var bg = bgMap[lbl] || '#F4F6F9';
+          var tc = tcMap[lbl] || '#6B7A8D';
+          html += '<div class="card" style="padding:12px 14px;margin-bottom:8px">';
+          html += '<div class="flex-between" style="margin-bottom:6px">';
+          html += '<span class="badge" style="background:' + bg + ';color:' + tc + '">' + grade + ' — ' + lbl + '</span>';
+          if (r.status) html += '<span class="fs-sm text-muted">' + _esc(r.status) + '</span>';
+          html += '</div>';
+          html += '<div style="font-size:13px;color:var(--text);line-height:1.4;margin-bottom:4px">' + _esc(r.desc || '—') + '</div>';
+          if (r.mitigation) html += '<div class="fs-sm text-muted" style="margin-top:4px">' + _esc(r.mitigation) + '</div>';
+          html += '</div>';
+        });
+      }
+
+      bodyEl.innerHTML = html;
+      _bindPdsSections(bodyEl);
+    }
+
+    /* ── Helpers PDS ── */
+
+    function _ensurePDSItems(p) {
+      /* já processado */
+      if (p._pdsItemsDone) return;
+      p._pdsItemsDone = true;
+      PDS_SEC.forEach(function (sec) {
+        var key = sec.key + '_items';
+        if (p[key] && p[key].length) return; /* já tem items estruturados */
+        /* Tentar parsear texto legado */
+        var raw = p[sec.key] || '';
+        if (_isNA(raw)) { p[key] = []; return; }
+        p[key] = raw.split('\n')
+          .map(function (l) { return l.replace(/^[-•*]\s*/, '').trim(); })
+          .filter(Boolean)
+          .map(function (text) { return { text: text, date: null, status: '' }; });
+      });
+    }
+
+    function _isNA(v) {
+      return !v || v.trim() === 'N/A' || v.trim() === '';
+    }
+
+    function _mdToHtml(s) {
+      if (!s) return '';
+      var t = String(s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      t = t.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      t = t.replace(/\n/g, '<br>');
+      return t;
+    }
+
+    function _fmtDatePT(d) {
+      if (!d) return '';
+      var p = d.split('-');
+      return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : d;
+    }
+
+    function _riskGrade(impact, prob) {
+      return (parseInt(impact) || 0) * (parseInt(prob) || 0);
+    }
+
+    function _riskLabel(grade) {
+      if (grade === 0)  return '—';
+      if (grade <= 4)   return 'Baixo';
+      if (grade <= 9)   return 'Médio';
+      if (grade <= 16)  return 'Alto';
+      return 'Crítico';
+    }
+
+    function _bindPdsSections(container) {
+      container.querySelectorAll('.pds-sec-hdr').forEach(function (hdr) {
+        hdr.addEventListener('click', function () {
+          var id   = hdr.dataset.sec;
+          var body = document.getElementById(id);
+          if (!body) return;
+          var col  = body.classList.toggle('collapsed');
+          var chev = hdr.querySelector('.act-group-chevron');
+          if (chev) chev.textContent = col ? '▸' : '▾';
+        });
+      });
+    }
+
+    /* ─────────────────────────────────────────
+       FASE 5 — EXECUÇÃO FINANCEIRA
+    ───────────────────────────────────────── */
+
+    function renderFinanceiro() {
+      var bodyEl = document.getElementById('fin-body');
+      if (!bodyEl) return;
+
+      var selVal = document.getElementById('fin-select').value;
+      if (!selVal || !fPDS.length) {
+        bodyEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💶</div><p>Seleccione um plano</p></div>';
+        return;
+      }
+
+      var p = fPDS.find(function (x) { return (x.id0 || '') + '_' + x.id2 === selVal; });
+      if (!p) {
+        bodyEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💶</div><p>Plano não encontrado</p></div>';
+        return;
+      }
+
+      if (!p.finances) {
+        bodyEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💶</div><p>Sem dados financeiros</p></div>';
+        return;
+      }
+
+      var f         = p.finances;
+      var rubricas  = f.rubricas  || [];
+      var contratos = f.contratos || [];
+      var facturas  = f.facturas  || [];
+
+      /* ── Derivar anos directamente das rubricas ── */
+      var anosSet = {};
+      rubricas.forEach(function (r) {
+        Object.keys(r.valores || {}).forEach(function (a) { anosSet[a] = true; });
+      });
+      var anos = Object.keys(anosSet).map(Number).sort();
+      if (!anos.length) anos = [new Date().getFullYear()];
+
+      /* ── KPIs financeiros ── */
+      var totalOrc = 0, totalCap = 0, totalOpe = 0;
+      rubricas.forEach(function (r) {
+        anos.forEach(function (a) {
+          var v = r.valores && r.valores[a] ? _parseNum(r.valores[a]) : 0;
+          totalOrc += v;
+          if (r.capex) totalCap += v; else totalOpe += v;
+        });
+      });
+
+      var totalAdjudicado = 0;
+      contratos.forEach(function (ct) {
+        totalAdjudicado += _toBase(ct.valor_total, ct.moeda, ct.cambio_ref);
+      });
+
+      var totalPago = 0, totalEmPag = 0, totalPorFac = 0;
+      facturas.forEach(function (fac) {
+        var ct     = contratos.find(function (c) { return c.id === fac.contrato_id; });
+        var cambio = fac.cambio || (ct ? ct.cambio_ref : '');
+        var v      = _toBase(fac.valor, fac.moeda || '€', cambio);
+        if      (fac.estado === 'Paga')         totalPago   += v;
+        else if (fac.estado === 'Em pagamento') totalEmPag  += v;
+        else if (fac.estado === 'Por facturar' || fac.estado === 'Recebida') totalPorFac += v;
+      });
+
+      var pExec  = totalOrc ? Math.round(totalPago / totalOrc * 100) : 0;
+      var desvio = totalPago - totalOrc;
+
+      /* ── HTML ── */
+      var html = '';
+
+      /* Cabeçalho do plano */
+      html += '<div class="pds-plan-hdr">';
+      html += '<div class="pds-plan-eixo">' + _esc((p.n0 ? p.n0 + ' › ' : '') + (p.n1 || '')) + '</div>';
+      html += '<div class="pds-plan-nome">' + _esc(p.plano || p.id2 || '—') + '</div>';
+      html += '</div>';
+
+      /* KPI grid — 2 colunas */
+      html += '<div class="kpi-grid" style="margin-bottom:8px">';
+      html += _kpiCard('Orçamento', _fmtEur(totalOrc), '', '');
+      html += _kpiCard('Adjudicado', _fmtEur(totalAdjudicado), '', contratos.length + ' contratos');
+      html += _kpiCard('Pago', _fmtEur(totalPago), totalPago > 0 ? 'green' : '', pExec + '% exec.');
+      html += _kpiCard('Em pagamento', _fmtEur(totalEmPag), totalEmPag > 0 ? 'warn' : '', '');
+      html += '</div>';
+
+      /* Barra de execução */
+      if (totalOrc > 0) {
+        html += '<div class="card" style="padding:12px 16px 14px;margin-bottom:12px">';
+        html += '<div class="flex-between mb-8">';
+        html += '<span class="card-title" style="margin-bottom:0">Taxa de execução</span>';
+        html += '<span class="fw-bold">' + pExec + '%</span>';
+        html += '</div>';
+        html += '<div class="progress-wrap"><div class="progress-bar' + (pExec < 30 ? ' late' : '') + '" style="width:' + Math.min(100, pExec) + '%"></div></div>';
+        if (totalCap > 0 || totalOpe > 0) {
+          html += '<div class="flex-between" style="margin-top:10px;gap:8px;flex-wrap:wrap">';
+          html += '<span class="fin-type-badge fin-cap">CAP ' + _fmtEur(totalCap) + '</span>';
+          html += '<span class="fin-type-badge fin-ope">OPE ' + _fmtEur(totalOpe) + '</span>';
+          if (totalPorFac > 0)
+            html += '<span class="fin-type-badge fin-porf">Por facturar ' + _fmtEur(totalPorFac) + '</span>';
+          html += '</div>';
+        }
+        if (desvio !== 0) {
+          html += '<div class="flex-between" style="margin-top:8px">';
+          html += '<span class="fs-sm text-muted">Desvio (pago vs orçamento)</span>';
+          html += '<span class="fs-sm fw-bold" style="color:' + (desvio > 0 ? 'var(--danger)' : 'var(--green)') + '">'
+            + (desvio > 0 ? '+' : '') + _fmtEur(desvio) + '</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      /* ── Rubricas ── */
+      if (rubricas.length) {
+        html += '<div class="card pds-section-card" style="padding:0">';
+        html += '<div class="pds-sec-hdr" data-sec="fin-sec-rubricas" style="border-left:3px solid var(--navy)">';
+        html += '<span style="font-size:13px;font-weight:700;color:var(--navy)">Rubricas orçamentais</span>';
+        html += '<span class="act-group-chevron">▾</span></div>';
+        html += '<div class="pds-sec-body" id="fin-sec-rubricas">';
+        rubricas.forEach(function (r) {
+          var total = anos.reduce(function (s, a) { return s + (r.valores && r.valores[a] ? _parseNum(r.valores[a]) : 0); }, 0);
+          html += '<div class="fin-row">';
+          html += '<div class="flex-between">';
+          html += '<div>';
+          html += '<span class="fin-row-label">' + _esc(r.categoria || '—') + '</span>';
+          if (r.nota) html += '<span class="fs-sm text-muted" style="margin-left:6px">' + _esc(r.nota) + '</span>';
+          html += '</div>';
+          html += '<div style="display:flex;align-items:center;gap:6px">';
+          html += '<span class="fin-type-badge ' + (r.capex ? 'fin-cap' : 'fin-ope') + '">' + (r.capex ? 'CAP' : 'OPE') + '</span>';
+          html += '<span class="fin-row-val">' + _fmtEur(total, r.moeda) + '</span>';
+          html += '</div></div>';
+          /* Valores por ano */
+          if (anos.length > 1) {
+            html += '<div class="fin-row-anos">';
+            anos.forEach(function (a) {
+              var v = r.valores && r.valores[a] ? _parseNum(r.valores[a]) : 0;
+              if (v) html += '<span class="fin-ano-chip">' + a + ': ' + _fmtEur(v, r.moeda) + '</span>';
+            });
+            html += '</div>';
+          }
+          html += '</div>';
+        });
+        html += '</div></div>'; /* /pds-sec-body /card */
+      }
+
+      /* ── Contratos ── */
+      if (contratos.length) {
+        html += '<div class="card pds-section-card" style="padding:0">';
+        html += '<div class="pds-sec-hdr" data-sec="fin-sec-contratos" style="border-left:3px solid #185FA5">';
+        html += '<span style="font-size:13px;font-weight:700;color:#185FA5">Contratos (' + contratos.length + ')</span>';
+        html += '<span class="act-group-chevron">▾</span></div>';
+        html += '<div class="pds-sec-body" id="fin-sec-contratos">';
+        contratos.forEach(function (ct) {
+          var nFac = facturas.filter(function (f) { return f.contrato_id === ct.id; }).length;
+          html += '<div class="fin-row">';
+          html += '<div class="flex-between">';
+          html += '<div class="fin-row-label">' + _esc(ct.descricao || '—') + '</div>';
+          html += '<div class="fin-row-val">' + _fmtEur(ct.valor_total, ct.moeda) + '</div>';
+          html += '</div>';
+          html += '<div class="flex-between" style="margin-top:3px">';
+          html += '<span class="fs-sm text-muted">' + _esc(ct.fornecedor || '') + (ct.data_adjudicacao ? ' · ' + _fmtDate(ct.data_adjudicacao) : '') + '</span>';
+          html += '<span class="fs-sm text-muted">' + nFac + ' factura' + (nFac !== 1 ? 's' : '') + '</span>';
+          html += '</div></div>';
+        });
+        html += '</div></div>';
+      }
+
+      /* ── Facturas ── */
+      if (facturas.length) {
+        html += '<div class="card pds-section-card" style="padding:0">';
+        html += '<div class="pds-sec-hdr" data-sec="fin-sec-facturas" style="border-left:3px solid #2E7D32">';
+        html += '<span style="font-size:13px;font-weight:700;color:#2E7D32">Facturas (' + facturas.length + ')</span>';
+        html += '<span class="act-group-chevron">▾</span></div>';
+        html += '<div class="pds-sec-body" id="fin-sec-facturas">';
+
+        var estadoOrder = ['Paga', 'Em pagamento', 'Recebida', 'Por facturar', 'Cancelada'];
+        var sorted = facturas.slice().sort(function (a, b) {
+          return estadoOrder.indexOf(a.estado) - estadoOrder.indexOf(b.estado);
+        });
+
+        sorted.forEach(function (fac) {
+          var ct     = contratos.find(function (c) { return c.id === fac.contrato_id; });
+          var stColor = { 'Paga': '#2E7D32', 'Em pagamento': '#E65100', 'Recebida': '#1565C0', 'Por facturar': '#6B7A8D', 'Cancelada': '#C62828' }[fac.estado] || '#6B7A8D';
+          var stBg    = { 'Paga': '#E8F5E9', 'Em pagamento': '#FFF3E0', 'Recebida': '#E3F2FD', 'Por facturar': '#F4F6F9', 'Cancelada': '#FFEBEE'  }[fac.estado] || '#F4F6F9';
+          html += '<div class="fin-row">';
+          html += '<div class="flex-between">';
+          html += '<div class="fin-row-label">' + _esc(fac.numero || fac.descricao || '—') + '</div>';
+          html += '<div style="display:flex;align-items:center;gap:6px">';
+          html += '<span class="badge" style="background:' + stBg + ';color:' + stColor + '">' + _esc(fac.estado || '—') + '</span>';
+          html += '<span class="fin-row-val">' + _fmtEur(fac.valor, fac.moeda) + '</span>';
+          html += '</div></div>';
+          html += '<div class="flex-between" style="margin-top:3px">';
+          html += '<span class="fs-sm text-muted">' + (ct ? _esc(ct.descricao) : '') + '</span>';
+          if (fac.data_emissao) html += '<span class="fs-sm text-muted">' + _fmtDate(fac.data_emissao) + '</span>';
+          html += '</div></div>';
+        });
+        html += '</div></div>';
+      }
+
+      if (!rubricas.length && !contratos.length && !facturas.length) {
+        html += '<div class="empty-state"><div class="empty-state-icon">💶</div><p>Sem dados financeiros registados</p></div>';
+      }
+
+      bodyEl.innerHTML = html;
+      _bindPdsSections(bodyEl);  /* reutiliza o mesmo toggle das secções PDS */
+    }
+
+    /* ── Helpers financeiros ── */
+    function _parseNum(s) {
+      if (s == null || s === '') return 0;
+      var str = String(s).trim();
+      var lastComma = str.lastIndexOf(',');
+      var lastDot   = str.lastIndexOf('.');
+      if (lastComma > lastDot) {
+        str = str.replace(/\./g, '').replace(',', '.');
+      } else {
+        str = str.replace(/,/g, '');
+      }
+      return parseFloat(str.replace(/[^\d.\-]/g, '')) || 0;
+    }
+
+    function _toBase(v, fromMoeda, cambio) {
+      if (!fromMoeda || fromMoeda === '€') return Number(v) || 0;
+      var rate = _parseNum(cambio) || 1;
+      return (Number(v) || 0) * rate;
+    }
+
+    function _fmtEur(v, moeda) {
+      if (v == null || v === '') return '—';
+      var m = moeda || '€';
+      var n = Number(v);
+      if (m === '€') return n.toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
+      if (m === '$') return '$ ' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      return n.toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' ' + m;
+    }
+
+    /* ─────────────────────────────────────────
+       ARRANQUE
+    ───────────────────────────────────────── */
+
+    /* Registo do Service Worker */
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(function (err) {
+        console.warn('[SW] registration failed:', err);
+      });
+    }
+
+    /* Iniciar restore de sessão assim que o DOM estiver pronto */
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tryRestoreSession);
+    } else {
+      tryRestoreSession();
+    }
+  </script>
+
+</body>
+</html>
