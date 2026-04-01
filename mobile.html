@@ -1662,8 +1662,159 @@
     }
 
     /* ─────────────────────────────────────────
-       FASES 2-5 — render functions  (a adicionar)
+       FASE 2 — DASHBOARD
     ───────────────────────────────────────── */
+
+    function renderDashboard() {
+      var el = document.getElementById('panel-dashboard');
+      if (!el) return;
+
+      var data = fAct;
+
+      if (!data.length) {
+        el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Sem actividades</p></div>';
+        return;
+      }
+
+      /* ── KPIs globais ── */
+      var n   = data.length;
+      var con = data.filter(function (d) { return d.status === 'Concluído'; }).length;
+      var dia = data.filter(function (d) { return d.status === 'Em dia';    }).length;
+      var atr = data.filter(function (d) { return d.status === 'Em atraso'; }).length;
+      var exe = n ? data.reduce(function (s, d) { return s + (d.pct || 0); }, 0) / n : 0;
+
+      /* ── Breakdown por N1 (programa) ── */
+      var n1Keys = [];
+      var n1Map  = {};
+      data.forEach(function (d) {
+        var key = (d.n0 || '') + '|||' + (d.n1 || d.n0 || '—');
+        if (!n1Map[key]) { n1Map[key] = []; n1Keys.push(key); }
+        n1Map[key].push(d);
+      });
+
+      /* Ordenar: mais atrasados primeiro */
+      n1Keys.sort(function (a, b) {
+        var ga = n1Map[a].filter(function (d) { return d.status === 'Em atraso'; }).length;
+        var gb = n1Map[b].filter(function (d) { return d.status === 'Em atraso'; }).length;
+        return gb - ga;
+      });
+
+      /* ── 5 actividades mais atrasadas ── */
+      var lateItems = data
+        .filter(function (d) { return d.status === 'Em atraso'; })
+        .sort(function (a, b) { return (a.pct || 0) - (b.pct || 0); })
+        .slice(0, 5);
+
+      /* ── HTML ── */
+      var html = '';
+
+      /* KPI grid */
+      html += '<div class="kpi-grid">';
+      html += _kpiCard('Execução', _pct(exe), exe >= 75 ? 'green' : exe >= 40 ? '' : 'danger', n + ' actividades');
+      html += _kpiCard('Concluídas', con, 'green', _pct(n ? con/n : 0));
+      html += _kpiCard('Em dia', dia, '', '');
+      html += _kpiCard('Em atraso', atr, atr > 0 ? 'danger' : '', '');
+      html += '</div>';
+
+      /* Barra de progresso global */
+      html += '<div class="card" style="padding:12px 16px 14px">';
+      html += '<div class="card-title">Progresso global</div>';
+      html += '<div class="flex-between mb-8"><span class="fs-sm text-muted">0%</span>';
+      html += '<span class="fw-bold" style="font-size:15px">' + _pct(exe) + '</span>';
+      html += '<span class="fs-sm text-muted">100%</span></div>';
+      var barCls = exe >= 100 ? 'done' : atr > 0 ? '' : '';
+      html += '<div class="progress-wrap"><div class="progress-bar ' + barCls + '" style="width:' + Math.min(100, exe).toFixed(1) + '%"></div></div>';
+      html += '</div>';
+
+      /* Breakdown por programa */
+      html += '<div class="section-title">Por programa</div>';
+      n1Keys.forEach(function (key) {
+        var items = n1Map[key];
+        var label = key.split('|||')[1] || '—';
+        var n0lbl = key.split('|||')[0] || '';
+        var kCon  = items.filter(function (d) { return d.status === 'Concluído'; }).length;
+        var kAtr  = items.filter(function (d) { return d.status === 'Em atraso'; }).length;
+        var kExe  = items.reduce(function (s, d) { return s + (d.pct || 0); }, 0) / items.length;
+
+        html += '<div class="card" style="padding:12px 14px">';
+        html += '<div class="flex-between" style="margin-bottom:6px">';
+        html += '<div>';
+        html += '<div style="font-size:13px;font-weight:700;color:var(--text)">' + _esc(label) + '</div>';
+        if (n0lbl) html += '<div style="font-size:11px;color:var(--muted)">' + _esc(n0lbl) + '</div>';
+        html += '</div>';
+        if (kAtr > 0) html += '<span class="badge badge-late">' + kAtr + ' atraso</span>';
+        else if (kCon === items.length) html += '<span class="badge badge-done">Concluído</span>';
+        else html += '<span class="badge badge-ok">Em dia</span>';
+        html += '</div>';
+        html += '<div class="flex-between" style="margin-bottom:4px">';
+        html += '<span class="fs-sm text-muted">' + items.length + ' actividades</span>';
+        html += '<span class="fs-sm fw-bold">' + _pct(kExe) + '</span>';
+        html += '</div>';
+        html += '<div class="progress-wrap"><div class="progress-bar' + (kAtr > 0 ? ' late' : kCon === items.length ? ' done' : '') + '" style="width:' + Math.min(100, kExe).toFixed(1) + '%"></div></div>';
+        html += '</div>';
+      });
+
+      /* Actividades em atraso */
+      if (lateItems.length) {
+        html += '<div class="section-title">Em atraso (' + lateItems.length + (lateItems.length === 5 && atr > 5 ? '+' : '') + ')</div>';
+        lateItems.forEach(function (act) {
+          html += _actItemHtml(act);
+        });
+      }
+
+      el.innerHTML = html;
+
+      /* Bind tap nos items de actividade */
+      _bindActItems(el);
+    }
+
+    /* ── Helpers de rendering ── */
+    function _pct(v) {
+      return (Math.round((v || 0) * 10) / 10).toFixed(1) + '%';
+    }
+
+    function _kpiCard(label, value, colorCls, sub) {
+      return '<div class="kpi-card">'
+        + '<div class="kpi-label">' + _esc(label) + '</div>'
+        + '<div class="kpi-value' + (colorCls ? ' ' + colorCls : '') + '">' + _esc(String(value)) + '</div>'
+        + (sub ? '<div class="kpi-sub">' + _esc(String(sub)) + '</div>' : '')
+        + '</div>';
+    }
+
+    function _actItemHtml(act) {
+      var cls = _statusClass(act.status);
+      var pct = act.pct || 0;
+      return '<div class="act-item ' + cls + '" data-id="' + _esc(String(act._supabase_id || '')) + '">'
+        + '<div class="act-item-header">'
+        + '<div class="act-item-nome">' + _esc(act.nome || '—') + '</div>'
+        + _statusBadge(act.status)
+        + '</div>'
+        + '<div class="progress-wrap"><div class="progress-bar' + (cls ? ' ' + cls : '') + '" style="width:' + Math.min(100, pct) + '%"></div></div>'
+        + '<div class="act-item-meta">'
+        + '<span class="act-item-dates">' + _esc(_fmtDates(act.bs, act.bf)) + '</span>'
+        + '<span class="act-item-pct">' + pct + '%</span>'
+        + '</div>'
+        + '</div>';
+    }
+
+    function _bindActItems(container) {
+      container.querySelectorAll('.act-item[data-id]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          var id = el.dataset.id;
+          var act = fAct.find(function (a) { return String(a._supabase_id) === id; });
+          if (act) openSheet(act);
+        });
+      });
+    }
+
+    /* ─────────────────────────────────────────
+       FASES 3-5 — render functions  (a adicionar)
+    ───────────────────────────────────────── */
+
+    /* Stubs para não quebrar renderPanel() */
+    function renderActividades() { /* Fase 3 */ }
+    function renderPDS()         { /* Fase 4 */ }
+    function renderFinanceiro()  { /* Fase 5 */ }
 
     /* ─────────────────────────────────────────
        ARRANQUE
