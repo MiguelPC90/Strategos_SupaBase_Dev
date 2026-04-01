@@ -1754,25 +1754,28 @@
 
     /* ── startApp (implementação real) ── */
     async function startApp() {
-      /* Mostrar indicador de carregamento */
-      var panels = ['dashboard','actividades','pds','financeiro'];
-      panels.forEach(function (name) {
-        var p = document.getElementById('panel-' + name);
-        if (p) p.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>A carregar…</p></div>';
-      });
+      /* Mostrar loading apenas nos body dos painéis —
+         NÃO substituir os painéis inteiros (pds/financeiro têm selects no nav) */
+      var loadingHtml   = '<div class="loading-state"><div class="spinner"></div><p>A carregar…</p></div>';
+      var emptyHtml     = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Sem dados</p></div>';
+
+      document.getElementById('panel-dashboard').innerHTML  = loadingHtml;
+      document.getElementById('act-list').innerHTML         = loadingHtml;
+      document.getElementById('pds-body').innerHTML         = loadingHtml;
+      document.getElementById('fin-body').innerHTML         = loadingHtml;
 
       try {
         var ok = await loadData();
         if (!ok) {
           showToast('Sem dados disponíveis.', 'warn');
-          panels.forEach(function (name) {
-            var p = document.getElementById('panel-' + name);
-            if (p) p.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Sem dados</p></div>';
-          });
+          document.getElementById('panel-dashboard').innerHTML = emptyHtml;
+          document.getElementById('act-list').innerHTML        = emptyHtml;
+          document.getElementById('pds-body').innerHTML        = emptyHtml;
+          document.getElementById('fin-body').innerHTML        = emptyHtml;
           return;
         }
 
-        /* Construir selects de plano */
+        /* Construir selects de plano (pds-select e fin-select já existem no DOM) */
         buildPlanSelects();
 
         /* Navegar para o dashboard e renderizar */
