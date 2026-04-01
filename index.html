@@ -105,7 +105,7 @@ tr.hover-row:hover td{background:var(--bg2)}
 
 /* ── GANTT ── */
 .gantt-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
-.gantt-wrap{overflow-x:auto;position:relative}
+.gantt-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 220px);position:relative}
 .gantt-table .g-sticky,.gantt-table .g-sticky-2,.gantt-table .g-sticky-3,.gantt-table .g-sticky-4,.gantt-table .g-sticky-5{position:sticky;z-index:2;background:var(--bg);}
 /* Header sticky-left cells: keep navy bg and float above td sticky cells */
 .gantt-table th.g-sticky,.gantt-table th.g-sticky-2,.gantt-table th.g-sticky-3,.gantt-table th.g-sticky-4,.gantt-table th.g-sticky-5{z-index:4;background:var(--navy)}
@@ -126,7 +126,9 @@ tr.hover-row:hover td{background:var(--bg2)}
 .g-bar{position:absolute;border-radius:2px}
 .g-baseline{top:5px;height:6px;opacity:.3}
 .g-real{top:14px;height:7px}
-.g-today{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,0,0,.6);z-index:1;pointer-events:none}
+.g-today{position:absolute;top:0;bottom:0;width:2px;background:rgba(220,50,50,.75);z-index:1;pointer-events:none}
+.g-today-lbl{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;color:rgba(220,50,50,.9);white-space:nowrap;font-weight:700}
+#gantt-tooltip{position:fixed;pointer-events:none;z-index:9999;background:#1a2b3c;color:#fff;font-size:12px;padding:8px 12px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);max-width:260px;line-height:1.5;display:none}
 .gantt-month-hdr{text-align:center;font-size:10px;padding:3px 2px;border-right:1px solid rgba(255,255,255,.12)}
 .gantt-legend{display:flex;gap:14px;margin-bottom:8px;flex-wrap:wrap}
 .gantt-legend span{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)}
@@ -654,6 +656,11 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
         <span><b style="background:var(--navy);width:24px"></b>Real</span>
       </div>
       <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;align-items:center">
+        <span style="font-size:11px;color:var(--text2)">Escala:</span>
+        <button class="chip" id="gscale-week" onclick="setGanttScale('week',this)">Semana</button>
+        <button class="chip active" id="gscale-month" onclick="setGanttScale('month',this)">Mês</button>
+        <button class="chip" id="gscale-quarter" onclick="setGanttScale('quarter',this)">Trimestre</button>
+        <span style="border-left:1px solid var(--border2);height:16px;margin:0 4px;align-self:center"></span>
         <span style="font-size:11px;color:var(--text2)">Nível:</span>
         <button class="chip active" id="glvl-1" onclick="setGanttLevel(1,this)">N1</button>
         <button class="chip" id="glvl-2" onclick="setGanttLevel(2,this)">N2</button>
@@ -1226,6 +1233,7 @@ let gpdsUnsaved=false,griskUnsaved=false;
 const GCOL={};    // gantt collapsed
 const ACOL={};    // activities collapsed
 let ganttMaxLevel=4;
+let ganttGranularity='month'; // 'week' | 'month' | 'quarter'
 let eixoView='eixo';
 
 const SC={"Concluído":{bg:"#E6F1FB",tc:"#185FA5",bar:"#002E5E"},"Em dia":{bg:"#EAF3DE",tc:"#3B6D11",bar:"#95BB42"},"Em atraso":{bg:"#FCEBEB",tc:"#A32D2D",bar:"#E24B4A"}};
@@ -2206,18 +2214,38 @@ function renderGantt(data){
   const today=new Date().toISOString().split('T')[0];
   const todayPct=Math.max(0,Math.min(100,(d2t(today)-rStart)/rMs*100)).toFixed(2);
 
-  const MN=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const months=[];
-  let mc=new Date(rMin);mc.setDate(1);
-  const me=new Date(rMax);
-  while(mc<=me){months.push({y:mc.getFullYear(),m:mc.getMonth()});mc=new Date(mc.getFullYear(),mc.getMonth()+1,1);}
-  const mw=months.map(mo=>{
-    const ms=Math.max(new Date(mo.y,mo.m,1).getTime(),rStart);
-    const me2=Math.min(new Date(mo.y,mo.m+1,1).getTime(),rEnd);
-    return Math.max(0,(me2-ms)/rMs*100);
+  // --- PERIOD HEADERS (week / month / quarter) ---
+  const periods=[];
+  if(ganttGranularity==='week'){
+    let wc=new Date(rMin);const dow=wc.getDay();wc.setDate(wc.getDate()-(dow===0?6:dow-1));
+    while(wc.getTime()<rEnd+7*86400000){
+      const wEnd=new Date(wc);wEnd.setDate(wEnd.getDate()+7);
+      periods.push({label:'S'+_isoWeek(wc)+'\u2019'+String(wc.getFullYear()).slice(2),start:new Date(wc),end:wEnd});
+      wc.setDate(wc.getDate()+7);
+    }
+  } else if(ganttGranularity==='quarter'){
+    let qc=new Date(rMin);qc.setMonth(Math.floor(qc.getMonth()/3)*3,1);
+    while(qc.getTime()<rEnd){
+      const qEnd=new Date(qc.getFullYear(),qc.getMonth()+3,1);
+      periods.push({label:'Q'+(Math.floor(qc.getMonth()/3)+1)+'/'+String(qc.getFullYear()).slice(2),start:new Date(qc),end:qEnd});
+      qc=qEnd;
+    }
+  } else {
+    let mc=new Date(rMin);mc.setDate(1);
+    const me=new Date(rMax);
+    while(mc<=me){
+      periods.push({label:String(mc.getMonth()+1).padStart(2,'0')+'/'+String(mc.getFullYear()).slice(2),
+                    start:new Date(mc),end:new Date(mc.getFullYear(),mc.getMonth()+1,1)});
+      mc=new Date(mc.getFullYear(),mc.getMonth()+1,1);
+    }
+  }
+  const pw=periods.map(p=>{
+    const ps=Math.max(p.start.getTime(),rStart);
+    const pe=Math.min(p.end.getTime(),rEnd);
+    return Math.max(0,(pe-ps)/rMs*100);
   });
-  const validMths=months.filter((_,i)=>mw[i]>0.2);
-  const validMw=mw.filter(w=>w>0.2);
+  const validPeriods=periods.filter((_,i)=>pw[i]>0.1);
+  const validPw=pw.filter(w=>w>0.1);
 
   const navy=getComputedStyle(document.documentElement).getPropertyValue('--navy').trim()||'#002E5E';
   const green=getComputedStyle(document.documentElement).getPropertyValue('--green').trim()||'#95BB42';
@@ -2229,8 +2257,8 @@ function renderGantt(data){
     <th rowspan="2" class="g-sticky-3" style="text-align:center;width:72px">Início</th>
     <th rowspan="2" class="g-sticky-4" style="text-align:center;width:72px">Fim</th>
     <th rowspan="2" class="g-sticky-5" style="text-align:center;width:76px">Estado</th>
-    <th colspan="${validMths.length}" style="text-align:center">Timeline</th></tr><tr>`;
-  validMths.forEach((mo,i)=>{html+=`<th class="gantt-month-hdr" style="width:${validMw[i].toFixed(1)}%">${String(mo.m+1).padStart(2,"0")}/${String(mo.y).slice(2)}</th>`;});
+    <th colspan="${validPeriods.length}" style="text-align:center">Timeline</th></tr><tr>`;
+  validPeriods.forEach((p,i)=>{html+=`<th class="gantt-month-hdr" style="width:${validPw[i].toFixed(1)}%">${p.label}</th>`;});
   html+=`</tr></thead><tbody>`;
 
   const barColor=(r)=>{
@@ -2239,6 +2267,10 @@ function renderGantt(data){
     if(r.status==='Em dia')return green;
     return redBar;
   };
+
+  // Compute first visible index for today label
+  let firstVisibleIdx=-1;
+  data.forEach((row,idx)=>{if(firstVisibleIdx<0&&gIsVisible(data,idx)&&row.nivel<=ganttMaxLevel)firstVisibleIdx=idx;});
 
   data.forEach((row,idx)=>{
     if(!gIsVisible(data,idx))return;
@@ -2264,15 +2296,19 @@ function renderGantt(data){
     let bars='';
     if(bl.w>0)bars+=`<div class="g-bar g-baseline" style="left:${bl.l}%;width:${bl.w}%;background:${navy}"></div>`;
     if(rl.w>0)bars+=`<div class="g-bar g-real" style="left:${rl.l}%;width:${rl.w}%;background:${bc}"></div>`;
-    bars+=`<div class="g-today" style="left:${todayPct}%"></div>`;
+    const todayLbl=idx===firstVisibleIdx?'<span class="g-today-lbl">Hoje</span>':'';
+    bars+=`<div class="g-today" style="left:${todayPct}%">${todayLbl}</div>`;
 
+    const fmtFull=d=>{if(!d)return'';const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
     html+=`<tr class="${cls}">
       <td class="g-sticky"><div class="g-name" style="padding-left:${indent}px">${toggle}${esc(row.nome)}</div></td>
       <td class="g-sticky-2" style="text-align:center;font-size:11px">${row.pct}%</td>
       <td class="g-sticky-3" style="text-align:center;font-size:11px;color:var(--text2)">${dd(startD)}</td>
       <td class="g-sticky-4" style="text-align:center;font-size:11px;color:var(--text2)">${dd(endD)}</td>
       <td class="g-sticky-5" style="text-align:center">${statCell}</td>
-      <td class="g-chart-cell" colspan="${validMths.length}"><div class="g-bar-wrap">${bars}</div></td>
+      <td class="g-chart-cell" colspan="${validPeriods.length}"
+          data-nome="${esc(row.nome)}" data-start="${startD||''}" data-end="${endD||''}"
+          data-pct="${row.pct}" data-status="${rowSt}"><div class="g-bar-wrap">${bars}</div></td>
     </tr>`;
   });
   html+=`</tbody>`;
@@ -2296,11 +2332,47 @@ function renderGantt(data){
       Array.from(trs[1].children).forEach(function(th){th.style.top=h;});
     }
   })();
+  // Tooltip binding
+  (function(){
+    const tip=document.getElementById('gantt-tooltip');
+    const wrap=document.querySelector('.gantt-wrap');
+    if(!tip||!tbl) return;
+    // Remove previous listeners by replacing with clone
+    const oldTbl=tbl;
+    tbl.addEventListener('mousemove',function(e){
+      const td=e.target.closest('.g-chart-cell');
+      if(!td){tip.style.display='none';return;}
+      const s=td.dataset.start,en=td.dataset.end;
+      const fmt=d=>{if(!d)return'—';const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
+      const sc={'Concluído':'#4CAF50','Em dia':'#8BC34A','Em atraso':'#E53935'}[td.dataset.status]||'#aaa';
+      tip.innerHTML='<strong style="display:block;margin-bottom:4px">'+td.dataset.nome+'</strong>'+
+        'Início: '+fmt(s)+'<br>Fim: '+fmt(en)+'<br>'+
+        'Execução: <strong>'+td.dataset.pct+'%</strong><br>'+
+        '<span style="color:'+sc+'">'+(td.dataset.status||'—')+'</span>';
+      tip.style.display='block';
+      tip.style.left=Math.min(e.clientX+16,window.innerWidth-270)+'px';
+      tip.style.top=(e.clientY-10)+'px';
+    });
+    tbl.addEventListener('mouseleave',function(){tip.style.display='none';});
+  })();
 }
 
 function gToggle(idx){GCOL[idx]=!GCOL[idx];renderGantt(fGantt);}
 function ganttCollapseAll(){fGantt.forEach((_,i)=>{if(hasGChildren(i))GCOL[i]=true;});renderGantt(fGantt);}
 function ganttExpandAll(){Object.keys(GCOL).forEach(k=>delete GCOL[k]);renderGantt(fGantt);}
+
+function setGanttScale(scale,btn){
+  ganttGranularity=scale;
+  document.querySelectorAll('[id^="gscale-"]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGantt(fGantt);
+}
+
+function _isoWeek(d){
+  const tmp=new Date(d);tmp.setHours(0,0,0,0);tmp.setDate(tmp.getDate()+4-(tmp.getDay()||7));
+  const y=new Date(tmp.getFullYear(),0,1);
+  return Math.ceil(((tmp-y)/86400000+1)/7);
+}
 
 // ── PDS ───────────────────────────────────────────────────────────────────────
 let pdsIdx=0;
@@ -6127,5 +6199,6 @@ switchTab = function(id, btn){
   </div>
 </div>
 
+<div id="gantt-tooltip"></div>
 </body>
 </html>
