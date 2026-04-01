@@ -1,6 +1,6 @@
-/* Strategos PWA — Service Worker */
-const CACHE = 'strategos-v1';
-const SHELL = ['./mobile.html', './supabase-adapter.js', './manifest.json', './icon.svg'];
+/* Strategos PWA — Service Worker v2 */
+const CACHE = 'strategos-v2';
+const SHELL = ['./mobile.html', './supabase-adapter.js', './manifest.json', './icon.svg', './logo.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -17,14 +17,15 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network-first for Supabase API calls; cache-first for app shell
   const url = new URL(e.request.url);
-  if (url.hostname.includes('supabase.co') || url.hostname.includes('jsdelivr.net')) {
-    e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
-    );
+
+  /* Supabase, CDN e outros requests externos — NÃO interceptar,
+     deixar o browser lidar directamente (evita SW devolver null) */
+  if (url.hostname !== self.location.hostname) {
     return;
   }
+
+  /* App shell (ficheiros locais) — cache-first */
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
