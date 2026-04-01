@@ -1348,7 +1348,7 @@
 
       } catch (err) {
         console.error('[Auth] signIn error:', err);
-        loginError.textContent = 'E-mail ou password incorrectos.';
+        loginError.textContent = err.message || err.error_description || JSON.stringify(err);
         inpPw.value = '';
         inpPw.focus();
       } finally {
