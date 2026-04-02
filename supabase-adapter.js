@@ -530,7 +530,7 @@
     },
 
     saveProfile: async function (profileObj) {
-      var payload = { name: profileObj.name, tabs: profileObj.tabs || {} };
+      var payload = { name: profileObj.name, tabs: profileObj.tabs || {}, n0s: profileObj.n0s || [] };
       var res;
       if (profileObj._supabase_id) {
         res = await this.client

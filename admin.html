@@ -256,9 +256,24 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
     <!-- SEGURANÇA -->
     <div id="panel-seguranca" class="admin-panel">
       <h2>Segurança</h2>
-      <p class="panel-desc">Controlo de acesso ao painel de administração</p>
+      <p class="panel-desc">Sessão activa e controlo de acesso</p>
+
+      <!-- Sessão Supabase -->
+      <div class="acard" id="seg-session-card">
+        <div class="acard-title">Sessão activa</div>
+        <div id="seg-session-info" style="font-size:13px;color:var(--text2)">A verificar sessão...</div>
+        <div style="margin-top:12px">
+          <button class="abtn abtn-danger" onclick="adminSignOut()">Terminar sessão</button>
+        </div>
+      </div>
+
+      <!-- Fallback offline -->
       <div class="acard">
-        <div class="acard-title">Password de acesso</div>
+        <div class="acard-title" style="display:flex;align-items:center;gap:8px">
+          Acesso offline
+          <span style="font-size:10px;font-weight:400;color:var(--text3);background:var(--bg3);border-radius:4px;padding:2px 7px;border:1px solid var(--border)">Usado apenas sem ligação ao servidor</span>
+        </div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Esta password é utilizada <strong>somente</strong> como porta de entrada local, quando não existe sessão Supabase activa. Com Supabase activo, a autenticação é sempre gerida pelo servidor.</p>
         <div class="agrid-2">
           <div class="arow"><label>Password actual</label><input class="ainput" type="password" id="pwd-current" placeholder="••••••"></div>
           <div></div>
@@ -266,7 +281,7 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
           <div class="arow"><label>Confirmar nova password</label><input class="ainput" type="password" id="pwd-confirm" placeholder="••••••"></div>
         </div>
         <div id="pwd-msg" style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px"></div>
-        <button class="abtn abtn-primary" onclick="changePassword()">🔒 Alterar password</button>
+        <button class="abtn" onclick="changePassword()">🔒 Alterar password offline</button>
       </div>
     </div>
 
@@ -320,9 +335,9 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
       <h2>Configuração Financeira</h2>
       <p class="panel-desc">Moeda base, categorias de custo, horizonte temporal e gestão de contratos por programa</p>
 
-      <div style="background:#FFF3CD;border:1px solid #856404;border-radius:var(--r);padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-        <span style="font-size:12px;color:#856404">Abre primeiro a plataforma principal com dados carregados, depois clica em Detectar.</span>
-        <button class="abtn abtn-primary abtn-sm" onclick="forceDetectPrograms()">🔄 Detectar programas</button>
+      <div id="fin-detect-bar" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--text2)">Programas carregados automaticamente.</span>
+        <button class="abtn abtn-sm" onclick="forceDetectPrograms()">🔄 Recarregar programas</button>
       </div>
 
       <div class="acard">
@@ -390,7 +405,7 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
     <!-- HISTÓRICO -->
     <div id="panel-historico" class="admin-panel">
       <h2>Histórico de Snapshots</h2>
-      <p class="panel-desc">Gestão dos snapshots para comparação temporal</p>
+      <p class="panel-desc">Snapshots para comparação temporal e registo de todas as alterações</p>
       <div class="acard">
         <div class="acard-title">Acções</div>
         <div class="btn-row">
@@ -403,6 +418,28 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
       <div class="acard">
         <div class="acard-title">Snapshots guardados (<span id="snap-count">0</span>)</div>
         <div id="admin-snap-list" style="max-height:400px;overflow-y:auto"></div>
+      </div>
+
+      <!-- Registo de alterações (apenas online) -->
+      <div class="acard" id="changelog-card" style="display:none">
+        <div class="acard-title" style="display:flex;align-items:center;justify-content:space-between">
+          Registo de alterações
+          <div style="display:flex;gap:8px;align-items:center">
+            <select class="ainput" id="cl-table-filter" style="font-size:12px;padding:4px 8px;max-width:160px" onchange="renderChangeLog()">
+              <option value="">Todas as tabelas</option>
+              <option value="activities">activities</option>
+              <option value="pds_entries">pds_entries</option>
+              <option value="risks">risks</option>
+              <option value="fin_rubricas">fin_rubricas</option>
+              <option value="fin_contratos">fin_contratos</option>
+              <option value="fin_facturas">fin_facturas</option>
+              <option value="snapshots">snapshots</option>
+              <option value="app_config">app_config</option>
+            </select>
+            <button class="abtn abtn-sm" onclick="renderChangeLog()">↺ Actualizar</button>
+          </div>
+        </div>
+        <div id="changelog-list" style="max-height:400px;overflow-y:auto"></div>
       </div>
     </div>
 
@@ -435,16 +472,37 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
       <p class="panel-desc">Gestão de perfis de acesso e utilizadores do dashboard</p>
 
       <div class="acard">
-        <div class="acard-title">Perfis de acesso
+        <div class="acard-title" style="display:flex;align-items:center">
+          Perfis de acesso
           <button class="abtn abtn-sm" style="margin-left:auto" onclick="addPerfil()">+ Novo perfil</button>
         </div>
-        <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Cada perfil define o acesso a cada componente: <b>Sem acesso</b>, <b>Leitura</b> ou <b>Edição</b>.</p>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Cada perfil define o acesso a cada componente: <b>Sem acesso</b>, <b>Leitura</b> ou <b>Edição</b>. Perfis são guardados directamente no servidor.</p>
         <div id="perfis-list"></div>
       </div>
 
       <div class="acard">
-        <div class="acard-title">Utilizadores
-          <button class="abtn abtn-sm" style="margin-left:auto" onclick="addUser()">+ Novo utilizador</button>
+        <div class="acard-title" style="display:flex;align-items:center">
+          Utilizadores
+          <button class="abtn abtn-sm" style="margin-left:auto" onclick="showAddUserForm()">+ Novo utilizador</button>
+        </div>
+        <div id="add-user-form" style="display:none;background:var(--bg2);border-radius:var(--r);padding:14px;margin-bottom:12px">
+          <div class="agrid-2" style="margin-bottom:8px">
+            <div class="arow"><label>Nome</label><input class="ainput" id="nu-name" placeholder="Nome completo"></div>
+            <div class="arow"><label>Email</label><input class="ainput" id="nu-email" placeholder="email@dominio.com" type="email"></div>
+            <div class="arow"><label>Password</label><input class="ainput" id="nu-password" placeholder="••••••" type="password"></div>
+            <div class="arow"><label>Função</label>
+              <select class="ainput" id="nu-role">
+                <option value="viewer">Visualizador</option>
+                <option value="editor">Editor</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+            <div class="arow"><label>Perfil de acesso</label><select class="ainput" id="nu-profile"></select></div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="abtn abtn-primary abtn-sm" onclick="createUser()">Criar utilizador</button>
+            <button class="abtn abtn-sm" onclick="document.getElementById('add-user-form').style.display='none'">Cancelar</button>
+          </div>
         </div>
         <div id="users-list"></div>
       </div>
@@ -622,6 +680,7 @@ function showPanel(id,el){
   if(id==='historico') renderHistorico();
   if(id==='risco') renderRisco();
   if(id==='cores') renderCores();
+  if(id==='seguranca') initSeguranca();
   if(id==='utilizadores') initUtilizadores();
   if(id==='dados') initDados();
 }
@@ -652,48 +711,69 @@ function initAdmin(){
   document.getElementById('risk-thr-high').value=thr.high;
   // Auto-detect programs from loaded data
   autoDetectPrograms();
-  autoDetectPrograms();
   renderCores();
   renderEstrutura();
   renderFinAdmin();
 }
 
-// Cached data from JSON files
+// Cached data de actividades (de Supabase ou JSON local)
 var adminGantt=[], adminAct=[];
 
 function loadAdminData(cb){
   if(adminGantt.length){ if(cb) cb(); return; }
-  // Fetch gantt.json relative to admin.html location
-  var base = window.location.href.replace(/admin\.html.*$/,'');
+  var base=window.location.href.replace(/admin\.html.*$/,'');
   fetch(base+'data/gantt.json')
     .then(function(r){ return r.ok?r.json():fetch(base+'gantt.json').then(function(r2){return r2.json();}); })
     .then(function(data){ adminGantt=data||[]; if(cb) cb(); })
     .catch(function(){ if(cb) cb(); });
 }
 
+// autoDetectPrograms — usa SB.loadActivities() quando online, localStorage como fallback
 function autoDetectPrograms(){
   if(!CFG.programs) CFG.programs=[];
-  var detected=[];
+  if(window.SB && SB.isOnline){
+    SB.loadActivities().then(function(acts){
+      // Atualizar cache de eixos para renderEstrutura
+      adminGantt=acts;
+      // Extrair N0s únicos
+      var n0s=[...new Set(acts.map(function(a){return a.n0||'';}).filter(Boolean))];
+      _sbActivitiesN0s=n0s;
+      _detectAndAddPrograms(n0s);
+    }).catch(function(e){
+      console.warn('autoDetect via SB falhou, a usar localStorage:', e);
+      _autoDetectFromLocalStorage();
+    });
+  } else {
+    _autoDetectFromLocalStorage();
+  }
+}
+
+function _autoDetectFromLocalStorage(){
+  if(!CFG.programs) CFG.programs=[];
+  var n0s=[];
   try{
-    var n0s=JSON.parse(localStorage.getItem('pmo_n0s')||'[]');
+    n0s=JSON.parse(localStorage.getItem('pmo_n0s')||'[]');
     if(!n0s.length){var pRaw=localStorage.getItem('pmo_pds_data');if(pRaw){var pA=JSON.parse(pRaw)||[];n0s=[...new Set(pA.map(function(p){return p.n0||''}).filter(Boolean))];}}
     if(!n0s.length){var aRaw=localStorage.getItem('pmo_act');if(aRaw){var aA=JSON.parse(aRaw)||[];n0s=[...new Set(aA.map(function(d){return d.n0||''}).filter(Boolean))];}}
-    n0s.forEach(function(nome){if(nome&&!CFG.programs.find(function(p){return p.name===nome;}))detected.push(nome);});
-  }catch(e){console.warn('autoDetect:',e);}
+  }catch(e){console.warn('autoDetect localStorage:',e);}
+  _detectAndAddPrograms(n0s);
+}
+
+function _detectAndAddPrograms(n0s){
+  if(!CFG.programs) CFG.programs=[];
+  var detected=[];
+  n0s.forEach(function(nome){
+    if(nome&&!CFG.programs.find(function(p){return p.name===nome;})) detected.push(nome);
+  });
   if(detected.length){
     var ny=new Date().getFullYear();
-    detected.forEach(function(nome){CFG.programs.push({code:String(CFG.programs.length+1),name:nome,desc:'',finCats:[],finAnos:[ny,ny+1]});});
+    detected.forEach(function(nome){
+      CFG.programs.push({code:String(CFG.programs.length+1),name:nome,desc:'',
+        finCats:[{nome:'Consultoria',capex:false},{nome:'Tecnologia',capex:true},{nome:'Comunicação',capex:false},{nome:'Formação',capex:false},{nome:'Outros',capex:false}],
+        finAnos:[ny,ny+1]});
+    });
     saveCfg();
-    toast('Detectado '+detected.length+' programa(s): '+detected.join(', '),'#2D5F75');
-  }else{toast('Sem programas novos.','#555');}
-  try{
-    var n1s=JSON.parse(localStorage.getItem('pmo_n1s')||'[]');
-    var el=document.getElementById('admin-eixos-list');
-    if(el&&n1s.length){
-      var eixos=[...new Set(n1s.map(function(s){return s.split('|||')[1]||''}).filter(Boolean))].sort();
-      el.innerHTML=eixos.map(function(e){return '<span style="display:inline-block;margin:2px 4px;padding:2px 8px;background:var(--bg2);border-radius:20px;font-size:12px">'+esc(e)+'</span>';}).join('');
-    }
-  }catch(e){}
+  }
   renderEstrutura();
   renderFinAdmin();
 }
@@ -724,6 +804,41 @@ function removeLogo(){
 }
 
 // ── SEGURANÇA ─────────────────────────────────────────────────────────────────
+async function initSeguranca(){
+  const info=document.getElementById('seg-session-info');
+  if(!info) return;
+  if(window.SB && SB.isOnline){
+    try{
+      const session=await SB.getSession();
+      if(session && session.user){
+        const meta=await SB.getUserMeta(session.user.id);
+        const role=meta?meta.role:'—';
+        const profile=(meta&&meta.user_profiles)?meta.user_profiles.name:'—';
+        info.innerHTML=
+          '<table style="border-collapse:collapse;font-size:13px;width:100%">'
+          +'<tr><td style="padding:4px 0;color:var(--text3);width:120px">Email</td><td style="padding:4px 0;font-weight:600">'+esc(session.user.email||'—')+'</td></tr>'
+          +'<tr><td style="padding:4px 0;color:var(--text3)">Nome</td><td style="padding:4px 0">'+esc(meta&&meta.display_name||'—')+'</td></tr>'
+          +'<tr><td style="padding:4px 0;color:var(--text3)">Função</td><td style="padding:4px 0"><span style="background:var(--navy);color:#fff;padding:2px 8px;border-radius:20px;font-size:11px">'+esc(role)+'</span></td></tr>'
+          +'<tr><td style="padding:4px 0;color:var(--text3)">Perfil</td><td style="padding:4px 0">'+esc(profile)+'</td></tr>'
+          +'</table>';
+      } else {
+        info.textContent='Sem sessão activa.';
+      }
+    }catch(e){
+      info.textContent='Não foi possível carregar informação da sessão.';
+    }
+  } else {
+    info.innerHTML='<span style="color:var(--text3)">Supabase não disponível — a funcionar em modo local.</span>';
+  }
+}
+
+async function adminSignOut(){
+  if(!window.SB || !SB.isOnline){ toast('Sem sessão Supabase activa.','var(--amber)'); return; }
+  if(!confirm('Terminar sessão e voltar ao ecrã de bloqueio?')) return;
+  await SB.signOut();
+  location.reload();
+}
+
 function changePassword(){
   const cur=document.getElementById('pwd-current').value;
   const nw=document.getElementById('pwd-new').value;
@@ -738,7 +853,7 @@ function changePassword(){
   document.getElementById('pwd-current').value='';
   document.getElementById('pwd-new').value='';
   document.getElementById('pwd-confirm').value='';
-  toast('Password alterada com sucesso.','#3B6D11');
+  toast('Password offline alterada com sucesso.','#3B6D11');
 }
 
 // ── CORES ─────────────────────────────────────────────────────────────────────
@@ -825,7 +940,11 @@ function renderEstrutura(){
       : '<div style="color:var(--text3);font-size:12px;font-style:italic;padding:8px 0">Sem eixos encontrados.</div>';
   } else {
     el.innerHTML='<div style="color:var(--text3);font-size:12px;font-style:italic;padding:8px 0">A carregar dados...</div>';
-    loadAdminData(function(){ renderEstrutura(); });
+    if(window.SB && SB.isOnline){
+      SB.loadActivities().then(function(acts){ adminGantt=acts; renderEstrutura(); }).catch(function(){ loadAdminData(function(){ renderEstrutura(); }); });
+    } else {
+      loadAdminData(function(){ renderEstrutura(); });
+    }
   }
 }
 
@@ -1004,39 +1123,127 @@ function removeRiskEstado(i){
 function getSnaps(){ try{ return JSON.parse(localStorage.getItem('pmo_snapshots')||'[]'); }catch(e){return[];} }
 function saveSnaps(s){ try{ localStorage.setItem('pmo_snapshots',JSON.stringify(s)); }catch(e){} }
 
-function renderHistorico(){
-  const snaps=getSnaps();
-  document.getElementById('snap-count').textContent=snaps.length;
-  const wrap=document.getElementById('admin-snap-list');
-  if(!snaps.length){
-    wrap.innerHTML='<div style="color:var(--text3);font-size:13px;padding:1rem;text-align:center">Sem snapshots guardados.</div>';
-    return;
+// Cache de snapshots do Supabase
+var _sbSnaps=[];
+
+async function renderHistorico(){
+  // Mostrar card changelog apenas online
+  const clCard=document.getElementById('changelog-card');
+  if(clCard) clCard.style.display=(window.SB&&SB.isOnline)?'block':'none';
+
+  if(window.SB && SB.isOnline){
+    const wrap=document.getElementById('admin-snap-list');
+    wrap.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px">A carregar...</div>';
+    try{
+      _sbSnaps=await SB.loadSnapshots();
+    }catch(e){
+      _sbSnaps=[];
+      wrap.innerHTML='<div style="color:var(--red);font-size:13px;padding:8px">Erro ao carregar snapshots: '+esc(e.message)+'</div>';
+    }
+    document.getElementById('snap-count').textContent=_sbSnaps.length;
+    if(!_sbSnaps.length){
+      wrap.innerHTML='<div style="color:var(--text3);font-size:13px;padding:1rem;text-align:center">Sem snapshots guardados.</div>';
+    } else {
+      wrap.innerHTML=_sbSnaps.map(function(s,i){
+        const d=new Date(s.timestamp);
+        const acts=(s.kpis&&s.kpis.n)||'—';
+        return '<div class="snap-item">'
+          +'<div><div class="snap-label">'+esc(s.label||'—')+'</div>'
+          +'<div class="snap-date">'+d.toLocaleString('pt-PT')+' · '+acts+' actividades</div></div>'
+          +'<div style="display:flex;gap:6px">'
+          +'<button class="abtn abtn-sm" onclick="downloadSnapSB('+i+')">↓</button>'
+          +'<button class="abtn abtn-sm abtn-danger" onclick="deleteSnapSB(\''+esc(s._supabase_id||'')+'\')">✕</button>'
+          +'</div></div>';
+      }).join('');
+    }
+    renderChangeLog();
+  } else {
+    // Offline: ler de localStorage
+    const snaps=getSnaps();
+    document.getElementById('snap-count').textContent=snaps.length;
+    const wrap=document.getElementById('admin-snap-list');
+    if(!snaps.length){
+      wrap.innerHTML='<div style="color:var(--text3);font-size:13px;padding:1rem;text-align:center">Sem snapshots guardados.</div>';
+      return;
+    }
+    wrap.innerHTML=snaps.map(function(s,i){
+      const d=new Date(s.date);
+      const acts=s.kpi?s.kpi.n:'—';
+      return '<div class="snap-item">'
+        +'<div><div class="snap-label">'+esc(s.label)+'</div>'
+        +'<div class="snap-date">'+d.toLocaleString('pt-PT')+' · '+acts+' actividades</div></div>'
+        +'<div style="display:flex;gap:6px">'
+        +'<button class="abtn abtn-sm" onclick="downloadSnap('+i+')">↓</button>'
+        +'<button class="abtn abtn-sm abtn-danger" onclick="deleteSnap('+i+')">✕</button>'
+        +'</div></div>';
+    }).join('');
   }
-  wrap.innerHTML=snaps.map(function(s,i){
-    const d=new Date(s.date);
-    const acts=s.kpi?s.kpi.n:'—';
-    return '<div class="snap-item">'
-      +'<div><div class="snap-label">'+esc(s.label)+'</div>'
-      +'<div class="snap-date">'+d.toLocaleString('pt-PT')+' · '+acts+' actividades</div></div>'
-      +'<div style="display:flex;gap:6px">'
-      +'<button class="abtn abtn-sm" onclick="downloadSnap('+i+')">↓</button>'
-      +'<button class="abtn abtn-sm abtn-danger" onclick="deleteSnap('+i+')">✕</button>'
-      +'</div></div>';
-  }).join('');
 }
+
+async function renderChangeLog(){
+  const wrap=document.getElementById('changelog-list'); if(!wrap) return;
+  if(!window.SB || !SB.isOnline){ wrap.innerHTML=''; return; }
+  const tableFilter=document.getElementById('cl-table-filter')?document.getElementById('cl-table-filter').value:'';
+  wrap.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px">A carregar...</div>';
+  try{
+    const logs=await SB.getChangeLog(tableFilter||null, 100);
+    if(!logs.length){
+      wrap.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px;text-align:center">Sem registos de alterações.</div>';
+      return;
+    }
+    const OP_COLORS={INSERT:'#3B6D11',UPDATE:'#185FA5',DELETE:'#A32D2D'};
+    wrap.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      +'<thead><tr style="border-bottom:2px solid var(--border)">'
+      +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Data</th>'
+      +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Tabela</th>'
+      +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Op.</th>'
+      +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Resumo</th>'
+      +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Utilizador</th>'
+      +'</tr></thead><tbody>'
+      +logs.map(function(l){
+        const d=new Date(l.changed_at);
+        const opColor=OP_COLORS[l.operation]||'var(--text2)';
+        return '<tr style="border-bottom:1px solid var(--border)">'
+          +'<td style="padding:5px 8px;white-space:nowrap;color:var(--text3)">'+d.toLocaleString('pt-PT')+'</td>'
+          +'<td style="padding:5px 8px;font-family:monospace;font-size:11px">'+esc(l.table_name||'')+'</td>'
+          +'<td style="padding:5px 8px"><span style="color:#fff;background:'+opColor+';padding:2px 6px;border-radius:3px;font-size:10px;font-weight:700">'+esc(l.operation||'')+'</span></td>'
+          +'<td style="padding:5px 8px;color:var(--text2)">'+esc(l.summary||'—')+'</td>'
+          +'<td style="padding:5px 8px;font-size:11px;color:var(--text3);font-family:monospace">'+esc((l.changed_by||'').slice(0,8)+'…')+'</td>'
+          +'</tr>';
+      }).join('')
+      +'</tbody></table>';
+  }catch(e){
+    wrap.innerHTML='<div style="color:var(--red);font-size:13px;padding:8px">Erro: '+esc(e.message)+'</div>';
+  }
+}
+
 function adminSaveSnap(){
-  // Note: actual snapshot with data requires main app context
-  // Here we just trigger a placeholder
-  toast('Abre a plataforma principal para guardar um snapshot com dados actuais.','var(--amber)');
+  toast('Guardar um snapshot requer o contexto da plataforma principal (dados carregados). Usa o botão "Snapshot" no index.html.','var(--amber)');
 }
-function downloadSnap(i){
-  const snaps=getSnaps();
-  const s=snaps[i]; if(!s) return;
+
+function downloadSnapSB(i){
+  const s=_sbSnaps[i]; if(!s) return;
   const blob=new Blob([JSON.stringify(s,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='snapshot_'+s.label.replace(/\//g,'-')+'.json';
-  a.click();
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='snapshot_'+esc(s.label||i).replace(/\//g,'-')+'.json'; a.click();
+}
+
+async function deleteSnapSB(sbId){
+  if(!sbId){ toast('ID inválido.','var(--red)'); return; }
+  if(!confirm('Eliminar este snapshot da base de dados?')) return;
+  try{
+    var res=await SB.client.from('snapshots').delete().eq('id',sbId);
+    if(res.error) throw res.error;
+    toast('Snapshot eliminado.','#3B6D11');
+    renderHistorico();
+  }catch(e){ toast('Erro: '+e.message,'var(--red)'); }
+}
+
+function downloadSnap(i){
+  const snaps=getSnaps(); const s=snaps[i]; if(!s) return;
+  const blob=new Blob([JSON.stringify(s,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='snapshot_'+s.label.replace(/\//g,'-')+'.json'; a.click();
 }
 function deleteSnap(i){
   if(!confirm('Eliminar este snapshot?')) return;
@@ -1044,13 +1251,11 @@ function deleteSnap(i){
   renderHistorico(); toast('Snapshot eliminado.');
 }
 function exportSnaps(){
-  const snaps=getSnaps();
+  const snaps=window.SB&&SB.isOnline?_sbSnaps:getSnaps();
   if(!snaps.length){toast('Sem snapshots para exportar.','var(--amber)');return;}
   const blob=new Blob([JSON.stringify(snaps,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='strategos_snapshots_'+new Date().toISOString().split('T')[0]+'.json';
-  a.click();
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='strategos_snapshots_'+new Date().toISOString().split('T')[0]+'.json'; a.click();
   toast('Snapshots exportados.');
 }
 function importSnaps(input){
@@ -1202,42 +1407,19 @@ function adminRemoveContract(key,ctId){
 
 
 function forceDetectPrograms(){
-  // Show what's in localStorage for debugging
-  var n0sRaw = localStorage.getItem('pmo_n0s');
-  var cfgRaw = localStorage.getItem('pmo_cfg');
-  
-  if(!n0sRaw){
-    toast('Não foram encontrados dados. Abre o index.html, carrega os dados e volta aqui.','var(--red)',4000);
-    return;
-  }
-  
-  try{
-    var n0s = JSON.parse(n0sRaw);
-    if(!n0s.length){
-      toast('Lista de programas está vazia. Carrega um Excel no index.html primeiro.','var(--red)',4000);
-      return;
-    }
-    if(!CFG.programs) CFG.programs=[];
-    var added=0;
-    var nowYear=new Date().getFullYear();
-    n0s.forEach(function(nome){
-      if(!CFG.programs.find(function(p){return p.name===nome;})){
-        CFG.programs.push({
-          code: String(CFG.programs.length+1),
-          name: nome, desc: '',
-          finCats:[{nome:'Consultoria',capex:false},{nome:'Tecnologia',capex:true},{nome:'Comunicação',capex:false},{nome:'Formação',capex:false},{nome:'Outros',capex:false}],
-          finAnos:[nowYear, nowYear+1]
-        });
-        added++;
-      }
-    });
-    saveCfg();
-    renderFinAdmin();
-    renderEstrutura();
-    if(added>0) toast('Adicionados '+added+' programa(s): '+n0s.join(', '),'#3B6D11');
-    else toast('Programas já estavam todos presentes.','#2D5F75');
-  }catch(e){
-    toast('Erro: '+e.message,'var(--red)');
+  if(window.SB && SB.isOnline){
+    toast('A recarregar programas do servidor...','#2D5F75');
+    autoDetectPrograms();
+  } else {
+    // Fallback offline
+    var n0sRaw=localStorage.getItem('pmo_n0s');
+    if(!n0sRaw){ toast('Sem dados locais. Abre o index.html e carrega um Excel primeiro.','var(--amber)'); return; }
+    try{
+      var n0s=JSON.parse(n0sRaw);
+      if(!n0s.length){ toast('Lista de programas está vazia.','var(--amber)'); return; }
+      _detectAndAddPrograms(n0s);
+      toast('Programas actualizados.','#3B6D11');
+    }catch(e){ toast('Erro: '+e.message,'var(--red)'); }
   }
 }
 
@@ -1256,45 +1438,60 @@ const ALL_TABS_DEF=[
 ];
 const PERM_OPTS=['none','read','edit'];
 const PERM_LABELS={'none':'Sem acesso','read':'Leitura','edit':'Edição'};
+const ROLE_LABELS={'admin':'Administrador','editor':'Editor','viewer':'Visualizador'};
 
-function initUtilizadores(){
-  if(!CFG.profiles) CFG.profiles=[];
-  if(!CFG.users) CFG.users=[];
+// Cache de dados Supabase para o painel
+var _sbProfiles=[];
+var _sbUsers=[];
+
+async function initUtilizadores(){
+  if(window.SB && SB.isOnline){
+    document.getElementById('perfis-list').innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px">A carregar perfis...</div>';
+    document.getElementById('users-list').innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px">A carregar utilizadores...</div>';
+    try{ _sbProfiles=await SB.listProfiles(); }catch(e){ _sbProfiles=[]; }
+    try{ _sbUsers=await SB.listUsers(); }catch(e){ _sbUsers=[]; }
+  } else {
+    if(!CFG.profiles) CFG.profiles=[];
+    if(!CFG.users) CFG.users=[];
+  }
   renderPerfis();
   renderUsersList();
 }
 
-// Devolve lista de N0s disponíveis (lida do localStorage, preenchida quando index.html carrega dados)
+// N0s disponíveis — lidos de Supabase (cache em _sbActivitiesN0s) ou localStorage
+var _sbActivitiesN0s=[];
 function getAvailableN0s(){
+  if(_sbActivitiesN0s.length) return _sbActivitiesN0s;
   try{ return JSON.parse(localStorage.getItem('pmo_n0s')||'[]'); }catch(e){ return []; }
 }
 
 function renderPerfis(){
   const wrap=document.getElementById('perfis-list');
-  if(!CFG.profiles.length){wrap.innerHTML='<p style="color:var(--text3);font-size:13px">Sem perfis.</p>';return;}
-  const availN0s = getAvailableN0s();
+  const profiles=( window.SB && SB.isOnline ) ? _sbProfiles : (CFG.profiles||[]);
+  if(!profiles.length){wrap.innerHTML='<p style="color:var(--text3);font-size:13px">Sem perfis. Clica em "+ Novo perfil" para criar o primeiro.</p>';return;}
+  const availN0s=getAvailableN0s();
   let html='';
-  CFG.profiles.forEach(function(prof){
-    const profN0s = prof.n0s || [];
+  profiles.forEach(function(prof){
+    // Online: prof.id é UUID; offline: prof.id é string local
+    const pid=prof.id;
+    const profN0s=prof.n0s||[];
     html+='<div class="acard" style="margin-bottom:12px;border:1px solid var(--border)">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
-      +'<input class="ainput" style="font-weight:600;flex:1" data-pid="'+esc(prof.id)+'" data-field="name" value="'+esc(prof.name)+'" placeholder="Nome do perfil">'
-      +'<button class="abtn abtn-sm" style="color:var(--red,#E24B4A)" onclick="deletePerfil(\''+prof.id+'\')">Eliminar</button>'
+      +'<input class="ainput" style="font-weight:600;flex:1" data-pid="'+esc(pid)+'" data-field="name" value="'+esc(prof.name)+'" placeholder="Nome do perfil">'
+      +'<button class="abtn abtn-sm" style="color:var(--red,#E24B4A)" onclick="deletePerfil(\''+esc(pid)+'\')">Eliminar</button>'
       +'</div>'
-      // ── Acesso a Programas (N0) ──
-      +(availN0s.length > 0
-        ? '<div style="margin-bottom:12px">'
+      +(availN0s.length>0
+        ?'<div style="margin-bottom:12px">'
           +'<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px">Programas acessíveis <span style="font-weight:400;color:var(--text3)">(vazio = todos)</span></div>'
           +'<div style="display:flex;flex-wrap:wrap;gap:8px">'
-          + availN0s.map(function(n0){
-              const checked = profN0s.includes(n0);
+          +availN0s.map(function(n0){
+              const checked=profN0s.includes(n0);
               return '<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer">'
-                +'<input type="checkbox" class="prof-n0-cb" data-pid="'+esc(prof.id)+'" data-n0="'+esc(n0)+'"'+(checked?' checked':'')+'>'
+                +'<input type="checkbox" class="prof-n0-cb" data-pid="'+esc(pid)+'" data-n0="'+esc(n0)+'"'+(checked?' checked':'')+'>'
                 +esc(n0)+'</label>';
             }).join('')
           +'</div></div>'
-        : '<p style="font-size:11px;color:var(--text3);margin-bottom:10px">Importa dados para configurar acesso por programa.</p>')
-      // ── Acesso por Componente ──
+        :'<p style="font-size:11px;color:var(--text3);margin-bottom:10px">Sem programas detectados.</p>')
       +'<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px">Acesso por componente</div>'
       +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
       +'<thead><tr><th style="text-align:left;padding:4px 8px;color:var(--text2);font-weight:500">Componente</th>'
@@ -1304,125 +1501,190 @@ function renderPerfis(){
       const opts=PERM_OPTS.map(function(o){return'<option value="'+o+'"'+(cur===o?' selected':'')+'>'+PERM_LABELS[o]+'</option>';}).join('');
       html+='<tr style="border-top:1px solid var(--border)">'
         +'<td style="padding:5px 8px">'+esc(td.label)+'</td>'
-        +'<td style="padding:4px 8px;text-align:center"><select class="ainput" style="font-size:12px;padding:3px 6px" data-pid="'+esc(prof.id)+'" data-tab="'+td.id+'">'+opts+'</select></td>'
+        +'<td style="padding:4px 8px;text-align:center"><select class="ainput" style="font-size:12px;padding:3px 6px" data-pid="'+esc(pid)+'" data-tab="'+td.id+'">'+opts+'</select></td>'
         +'</tr>';
     });
     html+='</tbody></table>'
-      +'<button class="abtn abtn-primary abtn-sm" style="margin-top:10px" onclick="savePerfil(\''+prof.id+'\')">💾 Guardar perfil</button>'
+      +'<button class="abtn abtn-primary abtn-sm" style="margin-top:10px" onclick="savePerfil(\''+esc(pid)+'\')">💾 Guardar perfil</button>'
       +'</div>';
   });
   wrap.innerHTML=html;
 }
 
-function addPerfil(){
+async function addPerfil(){
   const tabs={};
   ALL_TABS_DEF.forEach(function(t){tabs[t.id]='read';});
-  CFG.profiles.push({id:uid(),name:'Novo Perfil',tabs:tabs,n0s:[]});
-  saveCfg(); renderPerfis();
+  const newProf={name:'Novo Perfil',tabs:tabs,n0s:[]};
+  if(window.SB && SB.isOnline){
+    try{
+      await SB.saveProfile(newProf);
+      _sbProfiles=await SB.listProfiles();
+      renderPerfis();
+      toast('Perfil criado.','#2D5F75');
+    }catch(e){ toast('Erro ao criar perfil: '+e.message,'var(--red)'); }
+  } else {
+    newProf.id=uid();
+    if(!CFG.profiles) CFG.profiles=[];
+    CFG.profiles.push(newProf);
+    saveCfg(); renderPerfis();
+  }
 }
 
-function savePerfil(pid){
-  const prof=CFG.profiles.find(function(p){return p.id===pid;});
-  if(!prof) return;
+async function savePerfil(pid){
   const nameInp=document.querySelector('input[data-pid="'+pid+'"][data-field="name"]');
-  if(nameInp) prof.name=nameInp.value.trim()||prof.name;
-  // Guardar permissões por tab
+  const name=nameInp?nameInp.value.trim():'';
+  const tabs={};
   document.querySelectorAll('select[data-pid="'+pid+'"][data-tab]').forEach(function(sel){
-    if(!prof.tabs) prof.tabs={};
-    prof.tabs[sel.dataset.tab]=sel.value;
+    tabs[sel.dataset.tab]=sel.value;
   });
-  // Guardar N0s permitidos (checkboxes)
-  const n0Checked = [];
+  const n0Checked=[];
   document.querySelectorAll('.prof-n0-cb[data-pid="'+pid+'"]').forEach(function(cb){
     if(cb.checked) n0Checked.push(cb.dataset.n0);
   });
-  prof.n0s = n0Checked; // vazio = sem restrição = todos os programas
-  saveCfg(); toast('Perfil guardado.'); renderUsersList();
+  if(window.SB && SB.isOnline){
+    try{
+      await SB.saveProfile({_supabase_id:pid,name:name,tabs:tabs,n0s:n0Checked});
+      _sbProfiles=await SB.listProfiles();
+      renderPerfis(); renderUsersList();
+      toast('Perfil guardado.','#3B6D11');
+    }catch(e){ toast('Erro: '+e.message,'var(--red)'); }
+  } else {
+    const prof=(CFG.profiles||[]).find(function(p){return p.id===pid;});
+    if(!prof) return;
+    prof.name=name||prof.name; prof.tabs=tabs; prof.n0s=n0Checked;
+    saveCfg(); toast('Perfil guardado.'); renderUsersList();
+  }
 }
 
-function deletePerfil(pid){
-  const inUse=(CFG.users||[]).some(function(u){return u.profileId===pid;});
-  if(inUse){alert('Este perfil está atribuído a utilizadores. Remove ou reatribui primeiro.');return;}
-  CFG.profiles=CFG.profiles.filter(function(p){return p.id!==pid;});
-  saveCfg(); renderPerfis();
+async function deletePerfil(pid){
+  if(window.SB && SB.isOnline){
+    const inUse=_sbUsers.some(function(u){return u.profile_id===pid;});
+    if(inUse){alert('Este perfil está atribuído a utilizadores. Remove ou reatribui primeiro.');return;}
+    if(!confirm('Eliminar perfil?')) return;
+    try{
+      await SB.deleteProfile(pid);
+      _sbProfiles=await SB.listProfiles();
+      renderPerfis(); toast('Perfil eliminado.');
+    }catch(e){ toast('Erro: '+e.message,'var(--red)'); }
+  } else {
+    const inUse=(CFG.users||[]).some(function(u){return u.profileId===pid;});
+    if(inUse){alert('Este perfil está atribuído a utilizadores. Remove ou reatribui primeiro.');return;}
+    if(!confirm('Eliminar perfil?')) return;
+    CFG.profiles=(CFG.profiles||[]).filter(function(p){return p.id!==pid;});
+    saveCfg(); renderPerfis();
+  }
 }
 
 function renderUsersList(){
   const wrap=document.getElementById('users-list');
-  if(!CFG.users.length){wrap.innerHTML='<p style="color:var(--text3);font-size:13px">Sem utilizadores.</p>';return;}
-  const profOpts=CFG.profiles.map(function(p){return'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>';}).join('');
+  const online=window.SB && SB.isOnline;
+  const users=online?_sbUsers:(CFG.users||[]);
+  const profiles=online?_sbProfiles:(CFG.profiles||[]);
+
+  // Populate "Novo utilizador" profile selector
+  const nuProfile=document.getElementById('nu-profile');
+  if(nuProfile){
+    nuProfile.innerHTML='<option value="">— seleccionar perfil —</option>'
+      +profiles.map(function(p){return'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>';}).join('');
+  }
+
+  if(!users.length){wrap.innerHTML='<p style="color:var(--text3);font-size:13px">Sem utilizadores.</p>';return;}
+
   let html='<table style="width:100%;border-collapse:collapse;font-size:13px">'
     +'<thead><tr style="border-bottom:2px solid var(--border)">'
     +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Nome</th>'
-    +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Username</th>'
-    +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Password</th>'
+    +(online?'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Email</th>':'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Username</th>')
+    +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Função</th>'
     +'<th style="padding:6px 8px;text-align:left;color:var(--text2)">Perfil</th>'
     +'<th></th>'
     +'</tr></thead><tbody>';
-  CFG.users.forEach(function(u){
-    const pOpts=CFG.profiles.map(function(p){
-      return'<option value="'+esc(p.id)+'"'+(u.profileId===p.id?' selected':'')+'>'+esc(p.name)+'</option>';
-    }).join('');
-    html+='<tr style="border-bottom:1px solid var(--border)">'
-      +'<td style="padding:5px 6px"><input class="ainput" data-uid="'+esc(u.id)+'" data-field="name" value="'+esc(u.name||'')+'" placeholder="Nome"></td>'
-      +'<td style="padding:5px 6px"><input class="ainput" data-uid="'+esc(u.id)+'" data-field="username" value="'+esc(u.username||'')+'"></td>'
-      +'<td style="padding:5px 6px"><input class="ainput" type="password" data-uid="'+esc(u.id)+'" data-field="password" value="'+esc(u.password||'')+'" placeholder="••••••"></td>'
-      +'<td style="padding:5px 6px"><select class="ainput" data-uid="'+esc(u.id)+'" data-field="profileId">'+pOpts+'</select></td>'
-      +'<td style="padding:5px 6px;text-align:center">'
-      +'<button class="abtn abtn-sm" onclick="saveUser(\''+u.id+'\')">💾</button> '
-      +'<button class="abtn abtn-sm" style="color:var(--red,#E24B4A)" onclick="deleteUser(\''+u.id+'\')">✕</button>'
-      +'</td>'
-      +'</tr>';
+
+  users.forEach(function(u){
+    if(online){
+      const uid_val=u.id;
+      const profName=(u.user_profiles&&u.user_profiles.name)||'—';
+      const roleLabel=ROLE_LABELS[u.role]||u.role||'—';
+      html+='<tr style="border-bottom:1px solid var(--border)">'
+        +'<td style="padding:5px 8px">'+esc(u.display_name||'—')+'</td>'
+        +'<td style="padding:5px 8px;color:var(--text2);font-size:12px">'+esc(u.email||'—')+'</td>'
+        +'<td style="padding:5px 8px"><span style="background:var(--bg2);padding:2px 8px;border-radius:20px;font-size:11px;border:1px solid var(--border2)">'+esc(roleLabel)+'</span></td>'
+        +'<td style="padding:5px 8px">'+esc(profName)+'</td>'
+        +'<td style="padding:5px 8px;text-align:center">'
+        +'<button class="abtn abtn-sm abtn-danger" onclick="deleteUser(\''+esc(uid_val)+'\')">✕</button>'
+        +'</td></tr>';
+    } else {
+      const pOpts=profiles.map(function(p){
+        return'<option value="'+esc(p.id)+'"'+(u.profileId===p.id?' selected':'')+'>'+esc(p.name)+'</option>';
+      }).join('');
+      html+='<tr style="border-bottom:1px solid var(--border)">'
+        +'<td style="padding:5px 6px"><input class="ainput" data-uid="'+esc(u.id)+'" data-field="name" value="'+esc(u.name||'')+'" placeholder="Nome"></td>'
+        +'<td style="padding:5px 6px"><input class="ainput" data-uid="'+esc(u.id)+'" data-field="username" value="'+esc(u.username||'')+'"></td>'
+        +'<td style="padding:5px 6px"><span style="font-size:11px;color:var(--text3)">local</span></td>'
+        +'<td style="padding:5px 6px"><select class="ainput" data-uid="'+esc(u.id)+'" data-field="profileId">'+pOpts+'</select></td>'
+        +'<td style="padding:5px 6px;text-align:center">'
+        +'<button class="abtn abtn-sm" onclick="saveUserLocal(\''+esc(u.id)+'\')">💾</button> '
+        +'<button class="abtn abtn-sm" style="color:var(--red,#E24B4A)" onclick="deleteUser(\''+esc(u.id)+'\')">✕</button>'
+        +'</td></tr>';
+    }
   });
   html+='</tbody></table>';
   wrap.innerHTML=html;
 }
 
-function addUser(){
-  const defaultProfile=CFG.profiles[0];
-  CFG.users.push({id:uid(),name:'',username:'',password:'',profileId:defaultProfile?defaultProfile.id:''});
-  saveCfg(); renderUsersList();
+function showAddUserForm(){
+  const form=document.getElementById('add-user-form');
+  form.style.display=form.style.display==='none'?'block':'none';
 }
 
-async function saveUser(uid_val){
-  const u=CFG.users.find(function(x){return x.id===uid_val;});
-  if(!u) return;
-  document.querySelectorAll('[data-uid="'+uid_val+'"]').forEach(function(inp){
-    const f=inp.dataset.field;
-    if(f) u[f]=inp.value;
-  });
-  // Persistir no Supabase se disponível (via Edge Function que usa service_role)
+async function createUser(){
+  const name=document.getElementById('nu-name').value.trim();
+  const email=document.getElementById('nu-email').value.trim();
+  const pwd=document.getElementById('nu-password').value;
+  const role=document.getElementById('nu-role').value;
+  const profileId=document.getElementById('nu-profile').value;
+  if(!email){toast('Email obrigatório.','var(--red)');return;}
+  if(!pwd||pwd.length<6){toast('Password de pelo menos 6 caracteres.','var(--red)');return;}
   if(window.SB && SB.isOnline){
     try{
-      const email=u.username.includes('@')?u.username:u.username+'@strategos.local';
-      await SB.upsertUser({
-        supabase_uid : u._supabase_uid || null,
-        email        : email,
-        password     : u.password || undefined,
-        display_name : u.name || u.username,
-        profile_id   : u._supabase_profile_id || null
-      });
-      toast('Utilizador guardado na base de dados.');
-    }catch(err){
-      console.warn('Admin: Supabase upsertUser falhou:', err);
-      toast('Guardado localmente (Supabase indisponível).', 'var(--amber,#854F0B)');
-    }
+      await SB.upsertUser({supabase_uid:null,email:email,password:pwd,display_name:name||email,role:role,profile_id:profileId||null});
+      _sbUsers=await SB.listUsers();
+      renderUsersList();
+      document.getElementById('nu-name').value='';
+      document.getElementById('nu-email').value='';
+      document.getElementById('nu-password').value='';
+      document.getElementById('add-user-form').style.display='none';
+      toast('Utilizador criado.','#3B6D11');
+    }catch(e){ toast('Erro: '+e.message,'var(--red)'); }
   } else {
-    toast('Utilizador guardado.');
+    if(!CFG.users) CFG.users=[];
+    CFG.users.push({id:uid(),name:name||email,username:email,password:pwd,profileId:profileId});
+    saveCfg(); renderUsersList();
+    document.getElementById('add-user-form').style.display='none';
+    toast('Utilizador criado localmente.');
   }
-  saveCfg();
+}
+
+function saveUserLocal(uid_val){
+  const u=(CFG.users||[]).find(function(x){return x.id===uid_val;});
+  if(!u) return;
+  document.querySelectorAll('[data-uid="'+uid_val+'"]').forEach(function(inp){
+    const f=inp.dataset.field; if(f) u[f]=inp.value;
+  });
+  saveCfg(); toast('Utilizador guardado.');
 }
 
 async function deleteUser(uid_val){
   if(!confirm('Eliminar utilizador?')) return;
-  const u=CFG.users.find(function(x){return x.id===uid_val;});
-  if(u && u._supabase_uid && window.SB && SB.isOnline){
+  if(window.SB && SB.isOnline){
     try{
-      await SB.deleteUser(u._supabase_uid);
-    }catch(err){ console.warn('Admin: Supabase deleteUser falhou:', err); }
+      await SB.deleteUser(uid_val);
+      _sbUsers=await SB.listUsers();
+      renderUsersList(); toast('Utilizador eliminado.');
+    }catch(e){ toast('Erro: '+e.message,'var(--red)'); }
+  } else {
+    CFG.users=(CFG.users||[]).filter(function(x){return x.id!==uid_val;});
+    saveCfg(); renderUsersList(); toast('Utilizador eliminado.');
   }
-  CFG.users=CFG.users.filter(function(x){return x.id!==uid_val;});
-  saveCfg(); renderUsersList();
 }
 
 // ── DADOS PANEL ───────────────────────────────────────────────────────────────
