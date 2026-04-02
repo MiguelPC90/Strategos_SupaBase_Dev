@@ -116,7 +116,7 @@ tr.hover-row:hover td{background:var(--bg2)}
 .gantt-table{border-collapse:collapse;font-size:12px;min-width:800px;width:100%}
 .gantt-table th{background:var(--navy);color:#fff;padding:6px 8px;font-size:10px;font-weight:500;white-space:nowrap;border-right:1px solid rgba(255,255,255,.12);position:sticky;top:0;z-index:3}
 .gantt-table td{padding:4px 8px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
-.gantt-table tbody tr{height:34px}
+.gantt-table tbody tr:not([data-pad]){height:34px}
 .gantt-table tr:hover td{background:rgba(0,46,94,.04)}
 .gantt-row-n1 td{background:rgba(0,46,94,.07);font-weight:700;color:var(--navy)}
 .gantt-row-n1 td.g-sticky,.gantt-row-n1 td.g-sticky-2,.gantt-row-n1 td.g-sticky-3,.gantt-row-n1 td.g-sticky-4,.gantt-row-n1 td.g-sticky-5{background:#e8edf3}
@@ -2475,6 +2475,7 @@ let _gVisibleRows=[];
 let _gMeta={valid:false};
 let _ganttScrollRaf=null;
 let _ganttEvtBound=false;
+let _ganttStickyLefts=null;
 
 function hasGChildren(idx){return idx+1<_ganttData.length&&_ganttData[idx+1].nivel>_ganttData[idx].nivel;}
 
@@ -2594,13 +2595,16 @@ function fixGanttSticky(tbl){
   const trs=tbl.querySelectorAll('thead tr');
   const hrow=trs[0];if(!hrow)return;
   const nCols=Math.min(5,hrow.children.length);
-  // Read phase — avoid layout thrashing
-  const lefts=[];
-  for(let ci=0;ci<nCols;ci++)lefts.push(hrow.children[ci].offsetLeft+'px');
-  // Write phase
-  for(let ci=0;ci<nCols;ci++)hrow.children[ci].style.left=lefts[ci];
+  // Compute offsetLeft only once per fresh header — re-reading after style.left is set
+  // causes Safari to return the visual (stuck) position instead of natural table position
+  if(!_ganttStickyLefts){
+    _ganttStickyLefts=[];
+    for(let ci=0;ci<nCols;ci++)_ganttStickyLefts.push(hrow.children[ci].offsetLeft+'px');
+  }
+  const lefts=_ganttStickyLefts;
+  for(let ci=0;ci<lefts.length;ci++)hrow.children[ci].style.left=lefts[ci];
   const bodyRows=tbl.querySelectorAll('tbody tr:not([data-pad])');
-  bodyRows.forEach(tr=>{for(let ci=0;ci<nCols;ci++)if(tr.children[ci])tr.children[ci].style.left=lefts[ci];});
+  bodyRows.forEach(tr=>{for(let ci=0;ci<lefts.length;ci++)if(tr.children[ci])tr.children[ci].style.left=lefts[ci];});
   if(trs[1]){
     const h=hrow.getBoundingClientRect().height+'px';
     Array.from(trs[1].children).forEach(th=>{th.style.top=h;});
@@ -2681,6 +2685,7 @@ function renderGantt(data){
   // Reset scroll and rebuild table structure
   const wrap=document.querySelector('.gantt-wrap');
   if(wrap)wrap.scrollTop=0;
+  _ganttStickyLefts=null;
   tbl.innerHTML=buildGanttHeaders()+'<tbody></tbody>';
   _bindGanttEvents();
   renderGanttVirtual();
@@ -2708,6 +2713,7 @@ function setGanttScale(scale,btn){
   buildGanttMeta(_ganttData);
   const tbl=document.getElementById('gantt-table');
   if(_gMeta.valid){
+    _ganttStickyLefts=null;
     tbl.innerHTML=buildGanttHeaders()+'<tbody></tbody>';
     renderGanttVirtual();
   }
