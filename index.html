@@ -17,13 +17,15 @@
   --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);
   --r:8px;--rl:12px;
   --blue:#185FA5;--red:#A32D2D;--red-bar:#E24B4A;--amber:#854F0B;
+  --sidebar-w:220px;
 }
 body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09a;--text3:#606058;--border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.15)}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg3);color:var(--text);font-size:14px;min-height:100vh;padding-top:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg3);color:var(--text);font-size:14px;min-height:100vh;padding-top:0;overflow-x:hidden}
+canvas{max-width:100%!important}
 
 /* ── FIXED HEADER ── */
 .fixed-top{position:fixed;top:0;left:0;right:0;z-index:50;overflow:visible}
-.topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 1.5rem;background:var(--navy);gap:8px;min-height:52px}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 1.5rem 8px 0;background:var(--navy);gap:8px;min-height:52px}
 .topbar h1{font-size:18px;font-weight:700;color:#fff;margin:0}
 .topbar p{font-size:11px;color:rgba(255,255,255,.65);margin-top:1px}
 .topbar-left{display:flex;align-items:center;gap:12px}
@@ -57,7 +59,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg3);color:var
 .tab.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:600}
 
 /* ── CONTENT ── */
-.content{padding:1.25rem 1.5rem}
+.content{padding:1.25rem 1.5rem;margin-left:var(--sidebar-w);transition:margin-left .2s}
 .section{display:none}.section.active{display:block}
 
 /* ── CARDS ── */
@@ -105,7 +107,7 @@ tr.hover-row:hover td{background:var(--bg2)}
 
 /* ── GANTT ── */
 .gantt-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
-.gantt-wrap{overflow-x:auto;position:relative}
+.gantt-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 130px);position:relative}
 .gantt-table .g-sticky,.gantt-table .g-sticky-2,.gantt-table .g-sticky-3,.gantt-table .g-sticky-4,.gantt-table .g-sticky-5{position:sticky;z-index:2;background:var(--bg);}
 /* Header sticky-left cells: keep navy bg and float above td sticky cells */
 .gantt-table th.g-sticky,.gantt-table th.g-sticky-2,.gantt-table th.g-sticky-3,.gantt-table th.g-sticky-4,.gantt-table th.g-sticky-5{z-index:4;background:var(--navy)}
@@ -126,7 +128,9 @@ tr.hover-row:hover td{background:var(--bg2)}
 .g-bar{position:absolute;border-radius:2px}
 .g-baseline{top:5px;height:6px;opacity:.3}
 .g-real{top:14px;height:7px}
-.g-today{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,0,0,.6);z-index:1;pointer-events:none}
+.g-today{position:absolute;top:0;bottom:0;width:2px;background:rgba(220,50,50,.75);z-index:1;pointer-events:none}
+.g-today-lbl{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;color:rgba(220,50,50,.9);white-space:nowrap;font-weight:700}
+#gantt-tooltip{position:fixed;pointer-events:none;z-index:9999;background:#1a2b3c;color:#fff;font-size:12px;padding:8px 12px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);max-width:260px;line-height:1.5;display:none}
 .gantt-month-hdr{text-align:center;font-size:10px;padding:3px 2px;border-right:1px solid rgba(255,255,255,.12)}
 .gantt-legend{display:flex;gap:14px;margin-bottom:8px;flex-wrap:wrap}
 .gantt-legend span{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)}
@@ -198,11 +202,52 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
 .topbar-user-name{color:rgba(255,255,255,.85);font-size:12px;font-weight:500}
 .logout-btn{background:none;border:1px solid rgba(255,255,255,.25);border-radius:var(--r);padding:5px 10px;color:#fff;cursor:pointer;font-size:12px}
 .logout-btn:hover{background:rgba(255,255,255,.1)}
+/* ── PROFILE DROPDOWN ── */
+.topbar-actions{position:relative}
+.profile-btn-desk{background:none;border:none;cursor:pointer;padding:0;margin-left:4px;flex-shrink:0}
+#profile-avatar-desk{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.3);transition:background .15s;user-select:none}
+.profile-btn-desk:hover #profile-avatar-desk{background:rgba(255,255,255,.32)}
+#profile-dropdown{position:absolute;top:calc(100% + 10px);right:0;background:var(--bg);border:1px solid var(--border2);border-radius:var(--rl);box-shadow:0 8px 32px rgba(0,0,0,.18);min-width:224px;z-index:200;padding:4px 0}
+#profile-dropdown[hidden]{display:none!important}
+.pdrop-header{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.pdrop-avatar-lg{width:40px;height:40px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pdrop-name{font-size:13px;font-weight:600;color:var(--text)}
+.pdrop-email{font-size:11px;color:var(--text2);margin-top:2px;word-break:break-all}
+.pdrop-sep{height:1px;background:var(--border);margin:2px 0}
+.pdrop-theme-row{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;gap:8px}
+.pdrop-lbl{font-size:12px;color:var(--text2)}
+.pdrop-theme-btns{display:flex;gap:4px}
+.pdrop-theme-opt{padding:4px 10px;font-size:11px;border-radius:20px;cursor:pointer;border:1px solid var(--border2);background:var(--bg);color:var(--text2);font-family:inherit;transition:all .12s}
+.pdrop-theme-opt.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.pdrop-logout{width:100%;padding:10px 16px;background:none;border:none;text-align:left;font-size:13px;color:var(--red);cursor:pointer;font-family:inherit}
+.pdrop-logout:hover{background:var(--bg2)}
+/* ── ACTIVE FILTER CHIPS ── */
+#active-chips-bar{width:100%;display:none;gap:6px;flex-wrap:wrap;align-items:center;padding:6px 1.5rem;border-bottom:1px solid var(--border)}
+@media(min-width:769px){
+  #active-chips-bar{margin-left:var(--sidebar-w);width:calc(100% - var(--sidebar-w));padding-left:1rem;transition:margin-left .2s,width .2s}
+  #filter-panel{margin-left:var(--sidebar-w);transition:margin-left .2s}
+}
+.active-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 10px;background:var(--navy);color:#fff;border-radius:20px;font-size:11px;font-weight:500}
+.active-chip-remove{background:none;border:none;color:rgba(255,255,255,.65);cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 1px;font-family:inherit}
+.active-chip-remove:hover{color:#fff}
+.chips-clear-all{font-size:11px;color:var(--text2);cursor:pointer;padding:3px 6px;text-decoration:underline;background:none;border:none;font-family:inherit}
+.chips-clear-all:hover{color:var(--navy)}
+/* ── BUTTON HIERARCHY ── */
+.btn-primary{background:var(--navy)!important;color:#fff!important;border-color:var(--navy)!important}
+.btn-primary:hover{background:#003d7a!important;border-color:#003d7a!important}
+.btn-danger{color:var(--red);border-color:var(--red)}
+.btn-danger:hover{background:#FDF0F0}
+/* ── TAB GROUPS ── */
+.tab-edit{color:var(--text2)}
+.tab-edit.active{color:var(--navy)}
+.tab-separator{width:1px;background:var(--border2);margin:6px 4px;align-self:stretch;flex-shrink:0}
 /* Login screen */
-.login-screen{position:fixed;inset:0;background:var(--navy);z-index:300;display:flex;align-items:center;justify-content:center}
-.login-card{background:var(--bg);border-radius:var(--rl);padding:36px 40px;min-width:320px;max-width:380px;width:90%;box-shadow:0 12px 40px rgba(0,0,0,.4)}
-.login-card h2{margin:0 0 4px;font-size:20px;color:var(--text)}
-.login-card p{margin:0 0 20px;font-size:13px;color:var(--text2)}
+.login-screen{position:fixed;inset:0;background:var(--bg3);z-index:300;display:flex;align-items:center;justify-content:center}
+.login-card{background:var(--bg);border-radius:var(--rl);padding:36px 40px;min-width:320px;max-width:400px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,.10);border:1px solid var(--border)}
+.login-card-brand{text-align:center;margin-bottom:20px}
+.login-card-brand img{max-height:52px;margin-bottom:10px}
+.login-card h2{margin:0 0 5px;font-size:20px;font-weight:700;color:var(--text)}
+.login-card .login-card-sub{margin:0 0 22px;font-size:13px;color:var(--text2);line-height:1.45}
 .login-field{margin-bottom:12px}
 .login-field label{display:block;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
 .login-field input{width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:14px;font-family:inherit;box-sizing:border-box}
@@ -210,10 +255,11 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
 .login-submit{width:100%;padding:10px;background:var(--navy);color:#fff;border:none;border-radius:var(--r);font-size:14px;font-weight:600;cursor:pointer;margin-top:4px;font-family:inherit}
 .login-submit:hover{opacity:.9}
 .login-error{color:#E24B4A;font-size:12px;margin:6px 0 0;display:none}
+@media(max-width:480px){.login-card{padding:28px 20px;width:calc(100% - 32px)}}
 @media(max-width:480px){.kpi-3col{grid-template-columns:1fr}.pm-field-row{grid-template-columns:1fr}}
 
 /* ── PROJECT MANAGEMENT ── */
-.pm-layout{display:grid;grid-template-columns:1fr 380px;gap:1rem;height:calc(100vh - 180px);min-height:500px}
+.pm-layout{display:grid;grid-template-columns:1fr 380px;gap:1rem;height:calc(100vh - 110px);min-height:500px}
 .pm-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:var(--rl);background:var(--bg)}
 .pm-table{width:100%;border-collapse:collapse;font-size:12px}
 .pm-table th{position:sticky;top:0;background:var(--navy);color:#fff;padding:7px 10px;font-size:11px;font-weight:500;white-space:nowrap;border-right:1px solid rgba(255,255,255,.12);z-index:2}
@@ -450,39 +496,159 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
   .filter-drawer{display:none !important;}
   .mobile-filter-btn{display:none !important;}
   .mobile-import-btn{display:none !important;}
+  .tab-bar{display:none !important;}
+  #sidebar-toggle{display:flex !important;}
 }
+
+/* ── SIDEBAR ── */
+body.sidebar-collapsed{--sidebar-w:56px}
+#sidebar{position:fixed;left:0;top:52px;bottom:0;width:var(--sidebar-w);background:var(--navy);display:flex;flex-direction:column;transition:width .2s;overflow:hidden;z-index:40}
+.sidebar-toggle-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.75);padding:6px 0;border-radius:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;width:56px}
+.sidebar-toggle-btn:hover{background:rgba(255,255,255,.08);color:#fff}
+.sidebar-toggle-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0}
+.sidebar-nav{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 0;scrollbar-width:none}
+.sidebar-nav::-webkit-scrollbar{display:none}
+.sidebar-group-lbl{display:block;font-size:9px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.35);padding:10px 16px 3px;text-transform:uppercase;white-space:nowrap;overflow:hidden;transition:opacity .15s}
+.sidebar-group-edit{color:rgba(255,255,255,.35)}
+.nav-item{display:flex;align-items:center;gap:10px;width:calc(100% - 8px);margin:1px 4px;padding:8px 12px 8px 16px;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.65);font-size:13px;font-family:inherit;text-align:left;text-decoration:none;white-space:nowrap;border-radius:6px;transition:background .12s,color .12s;box-sizing:border-box}
+.nav-item:hover{background:rgba(255,255,255,.1);color:#fff}
+.nav-item.active{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+.nav-item-edit.active{background:rgba(255,200,100,.12);color:#ffd070}
+.nav-icon{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.nav-label{transition:opacity .15s;overflow:hidden;text-overflow:ellipsis}
+.sidebar-sep{height:1px;background:rgba(255,255,255,.08);margin:6px 12px;flex-shrink:0}
+.sidebar-bottom{padding:6px 0 12px;flex-shrink:0;border-top:1px solid rgba(255,255,255,.08)}
+/* Collapsed state */
+body.sidebar-collapsed .nav-label,
+body.sidebar-collapsed .sidebar-group-lbl{opacity:0;pointer-events:none;width:0;overflow:hidden}
+body.sidebar-collapsed .nav-item{padding-right:0;gap:0}
+body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);position:fixed;left:calc(var(--sidebar-w) + 10px);background:#1a2b3c;color:#fff;padding:5px 10px;border-radius:6px;font-size:12px;white-space:nowrap;z-index:999;pointer-events:none;font-family:'Segoe UI',system-ui,sans-serif;box-shadow:0 3px 12px rgba(0,0,0,.25)}
+/* Mobile: sidebar hidden */
+@media(max-width:768px){
+  #sidebar{display:none!important}
+  .content{margin-left:0!important}
+}
+
+/* ── FILTER PANEL (desktop toggle) ── */
+#filter-panel{padding:8px 1rem 10px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#filter-panel[hidden]{display:none!important}
+/* Filter toggle button badge */
+#filter-toggle-btn{position:relative}
+.filter-badge{position:absolute;top:2px;right:2px;background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 2px;line-height:1}
+.desktop-filter-btn{display:none}
+@media(min-width:769px){.desktop-filter-btn{display:flex!important}}
 
 </style>
 </head>
-<body>
+<body class="sidebar-collapsed">
+
+<!-- SIDEBAR -->
+<nav id="sidebar" aria-label="Navegação principal">
+  <div class="sidebar-nav">
+    <span class="sidebar-group-lbl">Visualização</span>
+    <button class="nav-item active" data-tab="resumo" data-tooltip="Resumo executivo" onclick="switchTab('resumo',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span class="nav-label">Resumo executivo</span>
+    </button>
+    <button class="nav-item" data-tab="actividades" data-tooltip="Actividades" onclick="switchTab('actividades',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+      <span class="nav-label">Actividades</span>
+    </button>
+    <button class="nav-item" data-tab="gantt" data-tooltip="Gantt" onclick="switchTab('gantt',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
+      <span class="nav-label">Gantt</span>
+    </button>
+    <button class="nav-item" data-tab="evolucao" data-tooltip="Evolução" onclick="switchTab('evolucao',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span class="nav-label">Evolução</span>
+    </button>
+    <button class="nav-item" data-tab="pds" data-tooltip="Ponto de situação" onclick="switchTab('pds',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span class="nav-label">Ponto de situação</span>
+    </button>
+    <button class="nav-item" data-tab="exec-fin" data-tooltip="Execução Financeira" onclick="switchTab('exec-fin',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      <span class="nav-label">Execução Financeira</span>
+    </button>
+    <div class="sidebar-sep"></div>
+    <span class="sidebar-group-lbl sidebar-group-edit">Gestão</span>
+    <button class="nav-item nav-item-edit" data-tab="gestao" data-tooltip="Gestão de iniciativas" onclick="switchTab('gestao',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      <span class="nav-label">Gestão de iniciativas</span>
+    </button>
+    <button class="nav-item nav-item-edit" data-tab="gestao-pds" data-tooltip="Gestão PDS" onclick="switchTab('gestao-pds',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span class="nav-label">Gestão PDS</span>
+    </button>
+    <button class="nav-item nav-item-edit" data-tab="gestao-riscos" data-tooltip="Gestão de Riscos" onclick="switchTab('gestao-riscos',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span class="nav-label">Gestão de Riscos</span>
+    </button>
+    <button class="nav-item nav-item-edit" data-tab="gestao-financeira" data-tooltip="Gestão Financeira" onclick="switchTab('gestao-financeira',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span class="nav-label">Gestão Financeira</span>
+    </button>
+  </div>
+  <div class="sidebar-bottom">
+    <a href="admin.html" id="sidebar-admin" class="nav-item" data-tooltip="Admin" style="display:none">
+      <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span class="nav-label">Admin</span>
+    </a>
+  </div>
+</nav>
 
 <!-- FIXED HEADER -->
 <div class="fixed-top">
   <div class="topbar">
+    <button id="sidebar-toggle" class="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="Menu" style="display:none">
+      <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
     <div class="topbar-left">
       <img id="topbar-logo" class="topbar-logo" src="" alt="" style="height:36px;width:auto;object-fit:contain;display:none">
       <div>
         <h1 id="dash-title">Strategos</h1>
-        <p id="dash-subtitle">Plano Estratégico &nbsp;·&nbsp; <span id="lbl-today"></span> &nbsp;·&nbsp; Ref: <span id="lbl-ref">—</span></p>
+        <p id="dash-subtitle" style="display:none">Plano Estratégico &nbsp;·&nbsp; <span id="lbl-today"></span> &nbsp;·&nbsp; Ref: <span id="lbl-ref">—</span></p>
       </div>
     </div>
     <div class="topbar-actions">
-      <div class="topbar-user">
-        <span id="topbar-user-name" class="topbar-user-name"></span>
-        <button class="logout-btn" onclick="logout()">Sair</button>
-      </div>
       <button class="btn btn-ghost ro-hide" onclick="openUpload()">&#8593; Importar Excel</button>
+      <button id="filter-toggle-btn" class="btn btn-ghost desktop-filter-btn" onclick="toggleFilterPanel()" aria-label="Filtros" style="display:none;padding:6px 10px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+        <span id="filter-badge" class="filter-badge" style="display:none">0</span>
+      </button>
       <button class="mobile-filter-btn btn btn-ghost" style="display:none" onclick="openFilterDrawer()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
       </button>
       <button class="mobile-import-btn btn btn-ghost" style="display:none;padding:6px 10px" onclick="openUpload()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       </button>
+      <button class="profile-btn-desk" id="profile-btn-desk" type="button" aria-label="Perfil e definições">
+        <span id="profile-avatar-desk">?</span>
+      </button>
+      <div id="profile-dropdown" hidden>
+        <div class="pdrop-header">
+          <div class="pdrop-avatar-lg" id="pdrop-avatar-lg">?</div>
+          <div>
+            <div class="pdrop-name" id="pdrop-name">—</div>
+            <div class="pdrop-email" id="pdrop-email">—</div>
+          </div>
+        </div>
+        <div class="pdrop-sep"></div>
+        <div class="pdrop-theme-row">
+          <span class="pdrop-lbl">Tema</span>
+          <div class="pdrop-theme-btns">
+            <button class="pdrop-theme-opt active" id="pdrop-t-light" data-t="light" type="button">Claro</button>
+            <button class="pdrop-theme-opt" id="pdrop-t-dark" data-t="dark" type="button">Escuro</button>
+          </div>
+        </div>
+        <div class="pdrop-sep"></div>
+        <button class="pdrop-logout" type="button" onclick="logout()">Sair da conta</button>
+      </div>
     </div>
   </div>
 
-  <!-- FILTER BAR -->
-  <div id="filter-bar" class="filter-bar" id="filter-bar">
+  <!-- FILTER PANEL (desktop toggle) -->
+  <div id="filter-panel" class="filter-bar" hidden>
     <div class="ms-wrap" id="ms-n0-wrap" style="display:none">
       <div class="ms-label">Programa</div>
       <button class="ms-btn" onclick="toggleMs('ms-n0')"><span id="ms-n0-lbl">Todos</span><span>&#9660;</span></button>
@@ -520,6 +686,8 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
   </div>
   <div class="filter-info">A mostrar <strong id="f-count">—</strong> actividades &nbsp;<span id="cutoff-badge" style="display:none;background:#FAEEDA;color:#854F0B;font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500"></span></div>
 </div>
+  <!-- CHIPS BAR (below filter panel) -->
+  <div id="active-chips-bar"></div>
 
   <!-- TABS -->
   <div class="tab-bar">
@@ -529,12 +697,12 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     <button class="tab" onclick="switchTab('evolucao',this)">Evolução</button>
   <button class="tab" onclick="switchTab('pds',this)">Ponto de situação</button>
   <button class="tab" onclick="switchTab('exec-fin',this)">Execução Financeira</button>
-  <div style="width:1px;background:var(--border2);margin:6px 4px;align-self:stretch"></div>
-  <button class="tab" onclick="switchTab('gestao',this)" style="color:var(--text2)">Gestão de iniciativas</button>
-  <button class="tab" onclick="switchTab('gestao-pds',this)" style="color:var(--text2)">Gestão PDS</button>
-  <button class="tab" onclick="switchTab('gestao-riscos',this)" style="color:var(--text2)">Gestão de Riscos</button>
-  <button class="tab" onclick="switchTab('gestao-financeira',this)" style="color:var(--text2)">Gestão Financeira</button>
-  <a href="admin.html" class="tab" id="tab-admin" style="margin-left:auto;color:var(--text2);text-decoration:none;display:none">⚙ Admin</a>
+  <div class="tab-separator"></div>
+  <button class="tab tab-edit" onclick="switchTab('gestao',this)">Gestão de iniciativas</button>
+  <button class="tab tab-edit" onclick="switchTab('gestao-pds',this)">Gestão PDS</button>
+  <button class="tab tab-edit" onclick="switchTab('gestao-riscos',this)">Gestão de Riscos</button>
+  <button class="tab tab-edit" onclick="switchTab('gestao-financeira',this)">Gestão Financeira</button>
+  <a href="admin.html" class="tab tab-edit" id="tab-admin" style="margin-left:auto;text-decoration:none;display:none">⚙ Admin</a>
   </div>
 </div>
 
@@ -551,10 +719,10 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
       <div class="card-title">Dados Gerais <span id="trend-ref" style="font-size:10px;font-weight:400;color:var(--text3);margin-left:6px"></span></div>
       <div class="kpi-2col">
         <div class="kpi"><div class="kpi-lbl">Total actividades</div><div class="kpi-val" id="k-tot" style="color:var(--navy)">—</div><div class="kpi-sub">Nível 4</div></div>
-        <div class="kpi"><div class="kpi-lbl">Concluídas</div><div class="kpi-val" id="k-con" style="color:var(--blue)">—</div><div class="kpi-sub">Exec. 100%</div></div>
+        <div class="kpi"><div class="kpi-lbl">Concluídas</div><div class="kpi-val" id="k-con" style="color:var(--green)">—</div><div class="kpi-sub">Exec. 100%</div></div>
       </div>
       <div class="kpi-2col">
-        <div class="kpi"><div class="kpi-lbl">Em dia</div><div class="kpi-val" id="k-dia" style="color:var(--green)">—</div><div class="kpi-sub">Prazo não ultrapassado</div></div>
+        <div class="kpi"><div class="kpi-lbl">Em dia</div><div class="kpi-val" id="k-dia" style="color:var(--blue)">—</div><div class="kpi-sub">Prazo não ultrapassado</div></div>
         <div class="kpi"><div class="kpi-lbl">Em atraso</div><div class="kpi-val" id="k-atr" style="color:var(--red)">—</div><div class="kpi-sub">Prazo ultrapassado</div></div>
       </div>
     </div>
@@ -583,8 +751,8 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     <div class="card">
       <div class="card-title">Actividades por eixo — estado</div>
       <div class="chart-legend">
-        <span><b style="background:var(--navy)"></b>Concluídas</span>
-        <span><b style="background:var(--green)"></b>Em dia</span>
+        <span><b style="background:var(--green)"></b>Concluídas</span>
+        <span><b style="background:var(--navy)"></b>Em dia</span>
         <span><b style="background:var(--red-bar)"></b>Em atraso</span>
       </div>
       <div style="position:relative;height:190px"><canvas id="chart-bar"></canvas></div>
@@ -646,14 +814,11 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
         <span><b style="background:var(--navy);width:24px"></b>Real</span>
       </div>
       <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;align-items:center">
-        <div style="display:flex;flex-direction:column;gap:2px;margin-right:6px">
-          <span style="font-size:10px;color:var(--text2)">Data início ≥</span>
-          <input type="date" id="f-date-start" onchange="dApplyFilters()" style="padding:4px 6px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit">
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;margin-right:10px">
-          <span style="font-size:10px;color:var(--text2)">Data fim ≤</span>
-          <input type="date" id="f-date-end" onchange="dApplyFilters()" style="padding:4px 6px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit">
-        </div>
+        <span style="font-size:11px;color:var(--text2)">Escala:</span>
+        <button class="chip" id="gscale-week" onclick="setGanttScale('week',this)">Semana</button>
+        <button class="chip active" id="gscale-month" onclick="setGanttScale('month',this)">Mês</button>
+        <button class="chip" id="gscale-quarter" onclick="setGanttScale('quarter',this)">Trimestre</button>
+        <span style="border-left:1px solid var(--border2);height:16px;margin:0 4px;align-self:center"></span>
         <span style="font-size:11px;color:var(--text2)">Nível:</span>
         <button class="chip active" id="glvl-1" onclick="setGanttLevel(1,this)">N1</button>
         <button class="chip" id="glvl-2" onclick="setGanttLevel(2,this)">N2</button>
@@ -678,7 +843,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     </div>
     <span class="pm-unsaved ro-hide" id="gpds-unsaved">&#9679; Alterações não guardadas</span>
     <div style="margin-left:auto;display:flex;gap:8px">
-      <button class="btn ro-hide" style="font-size:12px;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="saveGPDS()">&#128190; Guardar</button>
+      <button class="btn btn-primary ro-hide" style="font-size:12px" onclick="saveGPDS()">&#128190; Guardar</button>
       <button class="btn" style="font-size:12px" onclick="exportPDSToExcel()">&#8595; Exportar Excel</button>
     </div>
   </div>
@@ -752,7 +917,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     <div style="margin-left:auto;display:flex;gap:8px">
       <button class="btn ro-hide" style="font-size:12px;font-weight:600;background:var(--bg2)" onclick="openNewProjectModal()">&#10010; Novo projecto</button>
       <button class="btn ro-hide" style="font-size:12px" onclick="addRow()">+ Nova linha</button>
-      <button class="btn ro-hide" style="font-size:12px;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="saveToSession()" title="Guarda na sessão actual (visível nos outros menus)">&#128190; Guardar</button>
+      <button class="btn btn-primary ro-hide" style="font-size:12px" onclick="saveToSession()" title="Guardar (Ctrl+S)">&#128190; Guardar</button>
       <button class="btn" style="font-size:12px" onclick="exportToExcel()" title="Exporta para ficheiro Excel">&#8595; Exportar Excel</button>
     </div>
   </div>
@@ -844,7 +1009,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
           </div>
         </div>
         <div class="pm-form-footer">
-          <button class="btn" style="background:var(--navy);color:#fff;border-color:var(--navy);font-size:12px" onclick="saveFormRow()" title="Grava na sessão actual">&#10003; Aplicar alteração</button>
+          <button class="btn btn-primary" style="font-size:12px" onclick="saveFormRow()" title="Grava na sessão actual">&#10003; Aplicar alteração</button>
           <button class="btn" style="font-size:12px" onclick="cancelForm()">Cancelar</button>
           <button class="btn" style="font-size:12px" onclick="duplicateRow()" id="pm-dup-btn">&#10064; Duplicar</button>
           <button class="btn" style="font-size:12px;color:var(--red);border-color:var(--red)" onclick="deleteRow()" id="pm-delete-btn">&#128465; Remover</button>
@@ -881,7 +1046,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     </div>
     <span class="pm-unsaved ro-hide" id="grisk-unsaved">&#9679; Alterações não guardadas</span>
     <div style="margin-left:auto;display:flex;gap:8px">
-      <button class="btn ro-hide" style="font-size:12px;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="saveGRisk()">&#128190; Guardar</button>
+      <button class="btn btn-primary ro-hide" style="font-size:12px" onclick="saveGRisk()">&#128190; Guardar</button>
       <button class="btn" style="font-size:12px" onclick="exportRiskToExcel()">&#8595; Exportar Excel</button>
     </div>
   </div>
@@ -993,7 +1158,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
         <button class="chip gfin-view-btn" data-v="facturas">Facturas</button>
       </div>
       <button class="btn" style="font-size:12px" onclick="exportGFin()">&#8595; Exportar Excel</button>
-      <button class="btn ro-hide" style="font-size:12px;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="saveGFin()">&#128190; Guardar</button>
+      <button class="btn btn-primary ro-hide" style="font-size:12px" onclick="saveGFin()">&#128190; Guardar</button>
     </div>
   </div>
 
@@ -1100,7 +1265,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn" style="background:var(--navy);color:#fff;border-color:var(--navy)" onclick="applyAdminSettings()">&#10003; Guardar definições</button>
+      <button class="btn btn-primary" onclick="applyAdminSettings()">&#10003; Guardar definições</button>
       <button class="btn" onclick="exportSettings()">&#8595; Exportar JSON</button>
       <button class="btn" onclick="document.getElementById('import-json').click()">&#8593; Importar JSON</button>
       <button class="btn" style="color:var(--red);border-color:var(--red)" onclick="resetSettings()">&#8635; Repor</button>
@@ -1172,7 +1337,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     </div>
     <div id="np-msg" style="font-size:12px;color:var(--red);min-height:18px;margin-top:8px"></div>
     <div class="btn-row" style="margin-top:1rem">
-      <button class="btn" style="background:var(--navy);color:#fff;border-color:var(--navy)" onclick="confirmNewProject()">&#10003; Criar plano de ação</button>
+      <button class="btn btn-primary" onclick="confirmNewProject()">&#10003; Criar plano de ação</button>
       <button class="btn" onclick="closeNewProject()">Cancelar</button>
     </div>
   </div>
@@ -1226,9 +1391,10 @@ let gpdsUnsaved=false,griskUnsaved=false;
 const GCOL={};    // gantt collapsed
 const ACOL={};    // activities collapsed
 let ganttMaxLevel=4;
+let ganttGranularity='month'; // 'week' | 'month' | 'quarter'
 let eixoView='eixo';
 
-const SC={"Concluído":{bg:"#E6F1FB",tc:"#185FA5",bar:"#002E5E"},"Em dia":{bg:"#EAF3DE",tc:"#3B6D11",bar:"#95BB42"},"Em atraso":{bg:"#FCEBEB",tc:"#A32D2D",bar:"#E24B4A"}};
+const SC={"Concluído":{bg:"#EAF3DE",tc:"#3B6D11",bar:"#95BB42"},"Em dia":{bg:"#E6F1FB",tc:"#185FA5",bar:"#002E5E"},"Em atraso":{bg:"#FCEBEB",tc:"#A32D2D",bar:"#E24B4A"}};
 
 function getCutoffDate(){
   const v = document.getElementById('f-cutoff')?.value || CFG?.cutoffDate || '';
@@ -1423,6 +1589,23 @@ document.addEventListener('click',e=>{
     document.querySelectorAll('.ms-dropdown').forEach(d=>d.classList.remove('open'));
 });
 
+// ── Atalhos de teclado globais ────────────────────────────────────────────────
+document.addEventListener('keydown', function(e){
+  if((e.ctrlKey||e.metaKey) && e.key==='s'){
+    e.preventDefault();
+    const active = document.querySelector('.section.active');
+    if(!active) return;
+    if(active.id==='gestao')            saveToSession();
+    else if(active.id==='gestao-pds')   saveGPDS();
+    else if(active.id==='gestao-riscos') saveGRisk();
+    else if(active.id==='gestao-financeira') saveGFin();
+  }
+  if(e.key==='Escape'){
+    const pmForm = document.getElementById('pm-form-content');
+    if(pmForm && pmForm.style.display!=='none') cancelForm();
+  }
+});
+
 function cascadeN1(){
   // When N0 changes, filter N1 and N2 options accordingly
   const n0s=MS_STATE['n0'];
@@ -1514,10 +1697,9 @@ function initUsers(){
 function showLogin(){
   const ls=document.getElementById('login-screen');
   if(ls) ls.style.display='flex';
-  // Apply branding
+  // Override logo if configured in CFG
   const logo=document.getElementById('login-logo');
-  if(logo&&CFG.logo){logo.src=CFG.logo;logo.style.display='block';}
-  const t=document.getElementById('login-title'); if(t) t.textContent=CFG.title||'Strategos';
+  if(logo&&CFG.logo) logo.src=CFG.logo;
   setTimeout(function(){const u=document.getElementById('login-username');if(u)u.focus();},50);
 }
 
@@ -1549,6 +1731,7 @@ async function doLogin(){
       const nameEl=document.getElementById('topbar-user-name');
       if(nameEl) nameEl.textContent=meta.display_name||uval;
       loadCfg(); // recarregar CFG do Supabase agora que estamos autenticados
+      _initProfileDesk();
       applyProfile(currentProfile);
       return;
     }catch(e){
@@ -1576,6 +1759,7 @@ async function doLogin(){
   document.getElementById('login-screen').style.display='none';
   const nameEl=document.getElementById('topbar-user-name');
   if(nameEl) nameEl.textContent=user.name||user.username;
+  _initProfileDesk();
   applyProfile(profile);
 }
 
@@ -1593,30 +1777,38 @@ function applyProfile(profile){
   // Show/hide nav tabs and sections based on profile
   ALL_TABS_DEF.forEach(function(td){
     const perm=tabs[td.id]||'none';
-    // Desktop tab buttons
+    // Desktop tab buttons (hidden on desktop but keep for compat)
     document.querySelectorAll('.tab[onclick*="\''+td.id+'\'"]').forEach(function(el){
+      el.style.display=perm==='none'?'none':'';
+    });
+    // Sidebar nav items
+    document.querySelectorAll('.nav-item[data-tab="'+td.id+'"]').forEach(function(el){
       el.style.display=perm==='none'?'none':'';
     });
     // Section visibility (don't hide, just restrict nav)
     const sec=document.getElementById(td.id);
     if(sec) sec.dataset.perm=perm;
   });
-  // Navigate to first accessible tab
-  const firstTab=ALL_TABS_DEF.find(function(td){return (tabs[td.id]||'none')!=='none';});
-  if(firstTab){
-    const btn=document.querySelector('.tab[onclick*="\''+firstTab.id+'\'"]');
-    if(btn) switchTab(firstTab.id,btn);
-  }
 
   // Link Admin: apenas visível para utilizadores com role=admin
   const isAdmin = currentUser && currentUser.role === 'admin';
   const adminLink = document.getElementById('tab-admin');
   if(adminLink) adminLink.style.display = isAdmin ? '' : 'none';
+  const sidebarAdmin = document.getElementById('sidebar-admin');
+  if(sidebarAdmin) sidebarAdmin.style.display = isAdmin ? '' : 'none';
   const mobileAdminBtn = document.getElementById('mobile-tab-admin');
   if(mobileAdminBtn) mobileAdminBtn.style.display = isAdmin ? '' : 'none';
 
-  // Aplicar restrições de N0 do perfil (se existirem)
+  // Aplicar restrições de N0 do perfil ANTES de navegar para o primeiro tab,
+  // para que buildPdsSelector() e outros seletores já usem fPDS filtrado
   if(ALL_ACT.length){ buildAllFilters(ALL_ACT); applyFilters(); }
+
+  // Navegar para o primeiro tab acessível (fPDS já está correctamente filtrado)
+  const firstTab=ALL_TABS_DEF.find(function(td){return (tabs[td.id]||'none')!=='none';});
+  if(firstTab){
+    const btn=document.querySelector('.tab[onclick*="\''+firstTab.id+'\'"]')||document.createElement('button');
+    switchTab(firstTab.id,btn);
+  }
 }
 
 // Devolve Set com N0s permitidos para o perfil actual (null = sem restrição = todos)
@@ -1703,6 +1895,7 @@ function applyFilters(){
   document.getElementById('f-count').textContent=fAct.length;
   updateFilterLabels();
   renderAll();
+  renderActiveChips();
 }
 
 function resetFilters(){
@@ -1723,7 +1916,105 @@ function resetFilters(){
   syncActFromGantt();
   buildAllFilters(ALL_ACT);
   applyFilters();
+  renderActiveChips();
 }
+
+// ── ACTIVE FILTER CHIPS ──────────────────────────────────────────────────────
+const _FILTER_LABELS={'n0':'Programa','n1':'Eixo','n2':'Plano','owner':'Owner','sponsor':'Sponsor','status':'Estado'};
+function renderActiveChips(){
+  const bar=document.getElementById('active-chips-bar');
+  if(!bar) return;
+  let html='',hasAny=false;
+  Object.entries(MS_STATE).forEach(([key,set])=>{
+    if(!set||set.size===0) return;
+    set.forEach(val=>{
+      hasAny=true;
+      const lbl=_FILTER_LABELS[key]||key;
+      html+=`<span class="active-chip">${lbl}: ${esc(val)}<button class="active-chip-remove" onclick="removeOneFilter('${key}','${esc(val).replace(/'/g,"\\'")}')">×</button></span>`;
+    });
+  });
+  if(hasAny) html+=`<button class="chips-clear-all" onclick="resetFilters()">Limpar todos</button>`;
+  bar.innerHTML=html;
+  bar.style.display=hasAny?'flex':'none';
+  _updateFilterBadge();
+}
+function removeOneFilter(key,val){
+  if(MS_STATE[key]) MS_STATE[key].delete(val);
+  buildAllFilters(ALL_ACT);
+  applyFilters();
+  renderActiveChips();
+}
+
+// ── SIDEBAR ──────────────────────────────────────────────────────────────────
+function toggleSidebar(){
+  const collapsed=document.body.classList.toggle('sidebar-collapsed');
+  localStorage.setItem('pmo_sidebar',collapsed?'1':'0');
+  // Resize charts after sidebar transition completes (220ms)
+  setTimeout(function(){
+    window.dispatchEvent(new Event('resize'));
+    Object.values(charts).forEach(function(c){try{c.resize();}catch(e){}});
+    if(window.efCharts) Object.values(efCharts).forEach(function(c){try{c.resize();}catch(e){}});
+    adjustSpacer();
+  },240);
+}
+(function initSidebar(){
+  // Default is collapsed; only expand if user explicitly opened it
+  if(localStorage.getItem('pmo_sidebar')!=='0') document.body.classList.add('sidebar-collapsed');
+})();
+
+// ── FILTER PANEL ──────────────────────────────────────────────────────────────
+function toggleFilterPanel(){
+  const p=document.getElementById('filter-panel');
+  if(!p) return;
+  p.hidden ? p.removeAttribute('hidden') : p.setAttribute('hidden','');
+  adjustSpacer();
+}
+function _updateFilterBadge(){
+  let count=0;
+  Object.values(MS_STATE).forEach(function(s){if(s) count+=s.size;});
+  const badge=document.getElementById('filter-badge');
+  if(badge){badge.textContent=count;badge.style.display=count?'flex':'none';}
+}
+
+// ── PROFILE DROPDOWN ─────────────────────────────────────────────────────────
+function _initProfileDesk(){
+  const u=currentUser;
+  if(!u) return;
+  const name=u.name||u.username||'?';
+  const initials=name.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('').slice(0,2)||'?';
+  const email=u.username||'';
+  const els=['profile-avatar-desk','pdrop-avatar-lg'];
+  els.forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=initials;});
+  const pn=document.getElementById('pdrop-name');if(pn)pn.textContent=name;
+  const pe=document.getElementById('pdrop-email');if(pe)pe.textContent=email;
+  // Sync theme buttons
+  const isDark=document.body.classList.contains('dark');
+  document.getElementById('pdrop-t-light')?.classList.toggle('active',!isDark);
+  document.getElementById('pdrop-t-dark')?.classList.toggle('active',isDark);
+}
+(function initProfileDropdown(){
+  const btn=document.getElementById('profile-btn-desk');
+  const dd=document.getElementById('profile-dropdown');
+  if(!btn||!dd) return;
+  btn.addEventListener('click',function(e){
+    e.stopPropagation();
+    const hidden=dd.hasAttribute('hidden');
+    if(hidden){dd.removeAttribute('hidden');}else{dd.setAttribute('hidden','');}
+  });
+  document.addEventListener('click',function(e){
+    if(!dd.contains(e.target)&&e.target!==btn) dd.setAttribute('hidden','');
+  });
+  document.querySelectorAll('.pdrop-theme-opt').forEach(function(b){
+    b.addEventListener('click',function(){
+      const t=b.dataset.t;
+      CFG.theme=t;
+      document.body.classList.toggle('dark',t==='dark');
+      saveCfg();
+      document.getElementById('pdrop-t-light')?.classList.toggle('active',t==='light');
+      document.getElementById('pdrop-t-dark')?.classList.toggle('active',t==='dark');
+    });
+  });
+})();
 
 // ── KPI ───────────────────────────────────────────────────────────────────────
 function kpi(data){
@@ -1877,8 +2168,8 @@ function renderCharts(data){
     data:{
       labels: eixoLabels,
       datasets:[
-        {label:'Concluídas', data:orderedPairs.map(function(p){ return data.filter(function(d){ return d.n1===p.n1&&d.n0===p.n0&&d.status==='Concluído'; }).length; }), backgroundColor:navy, borderRadius:3, borderWidth:0},
-        {label:'Em dia',     data:orderedPairs.map(function(p){ return data.filter(function(d){ return d.n1===p.n1&&d.n0===p.n0&&d.status==='Em dia'; }).length; }),     backgroundColor:green, borderRadius:3, borderWidth:0},
+        {label:'Concluídas', data:orderedPairs.map(function(p){ return data.filter(function(d){ return d.n1===p.n1&&d.n0===p.n0&&d.status==='Concluído'; }).length; }), backgroundColor:green, borderRadius:3, borderWidth:0},
+        {label:'Em dia',     data:orderedPairs.map(function(p){ return data.filter(function(d){ return d.n1===p.n1&&d.n0===p.n0&&d.status==='Em dia'; }).length; }),     backgroundColor:navy, borderRadius:3, borderWidth:0},
         {label:'Em atraso',  data:orderedPairs.map(function(p){ return data.filter(function(d){ return d.n1===p.n1&&d.n0===p.n0&&d.status==='Em atraso'; }).length; }),  backgroundColor:redBar, borderRadius:3, borderWidth:0}
       ]
     },
@@ -1896,7 +2187,7 @@ function renderCharts(data){
 
   const k=kpi(data);
   charts.donut=new Chart(document.getElementById('chart-donut'),{type:'doughnut',
-    data:{labels:['Concluídas','Em dia','Em atraso'],datasets:[{data:[k.con,k.dia,k.atr],backgroundColor:[navy,green,redBar],borderWidth:0}]},
+    data:{labels:['Concluídas','Em dia','Em atraso'],datasets:[{data:[k.con,k.dia,k.atr],backgroundColor:[green,navy,redBar],borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
       plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:10,padding:10}}}}});
 }
@@ -2198,18 +2489,38 @@ function renderGantt(data){
   const today=new Date().toISOString().split('T')[0];
   const todayPct=Math.max(0,Math.min(100,(d2t(today)-rStart)/rMs*100)).toFixed(2);
 
-  const MN=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const months=[];
-  let mc=new Date(rMin);mc.setDate(1);
-  const me=new Date(rMax);
-  while(mc<=me){months.push({y:mc.getFullYear(),m:mc.getMonth()});mc=new Date(mc.getFullYear(),mc.getMonth()+1,1);}
-  const mw=months.map(mo=>{
-    const ms=Math.max(new Date(mo.y,mo.m,1).getTime(),rStart);
-    const me2=Math.min(new Date(mo.y,mo.m+1,1).getTime(),rEnd);
-    return Math.max(0,(me2-ms)/rMs*100);
+  // --- PERIOD HEADERS (week / month / quarter) ---
+  const periods=[];
+  if(ganttGranularity==='week'){
+    let wc=new Date(rMin);const dow=wc.getDay();wc.setDate(wc.getDate()-(dow===0?6:dow-1));
+    while(wc.getTime()<rEnd+7*86400000){
+      const wEnd=new Date(wc);wEnd.setDate(wEnd.getDate()+7);
+      periods.push({label:'S'+_isoWeek(wc)+'\u2019'+String(wc.getFullYear()).slice(2),start:new Date(wc),end:wEnd});
+      wc.setDate(wc.getDate()+7);
+    }
+  } else if(ganttGranularity==='quarter'){
+    let qc=new Date(rMin);qc.setMonth(Math.floor(qc.getMonth()/3)*3,1);
+    while(qc.getTime()<rEnd){
+      const qEnd=new Date(qc.getFullYear(),qc.getMonth()+3,1);
+      periods.push({label:'Q'+(Math.floor(qc.getMonth()/3)+1)+'/'+String(qc.getFullYear()).slice(2),start:new Date(qc),end:qEnd});
+      qc=qEnd;
+    }
+  } else {
+    let mc=new Date(rMin);mc.setDate(1);
+    const me=new Date(rMax);
+    while(mc<=me){
+      periods.push({label:String(mc.getMonth()+1).padStart(2,'0')+'/'+String(mc.getFullYear()).slice(2),
+                    start:new Date(mc),end:new Date(mc.getFullYear(),mc.getMonth()+1,1)});
+      mc=new Date(mc.getFullYear(),mc.getMonth()+1,1);
+    }
+  }
+  const pw=periods.map(p=>{
+    const ps=Math.max(p.start.getTime(),rStart);
+    const pe=Math.min(p.end.getTime(),rEnd);
+    return Math.max(0,(pe-ps)/rMs*100);
   });
-  const validMths=months.filter((_,i)=>mw[i]>0.2);
-  const validMw=mw.filter(w=>w>0.2);
+  const validPeriods=periods.filter((_,i)=>pw[i]>0.1);
+  const validPw=pw.filter(w=>w>0.1);
 
   const navy=getComputedStyle(document.documentElement).getPropertyValue('--navy').trim()||'#002E5E';
   const green=getComputedStyle(document.documentElement).getPropertyValue('--green').trim()||'#95BB42';
@@ -2221,16 +2532,20 @@ function renderGantt(data){
     <th rowspan="2" class="g-sticky-3" style="text-align:center;width:72px">Início</th>
     <th rowspan="2" class="g-sticky-4" style="text-align:center;width:72px">Fim</th>
     <th rowspan="2" class="g-sticky-5" style="text-align:center;width:76px">Estado</th>
-    <th colspan="${validMths.length}" style="text-align:center">Timeline</th></tr><tr>`;
-  validMths.forEach((mo,i)=>{html+=`<th class="gantt-month-hdr" style="width:${validMw[i].toFixed(1)}%">${String(mo.m+1).padStart(2,"0")}/${String(mo.y).slice(2)}</th>`;});
+    <th colspan="${validPeriods.length}" style="text-align:center">Timeline</th></tr><tr>`;
+  validPeriods.forEach((p,i)=>{html+=`<th class="gantt-month-hdr" style="width:${validPw[i].toFixed(1)}%">${p.label}</th>`;});
   html+=`</tr></thead><tbody>`;
 
   const barColor=(r)=>{
     if(r.nivel<=2)return navy;
-    if(r.status==='Concluído')return navy;
-    if(r.status==='Em dia')return green;
+    if(r.status==='Concluído')return green;
+    if(r.status==='Em dia')return navy;
     return redBar;
   };
+
+  // Compute first visible index for today label
+  let firstVisibleIdx=-1;
+  data.forEach((row,idx)=>{if(firstVisibleIdx<0&&gIsVisible(data,idx)&&row.nivel<=ganttMaxLevel)firstVisibleIdx=idx;});
 
   data.forEach((row,idx)=>{
     if(!gIsVisible(data,idx))return;
@@ -2256,15 +2571,19 @@ function renderGantt(data){
     let bars='';
     if(bl.w>0)bars+=`<div class="g-bar g-baseline" style="left:${bl.l}%;width:${bl.w}%;background:${navy}"></div>`;
     if(rl.w>0)bars+=`<div class="g-bar g-real" style="left:${rl.l}%;width:${rl.w}%;background:${bc}"></div>`;
-    bars+=`<div class="g-today" style="left:${todayPct}%"></div>`;
+    const todayLbl=idx===firstVisibleIdx?'<span class="g-today-lbl">Hoje</span>':'';
+    bars+=`<div class="g-today" style="left:${todayPct}%">${todayLbl}</div>`;
 
+    const fmtFull=d=>{if(!d)return'';const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
     html+=`<tr class="${cls}">
       <td class="g-sticky"><div class="g-name" style="padding-left:${indent}px">${toggle}${esc(row.nome)}</div></td>
       <td class="g-sticky-2" style="text-align:center;font-size:11px">${row.pct}%</td>
       <td class="g-sticky-3" style="text-align:center;font-size:11px;color:var(--text2)">${dd(startD)}</td>
       <td class="g-sticky-4" style="text-align:center;font-size:11px;color:var(--text2)">${dd(endD)}</td>
       <td class="g-sticky-5" style="text-align:center">${statCell}</td>
-      <td class="g-chart-cell" colspan="${validMths.length}"><div class="g-bar-wrap">${bars}</div></td>
+      <td class="g-chart-cell" colspan="${validPeriods.length}"
+          data-nome="${esc(row.nome)}" data-start="${startD||''}" data-end="${endD||''}"
+          data-pct="${row.pct}" data-status="${rowSt}"><div class="g-bar-wrap">${bars}</div></td>
     </tr>`;
   });
   html+=`</tbody>`;
@@ -2284,13 +2603,51 @@ function renderGantt(data){
         if(tr.children[ci]) tr.children[ci].style.left=lefts[ci];
       });
     }
-    if(trs[1]) Array.from(trs[1].children).forEach(function(th){th.style.top=h;});
-  });
+    // Month-label row must stick below the first header row
+    if(trs[1]){
+      const h=hrow.getBoundingClientRect().height+'px';
+      Array.from(trs[1].children).forEach(function(th){th.style.top=h;});
+    }
+  })();
+  // Tooltip binding
+  (function(){
+    const tip=document.getElementById('gantt-tooltip');
+    const wrap=document.querySelector('.gantt-wrap');
+    if(!tip||!tbl) return;
+    tbl.addEventListener('mousemove',function(e){
+      const td=e.target.closest('.g-chart-cell');
+      if(!td){tip.style.display='none';return;}
+      const s=td.dataset.start,en=td.dataset.end;
+      const fmt=d=>{if(!d)return'—';const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
+      const sc={'Concluído':'#3B6D11','Em dia':'#185FA5','Em atraso':'#E53935'}[td.dataset.status]||'#aaa';
+      tip.innerHTML='<strong style="display:block;margin-bottom:4px">'+td.dataset.nome+'</strong>'+
+        'Início: '+fmt(s)+'<br>Fim: '+fmt(en)+'<br>'+
+        'Execução: <strong>'+td.dataset.pct+'%</strong><br>'+
+        '<span style="color:'+sc+'">'+(td.dataset.status||'—')+'</span>';
+      tip.style.display='block';
+      tip.style.left=Math.min(e.clientX+16,window.innerWidth-270)+'px';
+      tip.style.top=(e.clientY-10)+'px';
+    });
+    tbl.addEventListener('mouseleave',function(){tip.style.display='none';});
+  })();
 }
 
 function gToggle(idx){GCOL[idx]=!GCOL[idx];renderGantt(fGantt);}
 function ganttCollapseAll(){fGantt.forEach((_,i)=>{if(hasGChildren(i))GCOL[i]=true;});renderGantt(fGantt);}
 function ganttExpandAll(){Object.keys(GCOL).forEach(k=>delete GCOL[k]);renderGantt(fGantt);}
+
+function setGanttScale(scale,btn){
+  ganttGranularity=scale;
+  document.querySelectorAll('[id^="gscale-"]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGantt(fGantt);
+}
+
+function _isoWeek(d){
+  const tmp=new Date(d);tmp.setHours(0,0,0,0);tmp.setDate(tmp.getDate()+4-(tmp.getDay()||7));
+  const y=new Date(tmp.getFullYear(),0,1);
+  return Math.ceil(((tmp-y)/86400000+1)/7);
+}
 
 // ── PDS ───────────────────────────────────────────────────────────────────────
 let pdsIdx=0;
@@ -2367,8 +2724,8 @@ function renderPDS(){
     +'<div class="card" style="margin-bottom:0;padding:1rem"><div class="card-title" style="margin-bottom:.75rem">Dados gerais</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
     +'<div class="kpi"><div class="kpi-lbl">Total</div><div class="kpi-val" style="color:var(--navy)">'+k.n+'</div></div>'
-    +'<div class="kpi"><div class="kpi-lbl">Concluídas</div><div class="kpi-val" style="color:var(--blue)">'+k.con+'</div></div>'
-    +'<div class="kpi"><div class="kpi-lbl">Em dia</div><div class="kpi-val" style="color:var(--green)">'+k.dia+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Concluídas</div><div class="kpi-val" style="color:var(--green)">'+k.con+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Em dia</div><div class="kpi-val" style="color:var(--blue)">'+k.dia+'</div></div>'
     +'<div class="kpi"><div class="kpi-lbl">Em atraso</div><div class="kpi-val" style="color:var(--red)">'+k.atr+'</div></div>'
     +'</div></div>'
     +'<div class="card" style="margin-bottom:0;padding:1rem"><div class="card-title" style="margin-bottom:.75rem">Grau de execução</div>'
@@ -2527,6 +2884,10 @@ function switchTab(id,btn){
     } else { populateAdminPanel(); }
   }
   applyTabPermission(id);
+  // Sync sidebar nav-items
+  document.querySelectorAll('.nav-item[data-tab]').forEach(function(el){
+    el.classList.toggle('active', el.dataset.tab===id);
+  });
 }
 
 // ── RENDER ALL ────────────────────────────────────────────────────────────────
@@ -2546,6 +2907,7 @@ function renderAll(){
   if(tab==='gantt'||tab==='resumo') renderGantt(fGantt);
   if(tab==='pds'){ buildPdsSelector(); renderPDS(); }
   if(tab==='exec-fin'){ initExecFin(); renderExecFin(); }
+  if(tab==='gestao-financeira') initGFin();
   if(tab==='evolucao'){
     // Restore saved EV dates
     const _evA=document.getElementById('ev-date-a');
@@ -2572,6 +2934,8 @@ function renderAll(){
   // Always update PDS selector (used by multiple tabs)
   if(tab!=='pds'){ buildPdsSelector(); }
   if(tab==='gestao'){ renderPMTable(); }
+  if(tab==='gestao-pds'){ initGPDS(); }
+  if(tab==='gestao-riscos'){ initGRisk(); }
 }
 
 // ── UPLOAD ────────────────────────────────────────────────────────────────────
@@ -3071,6 +3435,7 @@ initUsers();
         currentUser=u; currentProfile=p;
         const nameEl=document.getElementById('topbar-user-name');
         if(nameEl) nameEl.textContent=u.name||u.username;
+        _initProfileDesk();
         document.getElementById('login-screen').style.display='none';
         applyProfile(p);
         return;
@@ -3673,8 +4038,8 @@ function renderPMTable(){
       <td style="text-align:center;font-size:11px;color:var(--text2)">${dd(r.bf)}</td>
       <td style="text-align:center;font-size:11px;color:var(--text2)">${dd(r.rs)}</td>
       <td style="text-align:center;font-size:11px;color:var(--text2)">${dd(r.rf)}</td>
-      <td style="font-size:11px">${r.owner||'—'}</td>
-      <td style="font-size:11px">${r.sponsor||'—'}</td>
+      <td style="font-size:11px">${r.nivel>=3?(r.owner||'—'):''}</td>
+      <td style="font-size:11px">${r.nivel>=3?(r.sponsor||'—'):''}</td>
 
     </tr>`;
   }).join('');
@@ -3889,8 +4254,12 @@ function saveToSession(){
   }catch(e){}
   // Persistir na base de dados partilhada se online
   if(window.SB && SB.isOnline){
+    showToast('A guardar…', 'amber');
     SB.saveActivities(ALL_GANTT)
-      .then(function(){ showToast('Guardado na base de dados partilhada!', 'navy'); })
+      .then(function(){
+        document.getElementById('pm-unsaved').classList.remove('show');
+        showToast('Guardado na base de dados partilhada!', 'navy');
+      })
       .catch(function(err){
         console.warn('PMO: Supabase save activities falhou:', err);
         showToast('Guardado localmente (Supabase indisponível).', 'amber');
@@ -4088,13 +4457,16 @@ function formatDatePT(d){ if(!d) return ''; const p=d.split('-'); return p.lengt
 function initGPDS(){
   ensurePDSItems();
   const sel = document.getElementById('gpds-selector');
-  const pN0s = getProfileN0s();
+  const prev = sel.value;
   sel.innerHTML = '<option value="">— seleccionar plano —</option>' +
-    ALL_PDS.filter(function(p){ return !pN0s||pN0s.has(p.n0||''); }).map(function(p){
+    fPDS.map(function(p){
       const key=(p.id0||'')+'_'+p.id2;
       const prefix = (p.n0 ? esc(p.n0)+' › ' : '') + (p.n1 ? esc(p.n1)+' › ' : '');
       return '<option value="'+esc(key)+'">'+prefix+esc(p.plano)+'</option>';
     }).join('');
+  // Restore selection if still in filtered list
+  if(prev && sel.querySelector('option[value="'+prev+'"]')) sel.value=prev;
+  else loadGPDS();
 }
 
 function loadGPDS(){
@@ -4318,13 +4690,16 @@ function riskLabel(grade){
 
 function initGRisk(){
   const sel = document.getElementById('grisk-selector');
-  const pN0s = getProfileN0s();
+  const prev = sel.value;
   sel.innerHTML = '<option value="">— seleccionar plano —</option>' +
-    ALL_PDS.filter(function(p){ return !pN0s||pN0s.has(p.n0||''); }).map(function(p){
+    fPDS.map(function(p){
       const key=(p.id0||'')+'_'+p.id2;
       const prefix = (p.n0 ? esc(p.n0)+' › ' : '') + (p.n1 ? esc(p.n1)+' › ' : '');
       return '<option value="'+esc(key)+'">'+prefix+esc(p.plano)+'</option>';
     }).join('');
+  // Restore selection if still in filtered list
+  if(prev && sel.querySelector('option[value="'+prev+'"]')) sel.value=prev;
+  else loadGRisk();
 }
 
 function getCurrentRiskPDS(){
@@ -5148,7 +5523,7 @@ function initGFin(){
   const sel=document.getElementById('gfin-selector');
   const _gfinN0s=getProfileN0s();
   sel.innerHTML='<option value="">— seleccionar plano —</option>'+
-    ALL_PDS.filter(function(p){ return !_gfinN0s||_gfinN0s.has(p.n0||''); }).map(function(p){
+    fPDS.map(function(p){
       const key=(p.id0||'')+'_'+p.id2;
       const prefix=(p.n0?esc(p.n0)+' › ':'')+esc(p.n1)+' › ';
       return '<option value="'+esc(key)+'">'+prefix+esc(p.plano)+'</option>';
@@ -5175,12 +5550,12 @@ function initGFin(){
 
 function loadGFin(){
   const _key=document.getElementById('gfin-selector').value;
-  const idx=_key?ALL_PDS.findIndex(function(p){return ((p.id0||'')+'_'+p.id2)===_key;}): -1;
+  const idx=_key?fPDS.findIndex(function(p){return ((p.id0||'')+'_'+p.id2)===_key;}): -1;
   const empty=document.getElementById('gfin-empty');
   const cont=document.getElementById('gfin-content');
   if(idx<0){empty.style.display='block';cont.style.display='none';return;}
   empty.style.display='none'; cont.style.display='block';
-  const p=ALL_PDS[idx];
+  const p=fPDS[idx];
   ensureFinance(p);
   document.getElementById('gfin-eixo').textContent=(p.n0?p.n0+' › ':'')+p.n1;
   document.getElementById('gfin-plano').textContent=p.plano;
@@ -5718,7 +6093,7 @@ function initExecFin(){
   if(!selP) return;
   const curP = selP.value;
   selP.innerHTML = '<option value="">Todos</option>' +
-    ALL_PDS.filter(function(p){ return p.finances && (p.finances.rubricas&&p.finances.rubricas.length || p.finances.contratos&&p.finances.contratos.length); })
+    fPDS.filter(function(p){ return p.finances && (p.finances.rubricas&&p.finances.rubricas.length || p.finances.contratos&&p.finances.contratos.length); })
     .map(function(p){
       const key = (p.id0||'')+'_'+p.id2;
       const prefix = (p.n0?esc(p.n0)+' › ':'')+esc(p.n1)+' › ';
@@ -5748,7 +6123,7 @@ function getEfData(){
   const filterTipo = document.getElementById('ef-tipo')?.value || '';
   const base = getBaseMoeda();
 
-  const plans = ALL_PDS.filter(function(p){
+  const plans = fPDS.filter(function(p){
     if(filterKey){ const k=(p.id0||'')+'_'+p.id2; if(k!==filterKey) return false; }
     return p.finances && (p.finances.rubricas||p.finances.contratos||p.finances.facturas);
   });
@@ -5999,9 +6374,9 @@ document.addEventListener('click', function(e){
 function openFilterDrawer(){
   const drawer = document.getElementById('filter-drawer');
   if(!drawer) return;
-  // Clone filter-bar content into drawer
+  // Clone filter-panel content into drawer
   const body = document.getElementById('filter-drawer-body');
-  const filterBar = document.getElementById('filter-bar');
+  const filterBar = document.getElementById('filter-panel');
   if(body && filterBar){
     body.innerHTML = filterBar.innerHTML;
     // Re-attach event handlers by making inputs trigger applyFilters
@@ -6094,7 +6469,7 @@ switchTab = function(id, btn){
     <div class="filter-drawer-body" id="filter-drawer-body"></div>
     <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;">
       <button class="btn" style="flex:1" onclick="resetFilters();closeFilterDrawer()">&#x2715; Limpar</button>
-      <button class="btn" style="flex:1;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="closeFilterDrawer()">Aplicar</button>
+      <button class="btn btn-primary" style="flex:1" onclick="closeFilterDrawer()">Aplicar</button>
     </div>
   </div>
 </div>
@@ -6102,9 +6477,11 @@ switchTab = function(id, btn){
 <!-- LOGIN SCREEN -->
 <div id="login-screen" class="login-screen">
   <div class="login-card">
-    <img id="login-logo" style="max-height:48px;margin-bottom:12px;display:none">
-    <h2 id="login-title">Strategos</h2>
-    <p id="login-subtitle">Introduz as tuas credenciais para aceder.</p>
+    <div class="login-card-brand">
+      <img id="login-logo" src="logo.png" style="max-height:64px;display:block">
+    </div>
+    <h2 id="login-title">Bem-vindo(a) ao Strategos</h2>
+    <p class="login-card-sub">Introduzir as credenciais para aceder.</p>
     <div class="login-field">
       <label>Utilizador</label>
       <input type="text" id="login-username" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
@@ -6118,5 +6495,6 @@ switchTab = function(id, btn){
   </div>
 </div>
 
+<div id="gantt-tooltip"></div>
 </body>
 </html>
