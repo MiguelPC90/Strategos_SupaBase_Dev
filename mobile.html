@@ -685,6 +685,10 @@
       cursor: not-allowed;
     }
 
+    .login-sep{text-align:center;font-size:12px;color:var(--muted);margin:-2px 0}
+    #local-access-btn{width:100%;padding:11px;border-radius:10px;background:transparent;color:var(--navy);border:1.5px solid var(--navy);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
+    #local-access-btn:hover{background:rgba(0,46,94,.07)}
+
     /* ── BOTÕES GERAIS ── */
     .btn-primary {
       padding: 11px 20px;
@@ -1379,6 +1383,8 @@
         </div>
         <div id="login-error" class="login-msg" aria-live="polite"></div>
         <button id="login-btn" type="submit">Entrar</button>
+        <div class="login-sep">ou</div>
+        <button id="local-access-btn" type="button" onclick="localAccess()">Continuar com dados locais</button>
       </form>
     </div>
   </div>
@@ -1790,6 +1796,20 @@
       currentProfile = null;
       try { await SB.signOut(); } catch (_) {}
       showLogin();
+    }
+
+    /* ── Acesso local (sem Supabase) — usa dados em localStorage ── */
+    function localAccess() {
+      var act  = localStorage.getItem('pmo_act');
+      var ver  = localStorage.getItem('pmo_data_ver');
+      if (!act || ver !== '2') {
+        loginError.textContent = 'Sem dados em cache. Importa primeiro o Excel no Strategos (versão desktop).';
+        return;
+      }
+      currentUser    = { id: 'local', name: 'Local', email: '', role: 'viewer' };
+      currentProfile = null;
+      showApp(currentUser);
+      startApp();
     }
 
     /* ── Restore de sessão ao arranque ── */
