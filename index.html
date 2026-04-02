@@ -200,6 +200,41 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
 .topbar-user-name{color:rgba(255,255,255,.85);font-size:12px;font-weight:500}
 .logout-btn{background:none;border:1px solid rgba(255,255,255,.25);border-radius:var(--r);padding:5px 10px;color:#fff;cursor:pointer;font-size:12px}
 .logout-btn:hover{background:rgba(255,255,255,.1)}
+/* ── PROFILE DROPDOWN ── */
+.topbar-actions{position:relative}
+.profile-btn-desk{background:none;border:none;cursor:pointer;padding:0;margin-left:4px;flex-shrink:0}
+#profile-avatar-desk{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.2);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.3);transition:background .15s;user-select:none}
+.profile-btn-desk:hover #profile-avatar-desk{background:rgba(255,255,255,.32)}
+#profile-dropdown{position:absolute;top:calc(100% + 10px);right:0;background:var(--bg);border:1px solid var(--border2);border-radius:var(--rl);box-shadow:0 8px 32px rgba(0,0,0,.18);min-width:224px;z-index:200;padding:4px 0}
+#profile-dropdown[hidden]{display:none!important}
+.pdrop-header{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.pdrop-avatar-lg{width:40px;height:40px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pdrop-name{font-size:13px;font-weight:600;color:var(--text)}
+.pdrop-email{font-size:11px;color:var(--text2);margin-top:2px;word-break:break-all}
+.pdrop-sep{height:1px;background:var(--border);margin:2px 0}
+.pdrop-theme-row{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;gap:8px}
+.pdrop-lbl{font-size:12px;color:var(--text2)}
+.pdrop-theme-btns{display:flex;gap:4px}
+.pdrop-theme-opt{padding:4px 10px;font-size:11px;border-radius:20px;cursor:pointer;border:1px solid var(--border2);background:var(--bg);color:var(--text2);font-family:inherit;transition:all .12s}
+.pdrop-theme-opt.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.pdrop-logout{width:100%;padding:10px 16px;background:none;border:none;text-align:left;font-size:13px;color:var(--red);cursor:pointer;font-family:inherit}
+.pdrop-logout:hover{background:var(--bg2)}
+/* ── ACTIVE FILTER CHIPS ── */
+#active-chips-bar{width:100%;display:none;gap:6px;flex-wrap:wrap;align-items:center;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:2px}
+.active-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 10px;background:var(--navy);color:#fff;border-radius:20px;font-size:11px;font-weight:500}
+.active-chip-remove{background:none;border:none;color:rgba(255,255,255,.65);cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 1px;font-family:inherit}
+.active-chip-remove:hover{color:#fff}
+.chips-clear-all{font-size:11px;color:var(--text2);cursor:pointer;padding:3px 6px;text-decoration:underline;background:none;border:none;font-family:inherit}
+.chips-clear-all:hover{color:var(--navy)}
+/* ── BUTTON HIERARCHY ── */
+.btn-primary{background:var(--navy)!important;color:#fff!important;border-color:var(--navy)!important}
+.btn-primary:hover{background:#003d7a!important;border-color:#003d7a!important}
+.btn-danger{color:var(--red);border-color:var(--red)}
+.btn-danger:hover{background:#FDF0F0}
+/* ── TAB GROUPS ── */
+.tab-edit{color:var(--text2)}
+.tab-edit.active{color:var(--navy)}
+.tab-separator{width:1px;background:var(--border2);margin:6px 4px;align-self:stretch;flex-shrink:0}
 /* Login screen */
 .login-screen{position:fixed;inset:0;background:var(--navy);z-index:300;display:flex;align-items:center;justify-content:center}
 .login-card{background:var(--bg);border-radius:var(--rl);padding:36px 40px;min-width:320px;max-width:380px;width:90%;box-shadow:0 12px 40px rgba(0,0,0,.4)}
@@ -465,14 +500,10 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
       <img id="topbar-logo" class="topbar-logo" src="" alt="" style="height:36px;width:auto;object-fit:contain;display:none">
       <div>
         <h1 id="dash-title">Strategos</h1>
-        <p id="dash-subtitle">Plano Estratégico &nbsp;·&nbsp; <span id="lbl-today"></span> &nbsp;·&nbsp; Ref: <span id="lbl-ref">—</span></p>
+        <p id="dash-subtitle" style="display:none">Plano Estratégico &nbsp;·&nbsp; <span id="lbl-today"></span> &nbsp;·&nbsp; Ref: <span id="lbl-ref">—</span></p>
       </div>
     </div>
     <div class="topbar-actions">
-      <div class="topbar-user">
-        <span id="topbar-user-name" class="topbar-user-name"></span>
-        <button class="logout-btn" onclick="logout()">Sair</button>
-      </div>
       <button class="btn btn-ghost ro-hide" onclick="openUpload()">&#8593; Importar Excel</button>
       <button class="mobile-filter-btn btn btn-ghost" style="display:none" onclick="openFilterDrawer()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
@@ -480,11 +511,34 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
       <button class="mobile-import-btn btn btn-ghost" style="display:none;padding:6px 10px" onclick="openUpload()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       </button>
+      <button class="profile-btn-desk" id="profile-btn-desk" type="button" aria-label="Perfil e definições">
+        <span id="profile-avatar-desk">?</span>
+      </button>
+      <div id="profile-dropdown" hidden>
+        <div class="pdrop-header">
+          <div class="pdrop-avatar-lg" id="pdrop-avatar-lg">?</div>
+          <div>
+            <div class="pdrop-name" id="pdrop-name">—</div>
+            <div class="pdrop-email" id="pdrop-email">—</div>
+          </div>
+        </div>
+        <div class="pdrop-sep"></div>
+        <div class="pdrop-theme-row">
+          <span class="pdrop-lbl">Tema</span>
+          <div class="pdrop-theme-btns">
+            <button class="pdrop-theme-opt active" id="pdrop-t-light" data-t="light" type="button">Claro</button>
+            <button class="pdrop-theme-opt" id="pdrop-t-dark" data-t="dark" type="button">Escuro</button>
+          </div>
+        </div>
+        <div class="pdrop-sep"></div>
+        <button class="pdrop-logout" type="button" onclick="logout()">Sair da conta</button>
+      </div>
     </div>
   </div>
 
   <!-- FILTER BAR -->
   <div id="filter-bar" class="filter-bar" id="filter-bar">
+    <div id="active-chips-bar"></div>
     <div class="ms-wrap" id="ms-n0-wrap" style="display:none">
       <div class="ms-label">Programa</div>
       <button class="ms-btn" onclick="toggleMs('ms-n0')"><span id="ms-n0-lbl">Todos</span><span>&#9660;</span></button>
@@ -539,12 +593,12 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     <button class="tab" onclick="switchTab('evolucao',this)">Evolução</button>
   <button class="tab" onclick="switchTab('pds',this)">Ponto de situação</button>
   <button class="tab" onclick="switchTab('exec-fin',this)">Execução Financeira</button>
-  <div style="width:1px;background:var(--border2);margin:6px 4px;align-self:stretch"></div>
-  <button class="tab" onclick="switchTab('gestao',this)" style="color:var(--text2)">Gestão de iniciativas</button>
-  <button class="tab" onclick="switchTab('gestao-pds',this)" style="color:var(--text2)">Gestão PDS</button>
-  <button class="tab" onclick="switchTab('gestao-riscos',this)" style="color:var(--text2)">Gestão de Riscos</button>
-  <button class="tab" onclick="switchTab('gestao-financeira',this)" style="color:var(--text2)">Gestão Financeira</button>
-  <a href="admin.html" class="tab" id="tab-admin" style="margin-left:auto;color:var(--text2);text-decoration:none;display:none">⚙ Admin</a>
+  <div class="tab-separator"></div>
+  <button class="tab tab-edit" onclick="switchTab('gestao',this)">Gestão de iniciativas</button>
+  <button class="tab tab-edit" onclick="switchTab('gestao-pds',this)">Gestão PDS</button>
+  <button class="tab tab-edit" onclick="switchTab('gestao-riscos',this)">Gestão de Riscos</button>
+  <button class="tab tab-edit" onclick="switchTab('gestao-financeira',this)">Gestão Financeira</button>
+  <a href="admin.html" class="tab tab-edit" id="tab-admin" style="margin-left:auto;text-decoration:none;display:none">⚙ Admin</a>
   </div>
 </div>
 
@@ -685,7 +739,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     </div>
     <span class="pm-unsaved ro-hide" id="gpds-unsaved">&#9679; Alterações não guardadas</span>
     <div style="margin-left:auto;display:flex;gap:8px">
-      <button class="btn ro-hide" style="font-size:12px;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="saveGPDS()">&#128190; Guardar</button>
+      <button class="btn btn-primary ro-hide" style="font-size:12px" onclick="saveGPDS()">&#128190; Guardar</button>
       <button class="btn" style="font-size:12px" onclick="exportPDSToExcel()">&#8595; Exportar Excel</button>
     </div>
   </div>
@@ -759,7 +813,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     <div style="margin-left:auto;display:flex;gap:8px">
       <button class="btn ro-hide" style="font-size:12px;font-weight:600;background:var(--bg2)" onclick="openNewProjectModal()">&#10010; Novo projecto</button>
       <button class="btn ro-hide" style="font-size:12px" onclick="addRow()">+ Nova linha</button>
-      <button class="btn ro-hide" style="font-size:12px;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="saveToSession()" title="Guardar (Ctrl+S)">&#128190; Guardar</button>
+      <button class="btn btn-primary ro-hide" style="font-size:12px" onclick="saveToSession()" title="Guardar (Ctrl+S)">&#128190; Guardar</button>
       <button class="btn" style="font-size:12px" onclick="exportToExcel()" title="Exporta para ficheiro Excel">&#8595; Exportar Excel</button>
     </div>
   </div>
@@ -851,7 +905,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
           </div>
         </div>
         <div class="pm-form-footer">
-          <button class="btn" style="background:var(--navy);color:#fff;border-color:var(--navy);font-size:12px" onclick="saveFormRow()" title="Grava na sessão actual">&#10003; Aplicar alteração</button>
+          <button class="btn btn-primary" style="font-size:12px" onclick="saveFormRow()" title="Grava na sessão actual">&#10003; Aplicar alteração</button>
           <button class="btn" style="font-size:12px" onclick="cancelForm()">Cancelar</button>
           <button class="btn" style="font-size:12px" onclick="duplicateRow()" id="pm-dup-btn">&#10064; Duplicar</button>
           <button class="btn" style="font-size:12px;color:var(--red);border-color:var(--red)" onclick="deleteRow()" id="pm-delete-btn">&#128465; Remover</button>
@@ -888,7 +942,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     </div>
     <span class="pm-unsaved ro-hide" id="grisk-unsaved">&#9679; Alterações não guardadas</span>
     <div style="margin-left:auto;display:flex;gap:8px">
-      <button class="btn ro-hide" style="font-size:12px;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="saveGRisk()">&#128190; Guardar</button>
+      <button class="btn btn-primary ro-hide" style="font-size:12px" onclick="saveGRisk()">&#128190; Guardar</button>
       <button class="btn" style="font-size:12px" onclick="exportRiskToExcel()">&#8595; Exportar Excel</button>
     </div>
   </div>
@@ -1000,7 +1054,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
         <button class="chip gfin-view-btn" data-v="facturas">Facturas</button>
       </div>
       <button class="btn" style="font-size:12px" onclick="exportGFin()">&#8595; Exportar Excel</button>
-      <button class="btn ro-hide" style="font-size:12px;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="saveGFin()">&#128190; Guardar</button>
+      <button class="btn btn-primary ro-hide" style="font-size:12px" onclick="saveGFin()">&#128190; Guardar</button>
     </div>
   </div>
 
@@ -1107,7 +1161,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn" style="background:var(--navy);color:#fff;border-color:var(--navy)" onclick="applyAdminSettings()">&#10003; Guardar definições</button>
+      <button class="btn btn-primary" onclick="applyAdminSettings()">&#10003; Guardar definições</button>
       <button class="btn" onclick="exportSettings()">&#8595; Exportar JSON</button>
       <button class="btn" onclick="document.getElementById('import-json').click()">&#8593; Importar JSON</button>
       <button class="btn" style="color:var(--red);border-color:var(--red)" onclick="resetSettings()">&#8635; Repor</button>
@@ -1179,7 +1233,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     </div>
     <div id="np-msg" style="font-size:12px;color:var(--red);min-height:18px;margin-top:8px"></div>
     <div class="btn-row" style="margin-top:1rem">
-      <button class="btn" style="background:var(--navy);color:#fff;border-color:var(--navy)" onclick="confirmNewProject()">&#10003; Criar plano de ação</button>
+      <button class="btn btn-primary" onclick="confirmNewProject()">&#10003; Criar plano de ação</button>
       <button class="btn" onclick="closeNewProject()">Cancelar</button>
     </div>
   </div>
@@ -1573,6 +1627,7 @@ async function doLogin(){
       document.getElementById('login-screen').style.display='none';
       const nameEl=document.getElementById('topbar-user-name');
       if(nameEl) nameEl.textContent=meta.display_name||uval;
+      _initProfileDesk();
       applyProfile(currentProfile);
       return;
     }catch(e){
@@ -1600,6 +1655,7 @@ async function doLogin(){
   document.getElementById('login-screen').style.display='none';
   const nameEl=document.getElementById('topbar-user-name');
   if(nameEl) nameEl.textContent=user.name||user.username;
+  _initProfileDesk();
   applyProfile(profile);
 }
 
@@ -1719,6 +1775,7 @@ function applyFilters(){
   document.getElementById('f-count').textContent=fAct.length;
   updateFilterLabels();
   renderAll();
+  renderActiveChips();
 }
 
 function resetFilters(){
@@ -1739,7 +1796,73 @@ function resetFilters(){
   syncActFromGantt();
   buildAllFilters(ALL_ACT);
   applyFilters();
+  renderActiveChips();
 }
+
+// ── ACTIVE FILTER CHIPS ──────────────────────────────────────────────────────
+const _FILTER_LABELS={'n0':'Programa','n1':'Eixo','n2':'Plano','owner':'Owner','sponsor':'Sponsor','status':'Estado'};
+function renderActiveChips(){
+  const bar=document.getElementById('active-chips-bar');
+  if(!bar) return;
+  let html='',hasAny=false;
+  Object.entries(MS_STATE).forEach(([key,set])=>{
+    if(!set||set.size===0) return;
+    set.forEach(val=>{
+      hasAny=true;
+      const lbl=_FILTER_LABELS[key]||key;
+      html+=`<span class="active-chip">${lbl}: ${esc(val)}<button class="active-chip-remove" onclick="removeOneFilter('${key}','${esc(val).replace(/'/g,"\\'")}')">×</button></span>`;
+    });
+  });
+  if(hasAny) html+=`<button class="chips-clear-all" onclick="resetFilters()">Limpar todos</button>`;
+  bar.innerHTML=html;
+  bar.style.display=hasAny?'flex':'none';
+}
+function removeOneFilter(key,val){
+  if(MS_STATE[key]) MS_STATE[key].delete(val);
+  buildAllFilters(ALL_ACT);
+  applyFilters();
+  renderActiveChips();
+}
+
+// ── PROFILE DROPDOWN ─────────────────────────────────────────────────────────
+function _initProfileDesk(){
+  const u=currentUser;
+  if(!u) return;
+  const name=u.name||u.username||'?';
+  const initials=name.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('').slice(0,2)||'?';
+  const email=u.username||'';
+  const els=['profile-avatar-desk','pdrop-avatar-lg'];
+  els.forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=initials;});
+  const pn=document.getElementById('pdrop-name');if(pn)pn.textContent=name;
+  const pe=document.getElementById('pdrop-email');if(pe)pe.textContent=email;
+  // Sync theme buttons
+  const isDark=document.body.classList.contains('dark');
+  document.getElementById('pdrop-t-light')?.classList.toggle('active',!isDark);
+  document.getElementById('pdrop-t-dark')?.classList.toggle('active',isDark);
+}
+(function initProfileDropdown(){
+  const btn=document.getElementById('profile-btn-desk');
+  const dd=document.getElementById('profile-dropdown');
+  if(!btn||!dd) return;
+  btn.addEventListener('click',function(e){
+    e.stopPropagation();
+    const hidden=dd.hasAttribute('hidden');
+    if(hidden){dd.removeAttribute('hidden');}else{dd.setAttribute('hidden','');}
+  });
+  document.addEventListener('click',function(e){
+    if(!dd.contains(e.target)&&e.target!==btn) dd.setAttribute('hidden','');
+  });
+  document.querySelectorAll('.pdrop-theme-opt').forEach(function(b){
+    b.addEventListener('click',function(){
+      const t=b.dataset.t;
+      CFG.theme=t;
+      document.body.classList.toggle('dark',t==='dark');
+      saveCfg();
+      document.getElementById('pdrop-t-light')?.classList.toggle('active',t==='light');
+      document.getElementById('pdrop-t-dark')?.classList.toggle('active',t==='dark');
+    });
+  });
+})();
 
 // ── KPI ───────────────────────────────────────────────────────────────────────
 function kpi(data){
@@ -3154,6 +3277,7 @@ initUsers();
         currentUser=u; currentProfile=p;
         const nameEl=document.getElementById('topbar-user-name');
         if(nameEl) nameEl.textContent=u.name||u.username;
+        _initProfileDesk();
         document.getElementById('login-screen').style.display='none';
         applyProfile(p);
         return;
@@ -6175,7 +6299,7 @@ switchTab = function(id, btn){
     <div class="filter-drawer-body" id="filter-drawer-body"></div>
     <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;">
       <button class="btn" style="flex:1" onclick="resetFilters();closeFilterDrawer()">&#x2715; Limpar</button>
-      <button class="btn" style="flex:1;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="closeFilterDrawer()">Aplicar</button>
+      <button class="btn btn-primary" style="flex:1" onclick="closeFilterDrawer()">Aplicar</button>
     </div>
   </div>
 </div>
