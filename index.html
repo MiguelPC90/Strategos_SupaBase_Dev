@@ -116,6 +116,7 @@ tr.hover-row:hover td{background:var(--bg2)}
 .gantt-table{border-collapse:collapse;font-size:12px;min-width:800px;width:100%}
 .gantt-table th{background:var(--navy);color:#fff;padding:6px 8px;font-size:10px;font-weight:500;white-space:nowrap;border-right:1px solid rgba(255,255,255,.12);position:sticky;top:0;z-index:3}
 .gantt-table td{padding:4px 8px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
+.gantt-table tbody tr{height:34px}
 .gantt-table tr:hover td{background:rgba(0,46,94,.04)}
 .gantt-row-n1 td{background:rgba(0,46,94,.07);font-weight:700;color:var(--navy)}
 .gantt-row-n1 td.g-sticky,.gantt-row-n1 td.g-sticky-2,.gantt-row-n1 td.g-sticky-3,.gantt-row-n1 td.g-sticky-4,.gantt-row-n1 td.g-sticky-5{background:#e8edf3}
@@ -2467,43 +2468,43 @@ function ganttPct(s,e,rStart,rMs){
          w:Math.max(0.2,(d2t(e)-d2t(s))/rMs*100).toFixed(2)};
 }
 
-function setGanttLevel(lvl,btn){
-  ganttMaxLevel=lvl;
-  document.querySelectorAll('[id^="glvl-"]').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  // collapse everything deeper than lvl
-  Object.keys(GCOL).forEach(k=>delete GCOL[k]);
-  fGantt.forEach((r,i)=>{if(r.nivel<lvl)GCOL[i]=false;if(r.nivel===lvl&&hasGChildren(i))GCOL[i]=true;});
-  renderGantt(fGantt);
-}
+const GANTT_ROW_H=34;
+const GANTT_BUFFER=15;
+let _ganttData=[];
+let _gVisibleRows=[];
+let _gMeta={valid:false};
+let _ganttScrollRaf=null;
+let _ganttEvtBound=false;
 
-function hasGChildren(idx){return idx+1<fGantt.length&&fGantt[idx+1].nivel>fGantt[idx].nivel;}
+function hasGChildren(idx){return idx+1<_ganttData.length&&_ganttData[idx+1].nivel>_ganttData[idx].nivel;}
 
-function gIsVisible(data,idx){
-  const r=data[idx];if(r.nivel===1)return true;
-  for(let i=idx-1;i>=0;i--){
-    if(data[i].nivel<r.nivel){if(GCOL[i])return false;if(data[i].nivel===1)break;}
+// O(n) visibility precomputation — replaces O(n²) gIsVisible
+function buildVisibleRows(data){
+  _ganttData=data;
+  const vis=[];
+  let hiddenBelow=0;
+  for(let i=0;i<data.length;i++){
+    const lvl=data[i].nivel;
+    if(hiddenBelow>0&&lvl<=hiddenBelow)hiddenBelow=0;
+    if(hiddenBelow>0)continue;
+    if(lvl>ganttMaxLevel)continue;
+    vis.push(i);
+    if(GCOL[i]&&hasGChildren(i))hiddenBelow=lvl;
   }
-  return true;
+  _gVisibleRows=vis;
 }
 
-function renderGantt(data){
-  const tbl=document.getElementById('gantt-table');
-  if(!data.length){tbl.innerHTML='<tr><td colspan="10" style="padding:2rem;text-align:center;color:var(--text2)">Nenhum dado.</td></tr>';return;}
-
+function buildGanttMeta(data){
   const ds=document.getElementById('f-date-start').value;
   const de=document.getElementById('f-date-end').value;
   const allD=data.flatMap(r=>[r.bs,r.bf,r.rs,r.rf].filter(Boolean));
-  if(!allD.length){tbl.innerHTML='<tr><td colspan="10" style="padding:2rem;text-align:center;color:var(--text2)">Sem datas disponíveis.</td></tr>';return;}
+  if(!allD.length){_gMeta={valid:false};return;}
   const rMin=ds||allD.reduce((a,b)=>a<b?a:b);
   const rMax=de||allD.reduce((a,b)=>a>b?a:b);
   const rStart=d2t(rMin),rEnd=d2t(rMax),rMs=rEnd-rStart;
-  if(rMs<=0){tbl.innerHTML='<tr><td colspan="10" style="padding:2rem;text-align:center;color:var(--text2)">Intervalo de datas inválido.</td></tr>';return;}
-
+  if(rMs<=0){_gMeta={valid:false};return;}
   const today=new Date().toISOString().split('T')[0];
   const todayPct=Math.max(0,Math.min(100,(d2t(today)-rStart)/rMs*100)).toFixed(2);
-
-  // --- PERIOD HEADERS (week / month / quarter) ---
   const periods=[];
   if(ganttGranularity==='week'){
     let wc=new Date(rMin);const dow=wc.getDay();wc.setDate(wc.getDate()-(dow===0?6:dow-1));
@@ -2535,126 +2536,181 @@ function renderGantt(data){
   });
   const validPeriods=periods.filter((_,i)=>pw[i]>0.1);
   const validPw=pw.filter(w=>w>0.1);
+  const cs=getComputedStyle(document.documentElement);
+  const navy=cs.getPropertyValue('--navy').trim()||'#002E5E';
+  const green=cs.getPropertyValue('--green').trim()||'#95BB42';
+  const redBar=cs.getPropertyValue('--red-bar').trim()||'#E24B4A';
+  _gMeta={valid:true,rStart,rMs,todayPct,validPeriods,validPw,navy,green,redBar};
+}
 
-  const navy=getComputedStyle(document.documentElement).getPropertyValue('--navy').trim()||'#002E5E';
-  const green=getComputedStyle(document.documentElement).getPropertyValue('--green').trim()||'#95BB42';
-  const redBar=getComputedStyle(document.documentElement).getPropertyValue('--red-bar').trim()||'#E24B4A';
-
-  let html=`<thead><tr>
+function buildGanttHeaders(){
+  const m=_gMeta;
+  if(!m.valid)return'';
+  let h=`<thead><tr>
     <th rowspan="2" class="g-sticky" style="min-width:180px">Designação</th>
     <th rowspan="2" class="g-sticky-2" style="text-align:center;width:52px">% Exec.</th>
     <th rowspan="2" class="g-sticky-3" style="text-align:center;width:72px">Início</th>
     <th rowspan="2" class="g-sticky-4" style="text-align:center;width:72px">Fim</th>
     <th rowspan="2" class="g-sticky-5" style="text-align:center;width:76px">Estado</th>
-    <th colspan="${validPeriods.length}" style="text-align:center">Timeline</th></tr><tr>`;
-  validPeriods.forEach((p,i)=>{html+=`<th class="gantt-month-hdr" style="width:${validPw[i].toFixed(1)}%">${p.label}</th>`;});
-  html+=`</tr></thead><tbody>`;
-
-  const barColor=(r)=>{
-    if(r.nivel<=2)return navy;
-    if(r.status==='Concluído')return green;
-    if(r.status==='Em dia')return navy;
-    return redBar;
-  };
-
-  // Compute first visible index for today label
-  let firstVisibleIdx=-1;
-  data.forEach((row,idx)=>{if(firstVisibleIdx<0&&gIsVisible(data,idx)&&row.nivel<=ganttMaxLevel)firstVisibleIdx=idx;});
-
-  data.forEach((row,idx)=>{
-    if(!gIsVisible(data,idx))return;
-    if(row.nivel>ganttMaxLevel)return;
-    const n=row.nivel,indent=(n-1)*14;
-    const cls=`gantt-row-n${n}`;
-    const canT=hasGChildren(idx)&&row.nivel<ganttMaxLevel;
-    const col=GCOL[idx];
-    const toggle=canT?`<button class="g-toggle" onclick="gToggle(${idx})">${col?'▶':'▼'}</button> `:'  ';
-
-    const rowSt=row.status||'';
-    const s=SC[rowSt];
-    const statCell=rowSt?`<span class="badge" style="background:${s.bg};color:${s.tc};font-size:10px">${rowSt}</span>`:'—';
-    const startD=row.rs||row.bs,endD=row.rf||row.bf;
-    // Formato MM/AA (mês/ano abreviado)
-    const dd=d=>{if(!d)return'—';const p=d.split('-');return p[1]+'/'+p[0].slice(2);};
-
-    // Base dates (planning) and Real dates (actual) - use real when available
-    const bl=ganttPct(row.bs,row.bf,rStart,rMs);          // baseline
-    const rl=ganttPct(row.rs||row.bs,row.rf||row.bf,rStart,rMs);  // real/revised
-    const bc=barColor(row);
-
-    let bars='';
-    if(bl.w>0)bars+=`<div class="g-bar g-baseline" style="left:${bl.l}%;width:${bl.w}%;background:${navy}"></div>`;
-    if(rl.w>0)bars+=`<div class="g-bar g-real" style="left:${rl.l}%;width:${rl.w}%;background:${bc}"></div>`;
-    const todayLbl=idx===firstVisibleIdx?'<span class="g-today-lbl">Hoje</span>':'';
-    bars+=`<div class="g-today" style="left:${todayPct}%">${todayLbl}</div>`;
-
-    const fmtFull=d=>{if(!d)return'';const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
-    html+=`<tr class="${cls}">
-      <td class="g-sticky"><div class="g-name" style="padding-left:${indent}px">${toggle}${esc(row.nome)}</div></td>
-      <td class="g-sticky-2" style="text-align:center;font-size:11px">${row.pct}%</td>
-      <td class="g-sticky-3" style="text-align:center;font-size:11px;color:var(--text2)">${dd(startD)}</td>
-      <td class="g-sticky-4" style="text-align:center;font-size:11px;color:var(--text2)">${dd(endD)}</td>
-      <td class="g-sticky-5" style="text-align:center">${statCell}</td>
-      <td class="g-chart-cell" colspan="${validPeriods.length}"
-          data-nome="${esc(row.nome)}" data-start="${startD||''}" data-end="${endD||''}"
-          data-pct="${row.pct}" data-status="${rowSt}"><div class="g-bar-wrap">${bars}</div></td>
-    </tr>`;
-  });
-  html+=`</tbody>`;
-  tbl.innerHTML=html;
-  // Fix sticky left offsets and two-row header top positions
-  (function(){
-    const trs=tbl.querySelectorAll('thead tr');
-    const hrow=trs[0];
-    if(!hrow) return;
-    // Left offsets for the 5 sticky columns
-    for(let ci=0;ci<5&&ci<hrow.children.length;ci++){
-      const left=hrow.children[ci].offsetLeft+'px';
-      hrow.children[ci].style.left=left;
-      tbl.querySelectorAll('tbody tr').forEach(function(tr){
-        if(tr.children[ci]) tr.children[ci].style.left=left;
-      });
-    }
-    // Month-label row must stick below the first header row
-    if(trs[1]){
-      const h=hrow.getBoundingClientRect().height+'px';
-      Array.from(trs[1].children).forEach(function(th){th.style.top=h;});
-    }
-  })();
-  // Tooltip binding
-  (function(){
-    const tip=document.getElementById('gantt-tooltip');
-    const wrap=document.querySelector('.gantt-wrap');
-    if(!tip||!tbl) return;
-    // Remove previous listeners by replacing with clone
-    const oldTbl=tbl;
-    tbl.addEventListener('mousemove',function(e){
-      const td=e.target.closest('.g-chart-cell');
-      if(!td){tip.style.display='none';return;}
-      const s=td.dataset.start,en=td.dataset.end;
-      const fmt=d=>{if(!d)return'—';const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
-      const sc={'Concluído':'#3B6D11','Em dia':'#185FA5','Em atraso':'#E53935'}[td.dataset.status]||'#aaa';
-      tip.innerHTML='<strong style="display:block;margin-bottom:4px">'+td.dataset.nome+'</strong>'+
-        'Início: '+fmt(s)+'<br>Fim: '+fmt(en)+'<br>'+
-        'Execução: <strong>'+td.dataset.pct+'%</strong><br>'+
-        '<span style="color:'+sc+'">'+(td.dataset.status||'—')+'</span>';
-      tip.style.display='block';
-      tip.style.left=Math.min(e.clientX+16,window.innerWidth-270)+'px';
-      tip.style.top=(e.clientY-10)+'px';
-    });
-    tbl.addEventListener('mouseleave',function(){tip.style.display='none';});
-  })();
+    <th colspan="${m.validPeriods.length}" style="text-align:center">Timeline</th></tr><tr>`;
+  m.validPeriods.forEach((p,i)=>{h+=`<th class="gantt-month-hdr" style="width:${m.validPw[i].toFixed(1)}%">${p.label}</th>`;});
+  h+=`</tr></thead>`;
+  return h;
 }
 
-function gToggle(idx){GCOL[idx]=!GCOL[idx];renderGantt(fGantt);}
-function ganttCollapseAll(){fGantt.forEach((_,i)=>{if(hasGChildren(i))GCOL[i]=true;});renderGantt(fGantt);}
-function ganttExpandAll(){Object.keys(GCOL).forEach(k=>delete GCOL[k]);renderGantt(fGantt);}
+function buildGanttRow(row,dataIdx,isFirst){
+  const m=_gMeta;
+  const {rStart,rMs,todayPct,navy,green,redBar}=m;
+  const n=row.nivel,indent=(n-1)*14;
+  const canT=hasGChildren(dataIdx)&&row.nivel<ganttMaxLevel;
+  const col=GCOL[dataIdx];
+  const toggle=canT?`<button class="g-toggle" onclick="gToggle(${dataIdx})">${col?'▶':'▼'}</button> `:'  ';
+  const rowSt=row.status||'';
+  const s=SC[rowSt];
+  const statCell=rowSt?`<span class="badge" style="background:${s.bg};color:${s.tc};font-size:10px">${rowSt}</span>`:'—';
+  const startD=row.rs||row.bs,endD=row.rf||row.bf;
+  const dd=d=>{if(!d)return'—';const p=d.split('-');return p[1]+'/'+p[0].slice(2);};
+  const bl=ganttPct(row.bs,row.bf,rStart,rMs);
+  const rl=ganttPct(row.rs||row.bs,row.rf||row.bf,rStart,rMs);
+  const bc=n<=2?navy:(rowSt==='Concluído'?green:(rowSt==='Em dia'?navy:redBar));
+  let bars='';
+  if(bl.w>0)bars+=`<div class="g-bar g-baseline" style="left:${bl.l}%;width:${bl.w}%;background:${navy}"></div>`;
+  if(rl.w>0)bars+=`<div class="g-bar g-real" style="left:${rl.l}%;width:${rl.w}%;background:${bc}"></div>`;
+  const todayLbl=isFirst?'<span class="g-today-lbl">Hoje</span>':'';
+  bars+=`<div class="g-today" style="left:${todayPct}%">${todayLbl}</div>`;
+  return`<tr class="gantt-row-n${n}">
+    <td class="g-sticky"><div class="g-name" style="padding-left:${indent}px">${toggle}${esc(row.nome)}</div></td>
+    <td class="g-sticky-2" style="text-align:center;font-size:11px">${row.pct}%</td>
+    <td class="g-sticky-3" style="text-align:center;font-size:11px;color:var(--text2)">${dd(startD)}</td>
+    <td class="g-sticky-4" style="text-align:center;font-size:11px;color:var(--text2)">${dd(endD)}</td>
+    <td class="g-sticky-5" style="text-align:center">${statCell}</td>
+    <td class="g-chart-cell" colspan="${m.validPeriods.length}"
+        data-nome="${esc(row.nome)}" data-start="${startD||''}" data-end="${endD||''}"
+        data-pct="${row.pct}" data-status="${rowSt}"><div class="g-bar-wrap">${bars}</div></td>
+  </tr>`;
+}
+
+function fixGanttSticky(tbl){
+  const trs=tbl.querySelectorAll('thead tr');
+  const hrow=trs[0];if(!hrow)return;
+  const nCols=Math.min(5,hrow.children.length);
+  // Read phase — avoid layout thrashing
+  const lefts=[];
+  for(let ci=0;ci<nCols;ci++)lefts.push(hrow.children[ci].offsetLeft+'px');
+  // Write phase
+  for(let ci=0;ci<nCols;ci++)hrow.children[ci].style.left=lefts[ci];
+  const bodyRows=tbl.querySelectorAll('tbody tr:not([data-pad])');
+  bodyRows.forEach(tr=>{for(let ci=0;ci<nCols;ci++)if(tr.children[ci])tr.children[ci].style.left=lefts[ci];});
+  if(trs[1]){
+    const h=hrow.getBoundingClientRect().height+'px';
+    Array.from(trs[1].children).forEach(th=>{th.style.top=h;});
+  }
+}
+
+// Virtual scroll — render only the visible window + buffer rows
+function renderGanttVirtual(){
+  const tbl=document.getElementById('gantt-table');
+  const wrap=document.querySelector('.gantt-wrap');
+  if(!tbl||!wrap||!_gMeta.valid)return;
+  const tbody=tbl.querySelector('tbody');
+  if(!tbody)return;
+  const vis=_gVisibleRows;
+  const total=vis.length;
+  if(!total){
+    tbody.innerHTML='<tr><td colspan="10" style="padding:2rem;text-align:center;color:var(--text2)">Nenhum dado.</td></tr>';
+    return;
+  }
+  const scrollTop=wrap.scrollTop;
+  const viewH=wrap.clientHeight||600;
+  const firstRow=Math.max(0,Math.floor(scrollTop/GANTT_ROW_H)-GANTT_BUFFER);
+  const lastRow=Math.min(total-1,Math.ceil((scrollTop+viewH)/GANTT_ROW_H)+GANTT_BUFFER);
+  const topPad=firstRow*GANTT_ROW_H;
+  const botPad=(total-1-lastRow)*GANTT_ROW_H;
+  let html='';
+  if(topPad>0)html+=`<tr data-pad style="height:${topPad}px"><td colspan="10"></td></tr>`;
+  for(let vi=firstRow;vi<=lastRow;vi++){
+    const dataIdx=vis[vi];
+    html+=buildGanttRow(_ganttData[dataIdx],dataIdx,vi===0);
+  }
+  if(botPad>0)html+=`<tr data-pad style="height:${botPad}px"><td colspan="10"></td></tr>`;
+  tbody.innerHTML=html;
+  fixGanttSticky(tbl);
+}
+
+function _bindGanttEvents(){
+  if(_ganttEvtBound)return;
+  const tbl=document.getElementById('gantt-table');
+  const tip=document.getElementById('gantt-tooltip');
+  const wrap=document.querySelector('.gantt-wrap');
+  if(!tbl||!tip||!wrap)return;
+  wrap.addEventListener('scroll',function(){
+    if(_ganttScrollRaf)cancelAnimationFrame(_ganttScrollRaf);
+    _ganttScrollRaf=requestAnimationFrame(renderGanttVirtual);
+  },{passive:true});
+  tbl.addEventListener('mousemove',function(e){
+    const td=e.target.closest('.g-chart-cell');
+    if(!td){tip.style.display='none';return;}
+    const s=td.dataset.start,en=td.dataset.end;
+    const fmt=d=>{if(!d)return'—';const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
+    const sc={'Concluído':'#3B6D11','Em dia':'#185FA5','Em atraso':'#E53935'}[td.dataset.status]||'#aaa';
+    tip.innerHTML='<strong style="display:block;margin-bottom:4px">'+td.dataset.nome+'</strong>'+
+      'Início: '+fmt(s)+'<br>Fim: '+fmt(en)+'<br>'+
+      'Execução: <strong>'+td.dataset.pct+'%</strong><br>'+
+      '<span style="color:'+sc+'">'+(td.dataset.status||'—')+'</span>';
+    tip.style.display='block';
+    tip.style.left=Math.min(e.clientX+16,window.innerWidth-270)+'px';
+    tip.style.top=(e.clientY-10)+'px';
+  });
+  tbl.addEventListener('mouseleave',function(){tip.style.display='none';});
+  _ganttEvtBound=true;
+}
+
+function renderGantt(data){
+  _ganttData=data;
+  const tbl=document.getElementById('gantt-table');
+  if(!data.length){
+    tbl.innerHTML='<tbody><tr><td colspan="10" style="padding:2rem;text-align:center;color:var(--text2)">Nenhum dado.</td></tr></tbody>';
+    return;
+  }
+  buildGanttMeta(data);
+  if(!_gMeta.valid){
+    tbl.innerHTML='<tbody><tr><td colspan="10" style="padding:2rem;text-align:center;color:var(--text2)">Sem datas disponíveis.</td></tr></tbody>';
+    return;
+  }
+  buildVisibleRows(data);
+  // Reset scroll and rebuild table structure
+  const wrap=document.querySelector('.gantt-wrap');
+  if(wrap)wrap.scrollTop=0;
+  tbl.innerHTML=buildGanttHeaders()+'<tbody></tbody>';
+  _bindGanttEvents();
+  renderGanttVirtual();
+}
+
+function gToggle(idx){GCOL[idx]=!GCOL[idx];buildVisibleRows(_ganttData);renderGanttVirtual();}
+function ganttCollapseAll(){_ganttData.forEach((_,i)=>{if(hasGChildren(i))GCOL[i]=true;});buildVisibleRows(_ganttData);renderGanttVirtual();}
+function ganttExpandAll(){Object.keys(GCOL).forEach(k=>delete GCOL[k]);buildVisibleRows(_ganttData);renderGanttVirtual();}
+
+function setGanttLevel(lvl,btn){
+  ganttMaxLevel=lvl;
+  document.querySelectorAll('[id^="glvl-"]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  Object.keys(GCOL).forEach(k=>delete GCOL[k]);
+  _ganttData.forEach((r,i)=>{if(r.nivel<lvl)GCOL[i]=false;if(r.nivel===lvl&&hasGChildren(i))GCOL[i]=true;});
+  buildVisibleRows(_ganttData);
+  renderGanttVirtual();
+}
 
 function setGanttScale(scale,btn){
   ganttGranularity=scale;
   document.querySelectorAll('[id^="gscale-"]').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  renderGantt(fGantt);
+  if(!_ganttData.length)return;
+  buildGanttMeta(_ganttData);
+  const tbl=document.getElementById('gantt-table');
+  if(_gMeta.valid){
+    tbl.innerHTML=buildGanttHeaders()+'<tbody></tbody>';
+    renderGanttVirtual();
+  }
 }
 
 function _isoWeek(d){
