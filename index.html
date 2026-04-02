@@ -24,7 +24,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg3);color:var
 canvas{max-width:100%!important}
 
 /* ── FIXED HEADER ── */
-.fixed-top{position:fixed;top:0;left:0;right:0;z-index:50;overflow:visible}
+.fixed-top{position:fixed;top:0;left:0;right:0;z-index:50;overflow:visible;pointer-events:none}
+.fixed-top>*{pointer-events:auto}
 .topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 1.5rem 8px 0;background:var(--navy);gap:8px;min-height:52px}
 .topbar h1{font-size:18px;font-weight:700;color:#fff;margin:0}
 .topbar p{font-size:11px;color:rgba(255,255,255,.65);margin-top:1px}
