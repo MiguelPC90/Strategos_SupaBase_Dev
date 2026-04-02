@@ -94,7 +94,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--navy);
+      background: var(--bg);
       z-index: 100;
       padding: 24px;
     }
@@ -576,14 +576,15 @@
     #login-card {
       width: 100%;
       max-width: 360px;
-      background: rgba(255,255,255,.07);
-      border: 1px solid rgba(255,255,255,.14);
+      background: var(--card);
+      border: 1px solid var(--border);
       border-radius: 18px;
       padding: 36px 28px 32px;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 6px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.08);
     }
 
     #login-logo-wrap { margin-bottom: 4px; }
@@ -592,23 +593,25 @@
       width: 88px;
       height: 88px;
       border-radius: 20px;
-      background: #fff;
+      background: var(--bg);
       padding: 8px;
       object-fit: contain;
-      box-shadow: 0 4px 20px rgba(0,0,0,.25);
+      box-shadow: 0 2px 10px rgba(0,0,0,.10);
     }
 
     #login-title {
       font-size: 22px;
       font-weight: 800;
-      color: var(--white);
+      color: var(--text);
       margin-top: 8px;
+      text-align: center;
     }
 
     #login-subtitle {
       font-size: 13px;
-      color: rgba(255,255,255,.60);
+      color: var(--muted);
       margin-bottom: 12px;
+      text-align: center;
     }
 
     #login-form {
@@ -627,7 +630,7 @@
     .field-wrap label {
       font-size: 12px;
       font-weight: 600;
-      color: rgba(255,255,255,.75);
+      color: var(--muted);
       letter-spacing: .3px;
     }
 
@@ -635,17 +638,17 @@
     #login-form input {
       padding: 11px 14px;
       border-radius: 10px;
-      border: 1.5px solid rgba(255,255,255,.20);
-      background: rgba(255,255,255,.10);
-      color: var(--white);
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
       font-size: 15px;
       outline: none;
       transition: border-color .15s, background .15s;
     }
-    #login-form input::placeholder { color: rgba(255,255,255,.40); }
+    #login-form input::placeholder { color: var(--muted); opacity: .6; }
     #login-form input:focus {
-      border-color: var(--green);
-      background: rgba(255,255,255,.14);
+      border-color: var(--navy);
+      background: var(--card);
     }
 
     .login-msg {
@@ -659,10 +662,10 @@
       margin-top: 4px;
       padding: 13px;
       border-radius: 10px;
-      background: var(--green);
-      color: var(--navy);
+      background: var(--navy);
+      color: var(--white);
       font-size: 15px;
-      font-weight: 800;
+      font-weight: 700;
       letter-spacing: .3px;
       transition: opacity .15s, transform .1s;
     }
@@ -1350,8 +1353,8 @@
         <!-- logo ou ícone S -->
         <img id="login-icon" src="logo.png" alt="Strategos">
       </div>
-      <h1 id="login-title">Strategos</h1>
-      <p id="login-subtitle">Plano Estratégico</p>
+      <h1 id="login-title">Bem-vindo(a) ao Strategos</h1>
+      <p id="login-subtitle">Introduzir as credenciais para aceder.</p>
 
       <form id="login-form" autocomplete="on">
         <div class="field-wrap">
