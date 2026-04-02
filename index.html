@@ -106,7 +106,9 @@ tr.hover-row:hover td{background:var(--bg2)}
 .row-total td{font-weight:700;background:var(--bg3)}
 
 /* ── GANTT ── */
-.gantt-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-height:52px;padding:8px 1.5rem;background:var(--bg);border-bottom:1px solid var(--border);margin:-1.25rem -1.5rem 1.25rem;position:sticky;top:var(--ft-h,100px);z-index:40}
+.gantt-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;min-height:52px;padding:8px 1.5rem;background:var(--bg);border-bottom:1px solid var(--border);margin:-1.25rem -1.5rem 1.25rem;position:sticky;top:var(--ft-h,100px);z-index:40;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.gantt-toolbar::-webkit-scrollbar{display:none}
+.gantt-toolbar>*{flex-shrink:0}
 .gantt-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 130px);position:relative}
 .gantt-table .g-sticky,.gantt-table .g-sticky-2,.gantt-table .g-sticky-3,.gantt-table .g-sticky-4,.gantt-table .g-sticky-5{position:sticky;z-index:2;background:var(--bg);}
 /* Header sticky-left cells: keep navy bg and float above td sticky cells */
@@ -286,7 +288,9 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
 .pm-badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:600}
 .pm-unsaved{display:none;font-size:11px;color:var(--amber);margin-left:auto;align-self:center}
 .pm-unsaved.show{display:block}
-.pm-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;min-height:52px;padding:8px 1.5rem;background:var(--bg);border-bottom:1px solid var(--border);margin:-1.25rem -1.5rem 1.25rem;position:sticky;top:var(--ft-h,100px);z-index:40}
+.pm-toolbar{display:flex;gap:8px;flex-wrap:nowrap;align-items:center;min-height:52px;padding:8px 1.5rem;background:var(--bg);border-bottom:1px solid var(--border);margin:-1.25rem -1.5rem 1.25rem;position:sticky;top:var(--ft-h,100px);z-index:40;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.pm-toolbar::-webkit-scrollbar{display:none}
+.pm-toolbar>*{flex-shrink:0}
 .pm-search{padding:6px 10px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit;min-width:200px}
 .pm-empty-form{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);text-align:center;padding:2rem}
 .pm-empty-form div:first-child{font-size:32px;margin-bottom:12px}
