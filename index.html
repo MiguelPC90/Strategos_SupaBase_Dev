@@ -1705,9 +1705,9 @@ function initUsers(){
 function showLogin(){
   const ls=document.getElementById('login-screen');
   if(ls) ls.style.display='flex';
-  // Show logo if configured
+  // Override logo if configured in CFG
   const logo=document.getElementById('login-logo');
-  if(logo&&CFG.logo){logo.src=CFG.logo;logo.style.display='block';}
+  if(logo&&CFG.logo) logo.src=CFG.logo;
   setTimeout(function(){const u=document.getElementById('login-username');if(u)u.focus();},50);
 }
 
@@ -6472,7 +6472,7 @@ switchTab = function(id, btn){
 <div id="login-screen" class="login-screen">
   <div class="login-card">
     <div class="login-card-brand">
-      <img id="login-logo" style="max-height:52px;display:none">
+      <img id="login-logo" src="logo.png" style="max-height:64px;display:block">
     </div>
     <h2 id="login-title">Bem-vindo(a) ao Strategos</h2>
     <p class="login-card-sub">Introduzir as credenciais para aceder.</p>
