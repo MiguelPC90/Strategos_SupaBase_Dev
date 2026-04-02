@@ -505,7 +505,7 @@ body.sidebar-collapsed{--sidebar-w:56px}
 .sidebar-nav{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 0;scrollbar-width:none}
 .sidebar-nav::-webkit-scrollbar{display:none}
 .sidebar-group-lbl{display:block;font-size:9px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.35);padding:10px 16px 3px;text-transform:uppercase;white-space:nowrap;overflow:hidden;transition:opacity .15s}
-.sidebar-group-edit{color:rgba(255,200,100,.4)}
+.sidebar-group-edit{color:rgba(255,255,255,.35)}
 .nav-item{display:flex;align-items:center;gap:10px;width:calc(100% - 8px);margin:1px 4px;padding:8px 12px 8px 16px;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.65);font-size:13px;font-family:inherit;text-align:left;text-decoration:none;white-space:nowrap;border-radius:6px;transition:background .12s,color .12s;box-sizing:border-box}
 .nav-item:hover{background:rgba(255,255,255,.1);color:#fff}
 .nav-item.active{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
@@ -643,8 +643,6 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
     </div>
   </div>
 
-  <!-- CHIPS BAR (always visible when filters are active) -->
-  <div id="active-chips-bar"></div>
   <!-- FILTER PANEL (desktop toggle) -->
   <div id="filter-panel" class="filter-bar" hidden>
     <div class="ms-wrap" id="ms-n0-wrap" style="display:none">
@@ -692,6 +690,8 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
   </div>
   <div class="filter-info">A mostrar <strong id="f-count">—</strong> actividades &nbsp;<span id="cutoff-badge" style="display:none;background:#FAEEDA;color:#854F0B;font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500"></span></div>
 </div>
+  <!-- CHIPS BAR (below filter panel) -->
+  <div id="active-chips-bar"></div>
 
   <!-- TABS -->
   <div class="tab-bar">
@@ -1943,7 +1943,12 @@ function removeOneFilter(key,val){
 function toggleSidebar(){
   const collapsed=document.body.classList.toggle('sidebar-collapsed');
   localStorage.setItem('pmo_sidebar',collapsed?'1':'0');
-  setTimeout(adjustSpacer,220);
+  // Resize charts after sidebar transition completes (220ms)
+  setTimeout(function(){
+    Object.values(charts).forEach(function(c){try{c.resize();}catch(e){}});
+    if(window.efCharts) Object.values(efCharts).forEach(function(c){try{c.resize();}catch(e){}});
+    adjustSpacer();
+  },240);
 }
 (function initSidebar(){
   // Default is collapsed; only expand if user explicitly opened it
