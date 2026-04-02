@@ -2932,6 +2932,8 @@ function renderAll(){
   // Always update PDS selector (used by multiple tabs)
   if(tab!=='pds'){ buildPdsSelector(); }
   if(tab==='gestao'){ renderPMTable(); }
+  if(tab==='gestao-pds'){ initGPDS(); }
+  if(tab==='gestao-riscos'){ initGRisk(); }
 }
 
 // ── UPLOAD ────────────────────────────────────────────────────────────────────
@@ -4450,12 +4452,16 @@ function formatDatePT(d){ if(!d) return ''; const p=d.split('-'); return p.lengt
 function initGPDS(){
   ensurePDSItems();
   const sel = document.getElementById('gpds-selector');
+  const prev = sel.value;
   sel.innerHTML = '<option value="">— seleccionar plano —</option>' +
-    ALL_PDS.map(function(p){
+    fPDS.map(function(p){
       const key=(p.id0||'')+'_'+p.id2;
       const prefix = (p.n0 ? esc(p.n0)+' › ' : '') + (p.n1 ? esc(p.n1)+' › ' : '');
       return '<option value="'+esc(key)+'">'+prefix+esc(p.plano)+'</option>';
     }).join('');
+  // Restore selection if still in filtered list
+  if(prev && sel.querySelector('option[value="'+prev+'"]')) sel.value=prev;
+  else loadGPDS();
 }
 
 function loadGPDS(){
@@ -4679,12 +4685,16 @@ function riskLabel(grade){
 
 function initGRisk(){
   const sel = document.getElementById('grisk-selector');
+  const prev = sel.value;
   sel.innerHTML = '<option value="">— seleccionar plano —</option>' +
-    ALL_PDS.map(function(p){
+    fPDS.map(function(p){
       const key=(p.id0||'')+'_'+p.id2;
       const prefix = (p.n0 ? esc(p.n0)+' › ' : '') + (p.n1 ? esc(p.n1)+' › ' : '');
       return '<option value="'+esc(key)+'">'+prefix+esc(p.plano)+'</option>';
     }).join('');
+  // Restore selection if still in filtered list
+  if(prev && sel.querySelector('option[value="'+prev+'"]')) sel.value=prev;
+  else loadGRisk();
 }
 
 function getCurrentRiskPDS(){
