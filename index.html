@@ -109,7 +109,7 @@ tr.hover-row:hover td{background:var(--bg2)}
 .gantt-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;min-height:52px;padding:8px 1.5rem;background:var(--bg);border-bottom:1px solid var(--border);margin:-1.25rem -1.5rem 1.25rem;position:sticky;top:var(--ft-h,100px);z-index:40;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .gantt-toolbar::-webkit-scrollbar{display:none}
 .gantt-toolbar>*{flex-shrink:0}
-.gantt-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 130px);position:relative}
+.gantt-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - var(--ft-h,100px) - 64px);position:relative}
 .gantt-table .g-sticky,.gantt-table .g-sticky-2,.gantt-table .g-sticky-3,.gantt-table .g-sticky-4,.gantt-table .g-sticky-5{position:sticky;z-index:2;background:var(--bg);}
 /* Header sticky-left cells: keep navy bg and float above td sticky cells */
 .gantt-table th.g-sticky,.gantt-table th.g-sticky-2,.gantt-table th.g-sticky-3,.gantt-table th.g-sticky-4,.gantt-table th.g-sticky-5{z-index:4;background:var(--navy)}
@@ -142,8 +142,6 @@ tr.hover-row:hover td{background:var(--bg2)}
 .chip.active{background:var(--navy);color:#fff;border-color:var(--navy)}
 
 /* ── PDS ── */
-.pds-nav{display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap}
-.pds-select{padding:8px 12px;font-size:13px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit;min-width:220px;cursor:pointer}
 .pds-arrow{padding:6px 12px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg);color:var(--text);cursor:pointer;font-size:14px}
 .pds-arrow:hover{background:var(--bg2)}
 .pds-kpi-grid{margin-bottom:0}
@@ -822,27 +820,27 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 
 <!-- ═══ GANTT ═══ -->
 <div id="gantt" class="section">
-  <div class="card" style="padding:1rem 1.25rem">
-    <div class="gantt-toolbar">
-      <div class="gantt-legend">
-        <span><b style="background:rgba(0,46,94,.35);width:24px"></b>Baseline</span>
-        <span><b style="background:var(--navy);width:24px"></b>Real</span>
-      </div>
-      <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;align-items:center">
-        <span style="font-size:11px;color:var(--text2)">Escala:</span>
-        <button class="chip" id="gscale-week" onclick="setGanttScale('week',this)">Semana</button>
-        <button class="chip active" id="gscale-month" onclick="setGanttScale('month',this)">Mês</button>
-        <button class="chip" id="gscale-quarter" onclick="setGanttScale('quarter',this)">Trimestre</button>
-        <span style="border-left:1px solid var(--border2);height:16px;margin:0 4px;align-self:center"></span>
-        <span style="font-size:11px;color:var(--text2)">Nível:</span>
-        <button class="chip active" id="glvl-1" onclick="setGanttLevel(1,this)">N1</button>
-        <button class="chip" id="glvl-2" onclick="setGanttLevel(2,this)">N2</button>
-        <button class="chip" id="glvl-3" onclick="setGanttLevel(3,this)">N3</button>
-        <button class="chip" id="glvl-4" onclick="setGanttLevel(4,this)">N4</button>
-        <button class="btn" style="font-size:11px;padding:4px 9px" onclick="ganttCollapseAll()">Colapsar</button>
-        <button class="btn" style="font-size:11px;padding:4px 9px" onclick="ganttExpandAll()">Expandir</button>
-      </div>
+  <div class="gantt-toolbar">
+    <div class="gantt-legend">
+      <span><b style="background:rgba(0,46,94,.35);width:24px"></b>Baseline</span>
+      <span><b style="background:var(--navy);width:24px"></b>Real</span>
     </div>
+    <div style="display:flex;gap:6px;margin-left:auto;align-items:center">
+      <span style="font-size:11px;color:var(--text2)">Escala:</span>
+      <button class="chip" id="gscale-week" onclick="setGanttScale('week',this)">Semana</button>
+      <button class="chip active" id="gscale-month" onclick="setGanttScale('month',this)">Mês</button>
+      <button class="chip" id="gscale-quarter" onclick="setGanttScale('quarter',this)">Trimestre</button>
+      <span style="border-left:1px solid var(--border2);height:16px;margin:0 4px;align-self:center"></span>
+      <span style="font-size:11px;color:var(--text2)">Nível:</span>
+      <button class="chip active" id="glvl-1" onclick="setGanttLevel(1,this)">N1</button>
+      <button class="chip" id="glvl-2" onclick="setGanttLevel(2,this)">N2</button>
+      <button class="chip" id="glvl-3" onclick="setGanttLevel(3,this)">N3</button>
+      <button class="chip" id="glvl-4" onclick="setGanttLevel(4,this)">N4</button>
+      <button class="btn" style="font-size:11px;padding:4px 9px" onclick="ganttCollapseAll()">Colapsar</button>
+      <button class="btn" style="font-size:11px;padding:4px 9px" onclick="ganttExpandAll()">Expandir</button>
+    </div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
     <div class="gantt-wrap">
       <table class="gantt-table" id="gantt-table"></table>
     </div>
@@ -1037,19 +1035,23 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 
 <!-- EVOLUÇÃO -->
 <div id="evolucao" class="section">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <span style="font-size:13px;color:var(--text2)">Data A:</span>
-      <select id="snap-selector-a" onchange="renderEvolucao()" style="padding:5px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit">
+  <div class="pm-toolbar">
+    <div class="pm-sel-wrap">
+      <span class="pm-sel-lbl">Data A</span>
+      <select id="snap-selector-a" class="pm-sel" onchange="renderEvolucao()">
         <option value="current">Dados actuais</option>
       </select>
-      <span style="font-size:13px;font-weight:700;color:var(--text2)">vs</span>
-      <span style="font-size:13px;color:var(--text2)">Data B:</span>
-      <select id="snap-selector" onchange="renderEvolucao()" style="padding:5px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit">
+    </div>
+    <span style="font-size:13px;font-weight:700;color:var(--text3)">vs</span>
+    <div class="pm-sel-wrap">
+      <span class="pm-sel-lbl">Data B</span>
+      <select id="snap-selector" class="pm-sel" onchange="renderEvolucao()">
         <option value="">— seleccionar —</option>
       </select>
     </div>
-    <button class="btn" style="font-size:12px" onclick="saveSnapshot()">&#128190; Guardar snapshot agora</button>
+    <div style="margin-left:auto">
+      <button class="btn" style="font-size:12px" onclick="saveSnapshot()">&#128190; Guardar snapshot</button>
+    </div>
   </div>
   <div id="evolucao-content"><div style="text-align:center;padding:3rem;color:var(--text2);font-size:13px">Carrega um Excel e selecciona um reporte anterior para comparar.</div></div>
 </div>
@@ -1292,9 +1294,12 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 </div>
 
 <div id="pds" class="section">
-  <div class="pds-nav">
+  <div class="pm-toolbar">
     <button class="pds-arrow" onclick="pdsNav(-1)">&#8592;</button>
-    <select class="pds-select" id="pds-selector" onchange="renderPDS()"></select>
+    <div class="pm-sel-wrap">
+      <span class="pm-sel-lbl">Plano</span>
+      <select class="pm-sel" id="pds-selector" onchange="renderPDS()"></select>
+    </div>
     <button class="pds-arrow" onclick="pdsNav(1)">&#8594;</button>
   </div>
   <div id="pds-plan-header" style="margin-bottom:12px"></div>
