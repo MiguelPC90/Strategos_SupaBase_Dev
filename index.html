@@ -223,8 +223,8 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
 /* ── ACTIVE FILTER CHIPS ── */
 #active-chips-bar{width:100%;display:none;gap:6px;flex-wrap:wrap;align-items:center;padding:6px 1.5rem;border-bottom:1px solid var(--border)}
 @media(min-width:769px){
-  #active-chips-bar{padding-left:calc(var(--sidebar-w) + 1.5rem);transition:padding-left .2s}
-  #filter-panel{padding-left:calc(var(--sidebar-w) + 1rem);transition:padding-left .2s}
+  #active-chips-bar{margin-left:var(--sidebar-w);width:calc(100% - var(--sidebar-w));padding-left:1rem;transition:margin-left .2s,width .2s}
+  #filter-panel{margin-left:var(--sidebar-w);transition:margin-left .2s}
 }
 .active-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 10px;background:var(--navy);color:#fff;border-radius:20px;font-size:11px;font-weight:500}
 .active-chip-remove{background:none;border:none;color:rgba(255,255,255,.65);cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 1px;font-family:inherit}
@@ -499,7 +499,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
 /* ── SIDEBAR ── */
 body.sidebar-collapsed{--sidebar-w:56px}
 #sidebar{position:fixed;left:0;top:52px;bottom:0;width:var(--sidebar-w);background:var(--navy);display:flex;flex-direction:column;transition:width .2s;overflow:hidden;z-index:40}
-.sidebar-toggle-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.75);padding:6px 0;border-radius:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;width:var(--sidebar-w);transition:width .2s}
+.sidebar-toggle-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.75);padding:6px 0;border-radius:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;width:56px}
 .sidebar-toggle-btn:hover{background:rgba(255,255,255,.08);color:#fff}
 .sidebar-toggle-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0}
 .sidebar-nav{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 0;scrollbar-width:none}
