@@ -525,11 +525,6 @@ async function unlock(){
       initAdmin();
       return;
     }catch(e){
-      if(e.message && (e.message.includes('Invalid') || e.message.includes('credentials') || e.message.includes('password'))){
-        errEl.textContent='Password incorrecta.';
-        document.getElementById('lock-pwd').value='';
-        return;
-      }
       console.warn('Admin: Supabase unlock falhou, a usar password local.', e);
     }
   }

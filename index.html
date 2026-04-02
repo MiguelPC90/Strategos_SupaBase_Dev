@@ -2752,6 +2752,7 @@ function renderAll(){
   if(tab==='gantt'||tab==='resumo') renderGantt(fGantt);
   if(tab==='pds'){ buildPdsSelector(); renderPDS(); }
   if(tab==='exec-fin'){ initExecFin(); renderExecFin(); }
+  if(tab==='gestao-financeira') initGFin();
   if(tab==='evolucao'){
     // Restore saved EV dates
     const _evA=document.getElementById('ev-date-a');
@@ -5353,7 +5354,7 @@ function ensureFinance(p){
 function initGFin(){
   const sel=document.getElementById('gfin-selector');
   sel.innerHTML='<option value="">— seleccionar plano —</option>'+
-    ALL_PDS.map(function(p){
+    fPDS.map(function(p){
       const key=(p.id0||'')+'_'+p.id2;
       const prefix=(p.n0?esc(p.n0)+' › ':'')+esc(p.n1)+' › ';
       return '<option value="'+esc(key)+'">'+prefix+esc(p.plano)+'</option>';
@@ -5380,12 +5381,12 @@ function initGFin(){
 
 function loadGFin(){
   const _key=document.getElementById('gfin-selector').value;
-  const idx=_key?ALL_PDS.findIndex(function(p){return ((p.id0||'')+'_'+p.id2)===_key;}): -1;
+  const idx=_key?fPDS.findIndex(function(p){return ((p.id0||'')+'_'+p.id2)===_key;}): -1;
   const empty=document.getElementById('gfin-empty');
   const cont=document.getElementById('gfin-content');
   if(idx<0){empty.style.display='block';cont.style.display='none';return;}
   empty.style.display='none'; cont.style.display='block';
-  const p=ALL_PDS[idx];
+  const p=fPDS[idx];
   ensureFinance(p);
   document.getElementById('gfin-eixo').textContent=(p.n0?p.n0+' › ':'')+p.n1;
   document.getElementById('gfin-plano').textContent=p.plano;
@@ -5923,7 +5924,7 @@ function initExecFin(){
   if(!selP) return;
   const curP = selP.value;
   selP.innerHTML = '<option value="">Todos</option>' +
-    ALL_PDS.filter(function(p){ return p.finances && (p.finances.rubricas&&p.finances.rubricas.length || p.finances.contratos&&p.finances.contratos.length); })
+    fPDS.filter(function(p){ return p.finances && (p.finances.rubricas&&p.finances.rubricas.length || p.finances.contratos&&p.finances.contratos.length); })
     .map(function(p){
       const key = (p.id0||'')+'_'+p.id2;
       const prefix = (p.n0?esc(p.n0)+' › ':'')+esc(p.n1)+' › ';
@@ -5953,7 +5954,7 @@ function getEfData(){
   const filterTipo = document.getElementById('ef-tipo')?.value || '';
   const base = getBaseMoeda();
 
-  const plans = ALL_PDS.filter(function(p){
+  const plans = fPDS.filter(function(p){
     if(filterKey){ const k=(p.id0||'')+'_'+p.id2; if(k!==filterKey) return false; }
     return p.finances && (p.finances.rubricas||p.finances.contratos||p.finances.facturas);
   });
