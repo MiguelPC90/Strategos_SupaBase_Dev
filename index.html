@@ -242,10 +242,12 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
 .tab-edit.active{color:var(--navy)}
 .tab-separator{width:1px;background:var(--border2);margin:6px 4px;align-self:stretch;flex-shrink:0}
 /* Login screen */
-.login-screen{position:fixed;inset:0;background:var(--navy);z-index:300;display:flex;align-items:center;justify-content:center}
-.login-card{background:var(--bg);border-radius:var(--rl);padding:36px 40px;min-width:320px;max-width:380px;width:90%;box-shadow:0 12px 40px rgba(0,0,0,.4)}
-.login-card h2{margin:0 0 4px;font-size:20px;color:var(--text)}
-.login-card p{margin:0 0 20px;font-size:13px;color:var(--text2)}
+.login-screen{position:fixed;inset:0;background:var(--bg3);z-index:300;display:flex;align-items:center;justify-content:center}
+.login-card{background:var(--bg);border-radius:var(--rl);padding:36px 40px;min-width:320px;max-width:400px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,.10);border:1px solid var(--border)}
+.login-card-brand{text-align:center;margin-bottom:20px}
+.login-card-brand img{max-height:52px;margin-bottom:10px}
+.login-card h2{margin:0 0 5px;font-size:20px;font-weight:700;color:var(--text)}
+.login-card .login-card-sub{margin:0 0 22px;font-size:13px;color:var(--text2);line-height:1.45}
 .login-field{margin-bottom:12px}
 .login-field label{display:block;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
 .login-field input{width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-size:14px;font-family:inherit;box-sizing:border-box}
@@ -253,6 +255,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
 .login-submit{width:100%;padding:10px;background:var(--navy);color:#fff;border:none;border-radius:var(--r);font-size:14px;font-weight:600;cursor:pointer;margin-top:4px;font-family:inherit}
 .login-submit:hover{opacity:.9}
 .login-error{color:#E24B4A;font-size:12px;margin:6px 0 0;display:none}
+@media(max-width:480px){.login-card{padding:28px 20px;width:calc(100% - 32px)}}
 @media(max-width:480px){.kpi-3col{grid-template-columns:1fr}.pm-field-row{grid-template-columns:1fr}}
 
 /* ── PROJECT MANAGEMENT ── */
@@ -1702,10 +1705,9 @@ function initUsers(){
 function showLogin(){
   const ls=document.getElementById('login-screen');
   if(ls) ls.style.display='flex';
-  // Apply branding
+  // Show logo if configured
   const logo=document.getElementById('login-logo');
   if(logo&&CFG.logo){logo.src=CFG.logo;logo.style.display='block';}
-  const t=document.getElementById('login-title'); if(t) t.textContent=CFG.title||'Strategos';
   setTimeout(function(){const u=document.getElementById('login-username');if(u)u.focus();},50);
 }
 
@@ -6459,9 +6461,11 @@ switchTab = function(id, btn){
 <!-- LOGIN SCREEN -->
 <div id="login-screen" class="login-screen">
   <div class="login-card">
-    <img id="login-logo" style="max-height:48px;margin-bottom:12px;display:none">
-    <h2 id="login-title">Strategos</h2>
-    <p id="login-subtitle">Introduz as tuas credenciais para aceder.</p>
+    <div class="login-card-brand">
+      <img id="login-logo" style="max-height:52px;display:none">
+    </div>
+    <h2 id="login-title">Bem-vindo(a) ao Strategos</h2>
+    <p class="login-card-sub">Introduz as credenciais para aceder.</p>
     <div class="login-field">
       <label>Utilizador</label>
       <input type="text" id="login-username" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
