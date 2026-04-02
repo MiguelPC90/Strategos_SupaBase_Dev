@@ -37,9 +37,9 @@
       --warn:        #E8A020;
 
       /* Status */
-      --sc-ok-bg:    #E8F5E9; --sc-ok-tc:   #2E7D32;
+      --sc-ok-bg:    #E3F2FD; --sc-ok-tc:   #1565C0;
       --sc-late-bg:  #FFEBEE; --sc-late-tc: #C62828;
-      --sc-done-bg:  #E3F2FD; --sc-done-tc: #1565C0;
+      --sc-done-bg:  #E8F5E9; --sc-done-tc: #2E7D32;
 
       /* Layout */
       --topbar-h:      56px;
@@ -403,7 +403,7 @@
       transition: width .3s ease;
     }
     .progress-bar.late { background: var(--danger); }
-    .progress-bar.done { background: #1565C0; }
+    .progress-bar.done { background: var(--sc-done-tc); }
 
     /* ── LISTA DE ACTIVIDADES ── */
 
@@ -868,9 +868,9 @@
       --text:     #E8EDF3;
       --muted:    #8A9BB0;
       --shadow:   0 2px 8px rgba(0,0,0,.35);
-      --sc-ok-bg: #1A2E1A;   --sc-ok-tc:   #7BC47B;
+      --sc-ok-bg: #1A2035;   --sc-ok-tc:   #6A9FD8;
       --sc-late-bg: #2E1A1A; --sc-late-tc: #E07070;
-      --sc-done-bg: #1A2035; --sc-done-tc: #6A9FD8;
+      --sc-done-bg: #1A2E1A; --sc-done-tc: #7BC47B;
     }
     body.dark .conc-card.obj { background: #1C2E18; border-color: #3A5820; }
     body.dark .conc-card.obj .conc-value { color: #7BC47B; }
@@ -1301,7 +1301,7 @@
     }
     .status-chip.active            { background: var(--navy); color: var(--white); border-color: var(--navy); }
     .status-chip.chip-done.active  { background: var(--sc-done-tc); border-color: var(--sc-done-tc); }
-    .status-chip.chip-ok.active    { background: #2E7D32; border-color: #2E7D32; }
+    .status-chip.chip-ok.active    { background: var(--sc-ok-tc); border-color: var(--sc-ok-tc); }
     .status-chip.chip-late.active  { background: var(--danger); border-color: var(--danger); }
 
     /* ── GRUPOS DE ACTIVIDADES (Fase 3) ── */

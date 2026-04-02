@@ -615,10 +615,10 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
       <div class="card-title">Dados Gerais <span id="trend-ref" style="font-size:10px;font-weight:400;color:var(--text3);margin-left:6px"></span></div>
       <div class="kpi-2col">
         <div class="kpi"><div class="kpi-lbl">Total actividades</div><div class="kpi-val" id="k-tot" style="color:var(--navy)">—</div><div class="kpi-sub">Nível 4</div></div>
-        <div class="kpi"><div class="kpi-lbl">Concluídas</div><div class="kpi-val" id="k-con" style="color:var(--blue)">—</div><div class="kpi-sub">Exec. 100%</div></div>
+        <div class="kpi"><div class="kpi-lbl">Concluídas</div><div class="kpi-val" id="k-con" style="color:var(--green)">—</div><div class="kpi-sub">Exec. 100%</div></div>
       </div>
       <div class="kpi-2col">
-        <div class="kpi"><div class="kpi-lbl">Em dia</div><div class="kpi-val" id="k-dia" style="color:var(--green)">—</div><div class="kpi-sub">Prazo não ultrapassado</div></div>
+        <div class="kpi"><div class="kpi-lbl">Em dia</div><div class="kpi-val" id="k-dia" style="color:var(--blue)">—</div><div class="kpi-sub">Prazo não ultrapassado</div></div>
         <div class="kpi"><div class="kpi-lbl">Em atraso</div><div class="kpi-val" id="k-atr" style="color:var(--red)">—</div><div class="kpi-sub">Prazo ultrapassado</div></div>
       </div>
     </div>
@@ -647,8 +647,8 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     <div class="card">
       <div class="card-title">Actividades por eixo — estado</div>
       <div class="chart-legend">
-        <span><b style="background:var(--navy)"></b>Concluídas</span>
-        <span><b style="background:var(--green)"></b>Em dia</span>
+        <span><b style="background:var(--green)"></b>Concluídas</span>
+        <span><b style="background:var(--navy)"></b>Em dia</span>
         <span><b style="background:var(--red-bar)"></b>Em atraso</span>
       </div>
       <div style="position:relative;height:190px"><canvas id="chart-bar"></canvas></div>
@@ -1290,7 +1290,7 @@ let ganttMaxLevel=4;
 let ganttGranularity='month'; // 'week' | 'month' | 'quarter'
 let eixoView='eixo';
 
-const SC={"Concluído":{bg:"#E6F1FB",tc:"#185FA5",bar:"#002E5E"},"Em dia":{bg:"#EAF3DE",tc:"#3B6D11",bar:"#95BB42"},"Em atraso":{bg:"#FCEBEB",tc:"#A32D2D",bar:"#E24B4A"}};
+const SC={"Concluído":{bg:"#EAF3DE",tc:"#3B6D11",bar:"#95BB42"},"Em dia":{bg:"#E6F1FB",tc:"#185FA5",bar:"#002E5E"},"Em atraso":{bg:"#FCEBEB",tc:"#A32D2D",bar:"#E24B4A"}};
 
 function getCutoffDate(){
   const v = document.getElementById('f-cutoff')?.value || CFG?.cutoffDate || '';
@@ -2016,8 +2016,8 @@ function renderCharts(data){
     data:{
       labels: eixoLabels,
       datasets:[
-        {label:'Concluídas', data:orderedPairs.map(function(p){ return data.filter(function(d){ return d.n1===p.n1&&d.n0===p.n0&&d.status==='Concluído'; }).length; }), backgroundColor:navy, borderRadius:3, borderWidth:0},
-        {label:'Em dia',     data:orderedPairs.map(function(p){ return data.filter(function(d){ return d.n1===p.n1&&d.n0===p.n0&&d.status==='Em dia'; }).length; }),     backgroundColor:green, borderRadius:3, borderWidth:0},
+        {label:'Concluídas', data:orderedPairs.map(function(p){ return data.filter(function(d){ return d.n1===p.n1&&d.n0===p.n0&&d.status==='Concluído'; }).length; }), backgroundColor:green, borderRadius:3, borderWidth:0},
+        {label:'Em dia',     data:orderedPairs.map(function(p){ return data.filter(function(d){ return d.n1===p.n1&&d.n0===p.n0&&d.status==='Em dia'; }).length; }),     backgroundColor:navy, borderRadius:3, borderWidth:0},
         {label:'Em atraso',  data:orderedPairs.map(function(p){ return data.filter(function(d){ return d.n1===p.n1&&d.n0===p.n0&&d.status==='Em atraso'; }).length; }),  backgroundColor:redBar, borderRadius:3, borderWidth:0}
       ]
     },
@@ -2035,7 +2035,7 @@ function renderCharts(data){
 
   const k=kpi(data);
   charts.donut=new Chart(document.getElementById('chart-donut'),{type:'doughnut',
-    data:{labels:['Concluídas','Em dia','Em atraso'],datasets:[{data:[k.con,k.dia,k.atr],backgroundColor:[navy,green,redBar],borderWidth:0}]},
+    data:{labels:['Concluídas','Em dia','Em atraso'],datasets:[{data:[k.con,k.dia,k.atr],backgroundColor:[green,navy,redBar],borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
       plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:10,padding:10}}}}});
 }
@@ -2386,8 +2386,8 @@ function renderGantt(data){
 
   const barColor=(r)=>{
     if(r.nivel<=2)return navy;
-    if(r.status==='Concluído')return navy;
-    if(r.status==='Em dia')return green;
+    if(r.status==='Concluído')return green;
+    if(r.status==='Em dia')return navy;
     return redBar;
   };
 
@@ -2467,7 +2467,7 @@ function renderGantt(data){
       if(!td){tip.style.display='none';return;}
       const s=td.dataset.start,en=td.dataset.end;
       const fmt=d=>{if(!d)return'—';const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
-      const sc={'Concluído':'#4CAF50','Em dia':'#8BC34A','Em atraso':'#E53935'}[td.dataset.status]||'#aaa';
+      const sc={'Concluído':'#3B6D11','Em dia':'#185FA5','Em atraso':'#E53935'}[td.dataset.status]||'#aaa';
       tip.innerHTML='<strong style="display:block;margin-bottom:4px">'+td.dataset.nome+'</strong>'+
         'Início: '+fmt(s)+'<br>Fim: '+fmt(en)+'<br>'+
         'Execução: <strong>'+td.dataset.pct+'%</strong><br>'+
@@ -2572,8 +2572,8 @@ function renderPDS(){
     +'<div class="card" style="margin-bottom:0;padding:1rem"><div class="card-title" style="margin-bottom:.75rem">Dados gerais</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
     +'<div class="kpi"><div class="kpi-lbl">Total</div><div class="kpi-val" style="color:var(--navy)">'+k.n+'</div></div>'
-    +'<div class="kpi"><div class="kpi-lbl">Concluídas</div><div class="kpi-val" style="color:var(--blue)">'+k.con+'</div></div>'
-    +'<div class="kpi"><div class="kpi-lbl">Em dia</div><div class="kpi-val" style="color:var(--green)">'+k.dia+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Concluídas</div><div class="kpi-val" style="color:var(--green)">'+k.con+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Em dia</div><div class="kpi-val" style="color:var(--blue)">'+k.dia+'</div></div>'
     +'<div class="kpi"><div class="kpi-lbl">Em atraso</div><div class="kpi-val" style="color:var(--red)">'+k.atr+'</div></div>'
     +'</div></div>'
     +'<div class="card" style="margin-bottom:0;padding:1rem"><div class="card-title" style="margin-bottom:.75rem">Grau de execução</div>'
