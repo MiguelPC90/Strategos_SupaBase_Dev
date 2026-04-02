@@ -31,12 +31,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg2);color:var
 .admin-layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 56px)}
 
 /* ── SIDEBAR ── */
-.admin-sidebar{background:var(--navy);padding:16px 0;border-right:1px solid rgba(255,255,255,.08)}
-.admin-nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;color:rgba(255,255,255,.65);cursor:pointer;transition:all .15s;border-left:3px solid transparent}
-.admin-nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
-.admin-nav-item.active{background:rgba(255,255,255,.1);color:#fff;border-left-color:var(--green)}
-.admin-nav-item .nav-icon{font-size:15px;width:20px;text-align:center}
-.admin-nav-section{font-size:10px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;padding:16px 20px 6px}
+.admin-sidebar{background:var(--navy);padding:6px 0;border-right:1px solid rgba(255,255,255,.08);overflow-y:auto}
+.admin-nav-item{display:flex;align-items:center;gap:10px;width:calc(100% - 8px);margin:1px 4px;padding:8px 12px 8px 16px;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.65);font-size:13px;font-family:inherit;text-align:left;text-decoration:none;white-space:nowrap;border-radius:6px;transition:background .12s,color .12s;box-sizing:border-box}
+.admin-nav-item:hover{background:rgba(255,255,255,.1);color:#fff}
+.admin-nav-item.active{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+.admin-nav-item svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.admin-nav-section{display:block;font-size:9px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.35);padding:10px 16px 3px;text-transform:uppercase;white-space:nowrap}
+.admin-nav-sep{height:1px;background:rgba(255,255,255,.08);margin:6px 12px}
 
 /* ── CONTENT ── */
 .admin-content{padding:28px;overflow-y:auto}
@@ -92,11 +93,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg2);color:var
 #admin-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* ── LOCK SCREEN ── */
-#lock-screen{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:16px}
-.lock-box{background:#fff;border-radius:var(--rl);padding:32px;width:min(360px,90vw);text-align:center}
-.lock-box h2{color:var(--navy);margin-bottom:8px}
+#lock-screen{position:fixed;inset:0;background:var(--bg3);display:flex;align-items:center;justify-content:center;z-index:9999}
+.lock-box{background:var(--bg);border-radius:var(--rl);padding:36px 40px;width:min(400px,90vw);box-shadow:0 4px 24px rgba(0,0,0,.10);border:1px solid var(--border)}
+.lock-box-brand{text-align:center;margin-bottom:16px}
+.lock-box-brand img{max-height:64px}
+.lock-box h2{font-size:20px;font-weight:700;color:var(--text);margin-bottom:5px}
 .lock-box p{color:var(--text2);font-size:13px;margin-bottom:20px}
-.lock-input{width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);font-family:inherit;text-align:center;letter-spacing:4px;margin-bottom:12px}
+.lock-input{width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-family:inherit;margin-bottom:12px;box-sizing:border-box}
 .lock-input:focus{outline:none;border-color:var(--navy)}
 .lock-error{color:var(--red);font-size:12px;min-height:16px;margin-bottom:8px}
 
@@ -106,10 +109,10 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
 /* Mobile */
 @media(max-width:768px){
   .admin-layout{grid-template-columns:1fr}
-  .admin-sidebar{padding:8px 0;border-right:none;border-bottom:1px solid rgba(255,255,255,.12);display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px}
+  .admin-sidebar{padding:6px 8px;border-right:none;border-bottom:1px solid rgba(255,255,255,.12);display:flex;flex-wrap:wrap;gap:2px}
   .admin-nav-section{display:none}
-  .admin-nav-item{padding:6px 12px;border-left:none;border-radius:4px;font-size:12px}
-  .admin-nav-item.active{background:rgba(255,255,255,.15);border-left:none}
+  .admin-nav-sep{display:none}
+  .admin-nav-item{padding:6px 10px;width:auto;margin:0;font-size:12px;border-radius:6px}
   .admin-content{padding:16px}
   .agrid-2,.agrid-3{grid-template-columns:1fr}
 }
@@ -122,19 +125,22 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
 <!-- Lock screen -->
 <div id="lock-screen">
   <div class="lock-box">
-    <h2>⚙ Administração</h2>
-    <p>Introduz a password para aceder às definições</p>
-    <input class="lock-input" type="password" id="lock-pwd" placeholder="••••••" onkeydown="if(event.key==='Enter')unlock()">
+    <div class="lock-box-brand">
+      <img src="logo.png" alt="Strategos">
+    </div>
+    <h2>Painel de Administração</h2>
+    <p>Introduzir as credenciais para aceder.</p>
+    <input class="lock-input" type="password" id="lock-pwd" placeholder="Password" onkeydown="if(event.key==='Enter')unlock()">
     <div class="lock-error" id="lock-err"></div>
-    <button class="abtn abtn-primary" style="width:100%" onclick="unlock()">Entrar</button>
-    <div style="margin-top:12px"><a href="index.html" style="font-size:12px;color:var(--text3);text-decoration:none">← Voltar ao Strategos</a></div>
+    <button class="abtn abtn-primary" style="width:100%;padding:10px" onclick="unlock()">Entrar</button>
+    <div style="margin-top:14px"><a href="index.html" style="font-size:12px;color:var(--text3);text-decoration:none">← Voltar ao Strategos</a></div>
   </div>
 </div>
 
 <!-- Topbar -->
 <div class="admin-topbar">
   <div class="admin-brand">
-    <img id="admin-logo" src="" alt="Strategos" onerror="this.style.display='none'">
+    <img id="admin-logo" src="logo.png" alt="Strategos" style="height:32px;width:auto" onerror="this.style.display='none'">
     <div>
       <div class="admin-brand-text">Strategos</div>
       <div class="admin-brand-sub">Painel de Administração</div>
@@ -148,39 +154,51 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
 
   <!-- Sidebar -->
   <nav class="admin-sidebar">
-    <div class="admin-nav-section">Configuração</div>
-    <div class="admin-nav-item active" data-panel="geral" onclick="showPanel('geral',this)">
-      <span class="nav-icon">🏠</span> Geral
-    </div>
-    <div class="admin-nav-item" data-panel="seguranca" onclick="showPanel('seguranca',this)">
-      <span class="nav-icon">🔒</span> Segurança
-    </div>
-    <div class="admin-nav-item" data-panel="cores" onclick="showPanel('cores',this)">
-      <span class="nav-icon">🎨</span> Cores e Tema
-    </div>
-    <div class="admin-nav-section">Estrutura</div>
-    <div class="admin-nav-item" data-panel="estrutura" onclick="showPanel('estrutura',this)">
-      <span class="nav-icon">🏗</span> Programas e Eixos
-    </div>
-    <div class="admin-nav-item" data-panel="financeiro" onclick="showPanel('financeiro',this)">
-      <span class="nav-icon">💰</span> Financeiro
-    </div>
-    <div class="admin-nav-item" data-panel="risco" onclick="showPanel('risco',this)">
-      <span class="nav-icon">⚠️</span> Risco
-    </div>
-    <div class="admin-nav-section">Sistema</div>
-    <div class="admin-nav-item" data-panel="historico" onclick="showPanel('historico',this)">
-      <span class="nav-icon">📅</span> Histórico
-    </div>
-    <div class="admin-nav-item" data-panel="outros" onclick="showPanel('outros',this)">
-      <span class="nav-icon">⚙️</span> Outros
-    </div>
-    <div class="admin-nav-item" data-panel="utilizadores" onclick="showPanel('utilizadores',this)">
-      <span class="nav-icon">👥</span> Utilizadores
-    </div>
-    <div class="admin-nav-item" data-panel="dados" onclick="showPanel('dados',this)">
-      <span class="nav-icon">📊</span> Dados
-    </div>
+    <span class="admin-nav-section">Configuração</span>
+    <button class="admin-nav-item active" data-panel="geral" onclick="showPanel('geral',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Geral
+    </button>
+    <button class="admin-nav-item" data-panel="seguranca" onclick="showPanel('seguranca',this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      Segurança
+    </button>
+    <button class="admin-nav-item" data-panel="cores" onclick="showPanel('cores',this)">
+      <svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+      Cores e Tema
+    </button>
+    <div class="admin-nav-sep"></div>
+    <span class="admin-nav-section">Estrutura</span>
+    <button class="admin-nav-item" data-panel="estrutura" onclick="showPanel('estrutura',this)">
+      <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+      Programas e Eixos
+    </button>
+    <button class="admin-nav-item" data-panel="financeiro" onclick="showPanel('financeiro',this)">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      Financeiro
+    </button>
+    <button class="admin-nav-item" data-panel="risco" onclick="showPanel('risco',this)">
+      <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Risco
+    </button>
+    <div class="admin-nav-sep"></div>
+    <span class="admin-nav-section">Sistema</span>
+    <button class="admin-nav-item" data-panel="historico" onclick="showPanel('historico',this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Histórico
+    </button>
+    <button class="admin-nav-item" data-panel="outros" onclick="showPanel('outros',this)">
+      <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+      Outros
+    </button>
+    <button class="admin-nav-item" data-panel="utilizadores" onclick="showPanel('utilizadores',this)">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      Utilizadores
+    </button>
+    <button class="admin-nav-item" data-panel="dados" onclick="showPanel('dados',this)">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Dados
+    </button>
   </nav>
 
   <!-- Content -->
