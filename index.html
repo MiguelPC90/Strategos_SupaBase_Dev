@@ -291,7 +291,10 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
 .pm-toolbar{display:flex;gap:8px;flex-wrap:nowrap;align-items:center;min-height:52px;padding:8px 1.5rem;background:var(--bg);border-bottom:1px solid var(--border);margin:-1.25rem -1.5rem 1.25rem;position:sticky;top:var(--ft-h,100px);z-index:40;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .pm-toolbar::-webkit-scrollbar{display:none}
 .pm-toolbar>*{flex-shrink:0}
-.pm-search{padding:6px 10px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit;min-width:200px}
+.pm-sel-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.pm-sel-lbl{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.pm-sel{padding:5px 8px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit;max-width:160px;min-width:80px}
+.pm-search{padding:6px 10px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit;min-width:120px;max-width:180px;flex:1}
 .pm-empty-form{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);text-align:center;padding:2rem}
 .pm-empty-form div:first-child{font-size:32px;margin-bottom:12px}
 @media(max-width:900px){.pm-layout{grid-template-columns:1fr;height:auto}.pm-table-wrap{max-height:400px}}
@@ -850,8 +853,9 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 <!-- GESTÃO PDS -->
 <div id="gestao-pds" class="section">
   <div class="pm-toolbar">
-    <div style="font-size:13px;color:var(--text2)">Editar plano:
-      <select id="gpds-selector" onchange="loadGPDS()" style="padding:5px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit;margin-left:6px;min-width:200px"></select>
+    <div class="pm-sel-wrap">
+      <span class="pm-sel-lbl">Plano</span>
+      <select id="gpds-selector" class="pm-sel" onchange="loadGPDS()"></select>
     </div>
     <span class="pm-unsaved ro-hide" id="gpds-unsaved">&#9679; Alterações não guardadas</span>
     <div style="margin-left:auto;display:flex;gap:8px">
@@ -1053,8 +1057,9 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 <!-- GESTÃO DE RISCOS -->
 <div id="gestao-riscos" class="section">
   <div class="pm-toolbar">
-    <div style="font-size:13px;color:var(--text2)">Plano de acção:
-      <select id="grisk-selector" onchange="loadGRisk()" style="padding:5px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit;margin-left:6px;min-width:200px"></select>
+    <div class="pm-sel-wrap">
+      <span class="pm-sel-lbl">Plano</span>
+      <select id="grisk-selector" class="pm-sel" onchange="loadGRisk()"></select>
     </div>
     <span class="pm-unsaved ro-hide" id="grisk-unsaved">&#9679; Alterações não guardadas</span>
     <div style="margin-left:auto;display:flex;gap:8px">
@@ -1091,23 +1096,22 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 
 <!-- EXECUÇÃO FINANCEIRA -->
 <div id="exec-fin" class="section">
-  <!-- Filter bar -->
-  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
-    <div>
-      <span style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">Plano de Acção</span>
-      <select id="ef-plano" onchange="renderExecFin()" style="display:block;margin-top:3px;padding:5px 8px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit;min-width:200px">
+  <div class="pm-toolbar">
+    <div class="pm-sel-wrap">
+      <span class="pm-sel-lbl">Plano</span>
+      <select id="ef-plano" class="pm-sel" onchange="renderExecFin()">
         <option value="">Todos</option>
       </select>
     </div>
-    <div>
-      <span style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">Ano</span>
-      <select id="ef-ano" onchange="renderExecFin()" style="display:block;margin-top:3px;padding:5px 8px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit">
+    <div class="pm-sel-wrap">
+      <span class="pm-sel-lbl">Ano</span>
+      <select id="ef-ano" class="pm-sel" onchange="renderExecFin()">
         <option value="">Todos</option>
       </select>
     </div>
-    <div>
-      <span style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">Tipo</span>
-      <select id="ef-tipo" onchange="renderExecFin()" style="display:block;margin-top:3px;padding:5px 8px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit">
+    <div class="pm-sel-wrap">
+      <span class="pm-sel-lbl">Tipo</span>
+      <select id="ef-tipo" class="pm-sel" onchange="renderExecFin()">
         <option value="">Todos</option>
         <option value="cap">CAPEX</option>
         <option value="ope">OPEX</option>
@@ -1159,8 +1163,9 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 <!-- GESTÃO FINANCEIRA -->
 <div id="gestao-financeira" class="section">
   <div class="pm-toolbar">
-    <div style="font-size:13px;color:var(--text2)">Plano de acção:
-      <select id="gfin-selector" onchange="loadGFin()" style="padding:5px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit;margin-left:6px;min-width:220px"></select>
+    <div class="pm-sel-wrap">
+      <span class="pm-sel-lbl">Plano</span>
+      <select id="gfin-selector" class="pm-sel" onchange="loadGFin()"></select>
     </div>
     <span class="pm-unsaved ro-hide" id="gfin-unsaved">&#9679; Alterações não guardadas</span>
     <div style="margin-left:auto;display:flex;gap:8px">
