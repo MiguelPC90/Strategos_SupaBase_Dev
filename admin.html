@@ -928,7 +928,7 @@ function renderEstrutura(){
   // Eixos — from fetched gantt data
   const el=document.getElementById('admin-eixo-list');
   if(adminGantt.length){
-    const n1s=[...new Set(adminGantt.filter(function(r){return r.nivel===1;}).map(function(r){return r.n0+'|||'+r.n1;}))];
+    const n1s=[...new Set(adminGantt.filter(function(r){return Number(r.nivel)===1;}).map(function(r){return r.n0+'|||'+r.n1;}))].filter(function(k){return k!=='|||';});
     el.innerHTML=n1s.length
       ? n1s.map(function(k){
           const parts=k.split('|||');
