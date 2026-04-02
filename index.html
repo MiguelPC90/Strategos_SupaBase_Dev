@@ -506,7 +506,7 @@ body.sidebar-collapsed{--sidebar-w:56px}
 .sidebar-nav::-webkit-scrollbar{display:none}
 .sidebar-group-lbl{display:block;font-size:9px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.35);padding:10px 16px 3px;text-transform:uppercase;white-space:nowrap;overflow:hidden;transition:opacity .15s}
 .sidebar-group-edit{color:rgba(255,200,100,.4)}
-.nav-item{display:flex;align-items:center;gap:10px;width:calc(100% - 8px);margin:1px 4px;padding:8px 12px;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.65);font-size:13px;font-family:inherit;text-align:left;text-decoration:none;white-space:nowrap;border-radius:6px;transition:background .12s,color .12s;box-sizing:border-box}
+.nav-item{display:flex;align-items:center;gap:10px;width:calc(100% - 8px);margin:1px 4px;padding:8px 12px 8px 16px;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.65);font-size:13px;font-family:inherit;text-align:left;text-decoration:none;white-space:nowrap;border-radius:6px;transition:background .12s,color .12s;box-sizing:border-box}
 .nav-item:hover{background:rgba(255,255,255,.1);color:#fff}
 .nav-item.active{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
 .nav-item-edit.active{background:rgba(255,200,100,.12);color:#ffd070}
@@ -517,7 +517,7 @@ body.sidebar-collapsed{--sidebar-w:56px}
 /* Collapsed state */
 body.sidebar-collapsed .nav-label,
 body.sidebar-collapsed .sidebar-group-lbl{opacity:0;pointer-events:none;width:0;overflow:hidden}
-body.sidebar-collapsed .nav-item{justify-content:center;padding:8px 0;width:calc(100% - 8px);gap:0}
+body.sidebar-collapsed .nav-item{padding-right:0;gap:0}
 body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);position:fixed;left:calc(var(--sidebar-w) + 10px);background:#1a2b3c;color:#fff;padding:5px 10px;border-radius:6px;font-size:12px;white-space:nowrap;z-index:999;pointer-events:none;font-family:'Segoe UI',system-ui,sans-serif;box-shadow:0 3px 12px rgba(0,0,0,.25)}
 /* Mobile: sidebar hidden */
 @media(max-width:768px){
