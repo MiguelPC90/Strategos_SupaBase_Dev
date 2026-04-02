@@ -20,7 +20,8 @@
   --sidebar-w:220px;
 }
 body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09a;--text3:#606058;--border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.15)}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg3);color:var(--text);font-size:14px;min-height:100vh;padding-top:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg3);color:var(--text);font-size:14px;min-height:100vh;padding-top:0;overflow-x:hidden}
+canvas{max-width:100%!important}
 
 /* ── FIXED HEADER ── */
 .fixed-top{position:fixed;top:0;left:0;right:0;z-index:50;overflow:visible}
@@ -1945,6 +1946,7 @@ function toggleSidebar(){
   localStorage.setItem('pmo_sidebar',collapsed?'1':'0');
   // Resize charts after sidebar transition completes (220ms)
   setTimeout(function(){
+    window.dispatchEvent(new Event('resize'));
     Object.values(charts).forEach(function(c){try{c.resize();}catch(e){}});
     if(window.efCharts) Object.values(efCharts).forEach(function(c){try{c.resize();}catch(e){}});
     adjustSpacer();
