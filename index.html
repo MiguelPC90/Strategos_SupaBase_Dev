@@ -17,12 +17,13 @@
   --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);
   --r:8px;--rl:12px;
   --blue:#185FA5;--red:#A32D2D;--red-bar:#E24B4A;--amber:#854F0B;
+  --sidebar-w:220px;
 }
 body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09a;--text3:#606058;--border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.15)}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg3);color:var(--text);font-size:14px;min-height:100vh;padding-top:0}
 
 /* ── FIXED HEADER ── */
-.fixed-top{position:fixed;top:0;left:0;right:0;z-index:50;overflow:visible}
+.fixed-top{position:fixed;top:0;left:var(--sidebar-w);right:0;z-index:50;overflow:visible;transition:left .2s}
 .topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 1.5rem;background:var(--navy);gap:8px;min-height:52px}
 .topbar h1{font-size:18px;font-weight:700;color:#fff;margin:0}
 .topbar p{font-size:11px;color:rgba(255,255,255,.65);margin-top:1px}
@@ -57,7 +58,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg3);color:var
 .tab.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:600}
 
 /* ── CONTENT ── */
-.content{padding:1.25rem 1.5rem}
+.content{padding:1.25rem 1.5rem;margin-left:var(--sidebar-w);transition:margin-left .2s}
 .section{display:none}.section.active{display:block}
 
 /* ── CARDS ── */
@@ -105,7 +106,7 @@ tr.hover-row:hover td{background:var(--bg2)}
 
 /* ── GANTT ── */
 .gantt-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
-.gantt-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 220px);position:relative}
+.gantt-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 130px);position:relative}
 .gantt-table .g-sticky,.gantt-table .g-sticky-2,.gantt-table .g-sticky-3,.gantt-table .g-sticky-4,.gantt-table .g-sticky-5{position:sticky;z-index:2;background:var(--bg);}
 /* Header sticky-left cells: keep navy bg and float above td sticky cells */
 .gantt-table th.g-sticky,.gantt-table th.g-sticky-2,.gantt-table th.g-sticky-3,.gantt-table th.g-sticky-4,.gantt-table th.g-sticky-5{z-index:4;background:var(--navy)}
@@ -220,7 +221,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
 .pdrop-logout{width:100%;padding:10px 16px;background:none;border:none;text-align:left;font-size:13px;color:var(--red);cursor:pointer;font-family:inherit}
 .pdrop-logout:hover{background:var(--bg2)}
 /* ── ACTIVE FILTER CHIPS ── */
-#active-chips-bar{width:100%;display:none;gap:6px;flex-wrap:wrap;align-items:center;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:2px}
+#active-chips-bar{width:100%;display:none;gap:6px;flex-wrap:wrap;align-items:center;padding:6px 1.5rem;border-bottom:1px solid var(--border)}
 .active-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 10px;background:var(--navy);color:#fff;border-radius:20px;font-size:11px;font-weight:500}
 .active-chip-remove{background:none;border:none;color:rgba(255,255,255,.65);cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 1px;font-family:inherit}
 .active-chip-remove:hover{color:#fff}
@@ -250,7 +251,7 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
 @media(max-width:480px){.kpi-3col{grid-template-columns:1fr}.pm-field-row{grid-template-columns:1fr}}
 
 /* ── PROJECT MANAGEMENT ── */
-.pm-layout{display:grid;grid-template-columns:1fr 380px;gap:1rem;height:calc(100vh - 180px);min-height:500px}
+.pm-layout{display:grid;grid-template-columns:1fr 380px;gap:1rem;height:calc(100vh - 110px);min-height:500px}
 .pm-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:var(--rl);background:var(--bg)}
 .pm-table{width:100%;border-collapse:collapse;font-size:12px}
 .pm-table th{position:sticky;top:0;background:var(--navy);color:#fff;padding:7px 10px;font-size:11px;font-weight:500;white-space:nowrap;border-right:1px solid rgba(255,255,255,.12);z-index:2}
@@ -487,11 +488,112 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
   .filter-drawer{display:none !important;}
   .mobile-filter-btn{display:none !important;}
   .mobile-import-btn{display:none !important;}
+  .tab-bar{display:none !important;}
 }
+
+/* ── SIDEBAR ── */
+body.sidebar-collapsed{--sidebar-w:56px}
+#sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--navy);display:flex;flex-direction:column;transition:width .2s;overflow:hidden;z-index:60}
+.sidebar-top{padding:10px 8px;display:flex;justify-content:flex-end;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar-toggle-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.65);padding:6px 8px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sidebar-toggle-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.sidebar-toggle-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0}
+.sidebar-nav{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 0;scrollbar-width:none}
+.sidebar-nav::-webkit-scrollbar{display:none}
+.sidebar-group-lbl{display:block;font-size:9px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.35);padding:10px 16px 3px;text-transform:uppercase;white-space:nowrap;overflow:hidden;transition:opacity .15s}
+.sidebar-group-edit{color:rgba(255,200,100,.4)}
+.nav-item{display:flex;align-items:center;gap:10px;width:calc(100% - 8px);margin:1px 4px;padding:8px 12px;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.65);font-size:13px;font-family:inherit;text-align:left;text-decoration:none;white-space:nowrap;border-radius:6px;transition:background .12s,color .12s;box-sizing:border-box}
+.nav-item:hover{background:rgba(255,255,255,.1);color:#fff}
+.nav-item.active{background:rgba(255,255,255,.16);color:#fff;font-weight:600}
+.nav-item-edit.active{background:rgba(255,200,100,.12);color:#ffd070}
+.nav-icon{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.nav-label{transition:opacity .15s;overflow:hidden;text-overflow:ellipsis}
+.sidebar-sep{height:1px;background:rgba(255,255,255,.08);margin:6px 12px;flex-shrink:0}
+.sidebar-bottom{padding:6px 0 12px;flex-shrink:0;border-top:1px solid rgba(255,255,255,.08)}
+/* Collapsed state */
+body.sidebar-collapsed .nav-label,
+body.sidebar-collapsed .sidebar-group-lbl{opacity:0;pointer-events:none;width:0;overflow:hidden}
+body.sidebar-collapsed .nav-item{justify-content:center;padding:8px 0;width:calc(100% - 8px)}
+body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);position:fixed;left:calc(var(--sidebar-w) + 10px);background:#1a2b3c;color:#fff;padding:5px 10px;border-radius:6px;font-size:12px;white-space:nowrap;z-index:999;pointer-events:none;font-family:'Segoe UI',system-ui,sans-serif;box-shadow:0 3px 12px rgba(0,0,0,.25)}
+/* Mobile: sidebar hidden */
+@media(max-width:768px){
+  #sidebar{display:none!important}
+  .fixed-top{left:0!important}
+  .content{margin-left:0!important}
+}
+
+/* ── FILTER PANEL (desktop toggle) ── */
+#filter-panel{padding:8px 1rem 10px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#filter-panel[hidden]{display:none!important}
+/* Filter toggle button badge */
+#filter-toggle-btn{position:relative}
+.filter-badge{position:absolute;top:2px;right:2px;background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 2px;line-height:1}
+.desktop-filter-btn{display:none}
+@media(min-width:769px){.desktop-filter-btn{display:flex!important}}
 
 </style>
 </head>
 <body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar" aria-label="Navegação principal">
+  <div class="sidebar-top">
+    <button id="sidebar-toggle" class="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="Colapsar menu">
+      <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="sidebar-nav">
+    <span class="sidebar-group-lbl">Visualização</span>
+    <button class="nav-item active" data-tab="resumo" data-tooltip="Resumo executivo" onclick="switchTab('resumo',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span class="nav-label">Resumo executivo</span>
+    </button>
+    <button class="nav-item" data-tab="actividades" data-tooltip="Actividades" onclick="switchTab('actividades',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+      <span class="nav-label">Actividades</span>
+    </button>
+    <button class="nav-item" data-tab="gantt" data-tooltip="Gantt" onclick="switchTab('gantt',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
+      <span class="nav-label">Gantt</span>
+    </button>
+    <button class="nav-item" data-tab="evolucao" data-tooltip="Evolução" onclick="switchTab('evolucao',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span class="nav-label">Evolução</span>
+    </button>
+    <button class="nav-item" data-tab="pds" data-tooltip="Ponto de situação" onclick="switchTab('pds',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span class="nav-label">Ponto de situação</span>
+    </button>
+    <button class="nav-item" data-tab="exec-fin" data-tooltip="Execução Financeira" onclick="switchTab('exec-fin',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      <span class="nav-label">Execução Financeira</span>
+    </button>
+    <div class="sidebar-sep"></div>
+    <span class="sidebar-group-lbl sidebar-group-edit">Gestão</span>
+    <button class="nav-item nav-item-edit" data-tab="gestao" data-tooltip="Gestão de iniciativas" onclick="switchTab('gestao',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      <span class="nav-label">Gestão de iniciativas</span>
+    </button>
+    <button class="nav-item nav-item-edit" data-tab="gestao-pds" data-tooltip="Gestão PDS" onclick="switchTab('gestao-pds',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span class="nav-label">Gestão PDS</span>
+    </button>
+    <button class="nav-item nav-item-edit" data-tab="gestao-riscos" data-tooltip="Gestão de Riscos" onclick="switchTab('gestao-riscos',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span class="nav-label">Gestão de Riscos</span>
+    </button>
+    <button class="nav-item nav-item-edit" data-tab="gestao-financeira" data-tooltip="Gestão Financeira" onclick="switchTab('gestao-financeira',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span class="nav-label">Gestão Financeira</span>
+    </button>
+  </div>
+  <div class="sidebar-bottom">
+    <a href="admin.html" id="sidebar-admin" class="nav-item" data-tooltip="Admin" style="display:none">
+      <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span class="nav-label">Admin</span>
+    </a>
+  </div>
+</nav>
 
 <!-- FIXED HEADER -->
 <div class="fixed-top">
@@ -505,6 +607,10 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     </div>
     <div class="topbar-actions">
       <button class="btn btn-ghost ro-hide" onclick="openUpload()">&#8593; Importar Excel</button>
+      <button id="filter-toggle-btn" class="btn btn-ghost desktop-filter-btn" onclick="toggleFilterPanel()" aria-label="Filtros" style="display:none;padding:6px 10px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+        <span id="filter-badge" class="filter-badge" style="display:none">0</span>
+      </button>
       <button class="mobile-filter-btn btn btn-ghost" style="display:none" onclick="openFilterDrawer()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
       </button>
@@ -536,9 +642,10 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
     </div>
   </div>
 
-  <!-- FILTER BAR -->
-  <div id="filter-bar" class="filter-bar" id="filter-bar">
-    <div id="active-chips-bar"></div>
+  <!-- CHIPS BAR (always visible when filters are active) -->
+  <div id="active-chips-bar"></div>
+  <!-- FILTER PANEL (desktop toggle) -->
+  <div id="filter-panel" class="filter-bar" hidden>
     <div class="ms-wrap" id="ms-n0-wrap" style="display:none">
       <div class="ms-label">Programa</div>
       <button class="ms-btn" onclick="toggleMs('ms-n0')"><span id="ms-n0-lbl">Todos</span><span>&#9660;</span></button>
@@ -1673,8 +1780,12 @@ function applyProfile(profile){
   // Show/hide nav tabs and sections based on profile
   ALL_TABS_DEF.forEach(function(td){
     const perm=tabs[td.id]||'none';
-    // Desktop tab buttons
+    // Desktop tab buttons (hidden on desktop but keep for compat)
     document.querySelectorAll('.tab[onclick*="\''+td.id+'\'"]').forEach(function(el){
+      el.style.display=perm==='none'?'none':'';
+    });
+    // Sidebar nav items
+    document.querySelectorAll('.nav-item[data-tab="'+td.id+'"]').forEach(function(el){
       el.style.display=perm==='none'?'none':'';
     });
     // Section visibility (don't hide, just restrict nav)
@@ -1686,6 +1797,8 @@ function applyProfile(profile){
   const isAdmin = currentUser && currentUser.role === 'admin';
   const adminLink = document.getElementById('tab-admin');
   if(adminLink) adminLink.style.display = isAdmin ? '' : 'none';
+  const sidebarAdmin = document.getElementById('sidebar-admin');
+  if(sidebarAdmin) sidebarAdmin.style.display = isAdmin ? '' : 'none';
   const mobileAdminBtn = document.getElementById('mobile-tab-admin');
   if(mobileAdminBtn) mobileAdminBtn.style.display = isAdmin ? '' : 'none';
 
@@ -1696,8 +1809,8 @@ function applyProfile(profile){
   // Navegar para o primeiro tab acessível (fPDS já está correctamente filtrado)
   const firstTab=ALL_TABS_DEF.find(function(td){return (tabs[td.id]||'none')!=='none';});
   if(firstTab){
-    const btn=document.querySelector('.tab[onclick*="\''+firstTab.id+'\'"]');
-    if(btn) switchTab(firstTab.id,btn);
+    const btn=document.querySelector('.tab[onclick*="\''+firstTab.id+'\'"]')||document.createElement('button');
+    switchTab(firstTab.id,btn);
   }
 }
 
@@ -1816,12 +1929,37 @@ function renderActiveChips(){
   if(hasAny) html+=`<button class="chips-clear-all" onclick="resetFilters()">Limpar todos</button>`;
   bar.innerHTML=html;
   bar.style.display=hasAny?'flex':'none';
+  _updateFilterBadge();
 }
 function removeOneFilter(key,val){
   if(MS_STATE[key]) MS_STATE[key].delete(val);
   buildAllFilters(ALL_ACT);
   applyFilters();
   renderActiveChips();
+}
+
+// ── SIDEBAR ──────────────────────────────────────────────────────────────────
+function toggleSidebar(){
+  const collapsed=document.body.classList.toggle('sidebar-collapsed');
+  localStorage.setItem('pmo_sidebar',collapsed?'1':'0');
+  setTimeout(adjustSpacer,220);
+}
+(function initSidebar(){
+  if(localStorage.getItem('pmo_sidebar')==='1') document.body.classList.add('sidebar-collapsed');
+})();
+
+// ── FILTER PANEL ──────────────────────────────────────────────────────────────
+function toggleFilterPanel(){
+  const p=document.getElementById('filter-panel');
+  if(!p) return;
+  p.hidden ? p.removeAttribute('hidden') : p.setAttribute('hidden','');
+  adjustSpacer();
+}
+function _updateFilterBadge(){
+  let count=0;
+  Object.values(MS_STATE).forEach(function(s){if(s) count+=s.size;});
+  const badge=document.getElementById('filter-badge');
+  if(badge){badge.textContent=count;badge.style.display=count?'flex':'none';}
 }
 
 // ── PROFILE DROPDOWN ─────────────────────────────────────────────────────────
@@ -2733,6 +2871,10 @@ function switchTab(id,btn){
     } else { populateAdminPanel(); }
   }
   applyTabPermission(id);
+  // Sync sidebar nav-items
+  document.querySelectorAll('.nav-item[data-tab]').forEach(function(el){
+    el.classList.toggle('active', el.dataset.tab===id);
+  });
 }
 
 // ── RENDER ALL ────────────────────────────────────────────────────────────────
@@ -6205,9 +6347,9 @@ document.addEventListener('click', function(e){
 function openFilterDrawer(){
   const drawer = document.getElementById('filter-drawer');
   if(!drawer) return;
-  // Clone filter-bar content into drawer
+  // Clone filter-panel content into drawer
   const body = document.getElementById('filter-drawer-body');
-  const filterBar = document.getElementById('filter-bar');
+  const filterBar = document.getElementById('filter-panel');
   if(body && filterBar){
     body.innerHTML = filterBar.innerHTML;
     // Re-attach event handlers by making inputs trigger applyFilters
