@@ -24,7 +24,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg3);color:var
 
 /* ── FIXED HEADER ── */
 .fixed-top{position:fixed;top:0;left:0;right:0;z-index:50;overflow:visible}
-.topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 1.5rem;background:var(--navy);gap:8px;min-height:52px}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 1.5rem 8px 0;background:var(--navy);gap:8px;min-height:52px}
 .topbar h1{font-size:18px;font-weight:700;color:#fff;margin:0}
 .topbar p{font-size:11px;color:rgba(255,255,255,.65);margin-top:1px}
 .topbar-left{display:flex;align-items:center;gap:12px}
@@ -536,7 +536,7 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 
 </style>
 </head>
-<body>
+<body class="sidebar-collapsed">
 
 <!-- SIDEBAR -->
 <nav id="sidebar" aria-label="Navegação principal">
@@ -1946,7 +1946,8 @@ function toggleSidebar(){
   setTimeout(adjustSpacer,220);
 }
 (function initSidebar(){
-  if(localStorage.getItem('pmo_sidebar')==='1') document.body.classList.add('sidebar-collapsed');
+  // Default is collapsed; only expand if user explicitly opened it
+  if(localStorage.getItem('pmo_sidebar')!=='0') document.body.classList.add('sidebar-collapsed');
 })();
 
 // ── FILTER PANEL ──────────────────────────────────────────────────────────────
