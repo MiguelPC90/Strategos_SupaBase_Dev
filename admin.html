@@ -503,33 +503,49 @@ function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 
 // ── LOCK ─────────────────────────────────────────────────────────────────────
-(async function(){ if(window.SB) await SB.init(); loadCfg(); })();
+(async function(){
+  if(window.SB) await SB.init();
+  loadCfg();
+  // Auto-unlock if there's an active Supabase session with admin role
+  if(window.SB && SB.isOnline){
+    try{
+      const session = await SB.getSession();
+      if(session && session.user){
+        const meta = await SB.getUserMeta(session.user.id);
+        if(meta && meta.role === 'admin'){
+          document.getElementById('lock-screen').style.display='none';
+          initAdmin();
+          return;
+        }
+      }
+    }catch(e){ console.warn('Admin: erro ao verificar sessão.', e); }
+  }
+})();
 async function unlock(){
   const pwd=document.getElementById('lock-pwd').value;
   const errEl=document.getElementById('lock-err');
 
-  // ── Autenticação via Supabase (admin only) ──────────────────
+  // Check existing Supabase session (never sign in again — preserves main app session)
   if(window.SB && SB.isOnline){
     try{
-      const emailInp=document.getElementById('lock-email');
-      const email=emailInp ? emailInp.value : ('admin@strategos.local');
-      const authData = await SB.signIn(email, pwd);
-      const meta = await SB.getUserMeta(authData.user.id);
-      if(!meta || meta.role !== 'admin'){
-        errEl.textContent='Sem permissões de administrador.';
-        document.getElementById('lock-pwd').value='';
-        await SB.signOut();
-        return;
+      const session = await SB.getSession();
+      if(session && session.user){
+        const meta = await SB.getUserMeta(session.user.id);
+        if(meta && meta.role === 'admin'){
+          document.getElementById('lock-screen').style.display='none';
+          initAdmin();
+          return;
+        } else if(meta){
+          errEl.textContent='Sem permissões de administrador.';
+          return;
+        }
       }
-      document.getElementById('lock-screen').style.display='none';
-      initAdmin();
-      return;
     }catch(e){
-      console.warn('Admin: Supabase unlock falhou, a usar password local.', e);
+      console.warn('Admin: erro ao verificar sessão Supabase.', e);
     }
   }
 
-  // ── Fallback: password local ────────────────────────────────
+  // Fallback: password local
   if(pwd===(CFG.password||'admin')){
     document.getElementById('lock-screen').style.display='none';
     initAdmin();

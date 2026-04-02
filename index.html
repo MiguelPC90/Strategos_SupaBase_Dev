@@ -23,7 +23,7 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
 body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg3);color:var(--text);font-size:14px;min-height:100vh;padding-top:0}
 
 /* ── FIXED HEADER ── */
-.fixed-top{position:fixed;top:0;left:var(--sidebar-w);right:0;z-index:50;overflow:visible;transition:left .2s}
+.fixed-top{position:fixed;top:0;left:0;right:0;z-index:50;overflow:visible}
 .topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 1.5rem;background:var(--navy);gap:8px;min-height:52px}
 .topbar h1{font-size:18px;font-weight:700;color:#fff;margin:0}
 .topbar p{font-size:11px;color:rgba(255,255,255,.65);margin-top:1px}
@@ -489,14 +489,14 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
   .mobile-filter-btn{display:none !important;}
   .mobile-import-btn{display:none !important;}
   .tab-bar{display:none !important;}
+  #sidebar-toggle{display:flex !important;}
 }
 
 /* ── SIDEBAR ── */
 body.sidebar-collapsed{--sidebar-w:56px}
-#sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--navy);display:flex;flex-direction:column;transition:width .2s;overflow:hidden;z-index:60}
-.sidebar-top{padding:10px 8px;display:flex;justify-content:flex-end;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.08)}
-.sidebar-toggle-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.65);padding:6px 8px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.sidebar-toggle-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+#sidebar{position:fixed;left:0;top:52px;bottom:0;width:var(--sidebar-w);background:var(--navy);display:flex;flex-direction:column;transition:width .2s;overflow:hidden;z-index:40}
+.sidebar-toggle-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.75);padding:6px 8px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:4px}
+.sidebar-toggle-btn:hover{background:rgba(255,255,255,.15);color:#fff}
 .sidebar-toggle-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0}
 .sidebar-nav{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 0;scrollbar-width:none}
 .sidebar-nav::-webkit-scrollbar{display:none}
@@ -518,7 +518,6 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 /* Mobile: sidebar hidden */
 @media(max-width:768px){
   #sidebar{display:none!important}
-  .fixed-top{left:0!important}
   .content{margin-left:0!important}
 }
 
@@ -537,11 +536,6 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 
 <!-- SIDEBAR -->
 <nav id="sidebar" aria-label="Navegação principal">
-  <div class="sidebar-top">
-    <button id="sidebar-toggle" class="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="Colapsar menu">
-      <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-    </button>
-  </div>
   <div class="sidebar-nav">
     <span class="sidebar-group-lbl">Visualização</span>
     <button class="nav-item active" data-tab="resumo" data-tooltip="Resumo executivo" onclick="switchTab('resumo',this)">
@@ -598,6 +592,9 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 <!-- FIXED HEADER -->
 <div class="fixed-top">
   <div class="topbar">
+    <button id="sidebar-toggle" class="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="Menu" style="display:none">
+      <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
     <div class="topbar-left">
       <img id="topbar-logo" class="topbar-logo" src="" alt="" style="height:36px;width:auto;object-fit:contain;display:none">
       <div>
