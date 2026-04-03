@@ -298,6 +298,62 @@
       }
     },
 
+    // ── Recursos: mapeamento, load e save ────────────────────
+    _mapResource: function (r) {
+      return {
+        _supabase_id    : r.id,
+        id0             : r.id0,
+        id1             : r.id1             || null,
+        id2             : r.id2             || null,
+        nome            : r.nome,
+        unidade         : r.unidade         || '',
+        perfil          : r.perfil          || '',
+        alocacao_total  : Number(r.alocacao_total)   || 0,
+        alocacao_projeto: Number(r.alocacao_projeto) || 0,
+        periodo_inicio  : r.periodo_inicio  || null,
+        periodo_fim     : r.periodo_fim     || null,
+        custo_hora      : r.custo_hora != null ? Number(r.custo_hora) : null,
+        notas           : r.notas           || '',
+        sort_order      : r.sort_order      || 0
+      };
+    },
+
+    loadResources: async function (id0s) {
+      var q = this.client.from('resources').select('*').order('sort_order');
+      if (id0s && id0s.length) q = q.in('id0', id0s);
+      var res = await q;
+      if (res.error) throw res.error;
+      return (res.data || []).map(function (r) { return SB._mapResource(r); });
+    },
+
+    saveResources: async function (id0, rows) {
+      // delete-by-id0 then insert (mesmo padrão de saveRisks)
+      var del = await this.client.from('resources').delete().eq('id0', id0);
+      if (del.error) throw del.error;
+      if (!rows || !rows.length) return;
+      var self = this;
+      var ins = rows.map(function (r, i) {
+        return {
+          id0             : id0,
+          id1             : r.id1             || null,
+          id2             : r.id2             || null,
+          nome            : r.nome,
+          unidade         : r.unidade         || '',
+          perfil          : r.perfil          || '',
+          alocacao_total  : parseFloat(r.alocacao_total)   || 0,
+          alocacao_projeto: parseFloat(r.alocacao_projeto) || 0,
+          periodo_inicio  : r.periodo_inicio  || null,
+          periodo_fim     : r.periodo_fim     || null,
+          custo_hora      : r.custo_hora ? parseFloat(r.custo_hora) : null,
+          notas           : r.notas           || '',
+          sort_order      : i,
+          updated_by      : self.currentUserId
+        };
+      });
+      var res = await this.client.from('resources').insert(ins);
+      if (res.error) throw res.error;
+    },
+
     // ── Guardar entrada PDS (upsert por id0+id2) ──────────────
     savePDSEntry: async function (pdsObj) {
       var self = this;
