@@ -1888,6 +1888,10 @@ function logout(){
 
 function applyProfile(profile){
   const tabs=profile.tabs||{};
+  // Patch: add any tabs added after profile creation (default 'edit')
+  var patched=false;
+  ALL_TABS_DEF.forEach(function(td){ if(tabs[td.id]===undefined){ tabs[td.id]='edit'; patched=true; } });
+  if(patched){ profile.tabs=tabs; saveCfg(); }
   // Show/hide nav tabs and sections based on profile
   ALL_TABS_DEF.forEach(function(td){
     const perm=tabs[td.id]||'none';
