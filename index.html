@@ -5355,17 +5355,17 @@ async function saveGRes(){
     localStorage.setItem('pmo_pds_data',JSON.stringify(ALL_PDS));
     localStorage.setItem('pmo_data_ver','2');
   }catch(e){}
-  if(window.SB && SB.isOnline){
-    try{
-      await SB.savePDSEntry(p);
-      await SB.saveFte(p._supabase_id, p.fte.recursos);
-    }catch(e){
-      showToast('Erro ao guardar recursos: '+(e.message||e),'red'); return;
-    }
-  }
+  // Clear badge optimistically (data is safe in localStorage)
   gresUnsaved=false;
   document.getElementById('gres-unsaved').classList.remove('show');
-  showToast('Recursos guardados!','green');
+  if(window.SB && SB.isOnline){
+    SB.savePDSEntry(p)
+      .then(function(){ return SB.saveFte(p._supabase_id, p.fte.recursos); })
+      .then(function(){ showToast('Recursos guardados!','green'); })
+      .catch(function(e){ showToast('Guardado localmente. Erro Supabase: '+(e.message||e),'amber'); });
+  } else {
+    showToast('Recursos guardados!','green');
+  }
 }
 
 function exportResToExcel(mode){
@@ -5379,6 +5379,7 @@ function exportResToExcel(mode){
   }
   if(!p){showToast('Selecciona um plano primeiro','red');return;}
   ensureFTE(p);
+  if(!p.fte.recursos.length){showToast('Sem recursos para exportar.','amber');return;}
   var du=p.fte.dias_uteis||22;
   var base=getBaseMoeda?getBaseMoeda():'€';
   var sheetRows=[['Nome','Unidade','Perfil','Tipo','Custo/dia','Projecto N2','Data início','Data fim','% Aloc.','Contrato','Estado','Custo est.']];
