@@ -193,6 +193,28 @@
           contratos: contratos,
           facturas : facturas
         },
+        fte                : {
+          dias_uteis : row.fte_dias_uteis || 22,
+          recursos   : (row.fte_recursos || [])
+            .sort(function (a, b) { return a.sort_order - b.sort_order; })
+            .map(function (r) {
+              return {
+                id           : r.app_id || r.id,
+                nome         : r.nome         || '',
+                unidade      : r.unidade      || '',
+                perfil       : r.perfil       || '',
+                tipo         : r.tipo         || 'interno',
+                custo_dia    : Number(r.custo_dia)    || 0,
+                id2          : r.id2          || '',
+                data_inicio  : r.data_inicio  || null,
+                data_fim     : r.data_fim     || null,
+                alocacao_pct : Number(r.alocacao_pct) || 100,
+                contrato_id  : r.contrato_id  || '',
+                estado       : r.estado       || 'activo',
+                _supabase_id : r.id
+              };
+            })
+        },
         _supabase_id : row.id
       };
     },
@@ -212,7 +234,7 @@
     loadPDS: async function () {
       var res = await this.client
         .from('pds_entries')
-        .select('*, risks(*), fin_rubricas(*), fin_contratos(*), fin_facturas(*)')
+        .select('*, risks(*), fin_rubricas(*), fin_contratos(*), fin_facturas(*), fte_recursos(*)')
         .order('id');
       if (res.error) throw res.error;
       var self = this;
@@ -372,6 +394,7 @@
         avancos            : pdsObj.avancos,
         proximos           : pdsObj.proximos,
         atencao            : pdsObj.atencao,
+        fte_dias_uteis     : (pdsObj.fte && pdsObj.fte.dias_uteis) ? Number(pdsObj.fte.dias_uteis) : 22,
         updated_by         : this.currentUserId
       };
 
@@ -545,6 +568,80 @@
               if (onSnapshots) onSnapshots(payload);
             })
         .subscribe();
+    },
+
+    // ── Guardar FTE recursos (full-replace por pds_id) ────────
+    saveFte: async function (pdsId, recursos) {
+      var self = this;
+      if (!pdsId) return;
+
+      var delRes = await this.client
+        .from('fte_recursos')
+        .delete()
+        .eq('pds_id', pdsId);
+      if (delRes.error) throw delRes.error;
+
+      var rows = (recursos || []).filter(function (r) { return r.nome && r.nome.trim(); });
+      if (!rows.length) return;
+
+      var insRows = rows.map(function (r, i) {
+        return {
+          pds_id       : pdsId,
+          app_id       : String(r.id || ''),
+          nome         : r.nome         || '',
+          unidade      : r.unidade      || '',
+          perfil       : r.perfil       || '',
+          tipo         : r.tipo         || 'interno',
+          custo_dia    : parseFloat(r.custo_dia)    || 0,
+          id2          : r.id2          || '',
+          data_inicio  : r.data_inicio  || null,
+          data_fim     : r.data_fim     || null,
+          alocacao_pct : parseFloat(r.alocacao_pct) || 100,
+          contrato_id  : r.contrato_id  || '',
+          estado       : r.estado       || 'activo',
+          sort_order   : i,
+          updated_by   : self.currentUserId
+        };
+      });
+
+      var insRes = await this.client.from('fte_recursos').insert(insRows);
+      if (insRes.error) throw insRes.error;
+    },
+
+    // ── Carregar FTE para um pds_id específico ─────────────────
+    loadFteForPDS: async function (pdsId) {
+      var self = this;
+      if (!pdsId) return { recursos: [], dias_uteis: 22 };
+
+      var pdsRes = await this.client
+        .from('pds_entries')
+        .select('fte_dias_uteis, fte_recursos(*)')
+        .eq('id', pdsId)
+        .single();
+      if (pdsRes.error) throw pdsRes.error;
+
+      var row = pdsRes.data || {};
+      var recursos = (row.fte_recursos || [])
+        .sort(function (a, b) { return a.sort_order - b.sort_order; })
+        .map(function (r) {
+          return {
+            id           : r.app_id || r.id,
+            nome         : r.nome         || '',
+            unidade      : r.unidade      || '',
+            perfil       : r.perfil       || '',
+            tipo         : r.tipo         || 'interno',
+            custo_dia    : Number(r.custo_dia)    || 0,
+            id2          : r.id2          || '',
+            data_inicio  : r.data_inicio  || null,
+            data_fim     : r.data_fim     || null,
+            alocacao_pct : Number(r.alocacao_pct) || 100,
+            contrato_id  : r.contrato_id  || '',
+            estado       : r.estado       || 'activo',
+            _supabase_id : r.id
+          };
+        });
+
+      return { recursos: recursos, dias_uteis: row.fte_dias_uteis || 22 };
     },
 
     unsubscribeAll: function () {

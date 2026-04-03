@@ -345,13 +345,27 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
 
 /* ── GESTÃO DE RECURSOS ── */
 .res-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
-.res-row{display:grid;grid-template-columns:1.8fr 90px 110px 140px 90px 90px 80px 60px;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px}
-.res-row:hover{background:var(--bg2)}
-.res-header{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;background:var(--bg2);border-radius:var(--r) var(--r) 0 0}
-.res-util-bar{height:6px;border-radius:3px;background:#e2e8f0;overflow:hidden;margin-top:2px}
-.res-util-fill{height:100%;border-radius:3px;background:var(--green);transition:width .3s}
-.res-util-fill.over{background:#ef4444}
-@media(max-width:900px){.res-row{grid-template-columns:1fr 80px 80px 60px}.res-col-hide{display:none}}
+/* card por recurso */
+.fte-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:6px}
+.fte-card:hover{border-color:var(--navy)}
+.fte-card-main{display:grid;grid-template-columns:1.6fr 110px 80px 70px 80px 36px;gap:6px;align-items:center;margin-bottom:6px}
+.fte-card-detail{display:grid;grid-template-columns:80px 90px 1fr 105px 105px 1fr;gap:6px;align-items:center}
+.fte-card-detail.has-contrato{grid-template-columns:80px 90px 1fr 105px 105px 1fr 1fr}
+.fte-tipo-badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;white-space:nowrap}
+.fte-tipo-int{background:#EAF3DE;color:#3B6D11}
+.fte-tipo-ext{background:#E6F1FB;color:#185FA5}
+.fte-estado-badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700}
+.fte-activo{background:#EAF3DE;color:#3B6D11}
+.fte-inactivo{background:#F0F0F0;color:#666}
+.fte-lbl{font-size:10px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+/* view only table */
+.res-view-row{display:grid;grid-template-columns:1.4fr 80px 100px 70px 100px 90px 90px 80px 80px;gap:6px;align-items:center;padding:7px 10px;border-bottom:1px solid var(--border);font-size:12px}
+.res-view-row:hover{background:var(--bg2)}
+.res-view-hdr{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.03em;background:var(--bg2);border-radius:var(--r) var(--r) 0 0}
+.res-pct-bar{height:5px;border-radius:3px;background:#e2e8f0;overflow:hidden;margin-top:2px}
+.res-pct-fill{height:100%;border-radius:3px;background:var(--green)}
+.res-pct-fill.over{background:#ef4444}
+@media(max-width:900px){.fte-card-main{grid-template-columns:1fr 70px 70px 36px}.fte-card-detail{grid-template-columns:1fr 1fr}.fte-hide-sm{display:none}.res-view-row{grid-template-columns:1fr 70px 70px}}
 
 
 .pm-table tr.drag-over td{border-top:2px solid var(--navy)!important}
@@ -1116,12 +1130,12 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 
 
 
-<!-- RECURSOS -->
+<!-- RECURSOS (visualização) -->
 <div id="recursos" class="section">
   <div class="pm-toolbar">
     <div class="pm-sel-wrap">
-      <span class="pm-sel-lbl">Programa</span>
-      <select id="res-prog-sel" class="pm-sel" onchange="renderRecursos()"></select>
+      <span class="pm-sel-lbl">Plano</span>
+      <select id="res-plan-sel" class="pm-sel" onchange="loadAndRenderRecursos()"></select>
     </div>
     <div style="margin-left:auto;display:flex;gap:8px">
       <button class="btn" style="font-size:12px" onclick="exportResToExcel()">&#8595; Exportar Excel</button>
@@ -1130,20 +1144,21 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
   <div id="res-view-content" style="display:none">
     <div id="res-kpis" class="res-kpi-grid"></div>
     <div class="card" style="padding:0;overflow:hidden">
-      <div class="res-row res-header" style="padding:8px 10px">
+      <div class="res-view-row res-view-hdr">
         <div>Nome</div>
-        <div class="res-col-hide">Unidade</div>
-        <div class="res-col-hide">Perfil</div>
-        <div>Projecto (N2)</div>
-        <div style="text-align:right">Aloc. Total (h)</div>
-        <div style="text-align:right">Aloc. Proj. (h)</div>
-        <div style="text-align:center">% Util.</div>
-        <div class="res-col-hide">Período</div>
+        <div class="fte-hide-sm">Unidade</div>
+        <div class="fte-hide-sm">Perfil</div>
+        <div>Tipo</div>
+        <div>Projecto</div>
+        <div>Início</div>
+        <div>Fim</div>
+        <div style="text-align:right">% Aloc.</div>
+        <div>Estado</div>
       </div>
       <div id="res-list"></div>
     </div>
   </div>
-  <div id="res-view-empty" style="text-align:center;padding:3rem;color:var(--text2);font-size:13px">Selecciona um programa para ver os recursos.</div>
+  <div id="res-view-empty" style="text-align:center;padding:3rem;color:var(--text2);font-size:13px">Selecciona um plano para ver os recursos.</div>
 </div>
 
 
@@ -1151,35 +1166,36 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 <div id="gestao-recursos" class="section">
   <div class="pm-toolbar">
     <div class="pm-sel-wrap">
-      <span class="pm-sel-lbl">Programa</span>
-      <select id="gres-prog-sel" class="pm-sel" onchange="loadGRes()"></select>
+      <span class="pm-sel-lbl">Plano</span>
+      <select id="gres-selector" class="pm-sel" onchange="loadGRes()"></select>
     </div>
     <span class="pm-unsaved ro-hide" id="gres-unsaved">&#9679; Alterações não guardadas</span>
     <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn" style="font-size:12px" onclick="exportResToExcel('gestao')">&#8595; Exportar Excel</button>
       <button class="btn btn-primary ro-hide" style="font-size:12px" onclick="saveGRes()">&#128190; Guardar</button>
     </div>
   </div>
+  <div id="gres-empty" style="text-align:center;padding:3rem;color:var(--text2);font-size:13px">Selecciona um plano de acção para gerir os recursos.</div>
   <div id="gres-content" style="display:none">
+    <!-- Cabeçalho navy -->
     <div style="background:var(--navy);border-radius:var(--rl);padding:12px 16px;margin-bottom:1rem">
-      <div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:2px" id="gres-prog-lbl"></div>
-      <div style="font-size:15px;font-weight:700;color:#fff" id="gres-prog-nome"></div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:2px" id="gres-eixo"></div>
+      <div style="font-size:15px;font-weight:700;color:#fff" id="gres-plano"></div>
     </div>
-    <div class="card" style="padding:0;overflow:hidden">
-      <div class="res-row res-header" style="padding:8px 10px">
-        <div>Nome *</div>
-        <div>Unidade</div>
-        <div>Perfil</div>
-        <div>Projecto (N2)</div>
-        <div style="text-align:right">Aloc. Total (h)</div>
-        <div style="text-align:right">Aloc. Proj. (h)</div>
-        <div style="text-align:center">% Util.</div>
-        <div style="text-align:center">Acções</div>
-      </div>
-      <div id="gres-list"></div>
+    <!-- KPIs -->
+    <div id="gres-kpis" class="res-kpi-grid" style="margin-bottom:1rem"></div>
+    <!-- Config: dias úteis -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;font-size:12px;color:var(--text2)">
+      <span>Dias úteis/mês:</span>
+      <input id="gres-dias-uteis" type="number" min="1" max="31" value="22"
+        class="risk-input" style="width:60px;text-align:center"
+        onchange="gresSetDiasUteis(this.value)">
+      <span style="color:var(--text3)">(usado no cálculo do custo estimado)</span>
     </div>
-    <button class="btn" style="font-size:12px;margin-top:10px;width:100%" onclick="addGRes()">+ Adicionar Recurso</button>
+    <!-- Lista de recursos -->
+    <div id="gres-list"></div>
+    <button class="btn ro-hide" style="font-size:12px;margin-top:10px;width:100%" onclick="addGRes()">+ Adicionar Recurso</button>
   </div>
-  <div id="gres-empty" style="text-align:center;padding:3rem;color:var(--text2);font-size:13px">Selecciona um programa para gerir os recursos.</div>
 </div>
 
 
@@ -5054,188 +5070,297 @@ function exportRiskToExcel(){
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-// GESTÃO DE RECURSOS
+// GESTÃO DE RECURSOS (v2 — modelo FTE por plano de acção)
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Obter opções de N2 (projectos) para um dado id0
-function _resGetN2Opts(id0, selectedId2) {
-  var n2s = [];
-  var seen = {};
-  (ALL_GANTT||[]).forEach(function(r){ if(r.id0===id0 && r.id2 && !seen[r.id2]){ seen[r.id2]=1; n2s.push({id2:r.id2,n2:r.n2||r.id2}); } });
-  var html = '<option value="">— projecto —</option>';
-  n2s.forEach(function(o){ html+='<option value="'+esc(o.id2)+'"'+(o.id2===selectedId2?' selected':'')+'>'+esc(o.n2)+'</option>'; });
-  return html;
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function ensureFTE(p){
+  if(!p) return;
+  if(!p.fte) p.fte={};
+  if(!p.fte.recursos) p.fte.recursos=[];
+  if(!p.fte.dias_uteis) p.fte.dias_uteis=22;
 }
 
-// % de utilização — barra + texto
-function _resUtil(r){
-  if(!r.alocacao_total) return '<span style="color:var(--text3)">—</span>';
-  var pct=Math.round((r.alocacao_projeto/r.alocacao_total)*100);
+function _fteGetCurrentPDS(){
+  var key=document.getElementById('gres-selector').value;
+  return key ? ALL_PDS.find(function(p){ return ((p.id0||'')+'_'+p.id2)===key; }) : null;
+}
+
+// Custo estimado de um recurso para o período definido
+function _fteCost(r, diasUteis){
+  if(!r.data_inicio||!r.data_fim||!r.custo_dia) return null;
+  var d0=new Date(r.data_inicio), d1=new Date(r.data_fim);
+  if(d1<d0) return null;
+  var months=(d1.getFullYear()-d0.getFullYear())*12+(d1.getMonth()-d0.getMonth())+1;
+  return (r.alocacao_pct/100)*(diasUteis||22)*r.custo_dia*months;
+}
+
+// HTML da barra de % alocação
+function _fteBar(pct){
+  var p=Math.min(pct,200);
   var cls=pct>100?'over':'';
-  return '<div class="res-util-bar"><div class="res-util-fill '+cls+'" style="width:'+Math.min(pct,100)+'%"></div></div>'
-        +'<small style="font-size:10px;color:var(--text2)">'+pct+'%</small>';
+  return '<div class="res-pct-bar"><div class="res-pct-fill '+cls+'" style="width:'+Math.min(p,100)+'%"></div></div>';
 }
 
-// Obter opções de N0 (programas) a partir de ALL_GANTT
-function _resGetProgOptions(selId){
-  var progs=[]; var seen={};
-  (ALL_GANTT||[]).forEach(function(r){
-    if(r.id0 && !seen[r.id0]){ seen[r.id0]=1; progs.push({id0:r.id0,n0:r.n0||r.id0}); }
+// N2 options para um plano (fPDS entry)
+function _fteN2Opts(p, selId2){
+  var n2s=[]; var seen={};
+  (ALL_GANTT||[]).filter(function(r){ return r.id0===(p&&p.id0); }).forEach(function(r){
+    if(r.id2&&!seen[r.id2]){ seen[r.id2]=1; n2s.push({id2:r.id2,n2:r.n2||r.id2}); }
   });
-  var html='<option value="">— seleccionar —</option>';
-  progs.forEach(function(p){ html+='<option value="'+esc(p.id0)+'"'+(p.id0===selId?' selected':'')+'>'+esc(p.n0)+'</option>'; });
+  var html='<option value="">— projecto —</option>';
+  n2s.forEach(function(o){ html+='<option value="'+esc(o.id2)+'"'+(o.id2===selId2?' selected':'')+'>'+esc(o.n2)+'</option>'; });
   return html;
 }
 
-// ── Visualização ──────────────────────────────────────────────────────────────
-function initRecursos(){
-  var sel=document.getElementById('res-prog-sel');
-  var prev=sel.value;
-  sel.innerHTML=_resGetProgOptions(prev);
-  if(prev && sel.querySelector('option[value="'+prev+'"]')) sel.value=prev;
-  renderRecursos();
+// Contrato options (apenas para externos) do plano actual
+function _fteContratoOpts(p, selId){
+  var html='<option value="">— sem contrato —</option>';
+  ((p&&p.finances&&p.finances.contratos)||[]).forEach(function(c){
+    html+='<option value="'+esc(c.id)+'"'+(c.id===selId?' selected':'')+'>'+esc(c.fornecedor+(c.descricao?' – '+c.descricao:''))+'</option>';
+  });
+  return html;
 }
 
-function renderRecursos(){
-  var id0=document.getElementById('res-prog-sel').value;
+// Tipo badge HTML
+function _fteTipoBadge(tipo){
+  if(tipo==='externo') return '<span class="fte-tipo-badge fte-tipo-ext">Externo</span>';
+  return '<span class="fte-tipo-badge fte-tipo-int">Interno</span>';
+}
+
+// Estado badge HTML
+function _fteEstadoBadge(estado){
+  if(estado==='inactivo') return '<span class="fte-estado-badge fte-inactivo">Inactivo</span>';
+  return '<span class="fte-estado-badge fte-activo">Activo</span>';
+}
+
+// KPIs da secção de gestão
+function _fteRenderKPIs(p){
+  ensureFTE(p);
+  var rec=p.fte.recursos;
+  var du=p.fte.dias_uteis||22;
+  var ativos=rec.filter(function(r){return r.estado==='activo';});
+  var fte=ativos.reduce(function(s,r){return s+(r.alocacao_pct||0)/100;},0);
+  var custo=0; var hasCusto=false;
+  ativos.forEach(function(r){ var c=_fteCost(r,du); if(c!=null){custo+=c;hasCusto=true;} });
+  var over=ativos.filter(function(r){return (r.alocacao_pct||0)>100;}).length;
+  var base=getBaseMoeda?getBaseMoeda():'€';
+  document.getElementById('gres-kpis').innerHTML=
+    '<div class="kpi"><div class="kpi-lbl">Recursos activos</div><div class="kpi-val" style="color:var(--navy)">'+ativos.length+'</div></div>'
+   +'<div class="kpi"><div class="kpi-lbl">FTE total</div><div class="kpi-val" style="color:var(--blue)">'+fte.toFixed(1)+'</div></div>'
+   +'<div class="kpi"><div class="kpi-lbl">Custo estimado</div><div class="kpi-val" style="color:var(--navy);font-size:14px">'+(hasCusto?fmtEur(Math.round(custo),base):'—')+'</div></div>'
+   +'<div class="kpi"><div class="kpi-lbl">Sobrealocações</div><div class="kpi-val" style="color:'+(over>0?'var(--red)':'var(--green)')+'">'+over+'</div></div>';
+}
+
+// ── Visualização (read-only) ──────────────────────────────────────────────────
+
+function initRecursos(){
+  var sel=document.getElementById('res-plan-sel');
+  var prev=sel.value;
+  sel.innerHTML='<option value="">— seleccionar plano —</option>'+
+    fPDS.map(function(p){
+      var key=(p.id0||'')+'_'+p.id2;
+      var prefix=(p.n0?esc(p.n0)+' › ':'')+esc(p.n1)+' › ';
+      return '<option value="'+esc(key)+'"'+(key===prev?' selected':'')+'>'+prefix+esc(p.plano)+'</option>';
+    }).join('');
+  if(prev && sel.querySelector('option[value="'+prev+'"]')) sel.value=prev;
+  loadAndRenderRecursos();
+}
+
+async function loadAndRenderRecursos(){
+  var key=document.getElementById('res-plan-sel').value;
   var empty=document.getElementById('res-view-empty');
   var cont=document.getElementById('res-view-content');
-  if(!id0){ empty.style.display='block'; cont.style.display='none'; return; }
+  if(!key){empty.style.display='block';cont.style.display='none';return;}
+  var p=ALL_PDS.find(function(x){return ((x.id0||'')+'_'+x.id2)===key;});
+  if(!p){empty.style.display='block';cont.style.display='none';return;}
+  // lazy load FTE if not yet loaded
+  if(!p._fteLoaded && window.SB && SB.isOnline && p._supabase_id){
+    try{
+      var fetched=await SB.loadFteForPDS(p._supabase_id);
+      ensureFTE(p); p.fte.recursos=fetched.recursos; p.fte.dias_uteis=fetched.dias_uteis||22;
+      p._fteLoaded=true;
+    }catch(e){ console.warn('loadFteForPDS falhou',e); }
+  }
+  ensureFTE(p);
   empty.style.display='none'; cont.style.display='block';
-  var rows=ALL_RES.filter(function(r){ return r.id0===id0; });
-  // KPIs
-  var totalPessoas=rows.length;
-  var totalH=rows.reduce(function(s,r){ return s+r.alocacao_total; },0);
-  var alocH=rows.reduce(function(s,r){ return s+r.alocacao_projeto; },0);
-  var over=rows.filter(function(r){ return r.alocacao_total&&(r.alocacao_projeto/r.alocacao_total)>1; }).length;
+  renderRecursos(p);
+}
+
+function renderRecursos(p){
+  ensureFTE(p);
+  var rec=p.fte.recursos;
+  var du=p.fte.dias_uteis||22;
+  var ativos=rec.filter(function(r){return r.estado==='activo';});
+  var fte=ativos.reduce(function(s,r){return s+(r.alocacao_pct||0)/100;},0);
+  var custo=0; var hasCusto=false;
+  ativos.forEach(function(r){var c=_fteCost(r,du);if(c!=null){custo+=c;hasCusto=true;}});
+  var over=ativos.filter(function(r){return (r.alocacao_pct||0)>100;}).length;
+  var base=getBaseMoeda?getBaseMoeda():'€';
   document.getElementById('res-kpis').innerHTML=
-    '<div class="kpi"><div class="kpi-lbl">Pessoas</div><div class="kpi-val" style="color:var(--navy)">'+totalPessoas+'</div></div>'
-   +'<div class="kpi"><div class="kpi-lbl">H Disponíveis</div><div class="kpi-val" style="color:var(--navy)">'+totalH.toFixed(0)+'h</div></div>'
-   +'<div class="kpi"><div class="kpi-lbl">H Alocadas</div><div class="kpi-val" style="color:var(--green)">'+alocH.toFixed(0)+'h</div></div>'
-   +'<div class="kpi"><div class="kpi-lbl">Sobre-alocados</div><div class="kpi-val" style="color:'+(over>0?'var(--red)':'var(--green)')+'">'+over+'</div></div>';
-  // Lista
-  var html=rows.map(function(r){
-    var n2label='—';
-    var found=(ALL_GANTT||[]).find(function(g){ return g.id2===r.id2; });
-    if(found) n2label=found.n2||r.id2;
-    else if(r.id2) n2label=r.id2;
-    return '<div class="res-row">'
+    '<div class="kpi"><div class="kpi-lbl">Recursos activos</div><div class="kpi-val" style="color:var(--navy)">'+ativos.length+'</div></div>'
+   +'<div class="kpi"><div class="kpi-lbl">FTE total</div><div class="kpi-val" style="color:var(--blue)">'+fte.toFixed(1)+'</div></div>'
+   +'<div class="kpi"><div class="kpi-lbl">Custo estimado</div><div class="kpi-val" style="color:var(--navy);font-size:14px">'+(hasCusto?fmtEur(Math.round(custo),base):'—')+'</div></div>'
+   +'<div class="kpi"><div class="kpi-lbl">Sobrealocações</div><div class="kpi-val" style="color:'+(over>0?'var(--red)':'var(--green)')+'">'+over+'</div></div>';
+  var html=rec.map(function(r){
+    var n2label=r.id2||'—';
+    var gRow=(ALL_GANTT||[]).find(function(g){return g.id2===r.id2;});
+    if(gRow) n2label=gRow.n2||r.id2;
+    return '<div class="res-view-row">'
       +'<span>'+esc(r.nome)+'</span>'
-      +'<span class="res-col-hide">'+esc(r.unidade)+'</span>'
-      +'<span class="res-col-hide">'+esc(r.perfil)+'</span>'
+      +'<span class="fte-hide-sm">'+esc(r.unidade)+'</span>'
+      +'<span class="fte-hide-sm">'+esc(r.perfil)+'</span>'
+      +'<span>'+_fteTipoBadge(r.tipo)+'</span>'
       +'<span>'+esc(n2label)+'</span>'
-      +'<span style="text-align:right">'+r.alocacao_total+'h</span>'
-      +'<span style="text-align:right">'+r.alocacao_projeto+'h</span>'
-      +'<div style="text-align:center">'+_resUtil(r)+'</div>'
-      +'<span class="res-col-hide" style="font-size:11px;color:var(--text2)">'+(r.periodo_inicio||'')+(r.periodo_fim?' → '+r.periodo_fim:'')+'</span>'
+      +'<span>'+(r.data_inicio||'—')+'</span>'
+      +'<span>'+(r.data_fim||'—')+'</span>'
+      +'<div style="text-align:right">'+((r.alocacao_pct||0)+'%')+'<br>'+_fteBar(r.alocacao_pct||0)+'</div>'
+      +'<span>'+_fteEstadoBadge(r.estado)+'</span>'
       +'</div>';
   }).join('');
-  document.getElementById('res-list').innerHTML=html||'<div style="padding:2rem;text-align:center;color:var(--text3);font-size:13px">Sem recursos neste programa.</div>';
+  document.getElementById('res-list').innerHTML=html||'<div style="padding:2rem;text-align:center;color:var(--text3);font-size:13px">Sem recursos neste plano.</div>';
 }
 
 // ── Gestão (edição) ───────────────────────────────────────────────────────────
+
 function initGRes(){
-  var sel=document.getElementById('gres-prog-sel');
+  var sel=document.getElementById('gres-selector');
   var prev=sel.value;
-  sel.innerHTML=_resGetProgOptions(prev);
+  sel.innerHTML='<option value="">— seleccionar plano —</option>'+
+    fPDS.map(function(p){
+      var key=(p.id0||'')+'_'+p.id2;
+      var prefix=(p.n0?esc(p.n0)+' › ':'')+esc(p.n1)+' › ';
+      return '<option value="'+esc(key)+'">'+prefix+esc(p.plano)+'</option>';
+    }).join('');
   if(prev && sel.querySelector('option[value="'+prev+'"]')) sel.value=prev;
   else loadGRes();
-  // bind change event once
-  if(!sel._gresBound){
-    sel._gresBound=true;
-    sel.addEventListener('change', loadGRes);
-  }
   loadGRes();
 }
 
 async function loadGRes(){
-  var id0=document.getElementById('gres-prog-sel').value;
+  var key=document.getElementById('gres-selector').value;
   var empty=document.getElementById('gres-empty');
   var cont=document.getElementById('gres-content');
-  if(!id0){ empty.style.display='block'; cont.style.display='none'; return; }
+  if(!key){empty.style.display='block';cont.style.display='none';return;}
+  var p=ALL_PDS.find(function(x){return ((x.id0||'')+'_'+x.id2)===key;});
+  if(!p){empty.style.display='block';cont.style.display='none';return;}
   empty.style.display='none'; cont.style.display='block';
-  // find prog label
-  var progRow=(ALL_GANTT||[]).find(function(r){ return r.id0===id0&&r.nivel===1; });
-  document.getElementById('gres-prog-lbl').textContent=progRow?('Programa: '+(progRow.n0||id0)):'';
-  document.getElementById('gres-prog-nome').textContent=progRow?(progRow.nome||progRow.n1||id0):id0;
-  // load from Supabase (replace current id0 entries)
-  if(window.SB && SB.isOnline){
+  document.getElementById('gres-eixo').textContent=(p.n0?p.n0+' › ':'')+p.n1;
+  document.getElementById('gres-plano').textContent=p.plano||'';
+  // lazy load FTE from Supabase
+  if(!p._fteLoaded && window.SB && SB.isOnline && p._supabase_id){
     try{
-      var fetched=await SB.loadResources([id0]);
-      // merge: keep other id0s, replace this id0
-      ALL_RES=ALL_RES.filter(function(r){ return r.id0!==id0; }).concat(fetched);
-    }catch(e){ console.warn('PMO: loadResources falhou',e); }
+      var fetched=await SB.loadFteForPDS(p._supabase_id);
+      ensureFTE(p); p.fte.recursos=fetched.recursos; p.fte.dias_uteis=fetched.dias_uteis||22;
+      p._fteLoaded=true;
+    }catch(e){ console.warn('loadGRes: loadFteForPDS falhou',e); }
   }
+  ensureFTE(p);
+  document.getElementById('gres-dias-uteis').value=p.fte.dias_uteis||22;
   gresUnsaved=false;
   document.getElementById('gres-unsaved').classList.remove('show');
-  renderGRes();
+  _fteRenderKPIs(p);
+  renderGRes(p);
 }
 
-function renderGRes(){
-  var id0=document.getElementById('gres-prog-sel').value;
-  var rows=ALL_RES.filter(function(r){ return r.id0===id0; });
+function renderGRes(p){
+  if(!p){ p=_fteGetCurrentPDS(); }
+  if(!p){ return; }
+  ensureFTE(p);
+  var rec=p.fte.recursos;
   var wrap=document.getElementById('gres-list');
-  if(!rows.length){
+  if(!rec.length){
     wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text3);font-size:13px">Sem recursos. Clica em + para adicionar.</div>';
     return;
   }
   var html='';
-  rows.forEach(function(r,i){
-    var globalIdx=ALL_RES.indexOf(r);
-    html+='<div class="res-row">'
-      +'<input class="risk-input" value="'+esc(r.nome)+'" placeholder="Nome" onchange="gresField('+globalIdx+',\'nome\',this.value)">'
-      +'<input class="risk-input" value="'+esc(r.unidade)+'" placeholder="Unidade" onchange="gresField('+globalIdx+',\'unidade\',this.value)">'
-      +'<input class="risk-input" value="'+esc(r.perfil)+'" placeholder="Perfil" onchange="gresField('+globalIdx+',\'perfil\',this.value)">'
-      +'<select class="risk-select" onchange="gresField('+globalIdx+',\'id2\',this.value)">'+_resGetN2Opts(id0,r.id2)+'</select>'
-      +'<input class="risk-input" type="number" min="0" step="0.5" style="text-align:right" value="'+r.alocacao_total+'" onchange="gresField('+globalIdx+',\'alocacao_total\',this.value)">'
-      +'<input class="risk-input" type="number" min="0" step="0.5" style="text-align:right" value="'+r.alocacao_projeto+'" onchange="gresField('+globalIdx+',\'alocacao_projeto\',this.value)">'
-      +'<div style="text-align:center">'+_resUtil(r)+'</div>'
-      +'<div style="text-align:center"><button data-gidx="'+globalIdx+'" class="gres-del" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:4px 8px">&#128465;</button></div>'
+  rec.forEach(function(r,i){
+    var isExt=(r.tipo==='externo');
+    html+='<div class="fte-card">'
+      // Linha 1: nome, perfil, tipo, % aloc, estado, delete
+      +'<div class="fte-card-main">'
+      +'<div><div class="fte-lbl">Nome *</div><input class="risk-input" value="'+esc(r.nome)+'" placeholder="Nome do recurso" onchange="gresField('+i+',\'nome\',this.value)"></div>'
+      +'<div><div class="fte-lbl">Perfil</div><input class="risk-input" value="'+esc(r.perfil)+'" placeholder="Ex: PM, Dev" onchange="gresField('+i+',\'perfil\',this.value)"></div>'
+      +'<div><div class="fte-lbl">Tipo</div><select class="risk-select" onchange="gresField('+i+',\'tipo\',this.value);renderGRes()"><option value="interno"'+(r.tipo==='interno'?' selected':'')+'>Interno</option><option value="externo"'+(r.tipo==='externo'?' selected':'')+'>Externo</option></select></div>'
+      +'<div><div class="fte-lbl">% Aloc.</div><input class="risk-input" type="number" min="0" max="200" step="5" style="text-align:right" value="'+(r.alocacao_pct||100)+'" onchange="gresField('+i+',\'alocacao_pct\',this.value)"></div>'
+      +'<div><div class="fte-lbl">Estado</div><select class="risk-select" onchange="gresField('+i+',\'estado\',this.value)"><option value="activo"'+(r.estado==='activo'?' selected':'')+'>Activo</option><option value="inactivo"'+(r.estado==='inactivo'?' selected':'')+'>Inactivo</option></select></div>'
+      +'<div style="display:flex;align-items:flex-end;padding-bottom:2px"><button data-ri="'+i+'" class="gres-del-btn" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:4px 6px" title="Remover">&#128465;</button></div>'
+      +'</div>'
+      // Linha 2: unidade, custo/dia, projecto, data início, data fim, contrato
+      +'<div class="fte-card-detail'+(isExt?' has-contrato':'')+'">'
+      +'<div><div class="fte-lbl">Unidade</div><input class="risk-input" value="'+esc(r.unidade)+'" placeholder="Ex: TI" onchange="gresField('+i+',\'unidade\',this.value)"></div>'
+      +'<div><div class="fte-lbl">Custo/dia</div><input class="risk-input" type="number" min="0" step="10" style="text-align:right" value="'+(r.custo_dia||0)+'" onchange="gresField('+i+',\'custo_dia\',this.value)"></div>'
+      +'<div><div class="fte-lbl">Projecto (N2)</div><select class="risk-select" onchange="gresField('+i+',\'id2\',this.value)">'+_fteN2Opts(p,r.id2)+'</select></div>'
+      +'<div><div class="fte-lbl">Data início</div><input class="risk-input" type="date" value="'+(r.data_inicio||'')+'" onchange="gresField('+i+',\'data_inicio\',this.value)"></div>'
+      +'<div><div class="fte-lbl">Data fim</div><input class="risk-input" type="date" value="'+(r.data_fim||'')+'" onchange="gresField('+i+',\'data_fim\',this.value)"></div>'
+      +(isExt?'<div><div class="fte-lbl">Contrato</div><select class="risk-select" onchange="gresField('+i+',\'contrato_id\',this.value)">'+_fteContratoOpts(p,r.contrato_id)+'</select></div>':'<div></div>')
+      +'</div>'
       +'</div>';
   });
   wrap.innerHTML=html;
-  wrap.querySelectorAll('.gres-del').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      deleteGRes(parseInt(this.dataset.gidx));
-    });
+  wrap.querySelectorAll('.gres-del-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){ deleteGRes(parseInt(this.dataset.ri)); });
   });
 }
 
-function gresField(globalIdx, field, val){
-  if(!ALL_RES[globalIdx]) return;
-  ALL_RES[globalIdx][field]=val;
+function gresField(i, field, val){
+  var p=_fteGetCurrentPDS(); if(!p){return;}
+  ensureFTE(p);
+  var r=p.fte.recursos[i]; if(!r){return;}
+  if(field==='alocacao_pct'||field==='custo_dia') val=parseFloat(val)||0;
+  r[field]=val;
   gresUnsaved=true;
   document.getElementById('gres-unsaved').classList.add('show');
-  if(field==='alocacao_total'||field==='alocacao_projeto') renderGRes();
+  _fteRenderKPIs(p);
+}
+
+function gresSetDiasUteis(val){
+  var p=_fteGetCurrentPDS(); if(!p){return;}
+  ensureFTE(p);
+  p.fte.dias_uteis=parseInt(val)||22;
+  gresUnsaved=true;
+  document.getElementById('gres-unsaved').classList.add('show');
+  _fteRenderKPIs(p);
 }
 
 function addGRes(){
-  var id0=document.getElementById('gres-prog-sel').value;
-  if(!id0) return;
-  ALL_RES.push({id0:id0,id1:null,id2:null,nome:'',unidade:'',perfil:'',
-    alocacao_total:0,alocacao_projeto:0,periodo_inicio:null,periodo_fim:null,custo_hora:null,notas:''});
+  var p=_fteGetCurrentPDS(); if(!p){return;}
+  ensureFTE(p);
+  p.fte.recursos.push({
+    id:uid(), nome:'', unidade:'', perfil:'', tipo:'interno',
+    custo_dia:0, id2:'', data_inicio:null, data_fim:null,
+    alocacao_pct:100, contrato_id:'', estado:'activo'
+  });
   gresUnsaved=true;
   document.getElementById('gres-unsaved').classList.add('show');
-  renderGRes();
+  renderGRes(p);
+  _fteRenderKPIs(p);
 }
 
-function deleteGRes(globalIdx){
-  ALL_RES.splice(globalIdx,1);
+function deleteGRes(i){
+  var p=_fteGetCurrentPDS(); if(!p){return;}
+  ensureFTE(p);
+  p.fte.recursos.splice(i,1);
   gresUnsaved=true;
   document.getElementById('gres-unsaved').classList.add('show');
-  renderGRes();
+  renderGRes(p);
+  _fteRenderKPIs(p);
 }
 
 async function saveGRes(){
-  var id0=document.getElementById('gres-prog-sel').value;
-  if(!id0) return;
-  var rows=ALL_RES.filter(function(r){ return r.id0===id0&&r.nome&&r.nome.trim(); });
+  var p=_fteGetCurrentPDS(); if(!p){return;}
+  ensureFTE(p);
+  try{
+    localStorage.setItem('pmo_pds_data',JSON.stringify(ALL_PDS));
+    localStorage.setItem('pmo_data_ver','2');
+  }catch(e){}
   if(window.SB && SB.isOnline){
     try{
-      await SB.saveResources(id0,rows);
+      await SB.savePDSEntry(p);
+      await SB.saveFte(p._supabase_id, p.fte.recursos);
     }catch(e){
-      showToast('Erro ao guardar recursos: '+(e.message||e),'red');
-      return;
+      showToast('Erro ao guardar recursos: '+(e.message||e),'red'); return;
     }
   }
   gresUnsaved=false;
@@ -5243,22 +5368,33 @@ async function saveGRes(){
   showToast('Recursos guardados!','green');
 }
 
-function exportResToExcel(){
+function exportResToExcel(mode){
   if(typeof XLSX==='undefined'){alert('XLSX não carregado.');return;}
-  var id0=document.getElementById('res-prog-sel').value;
-  var rows=ALL_RES.filter(function(r){ return r.id0===id0; });
-  var sheetRows=[['Nome','Unidade','Perfil','Projecto N2','Aloc. Total (h)','Aloc. Projecto (h)','% Util.','Período Início','Período Fim','Custo/h','Notas']];
-  rows.forEach(function(r){
-    var pct=r.alocacao_total?Math.round(r.alocacao_projeto/r.alocacao_total*100)+'%':'—';
-    var found=(ALL_GANTT||[]).find(function(g){ return g.id2===r.id2; });
-    var n2label=found?(found.n2||r.id2||''):(r.id2||'');
-    sheetRows.push([r.nome,r.unidade,r.perfil,n2label,r.alocacao_total,r.alocacao_projeto,pct,r.periodo_inicio||'',r.periodo_fim||'',r.custo_hora||'',r.notas||'']);
+  var p;
+  if(mode==='gestao'){
+    p=_fteGetCurrentPDS();
+  } else {
+    var key=document.getElementById('res-plan-sel').value;
+    p=key?ALL_PDS.find(function(x){return ((x.id0||'')+'_'+x.id2)===key;}) : null;
+  }
+  if(!p){showToast('Selecciona um plano primeiro','red');return;}
+  ensureFTE(p);
+  var du=p.fte.dias_uteis||22;
+  var base=getBaseMoeda?getBaseMoeda():'€';
+  var sheetRows=[['Nome','Unidade','Perfil','Tipo','Custo/dia','Projecto N2','Data início','Data fim','% Aloc.','Contrato','Estado','Custo est.']];
+  p.fte.recursos.forEach(function(r){
+    var ct=((p.finances&&p.finances.contratos)||[]).find(function(c){return c.id===r.contrato_id;});
+    var n2label=r.id2||'';
+    var gRow=(ALL_GANTT||[]).find(function(g){return g.id2===r.id2;});
+    if(gRow) n2label=gRow.n2||r.id2;
+    var custo=_fteCost(r,du);
+    sheetRows.push([r.nome,r.unidade,r.perfil,r.tipo,r.custo_dia,n2label,r.data_inicio||'',r.data_fim||'',(r.alocacao_pct||0)+'%',ct?ct.fornecedor:'',r.estado,custo!=null?Math.round(custo):'']);
   });
   var ws=XLSX.utils.aoa_to_sheet(sheetRows);
-  ws['!cols']=[{wch:22},{wch:14},{wch:14},{wch:20},{wch:14},{wch:16},{wch:10},{wch:14},{wch:14},{wch:10},{wch:25}];
+  ws['!cols']=[{wch:22},{wch:12},{wch:14},{wch:10},{wch:10},{wch:18},{wch:12},{wch:12},{wch:8},{wch:22},{wch:10},{wch:14}];
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Recursos');
-  XLSX.writeFile(wb,'PMO_Recursos_'+(id0||'Export')+'.xlsx');
+  XLSX.writeFile(wb,'PMO_Recursos_'+(p.plano||p.id2||'export').replace(/\s/g,'_')+'.xlsx');
   showToast('Recursos exportados!','green');
 }
 
