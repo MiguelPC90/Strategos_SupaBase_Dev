@@ -1513,6 +1513,7 @@ let ALL_PDS=[];
 let fAct=[...ALL_ACT],fGantt=[...ALL_GANTT],fPDS=[...ALL_PDS];
 let charts={};
 let gpdsUnsaved=false,griskUnsaved=false,gresUnsaved=false;
+let _gresDraft=null,_gresDraftKey=null; // working copy — never touches ALL_PDS until explicit save
 let ALL_RES=[];
 const GCOL={};    // gantt collapsed
 const ACOL={};    // activities collapsed
@@ -1727,6 +1728,7 @@ document.addEventListener('keydown', function(e){
     if(active.id==='gestao')            saveToSession();
     else if(active.id==='gestao-pds')   saveGPDS();
     else if(active.id==='gestao-riscos') saveGRisk();
+    else if(active.id==='gestao-recursos') saveGRes();
     else if(active.id==='gestao-financeira') saveGFin();
   }
   if(e.key==='Escape'){
@@ -3018,6 +3020,8 @@ function switchTab(id,btn){
     const choice=confirm('Tens alterações por guardar na Gestão de Recursos.\n\nOK para descartar e continuar, Cancelar para voltar e guardar.');
     if(!choice) return;
     gresUnsaved=false;
+    _gresDraftKey=null; // force re-init from committed p.fte on next entry
+    _gresDraft=null;
     document.getElementById('gres-unsaved').classList.remove('show');
   }
   // Warn if leaving gestao (project management) with unsaved changes
@@ -5135,11 +5139,11 @@ function _fteEstadoBadge(estado){
   return '<span class="fte-estado-badge fte-activo">Activo</span>';
 }
 
-// KPIs da secção de gestão
-function _fteRenderKPIs(p){
-  ensureFTE(p);
-  var rec=p.fte.recursos;
-  var du=p.fte.dias_uteis||22;
+// KPIs da secção de gestão — usa sempre o draft (_gresDraft)
+function _fteRenderKPIs(){
+  if(!_gresDraft) return;
+  var rec=_gresDraft.recursos||[];
+  var du=_gresDraft.dias_uteis||22;
   var ativos=rec.filter(function(r){return r.estado==='activo';});
   var fte=ativos.reduce(function(s,r){return s+(r.alocacao_pct||0)/100;},0);
   var custo=0; var hasCusto=false;
@@ -5248,7 +5252,7 @@ async function loadGRes(){
   empty.style.display='none'; cont.style.display='block';
   document.getElementById('gres-eixo').textContent=(p.n0?p.n0+' › ':'')+p.n1;
   document.getElementById('gres-plano').textContent=p.plano||'';
-  // lazy load FTE from Supabase
+  // lazy load FTE from Supabase (only once per entry)
   if(!p._fteLoaded && window.SB && SB.isOnline && p._supabase_id){
     try{
       var fetched=await SB.loadFteForPDS(p._supabase_id);
@@ -5257,18 +5261,21 @@ async function loadGRes(){
     }catch(e){ console.warn('loadGRes: loadFteForPDS falhou',e); }
   }
   ensureFTE(p);
-  document.getElementById('gres-dias-uteis').value=p.fte.dias_uteis||22;
+  // Initialise draft — always reset when switching to a (possibly different) plan
+  _gresDraftKey=null;
+  _gresDraft=JSON.parse(JSON.stringify(p.fte));
+  _gresDraftKey=key;
+  document.getElementById('gres-dias-uteis').value=_gresDraft.dias_uteis||22;
   gresUnsaved=false;
   document.getElementById('gres-unsaved').classList.remove('show');
-  _fteRenderKPIs(p);
+  _fteRenderKPIs();
   renderGRes(p);
 }
 
 function renderGRes(p){
   if(!p){ p=_fteGetCurrentPDS(); }
-  if(!p){ return; }
-  ensureFTE(p);
-  var rec=p.fte.recursos;
+  if(!p || !_gresDraft){ return; }
+  var rec=_gresDraft.recursos;
   var wrap=document.getElementById('gres-list');
   if(!rec.length){
     wrap.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text3);font-size:13px">Sem recursos. Clica em + para adicionar.</div>';
@@ -5305,29 +5312,26 @@ function renderGRes(p){
 }
 
 function gresField(i, field, val){
-  var p=_fteGetCurrentPDS(); if(!p){return;}
-  ensureFTE(p);
-  var r=p.fte.recursos[i]; if(!r){return;}
+  if(!_gresDraft) return;
+  var r=_gresDraft.recursos[i]; if(!r){return;}
   if(field==='alocacao_pct'||field==='custo_dia') val=parseFloat(val)||0;
   r[field]=val;
   gresUnsaved=true;
   document.getElementById('gres-unsaved').classList.add('show');
-  _fteRenderKPIs(p);
+  _fteRenderKPIs();
 }
 
 function gresSetDiasUteis(val){
-  var p=_fteGetCurrentPDS(); if(!p){return;}
-  ensureFTE(p);
-  p.fte.dias_uteis=parseInt(val)||22;
+  if(!_gresDraft) return;
+  _gresDraft.dias_uteis=parseInt(val)||22;
   gresUnsaved=true;
   document.getElementById('gres-unsaved').classList.add('show');
-  _fteRenderKPIs(p);
+  _fteRenderKPIs();
 }
 
 function addGRes(){
-  var p=_fteGetCurrentPDS(); if(!p){return;}
-  ensureFTE(p);
-  p.fte.recursos.push({
+  var p=_fteGetCurrentPDS(); if(!p || !_gresDraft){return;}
+  _gresDraft.recursos.push({
     id:uid(), nome:'', unidade:'', perfil:'', tipo:'interno',
     custo_dia:0, id2:'', data_inicio:null, data_fim:null,
     alocacao_pct:100, contrato_id:'', estado:'activo'
@@ -5335,27 +5339,26 @@ function addGRes(){
   gresUnsaved=true;
   document.getElementById('gres-unsaved').classList.add('show');
   renderGRes(p);
-  _fteRenderKPIs(p);
+  _fteRenderKPIs();
 }
 
 function deleteGRes(i){
-  var p=_fteGetCurrentPDS(); if(!p){return;}
-  ensureFTE(p);
-  p.fte.recursos.splice(i,1);
+  var p=_fteGetCurrentPDS(); if(!p || !_gresDraft){return;}
+  _gresDraft.recursos.splice(i,1);
   gresUnsaved=true;
   document.getElementById('gres-unsaved').classList.add('show');
   renderGRes(p);
-  _fteRenderKPIs(p);
+  _fteRenderKPIs();
 }
 
 async function saveGRes(){
-  var p=_fteGetCurrentPDS(); if(!p){return;}
-  ensureFTE(p);
+  var p=_fteGetCurrentPDS(); if(!p || !_gresDraft){return;}
+  // Apply draft to ALL_PDS entry only at save time
+  p.fte=JSON.parse(JSON.stringify(_gresDraft));
   try{
     localStorage.setItem('pmo_pds_data',JSON.stringify(ALL_PDS));
     localStorage.setItem('pmo_data_ver','2');
   }catch(e){}
-  // Clear badge optimistically (data is safe in localStorage)
   gresUnsaved=false;
   document.getElementById('gres-unsaved').classList.remove('show');
   if(window.SB && SB.isOnline){
@@ -5378,12 +5381,14 @@ function exportResToExcel(mode){
     p=key?ALL_PDS.find(function(x){return ((x.id0||'')+'_'+x.id2)===key;}) : null;
   }
   if(!p){showToast('Selecciona um plano primeiro','red');return;}
-  ensureFTE(p);
-  if(!p.fte.recursos.length){showToast('Sem recursos para exportar.','amber');return;}
-  var du=p.fte.dias_uteis||22;
+  // In gestao mode use the live draft; otherwise use committed p.fte
+  var fte=(mode==='gestao' && _gresDraft && _gresDraftKey===((p.id0||'')+'_'+p.id2))
+    ? _gresDraft : (ensureFTE(p), p.fte);
+  if(!fte.recursos.length){showToast('Sem recursos para exportar.','amber');return;}
+  var du=fte.dias_uteis||22;
   var base=getBaseMoeda?getBaseMoeda():'€';
   var sheetRows=[['Nome','Unidade','Perfil','Tipo','Custo/dia','Projecto N2','Data início','Data fim','% Aloc.','Contrato','Estado','Custo est.']];
-  p.fte.recursos.forEach(function(r){
+  fte.recursos.forEach(function(r){
     var ct=((p.finances&&p.finances.contratos)||[]).find(function(c){return c.id===r.contrato_id;});
     var n2label=r.id2||'';
     var gRow=(ALL_GANTT||[]).find(function(g){return g.id2===r.id2;});
