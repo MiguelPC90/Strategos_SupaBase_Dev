@@ -1419,6 +1419,15 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
         <div id="fin-config-list"></div>
       </div>
       <div class="card">
+        <div class="card-title">Perfis de Recursos</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Lista de perfis disponíveis no menu Gestão de Recursos.</div>
+        <div id="res-perfil-list" style="margin-bottom:10px;max-height:160px;overflow-y:auto"></div>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="res-perfil-input" placeholder="Ex: PM, Developer, Analista" style="flex:1;padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);font-family:inherit" onkeydown="if(event.key==='Enter')addResPerfil()">
+          <button class="btn" style="font-size:12px" onclick="addResPerfil()">+ Adicionar</button>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-title">Histórico de snapshots</div>
         <div id="snap-history-list" style="font-size:13px;max-height:200px;overflow-y:auto"></div>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
@@ -4141,6 +4150,7 @@ function populateAdminPanel(){
   renderPrograms();
   renderEixos();
   renderFinConfig();
+  renderResPerfilList();
   document.getElementById('cfg-cutoff-date').value = CFG.cutoffDate||'';
   if(CFG.logo){ const p=document.getElementById('cfg-logo-preview'); p.src=CFG.logo; p.style.display='block'; }
   buildColorRows();
@@ -5131,6 +5141,22 @@ function ensureFTE(p){
   if(!p.fte.dias_uteis) p.fte.dias_uteis=22;
 }
 
+function _gresPerfisSelect(idx, current){
+  var perfis=CFG.resPerfis||[];
+  // Se o valor actual não está na lista, inclui-o como opção extra
+  var opts='<option value="">— perfil —</option>';
+  var hasMatch=false;
+  perfis.forEach(function(p){
+    var sel=(p===current)?' selected':'';
+    if(p===current) hasMatch=true;
+    opts+='<option value="'+esc(p)+'"'+sel+'>'+esc(p)+'</option>';
+  });
+  if(current && !hasMatch){
+    opts+='<option value="'+esc(current)+'" selected>'+esc(current)+'</option>';
+  }
+  return '<select class="risk-select" onchange="gresField('+idx+',\'perfil\',this.value)">'+opts+'</select>';
+}
+
 function _fteGetCurrentPDS(){
   var key=document.getElementById('gres-selector').value;
   return key ? ALL_PDS.find(function(p){ return ((p.id0||'')+'_'+p.id2)===key; }) : null;
@@ -5762,7 +5788,7 @@ function renderGRes(p){
       // Linha 1: nome, perfil, tipo, % aloc, estado, delete
       +'<div class="fte-card-main">'
       +'<div><div class="fte-lbl">Nome *</div><input class="risk-input" value="'+esc(r.nome)+'" placeholder="Nome do recurso" onchange="gresField('+i+',\'nome\',this.value)"></div>'
-      +'<div><div class="fte-lbl">Perfil</div><input class="risk-input" value="'+esc(r.perfil)+'" placeholder="Ex: PM, Dev" onchange="gresField('+i+',\'perfil\',this.value)"></div>'
+      +'<div><div class="fte-lbl">Perfil</div>'+_gresPerfisSelect(i, r.perfil)+'</div>'
       +'<div><div class="fte-lbl">Tipo</div><select class="risk-select" onchange="gresField('+i+',\'tipo\',this.value);renderGRes()"><option value="interno"'+(r.tipo==='interno'?' selected':'')+'>Interno</option><option value="externo"'+(r.tipo==='externo'?' selected':'')+'>Externo</option></select></div>'
       +'<div><div class="fte-lbl">% Aloc.</div><input class="risk-input" type="number" min="0" max="200" step="5" style="text-align:right" value="'+(r.alocacao_pct||100)+'" onchange="gresField('+i+',\'alocacao_pct\',this.value)"></div>'
       +'<div><div class="fte-lbl">Estado</div><select class="risk-select" onchange="gresField('+i+',\'estado\',this.value)"><option value="activo"'+(r.estado==='activo'?' selected':'')+'>Activo</option><option value="inactivo"'+(r.estado==='inactivo'?' selected':'')+'>Inactivo</option></select></div>'
@@ -5912,6 +5938,35 @@ function exportResToExcel(mode){
   showToast('Recursos exportados!','green');
 }
 
+
+// ── PERFIS DE RECURSOS ────────────────────────────────────────────────────────
+function renderResPerfilList(){
+  var wrap=document.getElementById('res-perfil-list'); if(!wrap) return;
+  var perfis=CFG.resPerfis||[];
+  if(!perfis.length){ wrap.innerHTML='<div style="color:var(--text3);font-size:12px;font-style:italic">Sem perfis definidos.</div>'; return; }
+  wrap.innerHTML='<div style="display:flex;flex-direction:column;gap:5px">'+perfis.map(function(p,i){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--bg2);border-radius:var(--r)">'
+      +'<span style="font-size:12px;flex:1">'+esc(p)+'</span>'
+      +'<button onclick="removeResPerfil('+i+')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px">&#10005;</button>'
+      +'</div>';
+  }).join('')+'</div>';
+}
+
+function addResPerfil(){
+  var inp=document.getElementById('res-perfil-input');
+  var val=inp.value.trim(); if(!val) return;
+  if(!CFG.resPerfis) CFG.resPerfis=[];
+  if(CFG.resPerfis.includes(val)){ inp.value=''; return; }
+  CFG.resPerfis.push(val);
+  saveCfg(); renderResPerfilList();
+  inp.value='';
+}
+
+function removeResPerfil(i){
+  if(!confirm('Remover perfil?')) return;
+  (CFG.resPerfis||[]).splice(i,1);
+  saveCfg(); renderResPerfilList();
+}
 
 // ── PROGRAM (N0) MANAGEMENT ───────────────────────────────────────────────────
 function renderPrograms(){
