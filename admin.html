@@ -198,6 +198,10 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
         <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <span class="nav-label">Risco</span>
       </button>
+      <button class="admin-nav-item" data-panel="recursos" data-tooltip="Recursos" onclick="showPanel('recursos',this)">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <span class="nav-label">Recursos</span>
+      </button>
       <div class="admin-nav-sep"></div>
       <span class="admin-nav-section">Sistema</span>
       <button class="admin-nav-item" data-panel="historico" data-tooltip="Histórico" onclick="showPanel('historico',this)">
@@ -328,10 +332,16 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
           <button class="abtn abtn-primary" onclick="adminAddEixo()">+ Adicionar</button>
         </div>
       </div>
+    </div>
+
+    <!-- RECURSOS -->
+    <div id="panel-recursos" class="admin-panel">
+      <h2>Recursos</h2>
+      <p class="panel-desc">Listas de valores disponíveis no menu Gestão de Recursos</p>
       <div class="acard">
         <div class="acard-title">Perfis de Recursos</div>
         <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Lista de perfis disponíveis no menu Gestão de Recursos.</p>
-        <div id="admin-res-perfil-list" style="margin-bottom:12px;max-height:240px;overflow-y:auto"></div>
+        <div id="admin-res-perfil-list" style="margin-bottom:12px;max-height:300px;overflow-y:auto"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <input class="ainput" id="new-res-perfil" placeholder="Ex: PM, Developer, Analista" style="flex:1;min-width:160px" onkeydown="if(event.key==='Enter')adminAddResPerfil()">
           <button class="abtn abtn-primary" onclick="adminAddResPerfil()">+ Adicionar</button>
@@ -340,7 +350,7 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
       <div class="acard">
         <div class="acard-title">Unidades Organizacionais</div>
         <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Lista de unidades disponíveis no menu Gestão de Recursos.</p>
-        <div id="admin-res-unidade-list" style="margin-bottom:12px;max-height:240px;overflow-y:auto"></div>
+        <div id="admin-res-unidade-list" style="margin-bottom:12px;max-height:300px;overflow-y:auto"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <input class="ainput" id="new-res-unidade" placeholder="Ex: TI, Negócio, Operações" style="flex:1;min-width:160px" onkeydown="if(event.key==='Enter')adminAddResUnidade()">
           <button class="abtn abtn-primary" onclick="adminAddResUnidade()">+ Adicionar</button>
@@ -707,6 +717,7 @@ function showPanel(id,el){
   // Refresh panel-specific content
   if(id==='estrutura'){ autoDetectPrograms(); renderEstrutura(); }
   if(id==='financeiro'){ autoDetectPrograms(); renderFinAdmin(); }
+  if(id==='recursos'){ renderResPerfilAdmin(); renderResUnidadeAdmin(); }
   if(id==='historico') renderHistorico();
   if(id==='risco') renderRisco();
   if(id==='cores') renderCores();
@@ -954,9 +965,6 @@ function renderEstrutura(){
   epSel.innerHTML='<option value="">— programa —</option>'+progs.map(function(p){
     return '<option>'+esc(p.name)+'</option>';
   }).join('');
-
-  renderResPerfilAdmin();
-  renderResUnidadeAdmin();
 
   // Eixos — from fetched gantt data
   const el=document.getElementById('admin-eixo-list');
