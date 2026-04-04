@@ -1428,6 +1428,15 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
         </div>
       </div>
       <div class="card">
+        <div class="card-title">Unidades Organizacionais</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Lista de unidades disponíveis no menu Gestão de Recursos.</div>
+        <div id="res-unidade-list" style="margin-bottom:10px;max-height:160px;overflow-y:auto"></div>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="res-unidade-input" placeholder="Ex: TI, Negócio, Operações" style="flex:1;padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);font-family:inherit" onkeydown="if(event.key==='Enter')addResUnidade()">
+          <button class="btn" style="font-size:12px" onclick="addResUnidade()">+ Adicionar</button>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-title">Histórico de snapshots</div>
         <div id="snap-history-list" style="font-size:13px;max-height:200px;overflow-y:auto"></div>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
@@ -3589,6 +3598,7 @@ const DEF={title:'Strategos',subtitle:'Plano Estratégico',refDate:'',logo:'',fi
   resPerfis:['Gestor de Projecto','PMO','Sponsor','Consultor Sénior','Consultor',
     'Especialista de Negócio','Analista de Negócio','Arquitecto de Solução',
     'Desenvolvedor','Gestor de Mudança','Especialista de Dados','Jurídico / Compliance'],
+  resUnidades:[],
   colors:[
     {label:'Cor primária',key:'--navy',val:'#002E5E'},
     {label:'Cor secundária',key:'--green',val:'#95BB42'},
@@ -3601,12 +3611,14 @@ let CFG=JSON.parse(JSON.stringify(DEF));
 function loadCfg(){
   try{const s=localStorage.getItem('pmo_cfg');if(s)CFG=JSON.parse(s);}catch(e){}
   if(!CFG.resPerfis||!CFG.resPerfis.length) CFG.resPerfis=JSON.parse(JSON.stringify(DEF.resPerfis));
+  if(!CFG.resUnidades) CFG.resUnidades=[];
   // Overlay assíncrono do Supabase (não bloqueia)
   if(window.SB && SB.isOnline){
     SB.loadConfig().then(function(remote){
       if(remote){
         CFG=Object.assign({},CFG,remote);
         if(!CFG.resPerfis||!CFG.resPerfis.length) CFG.resPerfis=JSON.parse(JSON.stringify(DEF.resPerfis));
+        if(!CFG.resUnidades) CFG.resUnidades=[];
         applyAll();
       }
     }).catch(function(){});
@@ -4159,6 +4171,7 @@ function populateAdminPanel(){
   renderEixos();
   renderFinConfig();
   renderResPerfilList();
+  renderResUnidadeList();
   document.getElementById('cfg-cutoff-date').value = CFG.cutoffDate||'';
   if(CFG.logo){ const p=document.getElementById('cfg-logo-preview'); p.src=CFG.logo; p.style.display='block'; }
   buildColorRows();
@@ -5149,6 +5162,21 @@ function ensureFTE(p){
   if(!p.fte.dias_uteis) p.fte.dias_uteis=22;
 }
 
+function _gresUnidadeSelect(idx, current){
+  var unidades=CFG.resUnidades||[];
+  var opts='<option value="">— unidade —</option>';
+  var hasMatch=false;
+  unidades.forEach(function(u){
+    var sel=(u===current)?' selected':'';
+    if(u===current) hasMatch=true;
+    opts+='<option value="'+esc(u)+'"'+sel+'>'+esc(u)+'</option>';
+  });
+  if(current && !hasMatch){
+    opts+='<option value="'+esc(current)+'" selected>'+esc(current)+'</option>';
+  }
+  return '<select class="risk-select" onchange="gresField('+idx+',\'unidade\',this.value)">'+opts+'</select>';
+}
+
 function _gresPerfisSelect(idx, current){
   var perfis=CFG.resPerfis||[];
   // Se o valor actual não está na lista, inclui-o como opção extra
@@ -5804,7 +5832,7 @@ function renderGRes(p){
       +'</div>'
       // Linha 2: unidade, custo/dia, projecto, data início, data fim, contrato
       +'<div class="fte-card-detail'+(isExt?' has-contrato':'')+'">'
-      +'<div><div class="fte-lbl">Unidade</div><input class="risk-input" value="'+esc(r.unidade)+'" placeholder="Ex: TI" onchange="gresField('+i+',\'unidade\',this.value)"></div>'
+      +'<div><div class="fte-lbl">Unidade</div>'+_gresUnidadeSelect(i, r.unidade)+'</div>'
       +'<div><div class="fte-lbl">Custo/dia</div><input class="risk-input" type="number" min="0" step="10" style="text-align:right" value="'+(r.custo_dia||0)+'" onchange="gresField('+i+',\'custo_dia\',this.value)"></div>'
       +'<div><div class="fte-lbl">Projecto (N2)</div><select class="risk-select" onchange="gresField('+i+',\'id2\',this.value)">'+_fteN2Opts(p,r.id2)+'</select></div>'
       +'<div><div class="fte-lbl">Data início</div><input class="risk-input" type="date" value="'+(r.data_inicio||'')+'" onchange="gresField('+i+',\'data_inicio\',this.value)"></div>'
@@ -5948,6 +5976,32 @@ function exportResToExcel(mode){
 
 
 // ── PERFIS DE RECURSOS ────────────────────────────────────────────────────────
+function renderResUnidadeList(){
+  var wrap=document.getElementById('res-unidade-list'); if(!wrap) return;
+  var unidades=CFG.resUnidades||[];
+  if(!unidades.length){ wrap.innerHTML='<div style="color:var(--text3);font-size:12px;font-style:italic">Sem unidades definidas.</div>'; return; }
+  wrap.innerHTML='<div style="display:flex;flex-direction:column;gap:5px">'+unidades.map(function(u,i){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--bg2);border-radius:var(--r)">'
+      +'<span style="font-size:12px;flex:1">'+esc(u)+'</span>'
+      +'<button onclick="removeResUnidade('+i+')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px">&#10005;</button>'
+      +'</div>';
+  }).join('')+'</div>';
+}
+function addResUnidade(){
+  var inp=document.getElementById('res-unidade-input');
+  var val=inp.value.trim(); if(!val) return;
+  if(!CFG.resUnidades) CFG.resUnidades=[];
+  if(CFG.resUnidades.includes(val)){ inp.value=''; return; }
+  CFG.resUnidades.push(val);
+  saveCfg(); renderResUnidadeList();
+  inp.value='';
+}
+function removeResUnidade(i){
+  if(!confirm('Remover unidade?')) return;
+  (CFG.resUnidades||[]).splice(i,1);
+  saveCfg(); renderResUnidadeList();
+}
+
 function renderResPerfilList(){
   var wrap=document.getElementById('res-perfil-list'); if(!wrap) return;
   var perfis=CFG.resPerfis||[];
