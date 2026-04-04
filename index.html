@@ -3586,6 +3586,9 @@ function handleFile(input){
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────────
 const DEF={title:'Strategos',subtitle:'Plano Estratégico',refDate:'',logo:'',filterLabels:{},
+  resPerfis:['Gestor de Projecto','PMO','Sponsor','Consultor Sénior','Consultor',
+    'Especialista de Negócio','Analista de Negócio','Arquitecto de Solução',
+    'Desenvolvedor','Gestor de Mudança','Especialista de Dados','Jurídico / Compliance'],
   colors:[
     {label:'Cor primária',key:'--navy',val:'#002E5E'},
     {label:'Cor secundária',key:'--green',val:'#95BB42'},
@@ -3597,10 +3600,15 @@ let CFG=JSON.parse(JSON.stringify(DEF));
 
 function loadCfg(){
   try{const s=localStorage.getItem('pmo_cfg');if(s)CFG=JSON.parse(s);}catch(e){}
+  if(!CFG.resPerfis||!CFG.resPerfis.length) CFG.resPerfis=JSON.parse(JSON.stringify(DEF.resPerfis));
   // Overlay assíncrono do Supabase (não bloqueia)
   if(window.SB && SB.isOnline){
     SB.loadConfig().then(function(remote){
-      if(remote){ CFG=Object.assign({},CFG,remote); applyAll(); }
+      if(remote){
+        CFG=Object.assign({},CFG,remote);
+        if(!CFG.resPerfis||!CFG.resPerfis.length) CFG.resPerfis=JSON.parse(JSON.stringify(DEF.resPerfis));
+        applyAll();
+      }
     }).catch(function(){});
   }
 }

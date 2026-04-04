@@ -585,14 +585,23 @@ const DEF={title:'Strategos',subtitle:'Plano Estratégico',refDate:'',logo:'',fi
   riskMatrix:5,
   riskThresholds:{low:4,med:9,high:16},
   riskEstados:['Aberto','Em mitigação','Mitigado','Fechado'],
+  resPerfis:['Gestor de Projecto','PMO','Sponsor','Consultor Sénior','Consultor',
+    'Especialista de Negócio','Analista de Negócio','Arquitecto de Solução',
+    'Desenvolvedor','Gestor de Mudança','Especialista de Dados','Jurídico / Compliance'],
   theme:'light'
 };
 let CFG=JSON.parse(JSON.stringify(DEF));
 function loadCfg(){
   try{ const s=localStorage.getItem('pmo_cfg'); if(s) CFG=JSON.parse(s); }catch(e){}
+  // backfill defaults for keys absent in older saved configs
+  if(!CFG.resPerfis || !CFG.resPerfis.length) CFG.resPerfis=JSON.parse(JSON.stringify(DEF.resPerfis));
   if(window.SB && SB.isOnline){
     SB.loadConfig().then(function(remote){
-      if(remote){ CFG=Object.assign({},CFG,remote); initAdmin(); }
+      if(remote){
+        CFG=Object.assign({},CFG,remote);
+        if(!CFG.resPerfis || !CFG.resPerfis.length) CFG.resPerfis=JSON.parse(JSON.stringify(DEF.resPerfis));
+        initAdmin();
+      }
     }).catch(function(){});
   }
 }
@@ -986,12 +995,41 @@ function renderResPerfilAdmin(){
   const perfis=CFG.resPerfis||[];
   wrap.innerHTML=perfis.length
     ? perfis.map(function(p,i){
-        return '<div class="prog-card">'
-          +'<div style="flex:1;font-size:12px">'+esc(p)+'</div>'
+        return '<div class="prog-card" id="res-perfil-row-'+i+'">'
+          +'<div style="flex:1;font-size:12px" id="res-perfil-lbl-'+i+'">'+esc(p)+'</div>'
+          +'<input class="ainput" id="res-perfil-inp-'+i+'" value="'+esc(p)+'" style="flex:1;display:none;font-size:12px;padding:3px 7px" onkeydown="if(event.key===\'Enter\')adminSaveResPerfil('+i+');if(event.key===\'Escape\')adminCancelResPerfil('+i+')">'
+          +'<div style="display:flex;gap:4px">'
+          +'<button class="abtn abtn-sm" id="res-perfil-edit-'+i+'" onclick="adminEditResPerfil('+i+')" title="Editar">✎</button>'
+          +'<button class="abtn abtn-sm" id="res-perfil-save-'+i+'" onclick="adminSaveResPerfil('+i+')" style="display:none">✓</button>'
           +'<button class="abtn abtn-sm abtn-danger" onclick="adminRemoveResPerfil('+i+')">✕</button>'
+          +'</div>'
           +'</div>';
       }).join('')
     : '<div style="color:var(--text3);font-size:12px;font-style:italic;padding:8px 0">Sem perfis definidos.</div>';
+}
+function adminEditResPerfil(i){
+  document.getElementById('res-perfil-lbl-'+i).style.display='none';
+  document.getElementById('res-perfil-inp-'+i).style.display='';
+  document.getElementById('res-perfil-edit-'+i).style.display='none';
+  document.getElementById('res-perfil-save-'+i).style.display='';
+  document.getElementById('res-perfil-inp-'+i).focus();
+}
+function adminCancelResPerfil(i){
+  const p=(CFG.resPerfis||[])[i]||'';
+  document.getElementById('res-perfil-inp-'+i).value=p;
+  document.getElementById('res-perfil-lbl-'+i).style.display='';
+  document.getElementById('res-perfil-inp-'+i).style.display='none';
+  document.getElementById('res-perfil-edit-'+i).style.display='';
+  document.getElementById('res-perfil-save-'+i).style.display='none';
+}
+function adminSaveResPerfil(i){
+  const val=document.getElementById('res-perfil-inp-'+i).value.trim();
+  if(!val){toast('O nome não pode ser vazio.','var(--red)');return;}
+  const others=(CFG.resPerfis||[]).filter(function(_,j){return j!==i;});
+  if(others.includes(val)){toast('Perfil já existe.','var(--amber)');return;}
+  CFG.resPerfis[i]=val;
+  saveCfg(); renderResPerfilAdmin();
+  toast('Perfil actualizado.');
 }
 function adminAddResPerfil(){
   const val=document.getElementById('new-res-perfil').value.trim();
