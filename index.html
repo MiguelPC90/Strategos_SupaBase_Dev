@@ -5207,6 +5207,21 @@ function _resIsActiveInMonth(r, ym){
   return rs<=ym && ym<=re;
 }
 
+// Fraction (0–1) of month ym covered by resource r's dates (pro-rata por dias de calendário)
+function _resActiveRatio(r, ym){
+  if(!r.data_inicio || !r.data_fim) return 0;
+  var y=parseInt(ym.slice(0,4),10), m=parseInt(ym.slice(5,7),10);
+  var mStart=new Date(y,m-1,1);
+  var mEnd=new Date(y,m,0); // último dia do mês
+  var rStart=new Date(r.data_inicio); var rEnd=new Date(r.data_fim);
+  if(rEnd<mStart||rStart>mEnd) return 0;
+  var effStart=rStart<mStart?mStart:rStart;
+  var effEnd=rEnd>mEnd?mEnd:rEnd;
+  var totalDays=mEnd.getDate();
+  var activeDays=Math.round((effEnd-effStart)/(1000*60*60*24))+1;
+  return Math.min(activeDays/totalDays, 1);
+}
+
 // Monthly cost for resource r: (pct/100)*du*custo_dia; null if no custo_dia
 function _resCostMonth(r, du){
   if(!r.custo_dia) return null;
@@ -5319,13 +5334,15 @@ function renderResKPIs(ini, fim){
   var uniqueNames=new Set(allRec.map(function(x){return (x.r.nome||'').toLowerCase().trim();}));
   var uniqueCount=uniqueNames.size;
 
-  // KPI 2: avg monthly FTE — average over months that have any active resource
+  // KPI 2: avg monthly FTE usando fórmula: ratio × (pct/100) por recurso por mês
+  // média sobre meses com pelo menos um recurso activo
   var fteMonthly=0;
   if(months.length){
     var fteSum=0, activeMonthCount=0;
     months.forEach(function(ym){
       var mFte=allRec.reduce(function(ms,x){
-        return ms+(_resIsActiveInMonth(x.r,ym)?(x.r.alocacao_pct||0)/100:0);
+        var ratio=_resActiveRatio(x.r,ym);
+        return ms+ratio*(x.r.alocacao_pct||0)/100;
       },0);
       fteSum+=mFte;
       if(mFte>0) activeMonthCount++;
@@ -5410,7 +5427,7 @@ function renderResByPlano(ini, fim){
         backgroundColor: palette[i%palette.length],
         data: months.map(function(ym){
           return (p.fte.recursos||[]).reduce(function(s,r){
-            return s+(_resIsActiveInMonth(r,ym)?(r.alocacao_pct||0)/100:0);
+            return s+_resActiveRatio(r,ym)*(r.alocacao_pct||0)/100;
           },0);
         }),
         stack:'s'
@@ -5423,7 +5440,7 @@ function renderResByPlano(ini, fim){
         data: months.map(function(ym){
           return otherPlans.reduce(function(ps,p){
             return ps+(p.fte.recursos||[]).reduce(function(s,r){
-              return s+(_resIsActiveInMonth(r,ym)?(r.alocacao_pct||0)/100:0);
+              return ps+_resActiveRatio(r,ym)*(r.alocacao_pct||0)/100;
             },0);
           },0);
         }),
@@ -5458,14 +5475,15 @@ function renderResByPlano(ini, fim){
     var rec=p.fte.recursos||[];
     var du=p.fte.dias_uteis||22;
 
-    // FTE avg
-    var fteSum=0;
+    // FTE avg usando ratio × (pct/100), média sobre meses com recursos activos
+    var fteSum=0, activeMthCount=0;
     if(months.length){
       months.forEach(function(ym){
-        rec.forEach(function(r){ if(_resIsActiveInMonth(r,ym)) fteSum+=(r.alocacao_pct||0)/100; });
+        var mFte=rec.reduce(function(s,r){ return s+_resActiveRatio(r,ym)*(r.alocacao_pct||0)/100; },0);
+        fteSum+=mFte; if(mFte>0) activeMthCount++;
       });
     }
-    var fteAvg=months.length?fteSum/months.length:0;
+    var fteAvg=activeMthCount?fteSum/activeMthCount:0;
 
     // Cost
     var cost=0; var hasCost=false;
