@@ -5353,22 +5353,20 @@ function initRecursos(){
 function renderRecursosView(){
   var ini=document.getElementById('res-ini').value;
   var fim=document.getElementById('res-fim').value;
-  // check if any plan has resources
   var hasAny=fPDS.some(function(p){
     ensureFTE(p);
     return (p.fte.recursos||[]).length>0;
   });
   var empty=document.getElementById('res-view-empty');
-  var kpisEl=document.getElementById('res-kpis');
+  // KPIs always rendered (shows zeros/dashes when no data)
+  renderResKPIs(ini||'', fim||'');
   if(!hasAny || !ini || !fim){
     empty.style.display='block';
-    kpisEl.innerHTML='';
     document.getElementById('res-plano-content').style.display='none';
     document.getElementById('res-recurso-content').style.display='none';
     return;
   }
   empty.style.display='none';
-  renderResKPIs(ini, fim);
   _renderResContent(ini, fim);
 }
 
