@@ -328,6 +328,15 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
           <button class="abtn abtn-primary" onclick="adminAddEixo()">+ Adicionar</button>
         </div>
       </div>
+      <div class="acard">
+        <div class="acard-title">Perfis de Recursos</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Lista de perfis disponíveis no menu Gestão de Recursos.</p>
+        <div id="admin-res-perfil-list" style="margin-bottom:12px;max-height:240px;overflow-y:auto"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input class="ainput" id="new-res-perfil" placeholder="Ex: PM, Developer, Analista" style="flex:1;min-width:160px" onkeydown="if(event.key==='Enter')adminAddResPerfil()">
+          <button class="abtn abtn-primary" onclick="adminAddResPerfil()">+ Adicionar</button>
+        </div>
+      </div>
     </div>
 
     <!-- FINANCEIRO -->
@@ -925,6 +934,8 @@ function renderEstrutura(){
     return '<option>'+esc(p.name)+'</option>';
   }).join('');
 
+  renderResPerfilAdmin();
+
   // Eixos — from fetched gantt data
   const el=document.getElementById('admin-eixo-list');
   if(adminGantt.length){
@@ -968,6 +979,35 @@ function adminRemoveProgram(i){
   CFG.programs.splice(i,1);
   saveCfg(); renderEstrutura(); renderFinAdmin();
   toast('Programa removido.');
+}
+
+function renderResPerfilAdmin(){
+  const wrap=document.getElementById('admin-res-perfil-list'); if(!wrap) return;
+  const perfis=CFG.resPerfis||[];
+  wrap.innerHTML=perfis.length
+    ? perfis.map(function(p,i){
+        return '<div class="prog-card">'
+          +'<div style="flex:1;font-size:12px">'+esc(p)+'</div>'
+          +'<button class="abtn abtn-sm abtn-danger" onclick="adminRemoveResPerfil('+i+')">✕</button>'
+          +'</div>';
+      }).join('')
+    : '<div style="color:var(--text3);font-size:12px;font-style:italic;padding:8px 0">Sem perfis definidos.</div>';
+}
+function adminAddResPerfil(){
+  const val=document.getElementById('new-res-perfil').value.trim();
+  if(!val){toast('O nome é obrigatório.','var(--red)');return;}
+  if(!CFG.resPerfis) CFG.resPerfis=[];
+  if(CFG.resPerfis.includes(val)){toast('Perfil já existe.','var(--amber)');return;}
+  CFG.resPerfis.push(val);
+  document.getElementById('new-res-perfil').value='';
+  saveCfg(); renderResPerfilAdmin();
+  toast('Perfil adicionado.');
+}
+function adminRemoveResPerfil(i){
+  if(!confirm('Remover perfil?')) return;
+  (CFG.resPerfis||[]).splice(i,1);
+  saveCfg(); renderResPerfilAdmin();
+  toast('Perfil removido.');
 }
 function adminAddEixo(){
   // Eixos are managed via Excel import — just inform
