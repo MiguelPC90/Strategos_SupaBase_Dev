@@ -367,6 +367,37 @@ body.pmo-readonly .grisk-input{pointer-events:none;border-color:transparent!impo
 .res-pct-fill.over{background:#ef4444}
 @media(max-width:900px){.fte-card-main{grid-template-columns:1fr 70px 70px 36px}.fte-card-detail{grid-template-columns:1fr 1fr}.fte-hide-sm{display:none}.res-view-row{grid-template-columns:1fr 70px 70px}}
 
+/* ── Recursos portfolio view ── */
+.res-kpi-grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1rem}
+.res-plan-row{display:grid;grid-template-columns:1.8fr 1fr 70px 80px 110px 80px 70px 36px;gap:6px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer}
+.res-plan-row:hover{background:var(--bg2)}
+.res-plan-hdr{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.03em;background:var(--bg2);border-radius:var(--r) var(--r) 0 0;cursor:default}
+.res-plan-hdr:hover{background:var(--bg2)}
+.res-detail-row{display:none;background:var(--bg2);padding:8px 12px 8px 24px;border-bottom:1px solid var(--border)}
+.res-detail-row.open{display:block}
+.res-expand-btn{background:none;border:1px solid var(--border2);border-radius:var(--r);width:26px;height:26px;cursor:pointer;font-size:11px;color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.res-expand-btn.open{background:var(--navy);color:#fff;border-color:var(--navy)}
+.res-heatmap-tbl{border-collapse:collapse;font-size:11px;min-width:100%}
+.res-heatmap-tbl th{padding:5px 8px;background:var(--bg2);font-size:10px;font-weight:600;color:var(--text2);text-align:center;border:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:2}
+.res-heatmap-tbl th.res-hm-name{text-align:left;min-width:160px;position:sticky;left:0;z-index:3;background:var(--bg2)}
+.res-heatmap-tbl td{padding:4px 6px;border:1px solid var(--border);text-align:center;font-size:10px;white-space:nowrap;min-width:52px}
+.res-heatmap-tbl td.res-hm-name{text-align:left;padding:4px 10px;cursor:pointer;position:sticky;left:0;background:var(--bg);z-index:1;min-width:160px}
+.res-heatmap-tbl td.res-hm-name:hover{color:var(--navy);text-decoration:underline}
+.res-heatmap-tbl tr:hover td{filter:brightness(.95)}
+.res-side-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:999}
+.res-side-body{position:fixed;top:0;right:0;width:min(380px,96vw);height:100vh;background:var(--bg);border-left:1px solid var(--border);box-shadow:-4px 0 24px rgba(0,0,0,.15);z-index:1000;overflow-y:auto;display:flex;flex-direction:column}
+.res-side-header{display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);gap:8px;background:var(--navy)}
+.res-side-title{font-size:15px;font-weight:700;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res-side-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer;line-height:1;padding:0 4px}
+.res-side-close:hover{color:#fff}
+#res-sp-content{padding:16px 20px;flex:1}
+@media(max-width:900px){
+  .res-kpi-grid-5{grid-template-columns:repeat(3,1fr)}
+  .res-plan-row{grid-template-columns:1fr 70px 70px 32px}
+  .res-plan-row>*:nth-child(2),.res-plan-row>*:nth-child(5),.res-plan-row>*:nth-child(6),.res-plan-row>*:nth-child(7){display:none}
+}
+@media(max-width:580px){.res-kpi-grid-5{grid-template-columns:repeat(2,1fr)}}
+
 
 .pm-table tr.drag-over td{border-top:2px solid var(--navy)!important}
 .pm-table tr.dragging{opacity:.4}
@@ -1133,32 +1164,46 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 <!-- RECURSOS (visualização) -->
 <div id="recursos" class="section">
   <div class="pm-toolbar">
-    <div class="pm-sel-wrap">
-      <span class="pm-sel-lbl">Plano</span>
-      <select id="res-plan-sel" class="pm-sel" onchange="loadAndRenderRecursos()"></select>
+    <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px">
+      De <input type="month" id="res-ini" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg)" onchange="renderRecursosView()">
+    </label>
+    <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px">
+      Até <input type="month" id="res-fim" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg)" onchange="renderRecursosView()">
+    </label>
+    <div style="display:flex;gap:4px;margin-left:8px">
+      <button class="chip active" id="res-chip-plano" onclick="setResView('plano',this)" style="font-size:11px">Vista por plano</button>
+      <button class="chip" id="res-chip-recurso" onclick="setResView('recurso',this)" style="font-size:11px">Vista por recurso</button>
     </div>
-    <div style="margin-left:auto;display:flex;gap:8px">
+    <div style="margin-left:auto">
       <button class="btn" style="font-size:12px" onclick="exportResToExcel()">&#8595; Exportar Excel</button>
     </div>
   </div>
-  <div id="res-view-content" style="display:none">
-    <div id="res-kpis" class="res-kpi-grid"></div>
+  <div id="res-kpis" class="res-kpi-grid-5"></div>
+  <div id="res-plano-content">
+    <div class="card" style="padding:12px;margin-bottom:1rem">
+      <canvas id="res-chart-fte" style="max-height:200px"></canvas>
+    </div>
     <div class="card" style="padding:0;overflow:hidden">
-      <div class="res-view-row res-view-hdr">
-        <div>Nome</div>
-        <div class="fte-hide-sm">Unidade</div>
-        <div class="fte-hide-sm">Perfil</div>
-        <div>Tipo</div>
-        <div>Projecto</div>
-        <div>Início</div>
-        <div>Fim</div>
-        <div style="text-align:right">% Aloc.</div>
-        <div>Estado</div>
-      </div>
-      <div id="res-list"></div>
+      <div id="res-plan-list"></div>
     </div>
   </div>
-  <div id="res-view-empty" style="text-align:center;padding:3rem;color:var(--text2);font-size:13px">Selecciona um plano para ver os recursos.</div>
+  <div id="res-recurso-content" style="display:none">
+    <div class="card" style="padding:0;overflow:auto;max-height:70vh">
+      <table id="res-heatmap-table" class="res-heatmap-tbl"></table>
+    </div>
+  </div>
+  <div id="res-view-empty" style="display:none;text-align:center;padding:3rem;color:var(--text2);font-size:13px">Nenhum plano com recursos no período seleccionado.</div>
+</div>
+
+<div id="res-side-panel" style="display:none">
+  <div class="res-side-backdrop" onclick="closeResSidePanel()"></div>
+  <div class="res-side-body">
+    <div class="res-side-header">
+      <span class="res-side-title" id="res-sp-nome"></span>
+      <button class="res-side-close" onclick="closeResSidePanel()">&#10005;</button>
+    </div>
+    <div id="res-sp-content"></div>
+  </div>
 </div>
 
 
@@ -1520,6 +1565,8 @@ const ACOL={};    // activities collapsed
 let ganttMaxLevel=4;
 let ganttGranularity='month'; // 'week' | 'month' | 'quarter'
 let eixoView='eixo';
+var _resView='plano'; // 'plano' | 'recurso'
+var resCharts={};
 
 const SC={"Concluído":{bg:"#EAF3DE",tc:"#3B6D11",bar:"#95BB42"},"Em dia":{bg:"#E6F1FB",tc:"#185FA5",bar:"#002E5E"},"Em atraso":{bg:"#FCEBEB",tc:"#A32D2D",bar:"#E24B4A"}};
 
@@ -3134,6 +3181,7 @@ function renderAll(){
   if(tab==='gestao'){ renderPMTable(); }
   if(tab==='gestao-pds'){ initGPDS(); }
   if(tab==='gestao-riscos'){ initGRisk(); }
+  if(tab==='recursos'){ initRecursos(); }
 }
 
 // ── UPLOAD ────────────────────────────────────────────────────────────────────
@@ -5139,6 +5187,53 @@ function _fteEstadoBadge(estado){
   return '<span class="fte-estado-badge fte-activo">Activo</span>';
 }
 
+// ── Recursos portfolio helpers ────────────────────────────────────────────────
+
+// Returns array of 'YYYY-MM' strings between ini and fim inclusive, cap 120
+function _resMonths(ini, fim){
+  if(!ini || !fim) return [];
+  var out=[], cur=ini;
+  for(var i=0;i<120;i++){
+    out.push(cur);
+    if(cur>=fim) break;
+    var y=parseInt(cur.slice(0,4),10), m=parseInt(cur.slice(5,7),10);
+    m++; if(m>12){m=1;y++;}
+    cur=y+'-'+(m<10?'0':'')+m;
+  }
+  return out;
+}
+
+// True if resource r is active during month ym ('YYYY-MM')
+function _resIsActiveInMonth(r, ym){
+  if(!r.data_inicio || !r.data_fim) return false;
+  var rs=r.data_inicio.slice(0,7), re=r.data_fim.slice(0,7);
+  return rs<=ym && ym<=re;
+}
+
+// Monthly cost for resource r: (pct/100)*du*custo_dia; null if no custo_dia
+function _resCostMonth(r, du){
+  if(!r.custo_dia) return null;
+  return ((r.alocacao_pct||0)/100)*(du||22)*r.custo_dia;
+}
+
+// Default period: span of all data_inicio/data_fim across fPDS; fallback current year
+function _resPeriodDefault(){
+  var mins=[], maxs=[];
+  fPDS.forEach(function(p){
+    ensureFTE(p);
+    (p.fte.recursos||[]).forEach(function(r){
+      if(r.data_inicio) mins.push(r.data_inicio.slice(0,7));
+      if(r.data_fim)    maxs.push(r.data_fim.slice(0,7));
+    });
+  });
+  var y=new Date().getFullYear();
+  var ini=mins.length?mins.sort()[0]:y+'-01';
+  var fim=maxs.length?maxs.sort().reverse()[0]:y+'-12';
+  // cap to sane range
+  if(fim<ini) fim=ini;
+  return {ini:ini, fim:fim};
+}
+
 // KPIs da secção de gestão — usa sempre o draft (_gresDraft)
 function _fteRenderKPIs(){
   if(!_gresDraft) return;
@@ -5157,73 +5252,435 @@ function _fteRenderKPIs(){
    +'<div class="kpi"><div class="kpi-lbl">Sobrealocações</div><div class="kpi-val" style="color:'+(over>0?'var(--red)':'var(--green)')+'">'+over+'</div></div>';
 }
 
-// ── Visualização (read-only) ──────────────────────────────────────────────────
+// ── Visualização (portfolio, read-only) ──────────────────────────────────────
+
+function setResView(v, btn){
+  _resView=v;
+  ['plano','recurso'].forEach(function(x){
+    var el=document.getElementById('res-chip-'+x);
+    if(el) el.classList.toggle('active', x===v);
+  });
+  var ini=document.getElementById('res-ini').value;
+  var fim=document.getElementById('res-fim').value;
+  _renderResContent(ini, fim);
+}
 
 function initRecursos(){
-  var sel=document.getElementById('res-plan-sel');
-  var prev=sel.value;
-  sel.innerHTML='<option value="">— seleccionar plano —</option>'+
-    fPDS.map(function(p){
-      var key=(p.id0||'')+'_'+p.id2;
-      var prefix=(p.n0?esc(p.n0)+' › ':'')+esc(p.n1)+' › ';
-      return '<option value="'+esc(key)+'"'+(key===prev?' selected':'')+'>'+prefix+esc(p.plano)+'</option>';
-    }).join('');
-  if(prev && sel.querySelector('option[value="'+prev+'"]')) sel.value=prev;
-  loadAndRenderRecursos();
-}
-
-async function loadAndRenderRecursos(){
-  var key=document.getElementById('res-plan-sel').value;
-  var empty=document.getElementById('res-view-empty');
-  var cont=document.getElementById('res-view-content');
-  if(!key){empty.style.display='block';cont.style.display='none';return;}
-  var p=ALL_PDS.find(function(x){return ((x.id0||'')+'_'+x.id2)===key;});
-  if(!p){empty.style.display='block';cont.style.display='none';return;}
-  // lazy load FTE if not yet loaded
-  if(!p._fteLoaded && window.SB && SB.isOnline && p._supabase_id){
-    try{
-      var fetched=await SB.loadFteForPDS(p._supabase_id);
-      ensureFTE(p); p.fte.recursos=fetched.recursos; p.fte.dias_uteis=fetched.dias_uteis||22;
-      p._fteLoaded=true;
-    }catch(e){ console.warn('loadFteForPDS falhou',e); }
+  var elIni=document.getElementById('res-ini');
+  var elFim=document.getElementById('res-fim');
+  if(!elIni.value || !elFim.value){
+    var def=_resPeriodDefault();
+    elIni.value=def.ini;
+    elFim.value=def.fim;
   }
-  ensureFTE(p);
-  empty.style.display='none'; cont.style.display='block';
-  renderRecursos(p);
+  renderRecursosView();
 }
 
-function renderRecursos(p){
-  ensureFTE(p);
-  var rec=p.fte.recursos;
-  var du=p.fte.dias_uteis||22;
-  var ativos=rec.filter(function(r){return r.estado==='activo';});
-  var fte=ativos.reduce(function(s,r){return s+(r.alocacao_pct||0)/100;},0);
-  var custo=0; var hasCusto=false;
-  ativos.forEach(function(r){var c=_fteCost(r,du);if(c!=null){custo+=c;hasCusto=true;}});
-  var over=ativos.filter(function(r){return (r.alocacao_pct||0)>100;}).length;
+function renderRecursosView(){
+  var ini=document.getElementById('res-ini').value;
+  var fim=document.getElementById('res-fim').value;
+  // check if any plan has resources
+  var hasAny=fPDS.some(function(p){
+    ensureFTE(p);
+    return (p.fte.recursos||[]).length>0;
+  });
+  var empty=document.getElementById('res-view-empty');
+  var kpisEl=document.getElementById('res-kpis');
+  if(!hasAny || !ini || !fim){
+    empty.style.display='block';
+    kpisEl.innerHTML='';
+    document.getElementById('res-plano-content').style.display='none';
+    document.getElementById('res-recurso-content').style.display='none';
+    return;
+  }
+  empty.style.display='none';
+  renderResKPIs(ini, fim);
+  _renderResContent(ini, fim);
+}
+
+function _renderResContent(ini, fim){
+  var isPlano=_resView==='plano';
+  document.getElementById('res-plano-content').style.display=isPlano?'':'none';
+  document.getElementById('res-recurso-content').style.display=isPlano?'none':'';
+  if(isPlano){ renderResByPlano(ini, fim); }
+  else { renderResByRecurso(ini, fim); }
+}
+
+function renderResKPIs(ini, fim){
+  var months=_resMonths(ini, fim);
   var base=getBaseMoeda?getBaseMoeda():'€';
+  // collect all resources across fPDS
+  var allRec=[];
+  fPDS.forEach(function(p){
+    ensureFTE(p);
+    (p.fte.recursos||[]).forEach(function(r){
+      allRec.push({r:r, du:p.fte.dias_uteis||22, plano:p.plano, eixo:p.n1||''});
+    });
+  });
+
+  // KPI 1: unique resources by name (lower)
+  var uniqueNames=new Set(allRec.map(function(x){return (x.r.nome||'').toLowerCase().trim();}));
+  var uniqueCount=uniqueNames.size;
+
+  // KPI 2: avg monthly FTE (sum pct/100 of active resources per month, then avg)
+  var fteMonthly=0;
+  if(months.length){
+    var fteSum=months.reduce(function(s,ym){
+      var mFte=allRec.reduce(function(ms,x){
+        return ms+(_resIsActiveInMonth(x.r,ym)?(x.r.alocacao_pct||0)/100:0);
+      },0);
+      return s+mFte;
+    },0);
+    fteMonthly=fteSum/months.length;
+  }
+
+  // KPI 3: estimated cost in period
+  var totalCost=0; var hasCost=false;
+  allRec.forEach(function(x){
+    months.forEach(function(ym){
+      if(_resIsActiveInMonth(x.r,ym)){
+        var c=_resCostMonth(x.r,x.du);
+        if(c!=null){totalCost+=c;hasCost=true;}
+      }
+    });
+    // resources without dates: use _fteCost for total cost estimation
+    if(!x.r.data_inicio || !x.r.data_fim){
+      var c2=_resCostMonth(x.r,x.du);
+      if(c2!=null){totalCost+=c2;hasCost=true;}
+    }
+  });
+
+  // KPI 4: internos / externos (dedup by nome+tipo)
+  var seenNomeTipo={};
+  allRec.forEach(function(x){
+    var k=(x.r.nome||'').toLowerCase().trim()+'|'+(x.r.tipo||'');
+    if(!seenNomeTipo[k]) seenNomeTipo[k]=x.r.tipo||'interno';
+  });
+  var numInt=0, numExt=0;
+  Object.values(seenNomeTipo).forEach(function(t){
+    if(t==='externo') numExt++; else numInt++;
+  });
+  var total=numInt+numExt||1;
+  var intPct=Math.round(numInt/total*100);
+  var extPct=Math.round(numExt/total*100);
+
+  // KPI 5: overallocated unique names (cross-plan sum pct > 100 in any month)
+  var overNames=new Set();
+  var nomePctMap={};
+  months.forEach(function(ym){
+    var nameMonthPct={};
+    allRec.forEach(function(x){
+      if(_resIsActiveInMonth(x.r,ym)){
+        var n=(x.r.nome||'').toLowerCase().trim();
+        nameMonthPct[n]=(nameMonthPct[n]||0)+(x.r.alocacao_pct||0);
+      }
+    });
+    Object.keys(nameMonthPct).forEach(function(n){
+      if(nameMonthPct[n]>100) overNames.add(n);
+    });
+  });
+
   document.getElementById('res-kpis').innerHTML=
-    '<div class="kpi"><div class="kpi-lbl">Recursos activos</div><div class="kpi-val" style="color:var(--navy)">'+ativos.length+'</div></div>'
-   +'<div class="kpi"><div class="kpi-lbl">FTE total</div><div class="kpi-val" style="color:var(--blue)">'+fte.toFixed(1)+'</div></div>'
-   +'<div class="kpi"><div class="kpi-lbl">Custo estimado</div><div class="kpi-val" style="color:var(--navy);font-size:14px">'+(hasCusto?fmtEur(Math.round(custo),base):'—')+'</div></div>'
-   +'<div class="kpi"><div class="kpi-lbl">Sobrealocações</div><div class="kpi-val" style="color:'+(over>0?'var(--red)':'var(--green)')+'">'+over+'</div></div>';
-  var html=rec.map(function(r){
-    var n2label=r.id2||'—';
-    var gRow=(ALL_GANTT||[]).find(function(g){return g.id2===r.id2;});
-    if(gRow) n2label=gRow.n2||r.id2;
-    return '<div class="res-view-row">'
-      +'<span>'+esc(r.nome)+'</span>'
-      +'<span class="fte-hide-sm">'+esc(r.unidade)+'</span>'
-      +'<span class="fte-hide-sm">'+esc(r.perfil)+'</span>'
-      +'<span>'+_fteTipoBadge(r.tipo)+'</span>'
-      +'<span>'+esc(n2label)+'</span>'
-      +'<span>'+(r.data_inicio||'—')+'</span>'
-      +'<span>'+(r.data_fim||'—')+'</span>'
-      +'<div style="text-align:right">'+((r.alocacao_pct||0)+'%')+'<br>'+_fteBar(r.alocacao_pct||0)+'</div>'
-      +'<span>'+_fteEstadoBadge(r.estado)+'</span>'
+    '<div class="kpi"><div class="kpi-lbl">Recursos únicos</div><div class="kpi-val" style="color:var(--navy)">'+uniqueCount+'</div></div>'
+   +'<div class="kpi"><div class="kpi-lbl">FTE médio</div><div class="kpi-val" style="color:var(--blue)">'+fteMonthly.toFixed(1)+'</div></div>'
+   +'<div class="kpi"><div class="kpi-lbl">Custo estimado</div><div class="kpi-val" style="color:var(--navy);font-size:14px">'+(hasCost?fmtEur(Math.round(totalCost),base):'—')+'</div></div>'
+   +'<div class="kpi"><div class="kpi-lbl">Internos / Externos</div><div class="kpi-val" style="color:var(--navy);font-size:13px">'+numInt+' ('+intPct+'%) / '+numExt+' ('+extPct+'%)</div></div>'
+   +'<div class="kpi"><div class="kpi-lbl">Sobrealocações</div><div class="kpi-val" style="color:'+(overNames.size>0?'var(--red)':'var(--green)')+'">'+overNames.size+'</div></div>';
+}
+
+function renderResByPlano(ini, fim){
+  var months=_resMonths(ini, fim);
+  var base=getBaseMoeda?getBaseMoeda():'€';
+  var palette=['#002E5E','#185FA5','#95BB42','#854F0B','#A32D2D','#5B3A8C','#0E7B6A','#C97B1A','#1B6B3A','#7A1B5C'];
+
+  // Build per-plan datasets
+  var plans=fPDS.filter(function(p){
+    ensureFTE(p);
+    return (p.fte.recursos||[]).length>0;
+  });
+
+  // Chart
+  if(resCharts['fte']){ try{resCharts['fte'].destroy();}catch(e){} delete resCharts['fte']; }
+  var canvas=document.getElementById('res-chart-fte');
+  if(canvas && typeof Chart!=='undefined' && months.length){
+    var mainPlans=plans.slice(0,10);
+    var otherPlans=plans.slice(10);
+    var datasets=mainPlans.map(function(p,i){
+      return {
+        label: p.plano||p.id2,
+        backgroundColor: palette[i%palette.length],
+        data: months.map(function(ym){
+          return (p.fte.recursos||[]).reduce(function(s,r){
+            return s+(_resIsActiveInMonth(r,ym)?(r.alocacao_pct||0)/100:0);
+          },0);
+        }),
+        stack:'s'
+      };
+    });
+    if(otherPlans.length){
+      datasets.push({
+        label:'Outros',
+        backgroundColor:'#94a3b8',
+        data: months.map(function(ym){
+          return otherPlans.reduce(function(ps,p){
+            return ps+(p.fte.recursos||[]).reduce(function(s,r){
+              return s+(_resIsActiveInMonth(r,ym)?(r.alocacao_pct||0)/100:0);
+            },0);
+          },0);
+        }),
+        stack:'s'
+      });
+    }
+    var ctx=canvas.getContext('2d');
+    resCharts['fte']=new Chart(ctx,{
+      type:'bar',
+      data:{labels:months, datasets:datasets},
+      options:{
+        responsive:true,
+        plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}}},
+        scales:{
+          x:{stacked:true,ticks:{font:{size:10}}},
+          y:{stacked:true,title:{display:true,text:'FTE',font:{size:11}},ticks:{font:{size:10}}}
+        }
+      }
+    });
+  }
+
+  // Table
+  var html='<div class="res-plan-row res-plan-hdr">'
+    +'<div>Plano</div><div>Eixo</div><div style="text-align:right">Rec.</div>'
+    +'<div style="text-align:right">FTE Médio</div><div style="text-align:right">Custo Est.</div>'
+    +'<div style="text-align:right">% Interno</div><div style="text-align:right">Conflitos</div>'
+    +'<div></div></div>';
+
+  plans.forEach(function(p){
+    var key=(p.id0||'')+'_'+p.id2;
+    ensureFTE(p);
+    var rec=p.fte.recursos||[];
+    var du=p.fte.dias_uteis||22;
+
+    // FTE avg
+    var fteSum=0;
+    if(months.length){
+      months.forEach(function(ym){
+        rec.forEach(function(r){ if(_resIsActiveInMonth(r,ym)) fteSum+=(r.alocacao_pct||0)/100; });
+      });
+    }
+    var fteAvg=months.length?fteSum/months.length:0;
+
+    // Cost
+    var cost=0; var hasCost=false;
+    rec.forEach(function(r){
+      months.forEach(function(ym){
+        if(_resIsActiveInMonth(r,ym)){
+          var c=_resCostMonth(r,du);
+          if(c!=null){cost+=c;hasCost=true;}
+        }
+      });
+    });
+
+    // Internos %
+    var intCount=rec.filter(function(r){return (r.tipo||'interno')!=='externo';}).length;
+    var intPct=rec.length?Math.round(intCount/rec.length*100):0;
+
+    // Conflicts (cross-plan overalloc for names in this plan, in any month)
+    var conflNames=new Set();
+    rec.forEach(function(r){
+      var rName=(r.nome||'').toLowerCase().trim();
+      months.forEach(function(ym){
+        if(!_resIsActiveInMonth(r,ym)) return;
+        var totalPct=0;
+        fPDS.forEach(function(p2){
+          ensureFTE(p2);
+          (p2.fte.recursos||[]).forEach(function(r2){
+            if((r2.nome||'').toLowerCase().trim()===rName && _resIsActiveInMonth(r2,ym)){
+              totalPct+=(r2.alocacao_pct||0);
+            }
+          });
+        });
+        if(totalPct>100) conflNames.add(rName);
+      });
+    });
+
+    html+='<div class="res-plan-row" onclick="toggleResDetail(\''+esc(key)+'\')">'
+      +'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(p.plano)+'">'+esc(p.plano||p.id2)+'</span>'
+      +'<span style="font-size:11px;color:var(--text2)">'+esc(p.n1||'—')+'</span>'
+      +'<span style="text-align:right">'+rec.length+'</span>'
+      +'<span style="text-align:right">'+fteAvg.toFixed(1)+'</span>'
+      +'<span style="text-align:right;font-size:11px">'+(hasCost?fmtEur(Math.round(cost),base):'—')+'</span>'
+      +'<span style="text-align:right">'+intPct+'%</span>'
+      +'<span style="text-align:right;color:'+(conflNames.size>0?'var(--red)':'var(--text2)')+'">'+conflNames.size+'</span>'
+      +'<button class="res-expand-btn" id="res-exp-'+esc(key)+'" onclick="event.stopPropagation();toggleResDetail(\''+esc(key)+'\')">&#9660;</button>'
+      +'</div>'
+      +'<div class="res-detail-row" id="res-det-'+esc(key)+'">'
+      +_renderResDetailTable(p, months, du)
       +'</div>';
+  });
+
+  if(!plans.length) html='<div style="padding:2rem;text-align:center;color:var(--text3);font-size:13px">Sem planos com recursos no período.</div>';
+  document.getElementById('res-plan-list').innerHTML=html;
+}
+
+function _renderResDetailTable(p, months, du){
+  var rec=p.fte.recursos||[];
+  if(!rec.length) return '<p style="color:var(--text3);font-size:12px">Sem recursos.</p>';
+  var base=getBaseMoeda?getBaseMoeda():'€';
+  var rows=rec.map(function(r){
+    var activeMonths=months.filter(function(ym){return _resIsActiveInMonth(r,ym);}).length;
+    var cost=0; var hasCost=false;
+    if(months.length){
+      months.forEach(function(ym){
+        if(_resIsActiveInMonth(r,ym)){
+          var c=_resCostMonth(r,du);
+          if(c!=null){cost+=c;hasCost=true;}
+        }
+      });
+    }
+    return '<tr>'
+      +'<td style="padding:4px 8px;font-size:11px">'+esc(r.nome||'—')+'</td>'
+      +'<td style="padding:4px 8px;font-size:11px;color:var(--text2)">'+esc(r.perfil||'—')+'</td>'
+      +'<td style="padding:4px 8px;font-size:11px">'+_fteTipoBadge(r.tipo)+'</td>'
+      +'<td style="padding:4px 8px;font-size:11px;text-align:right">'+(r.alocacao_pct||0)+'%</td>'
+      +'<td style="padding:4px 8px;font-size:11px;text-align:right">'+(r.data_inicio||'—')+' → '+(r.data_fim||'—')+'</td>'
+      +'<td style="padding:4px 8px;font-size:11px;text-align:right">'+activeMonths+'m</td>'
+      +'<td style="padding:4px 8px;font-size:11px;text-align:right">'+(hasCost?fmtEur(Math.round(cost),base):'—')+'</td>'
+      +'<td style="padding:4px 8px;font-size:11px">'+_fteEstadoBadge(r.estado)+'</td>'
+      +'</tr>';
   }).join('');
-  document.getElementById('res-list').innerHTML=html||'<div style="padding:2rem;text-align:center;color:var(--text3);font-size:13px">Sem recursos neste plano.</div>';
+  return '<table style="border-collapse:collapse;width:100%">'
+    +'<thead><tr style="font-size:10px;color:var(--text2);text-transform:uppercase">'
+    +'<th style="padding:3px 8px;text-align:left">Nome</th><th style="padding:3px 8px;text-align:left">Perfil</th>'
+    +'<th style="padding:3px 8px;text-align:left">Tipo</th><th style="padding:3px 8px;text-align:right">% Aloc.</th>'
+    +'<th style="padding:3px 8px;text-align:right">Período</th><th style="padding:3px 8px;text-align:right">Meses</th>'
+    +'<th style="padding:3px 8px;text-align:right">Custo est.</th><th style="padding:3px 8px;text-align:left">Estado</th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table>';
+}
+
+function toggleResDetail(key){
+  var det=document.getElementById('res-det-'+key);
+  var btn=document.getElementById('res-exp-'+key);
+  if(!det) return;
+  var open=det.classList.toggle('open');
+  if(btn){ btn.classList.toggle('open',open); btn.innerHTML=open?'&#9650;':'&#9660;'; }
+}
+
+function renderResByRecurso(ini, fim){
+  var months=_resMonths(ini, fim);
+  var base=getBaseMoeda?getBaseMoeda():'€';
+
+  // Aggregate by (nome_lower + '|' + perfil)
+  var rowMap={};
+  fPDS.forEach(function(p){
+    ensureFTE(p);
+    var du=p.fte.dias_uteis||22;
+    (p.fte.recursos||[]).forEach(function(r){
+      var nLow=(r.nome||'').toLowerCase().trim();
+      var k=nLow+'|'+(r.perfil||'');
+      if(!rowMap[k]){
+        rowMap[k]={nome:r.nome||'', perfil:r.perfil||'', tipo:r.tipo||'', custo_dia:r.custo_dia||null,
+          plans:[], monthPct:{}, du:du};
+      }
+      var row=rowMap[k];
+      // merge plans
+      if(!row.plans.find(function(x){return x.key===((p.id0||'')+'_'+p.id2);})){
+        row.plans.push({key:(p.id0||'')+'_'+p.id2, plano:p.plano||p.id2, eixo:p.n1||'',
+          pct:r.alocacao_pct||0, contrato_id:r.contrato_id,
+          data_inicio:r.data_inicio, data_fim:r.data_fim, estado:r.estado});
+      }
+      // accumulate pct per month
+      months.forEach(function(ym){
+        if(_resIsActiveInMonth(r,ym)){
+          row.monthPct[ym]=(row.monthPct[ym]||0)+(r.alocacao_pct||0);
+        }
+      });
+      if(r.custo_dia && !row.custo_dia) row.custo_dia=r.custo_dia;
+    });
+  });
+
+  var rows=Object.values(rowMap);
+  rows.sort(function(a,b){
+    var pp=(a.perfil||'').localeCompare(b.perfil||'');
+    return pp!==0?pp:(a.nome||'').localeCompare(b.nome||'');
+  });
+
+  // Build HTML
+  var hdrs='<th class="res-hm-name">Recurso / Perfil</th>'
+    +months.map(function(ym){return '<th>'+ym.slice(0,7)+'</th>';}).join('');
+
+  var bodyRows=rows.map(function(row,idx){
+    var cells=months.map(function(ym){
+      var pct=row.monthPct[ym]||0;
+      var bg,tc='inherit';
+      if(pct===0){ bg='var(--bg2)'; }
+      else if(pct<100){ bg='rgba(149,187,66,'+(0.2+0.8*pct/100)+')'; }
+      else if(pct===100){ bg='#002E5E'; tc='#fff'; }
+      else { bg='#A32D2D'; tc='#fff'; }
+      return '<td style="background:'+bg+';color:'+tc+'">'+(pct?pct+'%':'')+'</td>';
+    }).join('');
+    return '<tr><td class="res-hm-name" onclick="openResSidePanel('+idx+')">'
+      +esc(row.nome)+'<br><span style="font-size:9px;color:var(--text2)">'+esc(row.perfil)+'</span>'
+      +'</td>'+cells+'</tr>';
+  }).join('');
+
+  var tbl=document.getElementById('res-heatmap-table');
+  tbl.innerHTML='<thead><tr>'+hdrs+'</tr></thead><tbody>'+bodyRows+'</tbody>';
+  tbl._resRows=rows;
+  tbl._resPeriod={ini:ini,fim:fim};
+}
+
+function openResSidePanel(rowIdx){
+  var tbl=document.getElementById('res-heatmap-table');
+  if(!tbl||!tbl._resRows) return;
+  var row=tbl._resRows[rowIdx]; if(!row) return;
+  var months=_resMonths(tbl._resPeriod.ini, tbl._resPeriod.fim);
+  var base=getBaseMoeda?getBaseMoeda():'€';
+
+  // FTE avg
+  var fteSum=0;
+  months.forEach(function(ym){ fteSum+=(row.monthPct[ym]||0)/100; });
+  var fteAvg=months.length?fteSum/months.length:0;
+
+  // Cost est
+  var totalCost=0; var hasCost=false;
+  if(row.custo_dia){
+    months.forEach(function(ym){
+      var pct=row.monthPct[ym]||0;
+      if(pct>0){ totalCost+=(pct/100)*(row.du||22)*row.custo_dia; hasCost=true; }
+    });
+  }
+
+  document.getElementById('res-sp-nome').textContent=row.nome;
+  var html='<div style="margin-bottom:12px">'
+    +'<div style="font-size:11px;color:var(--text2);margin-bottom:2px">Perfil</div>'
+    +'<div style="font-size:13px;font-weight:600">'+esc(row.perfil||'—')+'</div></div>'
+    +'<div style="margin-bottom:12px"><div style="font-size:11px;color:var(--text2);margin-bottom:2px">Tipo</div>'
+    +'<div>'+_fteTipoBadge(row.tipo)+'</div></div>'
+    +(row.custo_dia?'<div style="margin-bottom:12px"><div style="font-size:11px;color:var(--text2);margin-bottom:2px">Custo/dia</div>'
+      +'<div style="font-size:13px;font-weight:600">'+fmtEur(row.custo_dia,base)+'</div></div>':'')
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">'
+    +'<div class="kpi"><div class="kpi-lbl">FTE médio</div><div class="kpi-val" style="color:var(--blue)">'+fteAvg.toFixed(2)+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Custo est.</div><div class="kpi-val" style="font-size:13px">'+(hasCost?fmtEur(Math.round(totalCost),base):'—')+'</div></div>'
+    +'</div>'
+    +'<div style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Planos activos no período</div>';
+
+  if(row.plans.length){
+    html+=row.plans.map(function(pl){
+      return '<div style="padding:8px 10px;background:var(--bg2);border-radius:var(--r);margin-bottom:6px">'
+        +'<div style="font-size:12px;font-weight:600">'+esc(pl.plano)+'</div>'
+        +'<div style="font-size:11px;color:var(--text2)">'+esc(pl.eixo)+'</div>'
+        +'<div style="font-size:11px;margin-top:4px">% Aloc.: <strong>'+pl.pct+'%</strong>'
+        +(pl.contrato_id?' &nbsp;|&nbsp; Contrato: '+esc(pl.contrato_id):'')+'</div>'
+        +(pl.data_inicio?'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+pl.data_inicio+' → '+(pl.data_fim||'?')+'</div>':'')
+        +'</div>';
+    }).join('');
+  } else { html+='<div style="color:var(--text3);font-size:12px">Nenhum plano activo no período.</div>'; }
+
+  document.getElementById('res-sp-content').innerHTML=html;
+  document.getElementById('res-side-panel').style.display='block';
+}
+
+function closeResSidePanel(){
+  document.getElementById('res-side-panel').style.display='none';
 }
 
 // ── Gestão (edição) ───────────────────────────────────────────────────────────
@@ -5373,34 +5830,57 @@ async function saveGRes(){
 
 function exportResToExcel(mode){
   if(typeof XLSX==='undefined'){alert('XLSX não carregado.');return;}
-  var p;
   if(mode==='gestao'){
-    p=_fteGetCurrentPDS();
-  } else {
-    var key=document.getElementById('res-plan-sel').value;
-    p=key?ALL_PDS.find(function(x){return ((x.id0||'')+'_'+x.id2)===key;}) : null;
+    // Export current plan draft
+    var p=_fteGetCurrentPDS();
+    if(!p){showToast('Selecciona um plano primeiro','red');return;}
+    var fte=(_gresDraft && _gresDraftKey===((p.id0||'')+'_'+p.id2))?_gresDraft:(ensureFTE(p),p.fte);
+    if(!fte.recursos.length){showToast('Sem recursos para exportar.','amber');return;}
+    var du=fte.dias_uteis||22;
+    var base=getBaseMoeda?getBaseMoeda():'€';
+    var sheetRows=[['Nome','Unidade','Perfil','Tipo','Custo/dia','Projecto N2','Data início','Data fim','% Aloc.','Contrato','Estado','Custo est.']];
+    fte.recursos.forEach(function(r){
+      var ct=((p.finances&&p.finances.contratos)||[]).find(function(c){return c.id===r.contrato_id;});
+      var n2label=r.id2||'';
+      var gRow=(ALL_GANTT||[]).find(function(g){return g.id2===r.id2;});
+      if(gRow) n2label=gRow.n2||r.id2;
+      var custo=_fteCost(r,du);
+      sheetRows.push([r.nome,r.unidade,r.perfil,r.tipo,r.custo_dia,n2label,r.data_inicio||'',r.data_fim||'',(r.alocacao_pct||0)+'%',ct?ct.fornecedor:'',r.estado,custo!=null?Math.round(custo):'']);
+    });
+    var ws=XLSX.utils.aoa_to_sheet(sheetRows);
+    ws['!cols']=[{wch:22},{wch:12},{wch:14},{wch:10},{wch:10},{wch:18},{wch:12},{wch:12},{wch:8},{wch:22},{wch:10},{wch:14}];
+    var wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Recursos');
+    XLSX.writeFile(wb,'PMO_Recursos_'+(p.plano||p.id2||'export').replace(/\s/g,'_')+'.xlsx');
+    showToast('Recursos exportados!','green');
+    return;
   }
-  if(!p){showToast('Selecciona um plano primeiro','red');return;}
-  // In gestao mode use the live draft; otherwise use committed p.fte
-  var fte=(mode==='gestao' && _gresDraft && _gresDraftKey===((p.id0||'')+'_'+p.id2))
-    ? _gresDraft : (ensureFTE(p), p.fte);
-  if(!fte.recursos.length){showToast('Sem recursos para exportar.','amber');return;}
-  var du=fte.dias_uteis||22;
+  // Portfolio export (visualização mode)
+  var ini=document.getElementById('res-ini').value;
+  var fim=document.getElementById('res-fim').value;
+  var months=_resMonths(ini, fim);
   var base=getBaseMoeda?getBaseMoeda():'€';
-  var sheetRows=[['Nome','Unidade','Perfil','Tipo','Custo/dia','Projecto N2','Data início','Data fim','% Aloc.','Contrato','Estado','Custo est.']];
-  fte.recursos.forEach(function(r){
-    var ct=((p.finances&&p.finances.contratos)||[]).find(function(c){return c.id===r.contrato_id;});
-    var n2label=r.id2||'';
-    var gRow=(ALL_GANTT||[]).find(function(g){return g.id2===r.id2;});
-    if(gRow) n2label=gRow.n2||r.id2;
-    var custo=_fteCost(r,du);
-    sheetRows.push([r.nome,r.unidade,r.perfil,r.tipo,r.custo_dia,n2label,r.data_inicio||'',r.data_fim||'',(r.alocacao_pct||0)+'%',ct?ct.fornecedor:'',r.estado,custo!=null?Math.round(custo):'']);
+  var sheetRows=[['Plano','Eixo','Nome','Unidade','Perfil','Tipo','Custo/dia','Data início','Data fim','% Aloc.','Estado','Meses activos','Custo est. período']];
+  fPDS.forEach(function(p){
+    ensureFTE(p);
+    var du=p.fte.dias_uteis||22;
+    (p.fte.recursos||[]).forEach(function(r){
+      var activeMths=months.filter(function(ym){return _resIsActiveInMonth(r,ym);}).length;
+      var cost=0; var hasCost=false;
+      months.forEach(function(ym){
+        if(_resIsActiveInMonth(r,ym)){var c=_resCostMonth(r,du);if(c!=null){cost+=c;hasCost=true;}}
+      });
+      sheetRows.push([p.plano||p.id2,p.n1||'',r.nome,r.unidade,r.perfil,r.tipo,
+        r.custo_dia||'',r.data_inicio||'',r.data_fim||'',(r.alocacao_pct||0)+'%',
+        r.estado,activeMths,hasCost?Math.round(cost):'']);
+    });
   });
+  if(sheetRows.length<=1){showToast('Sem recursos para exportar.','amber');return;}
   var ws=XLSX.utils.aoa_to_sheet(sheetRows);
-  ws['!cols']=[{wch:22},{wch:12},{wch:14},{wch:10},{wch:10},{wch:18},{wch:12},{wch:12},{wch:8},{wch:22},{wch:10},{wch:14}];
+  ws['!cols']=[{wch:22},{wch:14},{wch:22},{wch:12},{wch:14},{wch:10},{wch:10},{wch:12},{wch:12},{wch:8},{wch:10},{wch:12},{wch:14}];
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Recursos');
-  XLSX.writeFile(wb,'PMO_Recursos_'+(p.plano||p.id2||'export').replace(/\s/g,'_')+'.xlsx');
+  XLSX.writeFile(wb,'PMO_Recursos_Portfolio_'+(ini||'')+'_'+(fim||'')+'.xlsx');
   showToast('Recursos exportados!','green');
 }
 
