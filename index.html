@@ -5270,11 +5270,16 @@ function _resIsActiveInMonth(r, ym){
 }
 
 // Fraction (0–1) of month ym covered by resource r's dates (pro-rata por dias de calendário)
-function _resActiveRatio(r, ym){
+// bounds: optional pre-computed {start,end} for ym (avoids repeated Date construction)
+function _resActiveRatio(r, ym, bounds){
   if(!r.data_inicio || !r.data_fim) return 0;
-  var y=parseInt(ym.slice(0,4),10), m=parseInt(ym.slice(5,7),10);
-  var mStart=new Date(y,m-1,1);
-  var mEnd=new Date(y,m,0); // último dia do mês
+  var mStart, mEnd;
+  if(bounds){
+    mStart=bounds.start; mEnd=bounds.end;
+  } else {
+    var y=parseInt(ym.slice(0,4),10), m=parseInt(ym.slice(5,7),10);
+    mStart=new Date(y,m-1,1); mEnd=new Date(y,m,0);
+  }
   var rStart=new Date(r.data_inicio); var rEnd=new Date(r.data_fim);
   if(rEnd<mStart||rStart>mEnd) return 0;
   var effStart=rStart<mStart?mStart:rStart;
@@ -5381,80 +5386,70 @@ function _renderResContent(ini, fim){
 function renderResKPIs(ini, fim){
   var months=_resMonths(ini, fim);
   var base=getBaseMoeda?getBaseMoeda():'€';
-  // collect all resources across fPDS
+
+  // Ensure FTE loaded once
+  fPDS.forEach(ensureFTE);
+
+  // Pre-compute month boundaries
+  var monthBounds={};
+  months.forEach(function(ym){
+    var y=parseInt(ym.slice(0,4),10), m=parseInt(ym.slice(5,7),10);
+    monthBounds[ym]={start:new Date(y,m-1,1),end:new Date(y,m,0)};
+  });
+
+  // Collect all resources once
   var allRec=[];
   fPDS.forEach(function(p){
-    ensureFTE(p);
     (p.fte.recursos||[]).forEach(function(r){
-      allRec.push({r:r, du:p.fte.dias_uteis||22, plano:p.plano, eixo:p.n1||''});
+      allRec.push({r:r, du:p.fte.dias_uteis||22});
     });
   });
 
-  // KPI 1: unique resources by name (lower)
-  var uniqueNames=new Set(allRec.map(function(x){return (x.r.nome||'').toLowerCase().trim();}));
+  // Single pass over allRec: unique names, tipo, cost-per-resource, overalloc
+  var uniqueNames=new Set();
+  var seenNomeTipo={};
+  var resourceCosts=[];   // {nLow, costPerMonth, du}
+  allRec.forEach(function(x){
+    var nLow=(x.r.nome||'').toLowerCase().trim();
+    uniqueNames.add(nLow);
+    var tk=nLow+'|'+(x.r.tipo||'');
+    if(!seenNomeTipo[tk]) seenNomeTipo[tk]=x.r.tipo||'interno';
+    resourceCosts.push({nLow:nLow, r:x.r, c:_resCostMonth(x.r,x.du)});
+  });
   var uniqueCount=uniqueNames.size;
 
-  // KPI 2: avg monthly FTE usando fórmula: ratio × (pct/100) por recurso por mês
-  // média sobre meses com pelo menos um recurso activo
-  var fteMonthly=0;
-  if(months.length){
-    var fteSum=0, activeMonthCount=0;
-    months.forEach(function(ym){
-      var mFte=allRec.reduce(function(ms,x){
-        var ratio=_resActiveRatio(x.r,ym);
-        return ms+ratio*(x.r.alocacao_pct||0)/100;
-      },0);
-      fteSum+=mFte;
-      if(mFte>0) activeMonthCount++;
-    });
-    fteMonthly=activeMonthCount?fteSum/activeMonthCount:0;
-  }
+  // KPI 4: internos / externos
+  var numInt=0, numExt=0;
+  Object.values(seenNomeTipo).forEach(function(t){ if(t==='externo') numExt++; else numInt++; });
+  var _tot=numInt+numExt||1;
+  var intPct=Math.round(numInt/_tot*100);
+  var extPct=Math.round(numExt/_tot*100);
 
-  // KPI 3: estimated cost in period
-  var totalCost=0; var hasCost=false;
-  allRec.forEach(function(x){
-    months.forEach(function(ym){
-      if(_resIsActiveInMonth(x.r,ym)){
-        var c=_resCostMonth(x.r,x.du);
-        if(c!=null){totalCost+=c;hasCost=true;}
+  // Single pass over months: FTE avg + cost + overalloc
+  var fteSum=0, activeMonthCount=0, totalCost=0, hasCost=false;
+  var overNames=new Set();
+  months.forEach(function(ym){
+    var b=monthBounds[ym];
+    var mFte=0;
+    var nameMonthPct={};
+    resourceCosts.forEach(function(x){
+      var ratio=_resActiveRatio(x.r,ym,b);
+      if(ratio>0){
+        mFte+=ratio*(x.r.alocacao_pct||0)/100;
+        if(x.c!=null){totalCost+=x.c*ratio;hasCost=true;}
+        nameMonthPct[x.nLow]=(nameMonthPct[x.nLow]||0)+(x.r.alocacao_pct||0);
       }
     });
-    // resources without dates: use _fteCost for total cost estimation
-    if(!x.r.data_inicio || !x.r.data_fim){
-      var c2=_resCostMonth(x.r,x.du);
-      if(c2!=null){totalCost+=c2;hasCost=true;}
+    fteSum+=mFte; if(mFte>0) activeMonthCount++;
+    Object.keys(nameMonthPct).forEach(function(n){ if(nameMonthPct[n]>100) overNames.add(n); });
+  });
+  // Resources without dates: add one month of cost symbolically
+  resourceCosts.forEach(function(x){
+    if(!x.r.data_inicio||!x.r.data_fim){
+      if(x.c!=null){totalCost+=x.c;hasCost=true;}
     }
   });
-
-  // KPI 4: internos / externos (dedup by nome+tipo)
-  var seenNomeTipo={};
-  allRec.forEach(function(x){
-    var k=(x.r.nome||'').toLowerCase().trim()+'|'+(x.r.tipo||'');
-    if(!seenNomeTipo[k]) seenNomeTipo[k]=x.r.tipo||'interno';
-  });
-  var numInt=0, numExt=0;
-  Object.values(seenNomeTipo).forEach(function(t){
-    if(t==='externo') numExt++; else numInt++;
-  });
-  var total=numInt+numExt||1;
-  var intPct=Math.round(numInt/total*100);
-  var extPct=Math.round(numExt/total*100);
-
-  // KPI 5: overallocated unique names (cross-plan sum pct > 100 in any month)
-  var overNames=new Set();
-  var nomePctMap={};
-  months.forEach(function(ym){
-    var nameMonthPct={};
-    allRec.forEach(function(x){
-      if(_resIsActiveInMonth(x.r,ym)){
-        var n=(x.r.nome||'').toLowerCase().trim();
-        nameMonthPct[n]=(nameMonthPct[n]||0)+(x.r.alocacao_pct||0);
-      }
-    });
-    Object.keys(nameMonthPct).forEach(function(n){
-      if(nameMonthPct[n]>100) overNames.add(n);
-    });
-  });
+  var fteMonthly=activeMonthCount?fteSum/activeMonthCount:0;
 
   document.getElementById('res-kpis').innerHTML=
     '<div class="kpi"><div class="kpi-lbl">Recursos únicos</div><div class="kpi-val" style="color:var(--navy)">'+uniqueCount+'</div></div>'
@@ -5469,10 +5464,34 @@ function renderResByPlano(ini, fim){
   var base=getBaseMoeda?getBaseMoeda():'€';
   var palette=['#002E5E','#185FA5','#95BB42','#854F0B','#A32D2D','#5B3A8C','#0E7B6A','#C97B1A','#1B6B3A','#7A1B5C'];
 
+  // Pre-compute month boundaries once (avoids 4× Date construction per _resActiveRatio call)
+  var monthBounds={};
+  months.forEach(function(ym){
+    var y=parseInt(ym.slice(0,4),10), m=parseInt(ym.slice(5,7),10);
+    monthBounds[ym]={start:new Date(y,m-1,1),end:new Date(y,m,0)};
+  });
+
+  // Ensure FTE loaded for all plans once
+  fPDS.forEach(ensureFTE);
+
   // Build per-plan datasets
   var plans=fPDS.filter(function(p){
-    ensureFTE(p);
     return (p.fte.recursos||[]).length>0;
+  });
+
+  // Pre-compute cross-plan conflict map: conflictMap[nome|YYYY-MM] = true if sum pct > 100
+  var conflictMap={};
+  months.forEach(function(ym){
+    var nmp={};
+    fPDS.forEach(function(p2){
+      (p2.fte.recursos||[]).forEach(function(r2){
+        if(_resActiveRatio(r2,ym,monthBounds[ym])>0){
+          var n=(r2.nome||'').toLowerCase().trim();
+          nmp[n]=(nmp[n]||0)+(r2.alocacao_pct||0);
+        }
+      });
+    });
+    Object.keys(nmp).forEach(function(n){ if(nmp[n]>100) conflictMap[n+'|'+ym]=true; });
   });
 
   // Chart
@@ -5487,7 +5506,7 @@ function renderResByPlano(ini, fim){
         backgroundColor: palette[i%palette.length],
         data: months.map(function(ym){
           return (p.fte.recursos||[]).reduce(function(s,r){
-            return s+_resActiveRatio(r,ym)*(r.alocacao_pct||0)/100;
+            return s+_resActiveRatio(r,ym,monthBounds[ym])*(r.alocacao_pct||0)/100;
           },0);
         }),
         stack:'s'
@@ -5500,7 +5519,7 @@ function renderResByPlano(ini, fim){
         data: months.map(function(ym){
           return otherPlans.reduce(function(ps,p){
             return ps+(p.fte.recursos||[]).reduce(function(s,r){
-              return ps+_resActiveRatio(r,ym)*(r.alocacao_pct||0)/100;
+              return s+_resActiveRatio(r,ym,monthBounds[ym])*(r.alocacao_pct||0)/100;
             },0);
           },0);
         }),
@@ -5535,49 +5554,29 @@ function renderResByPlano(ini, fim){
     var rec=p.fte.recursos||[];
     var du=p.fte.dias_uteis||22;
 
-    // FTE avg usando ratio × (pct/100), média sobre meses com recursos activos
-    var fteSum=0, activeMthCount=0;
-    if(months.length){
-      months.forEach(function(ym){
-        var mFte=rec.reduce(function(s,r){ return s+_resActiveRatio(r,ym)*(r.alocacao_pct||0)/100; },0);
-        fteSum+=mFte; if(mFte>0) activeMthCount++;
-      });
-    }
-    var fteAvg=activeMthCount?fteSum/activeMthCount:0;
-
-    // Cost
-    var cost=0; var hasCost=false;
-    rec.forEach(function(r){
-      months.forEach(function(ym){
-        if(_resIsActiveInMonth(r,ym)){
+    // Single pass: FTE avg + cost + conflicts
+    var fteSum=0, activeMthCount=0, cost=0, hasCost=false;
+    var conflNames=new Set();
+    months.forEach(function(ym){
+      var b=monthBounds[ym];
+      var mFte=0;
+      rec.forEach(function(r){
+        var ratio=_resActiveRatio(r,ym,b);
+        if(ratio>0){
+          mFte+=ratio*(r.alocacao_pct||0)/100;
           var c=_resCostMonth(r,du);
-          if(c!=null){cost+=c;hasCost=true;}
+          if(c!=null){cost+=c*ratio;hasCost=true;}
+          var rName=(r.nome||'').toLowerCase().trim();
+          if(conflictMap[rName+'|'+ym]) conflNames.add(rName);
         }
       });
+      fteSum+=mFte; if(mFte>0) activeMthCount++;
     });
+    var fteAvg=activeMthCount?fteSum/activeMthCount:0;
 
     // Internos %
     var intCount=rec.filter(function(r){return (r.tipo||'interno')!=='externo';}).length;
     var intPct=rec.length?Math.round(intCount/rec.length*100):0;
-
-    // Conflicts (cross-plan overalloc for names in this plan, in any month)
-    var conflNames=new Set();
-    rec.forEach(function(r){
-      var rName=(r.nome||'').toLowerCase().trim();
-      months.forEach(function(ym){
-        if(!_resIsActiveInMonth(r,ym)) return;
-        var totalPct=0;
-        fPDS.forEach(function(p2){
-          ensureFTE(p2);
-          (p2.fte.recursos||[]).forEach(function(r2){
-            if((r2.nome||'').toLowerCase().trim()===rName && _resIsActiveInMonth(r2,ym)){
-              totalPct+=(r2.alocacao_pct||0);
-            }
-          });
-        });
-        if(totalPct>100) conflNames.add(rName);
-      });
-    });
 
     html+='<div class="res-plan-row" onclick="toggleResDetail(\''+esc(key)+'\')">'
       +'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(p.plano)+'">'+esc(p.plano||p.id2)+'</span>'
