@@ -1,34 +1,34 @@
 /**
  * supabase-adapter.js — Strategos PMO
  *
- * Adaptador Supabase que expõe window.SB.
- * Inclua este ficheiro APÓS o CDN do Supabase:
+ * Supabase adapter exposing window.SB.
+ * Include AFTER the Supabase CDN script:
  *
  *   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  *   <script src="supabase-adapter.js"></script>
  *
- * Configure SUPABASE_URL e SUPABASE_ANON_KEY antes de usar.
+ * Set SUPABASE_URL and SUPABASE_ANON_KEY before loading this file.
+ *
+ * Translation boundary: DB columns are English; JS app properties remain in
+ * Portuguese. The _map* functions handle the translation layer.
  */
 
 (function () {
   'use strict';
 
-  // ── Configuração ─────────────────────────────────────────────
-  // Substitua pelos valores do seu projecto Supabase
   var SUPABASE_URL      = window.SUPABASE_URL      || '';
   var SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || '';
 
-  // ── Objecto global SB ────────────────────────────────────────
   var SB = {
     client        : null,
     isOnline      : false,
     currentUserId : null,
     _channel      : null,
 
-    // ── Inicialização ──────────────────────────────────────────
+    // ── Initialisation ─────────────────────────────────────────
     init: async function () {
       if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-        console.warn('[SB] SUPABASE_URL ou SUPABASE_ANON_KEY não configurados. A usar modo local.');
+        console.warn('[SB] SUPABASE_URL or SUPABASE_ANON_KEY not set. Using local mode.');
         this.isOnline = false;
         return;
       }
@@ -40,12 +40,12 @@
           this.currentUserId = res.data.session.user.id;
         }
       } catch (e) {
-        console.warn('[SB] Supabase indisponível, a usar localStorage.', e);
+        console.warn('[SB] Supabase unavailable, falling back to localStorage.', e);
         this.isOnline = false;
       }
     },
 
-    // ── Autenticação ───────────────────────────────────────────
+    // ── Authentication ─────────────────────────────────────────
     signIn: async function (email, password) {
       var res = await this.client.auth.signInWithPassword({ email: email, password: password });
       if (res.error) throw res.error;
@@ -67,7 +67,6 @@
       return this.client.auth.onAuthStateChange(callback);
     },
 
-    // ── getUserMeta: devolve metadados + perfil do utilizador ──
     getUserMeta: async function (userId) {
       var res = await this.client
         .from('user_metadata')
@@ -78,11 +77,13 @@
       return res.data;
     },
 
-    // ── Mapeamento interno: linha DB → objecto app ─────────────
+    // ── Internal mapping: DB row → app object ──────────────────
+    // DB columns are English; app (JS) properties remain Portuguese.
+
     _mapActivity: function (row) {
       return {
-        nivel    : row.nivel,
-        nome     : row.nome,
+        nivel    : row.level,
+        nome     : row.name,
         n0       : row.n0      || '',
         n1       : row.n1      || '',
         n2       : row.n2      || '',
@@ -110,83 +111,83 @@
         .sort(function (a, b) { return a.sort_order - b.sort_order; })
         .map(function (r) {
           return {
-            desc       : r.description || '',
-            impact     : r.impact,
-            prob       : r.prob,
-            status     : r.status,
-            mitigation : r.mitigation || '',
+            desc         : r.description || '',
+            impact       : r.impact,
+            prob         : r.probability,
+            status       : r.status,
+            mitigation   : r.mitigation || '',
             _supabase_id : r.id
           };
         });
 
-      var rubricas = (row.fin_rubricas || [])
+      var rubricas = (row.fin_budget_lines || [])
         .sort(function (a, b) { return a.sort_order - b.sort_order; })
         .map(function (r) {
           return {
-            id        : r.app_id || r.id,
-            categoria : r.categoria,
-            capex     : r.capex,
-            moeda     : r.moeda,
-            valores   : r.valores || {},
-            nota      : r.nota   || '',
-            fonte     : r.fonte  || '',
+            id           : r.app_id || r.id,
+            categoria    : r.category,
+            capex        : r.capex,
+            moeda        : r.currency,
+            valores      : r.values    || {},
+            nota         : r.note      || '',
+            fonte        : r.source_ref || '',
             _supabase_id : r.id
           };
         });
 
-      var contratos = (row.fin_contratos || [])
+      var contratos = (row.fin_contracts || [])
         .sort(function (a, b) { return a.sort_order - b.sort_order; })
         .map(function (c) {
           return {
-            id          : c.app_id || c.id,
-            fornecedor  : c.fornecedor  || '',
-            categoria   : c.categoria   || '',
-            moeda       : c.moeda       || '€',
-            cambio_ref  : c.cambio_ref,
-            valor_total : c.valor_total || 0,
-            data_adj    : c.data_adj,
-            descricao   : c.descricao   || '',
+            id           : c.app_id || c.id,
+            fornecedor   : c.supplier       || '',
+            categoria    : c.category       || '',
+            moeda        : c.currency       || '€',
+            cambio_ref   : c.exchange_rate_ref,
+            valor_total  : c.total_amount   || 0,
+            data_adj     : c.award_date,
+            descricao    : c.description    || '',
             _supabase_id : c.id
           };
         });
 
-      var facturas = (row.fin_facturas || [])
+      var facturas = (row.fin_invoices || [])
         .sort(function (a, b) { return a.sort_order - b.sort_order; })
         .map(function (f) {
           return {
             id              : f.app_id || f.id,
-            contrato_id     : f.app_contrato_id || '',
-            ref             : f.ref             || '',
-            fornecedor      : f.fornecedor       || '',
-            doc_tipo        : f.doc_tipo,
-            descricao       : f.descricao        || '',
-            valor           : f.valor            || 0,
-            moeda           : f.moeda            || '€',
-            cambio          : f.cambio,
-            data_emissao    : f.data_emissao,
-            data_vencimento : f.data_vencimento,
-            data_pagamento  : f.data_pagamento,
-            estado          : f.estado           || 'Por facturar',
-            memorando       : f.memorando        || '',
+            contrato_id     : f.app_contract_id  || '',
+            ref             : f.ref              || '',
+            fornecedor      : f.supplier         || '',
+            doc_tipo        : f.doc_type,
+            descricao       : f.description      || '',
+            valor           : f.amount           || 0,
+            moeda           : f.currency         || '€',
+            cambio          : f.exchange_rate,
+            data_emissao    : f.issue_date,
+            data_vencimento : f.due_date,
+            data_pagamento  : f.payment_date,
+            estado          : f.status           || 'Por facturar',
+            memorando       : f.memo             || '',
             _supabase_id    : f.id
           };
         });
 
       return {
-        id0                : row.id0   || '1',
-        id1                : row.id1   || '',
-        id2                : row.id2   || '',
-        plano              : row.plano || '',
-        n0                 : row.n0    || '',
-        n1                 : row.n1    || '',
-        compromissos_items : row.compromissos_items || [],
-        avancos_items      : row.avancos_items      || [],
-        proximos_items     : row.proximos_items     || [],
-        atencao_items      : row.atencao_items      || [],
-        compromissos       : row.compromissos,
-        avancos            : row.avancos,
-        proximos           : row.proximos,
-        atencao            : row.atencao,
+        id0                : row.id0       || '1',
+        id1                : row.id1       || '',
+        id2                : row.id2       || '',
+        plano              : row.plan_name || '',
+        n0                 : row.n0        || '',
+        n1                 : row.n1        || '',
+        compromissos_items : row.commitments_items  || [],
+        avancos_items      : row.progress_items     || [],
+        proximos_items     : row.next_steps_items   || [],
+        atencao_items      : row.attention_items    || [],
+        compromissos       : row.commitments,
+        avancos            : row.progress,
+        proximos           : row.next_steps,
+        atencao            : row.attention,
         risks              : risks,
         finances           : {
           rubricas : rubricas,
@@ -194,23 +195,23 @@
           facturas : facturas
         },
         fte                : {
-          dias_uteis : row.fte_dias_uteis || 22,
-          recursos   : (row.fte_recursos || [])
+          dias_uteis : row.fte_working_days || 22,
+          recursos   : (row.fte_resources || [])
             .sort(function (a, b) { return a.sort_order - b.sort_order; })
             .map(function (r) {
               return {
                 id           : r.app_id || r.id,
-                nome         : r.nome         || '',
-                unidade      : r.unidade      || '',
-                perfil       : r.perfil       || '',
-                tipo         : r.tipo         || 'interno',
-                custo_dia    : Number(r.custo_dia)    || 0,
-                id2          : r.id2          || '',
-                data_inicio  : r.data_inicio  || null,
-                data_fim     : r.data_fim     || null,
-                alocacao_pct : Number(r.alocacao_pct) || 100,
-                contrato_id  : r.contrato_id  || '',
-                estado       : r.estado       || 'activo',
+                nome         : r.name          || '',
+                unidade      : r.org_unit       || '',
+                perfil       : r.role           || '',
+                tipo         : r.type           || 'interno',
+                custo_dia    : Number(r.daily_cost)     || 0,
+                id2          : r.id2            || '',
+                data_inicio  : r.start_date     || null,
+                data_fim     : r.end_date       || null,
+                alocacao_pct : Number(r.allocation_pct) || 100,
+                contrato_id  : r.contract_id    || '',
+                estado       : r.status         || 'activo',
                 _supabase_id : r.id
               };
             })
@@ -219,7 +220,40 @@
       };
     },
 
-    // ── Carregamento de dados ──────────────────────────────────
+    _mapResource: function (r) {
+      return {
+        _supabase_id    : r.id,
+        id0             : r.id0,
+        id1             : r.id1          || null,
+        id2             : r.id2          || null,
+        nome            : r.name,
+        unidade         : r.org_unit     || '',
+        perfil          : r.role         || '',
+        alocacao_total  : Number(r.total_hours)   || 0,
+        alocacao_projeto: Number(r.project_hours) || 0,
+        periodo_inicio  : r.period_start || null,
+        periodo_fim     : r.period_end   || null,
+        custo_hora      : r.hourly_cost != null ? Number(r.hourly_cost) : null,
+        notas           : r.notes        || '',
+        sort_order      : r.sort_order   || 0
+      };
+    },
+
+    _mapPessoa: function (row) {
+      return {
+        id       : row.id,
+        nome     : row.name     || '',
+        email    : row.email    || '',
+        unidade  : row.org_unit || '',
+        perfil   : row.role     || '',
+        tipo     : row.type     || 'interno',
+        notas    : row.notes    || '',
+        activo   : row.active   !== false,
+        sort_order: row.sort_order || 0
+      };
+    },
+
+    // ── Load data ──────────────────────────────────────────────
 
     loadActivities: async function () {
       var res = await this.client
@@ -234,7 +268,7 @@
     loadPDS: async function () {
       var res = await this.client
         .from('pds_entries')
-        .select('*, risks(*), fin_rubricas(*), fin_contratos(*), fin_facturas(*), fte_recursos(*)')
+        .select('*, risks(*), fin_budget_lines(*), fin_contracts(*), fin_invoices(*), fte_resources(*)')
         .order('id');
       if (res.error) throw res.error;
       var self = this;
@@ -249,11 +283,11 @@
       if (res.error) throw res.error;
       return res.data.map(function (s) {
         return {
-          timestamp  : s.snap_date,
-          label      : s.label,
-          kpis       : s.kpi   || {},
-          byN1       : s.by_n1 || {},
-          byN0       : s.by_n0 || {},
+          timestamp    : s.snap_date,
+          label        : s.label,
+          kpis         : s.kpi   || {},
+          byN1         : s.by_n1 || {},
+          byN0         : s.by_n0 || {},
           _supabase_id : s.id
         };
       });
@@ -269,14 +303,22 @@
       return res.data ? res.data.data : null;
     },
 
-    // ── Guardar Actividades (full-replace por gantt) ───────────
+    loadResources: async function (id0s) {
+      var q = this.client.from('resources').select('*').order('sort_order');
+      if (id0s && id0s.length) q = q.in('id0', id0s);
+      var res = await q;
+      if (res.error) throw res.error;
+      return (res.data || []).map(function (r) { return SB._mapResource(r); });
+    },
+
+    // ── Save activities (full-replace by id0) ──────────────────
     saveActivities: async function (ganttRows) {
       var self = this;
       var rows = ganttRows.map(function (r, i) {
         return {
           source    : 'gantt',
-          nivel     : r.nivel,
-          nome      : r.nome      || '',
+          level     : r.nivel,
+          name      : r.nome      || '',
           n0        : r.n0        || '',
           n1        : r.n1        || '',
           n2        : r.n2        || '',
@@ -300,8 +342,6 @@
         };
       });
 
-      // Apagar apenas as linhas gantt do(s) id0 presentes nos dados enviados
-      // Isto garante que importações por programa não apagam outros programas
       var id0sToReplace = [...new Set(rows.map(function(r){ return r.id0; }))];
       for (var j = 0; j < id0sToReplace.length; j++) {
         var delRes = await this.client
@@ -312,7 +352,6 @@
         if (delRes.error) throw delRes.error;
       }
 
-      // Inserir em chunks de 500
       for (var i = 0; i < rows.length; i += 500) {
         var chunk = rows.slice(i, i + 500);
         var insRes = await this.client.from('activities').insert(chunk);
@@ -320,82 +359,52 @@
       }
     },
 
-    // ── Recursos: mapeamento, load e save ────────────────────
-    _mapResource: function (r) {
-      return {
-        _supabase_id    : r.id,
-        id0             : r.id0,
-        id1             : r.id1             || null,
-        id2             : r.id2             || null,
-        nome            : r.nome,
-        unidade         : r.unidade         || '',
-        perfil          : r.perfil          || '',
-        alocacao_total  : Number(r.alocacao_total)   || 0,
-        alocacao_projeto: Number(r.alocacao_projeto) || 0,
-        periodo_inicio  : r.periodo_inicio  || null,
-        periodo_fim     : r.periodo_fim     || null,
-        custo_hora      : r.custo_hora != null ? Number(r.custo_hora) : null,
-        notas           : r.notas           || '',
-        sort_order      : r.sort_order      || 0
-      };
-    },
-
-    loadResources: async function (id0s) {
-      var q = this.client.from('resources').select('*').order('sort_order');
-      if (id0s && id0s.length) q = q.in('id0', id0s);
-      var res = await q;
-      if (res.error) throw res.error;
-      return (res.data || []).map(function (r) { return SB._mapResource(r); });
-    },
-
     saveResources: async function (id0, rows) {
-      // delete-by-id0 then insert (mesmo padrão de saveRisks)
       var del = await this.client.from('resources').delete().eq('id0', id0);
       if (del.error) throw del.error;
       if (!rows || !rows.length) return;
       var self = this;
       var ins = rows.map(function (r, i) {
         return {
-          id0             : id0,
-          id1             : r.id1             || null,
-          id2             : r.id2             || null,
-          nome            : r.nome,
-          unidade         : r.unidade         || '',
-          perfil          : r.perfil          || '',
-          alocacao_total  : parseFloat(r.alocacao_total)   || 0,
-          alocacao_projeto: parseFloat(r.alocacao_projeto) || 0,
-          periodo_inicio  : r.periodo_inicio  || null,
-          periodo_fim     : r.periodo_fim     || null,
-          custo_hora      : r.custo_hora ? parseFloat(r.custo_hora) : null,
-          notas           : r.notas           || '',
-          sort_order      : i,
-          updated_by      : self.currentUserId
+          id0          : id0,
+          id1          : r.id1          || null,
+          id2          : r.id2          || null,
+          name         : r.nome,
+          org_unit     : r.unidade      || '',
+          role         : r.perfil       || '',
+          total_hours  : parseFloat(r.alocacao_total)   || 0,
+          project_hours: parseFloat(r.alocacao_projeto) || 0,
+          period_start : r.periodo_inicio || null,
+          period_end   : r.periodo_fim    || null,
+          hourly_cost  : r.custo_hora ? parseFloat(r.custo_hora) : null,
+          notes        : r.notas         || '',
+          sort_order   : i,
+          updated_by   : self.currentUserId
         };
       });
       var res = await this.client.from('resources').insert(ins);
       if (res.error) throw res.error;
     },
 
-    // ── Guardar entrada PDS (upsert por id0+id2) ──────────────
+    // ── Save PDS entry (upsert by id0+id2) ─────────────────────
     savePDSEntry: async function (pdsObj) {
-      var self = this;
       var payload = {
-        id0                : pdsObj.id0   || '1',
-        id1                : pdsObj.id1   || '',
-        id2                : pdsObj.id2   || '',
-        plano              : pdsObj.plano || '',
-        n0                 : pdsObj.n0    || '',
-        n1                 : pdsObj.n1    || '',
-        compromissos_items : pdsObj.compromissos_items || [],
-        avancos_items      : pdsObj.avancos_items      || [],
-        proximos_items     : pdsObj.proximos_items     || [],
-        atencao_items      : pdsObj.atencao_items      || [],
-        compromissos       : pdsObj.compromissos,
-        avancos            : pdsObj.avancos,
-        proximos           : pdsObj.proximos,
-        atencao            : pdsObj.atencao,
-        fte_dias_uteis     : (pdsObj.fte && pdsObj.fte.dias_uteis) ? Number(pdsObj.fte.dias_uteis) : 22,
-        updated_by         : this.currentUserId
+        id0               : pdsObj.id0    || '1',
+        id1               : pdsObj.id1    || '',
+        id2               : pdsObj.id2    || '',
+        plan_name         : pdsObj.plano  || '',
+        n0                : pdsObj.n0     || '',
+        n1                : pdsObj.n1     || '',
+        commitments_items : pdsObj.compromissos_items || [],
+        progress_items    : pdsObj.avancos_items      || [],
+        next_steps_items  : pdsObj.proximos_items     || [],
+        attention_items   : pdsObj.atencao_items      || [],
+        commitments       : pdsObj.compromissos,
+        progress          : pdsObj.avancos,
+        next_steps        : pdsObj.proximos,
+        attention         : pdsObj.atencao,
+        fte_working_days  : (pdsObj.fte && pdsObj.fte.dias_uteis) ? Number(pdsObj.fte.dias_uteis) : 22,
+        updated_by        : this.currentUserId
       };
 
       var res = await this.client
@@ -405,12 +414,11 @@
         .single();
       if (res.error) throw res.error;
 
-      // Guardar _supabase_id no objecto em memória
       if (pdsObj && res.data) pdsObj._supabase_id = res.data.id;
       return res.data.id;
     },
 
-    // ── Guardar riscos (full-replace por pds_id) ───────────────
+    // ── Save risks (full-replace by pds_id) ────────────────────
     saveRisks: async function (pdsId, risks) {
       var self = this;
       if (!pdsId) return;
@@ -425,14 +433,14 @@
 
       var rows = risks.map(function (r, i) {
         return {
-          pds_id     : pdsId,
-          description: r.desc       || '',
-          impact     : r.impact     || 1,
-          prob       : r.prob       || 1,
-          status     : r.status     || 'Aberto',
-          mitigation : r.mitigation || '',
-          sort_order : i,
-          updated_by : self.currentUserId
+          pds_id      : pdsId,
+          description : r.desc        || '',
+          impact      : r.impact      || 1,
+          probability : r.prob        || 1,
+          status      : r.status      || 'Aberto',
+          mitigation  : r.mitigation  || '',
+          sort_order  : i,
+          updated_by  : self.currentUserId
         };
       });
 
@@ -440,88 +448,88 @@
       if (insRes.error) throw insRes.error;
     },
 
-    // ── Guardar finanças (full-replace por pds_id) ─────────────
+    // ── Save finances (full-replace by pds_id) ─────────────────
     saveFinances: async function (pdsId, finances) {
       var self = this;
       if (!pdsId) return;
       var fin = finances || {};
 
-      // ─ Rubricas
-      await this.client.from('fin_rubricas').delete().eq('pds_id', pdsId);
+      // ─ Budget lines
+      await this.client.from('fin_budget_lines').delete().eq('pds_id', pdsId);
       var rubricas = fin.rubricas || [];
       if (rubricas.length > 0) {
         var rubRows = rubricas.map(function (r, i) {
           return {
             pds_id    : pdsId,
             app_id    : String(r.id || ''),
-            categoria : r.categoria || '',
+            category  : r.categoria || '',
             capex     : !!r.capex,
-            moeda     : r.moeda     || '€',
-            valores   : r.valores   || {},
-            nota      : r.nota      || null,
-            fonte     : r.fonte     || null,
+            currency  : r.moeda     || '€',
+            values    : r.valores   || {},
+            note      : r.nota      || null,
+            source_ref: r.fonte     || null,
             sort_order: i,
             updated_by: self.currentUserId
           };
         });
-        var rRes = await this.client.from('fin_rubricas').insert(rubRows);
+        var rRes = await this.client.from('fin_budget_lines').insert(rubRows);
         if (rRes.error) throw rRes.error;
       }
 
-      // ─ Contratos
-      await this.client.from('fin_contratos').delete().eq('pds_id', pdsId);
+      // ─ Contracts
+      await this.client.from('fin_contracts').delete().eq('pds_id', pdsId);
       var contratos = fin.contratos || [];
       if (contratos.length > 0) {
         var cntRows = contratos.map(function (c, i) {
           return {
-            pds_id     : pdsId,
-            app_id     : String(c.id || ''),
-            fornecedor : c.fornecedor  || '',
-            categoria  : c.categoria   || '',
-            moeda      : c.moeda       || '€',
-            cambio_ref : c.cambio_ref  || null,
-            valor_total: c.valor_total || 0,
-            data_adj   : c.data_adj    || null,
-            descricao  : c.descricao   || '',
-            sort_order : i,
-            updated_by : self.currentUserId
+            pds_id           : pdsId,
+            app_id           : String(c.id || ''),
+            supplier         : c.fornecedor    || '',
+            category         : c.categoria     || '',
+            currency         : c.moeda         || '€',
+            exchange_rate_ref: c.cambio_ref     || null,
+            total_amount     : c.valor_total    || 0,
+            award_date       : c.data_adj       || null,
+            description      : c.descricao      || '',
+            sort_order       : i,
+            updated_by       : self.currentUserId
           };
         });
-        var cRes = await this.client.from('fin_contratos').insert(cntRows);
+        var cRes = await this.client.from('fin_contracts').insert(cntRows);
         if (cRes.error) throw cRes.error;
       }
 
-      // ─ Facturas
-      await this.client.from('fin_facturas').delete().eq('pds_id', pdsId);
+      // ─ Invoices
+      await this.client.from('fin_invoices').delete().eq('pds_id', pdsId);
       var facturas = fin.facturas || [];
       if (facturas.length > 0) {
         var fatRows = facturas.map(function (f, i) {
           return {
             pds_id          : pdsId,
             app_id          : String(f.id || ''),
-            app_contrato_id : String(f.contrato_id || ''),
-            ref             : f.ref             || '',
-            fornecedor      : f.fornecedor       || '',
-            doc_tipo        : f.doc_tipo         || null,
-            descricao       : f.descricao        || '',
-            valor           : f.valor            || 0,
-            moeda           : f.moeda            || '€',
-            cambio          : f.cambio           || null,
-            data_emissao    : f.data_emissao     || null,
-            data_vencimento : f.data_vencimento  || null,
-            data_pagamento  : f.data_pagamento   || null,
-            estado          : f.estado           || 'Por facturar',
-            memorando       : f.memorando        || '',
+            app_contract_id : String(f.contrato_id || ''),
+            ref             : f.ref              || '',
+            supplier        : f.fornecedor        || '',
+            doc_type        : f.doc_tipo          || null,
+            description     : f.descricao         || '',
+            amount          : f.valor             || 0,
+            currency        : f.moeda             || '€',
+            exchange_rate   : f.cambio            || null,
+            issue_date      : f.data_emissao      || null,
+            due_date        : f.data_vencimento   || null,
+            payment_date    : f.data_pagamento    || null,
+            status          : f.estado            || 'Por facturar',
+            memo            : f.memorando         || '',
             sort_order      : i,
             updated_by      : self.currentUserId
           };
         });
-        var fRes = await this.client.from('fin_facturas').insert(fatRows);
+        var fRes = await this.client.from('fin_invoices').insert(fatRows);
         if (fRes.error) throw fRes.error;
       }
     },
 
-    // ── Guardar snapshot ───────────────────────────────────────
+    // ── Save snapshot ──────────────────────────────────────────
     saveSnapshot: async function (snapObj) {
       var res = await this.client.from('snapshots').insert({
         label      : snapObj.label     || '',
@@ -534,7 +542,7 @@
       if (res.error) throw res.error;
     },
 
-    // ── Guardar configuração ───────────────────────────────────
+    // ── Save config ────────────────────────────────────────────
     saveConfig: async function (cfgObj) {
       var res = await this.client
         .from('app_config')
@@ -543,7 +551,7 @@
       if (res.error) throw res.error;
     },
 
-    // ── Realtime: subscrever alterações ───────────────────────
+    // ── Realtime subscriptions ─────────────────────────────────
     subscribeToChanges: function (onActivities, onPDS, onSnapshots) {
       if (!this.client) return;
       var self = this;
@@ -570,13 +578,13 @@
         .subscribe();
     },
 
-    // ── Guardar FTE recursos (full-replace por pds_id) ────────
+    // ── Save FTE resources (full-replace by pds_id) ────────────
     saveFte: async function (pdsId, recursos) {
       var self = this;
       if (!pdsId) return;
 
       var delRes = await this.client
-        .from('fte_recursos')
+        .from('fte_resources')
         .delete()
         .eq('pds_id', pdsId);
       if (delRes.error) throw delRes.error;
@@ -586,62 +594,61 @@
 
       var insRows = rows.map(function (r, i) {
         return {
-          pds_id       : pdsId,
-          app_id       : String(r.id || ''),
-          nome         : r.nome         || '',
-          unidade      : r.unidade      || '',
-          perfil       : r.perfil       || '',
-          tipo         : r.tipo         || 'interno',
-          custo_dia    : parseFloat(r.custo_dia)    || 0,
-          id2          : r.id2          || '',
-          data_inicio  : r.data_inicio  || null,
-          data_fim     : r.data_fim     || null,
-          alocacao_pct : parseFloat(r.alocacao_pct) || 100,
-          contrato_id  : r.contrato_id  || '',
-          estado       : r.estado       || 'activo',
-          sort_order   : i,
-          updated_by   : self.currentUserId
+          pds_id        : pdsId,
+          app_id        : String(r.id || ''),
+          name          : r.nome          || '',
+          org_unit      : r.unidade       || '',
+          role          : r.perfil        || '',
+          type          : r.tipo          || 'interno',
+          daily_cost    : parseFloat(r.custo_dia)     || 0,
+          id2           : r.id2           || '',
+          start_date    : r.data_inicio   || null,
+          end_date      : r.data_fim      || null,
+          allocation_pct: parseFloat(r.alocacao_pct)  || 100,
+          contract_id   : r.contrato_id   || '',
+          status        : r.estado        || 'activo',
+          sort_order    : i,
+          updated_by    : self.currentUserId
         };
       });
 
-      var insRes = await this.client.from('fte_recursos').insert(insRows);
+      var insRes = await this.client.from('fte_resources').insert(insRows);
       if (insRes.error) throw insRes.error;
     },
 
-    // ── Carregar FTE para um pds_id específico ─────────────────
+    // ── Load FTE for a specific pds_id ─────────────────────────
     loadFteForPDS: async function (pdsId) {
-      var self = this;
       if (!pdsId) return { recursos: [], dias_uteis: 22 };
 
       var pdsRes = await this.client
         .from('pds_entries')
-        .select('fte_dias_uteis, fte_recursos(*)')
+        .select('fte_working_days, fte_resources(*)')
         .eq('id', pdsId)
         .single();
       if (pdsRes.error) throw pdsRes.error;
 
       var row = pdsRes.data || {};
-      var recursos = (row.fte_recursos || [])
+      var recursos = (row.fte_resources || [])
         .sort(function (a, b) { return a.sort_order - b.sort_order; })
         .map(function (r) {
           return {
             id           : r.app_id || r.id,
-            nome         : r.nome         || '',
-            unidade      : r.unidade      || '',
-            perfil       : r.perfil       || '',
-            tipo         : r.tipo         || 'interno',
-            custo_dia    : Number(r.custo_dia)    || 0,
-            id2          : r.id2          || '',
-            data_inicio  : r.data_inicio  || null,
-            data_fim     : r.data_fim     || null,
-            alocacao_pct : Number(r.alocacao_pct) || 100,
-            contrato_id  : r.contrato_id  || '',
-            estado       : r.estado       || 'activo',
+            nome         : r.name          || '',
+            unidade      : r.org_unit      || '',
+            perfil       : r.role          || '',
+            tipo         : r.type          || 'interno',
+            custo_dia    : Number(r.daily_cost)     || 0,
+            id2          : r.id2           || '',
+            data_inicio  : r.start_date    || null,
+            data_fim     : r.end_date      || null,
+            alocacao_pct : Number(r.allocation_pct) || 100,
+            contrato_id  : r.contract_id   || '',
+            estado       : r.status        || 'activo',
             _supabase_id : r.id
           };
         });
 
-      return { recursos: recursos, dias_uteis: row.fte_dias_uteis || 22 };
+      return { recursos: recursos, dias_uteis: row.fte_working_days || 22 };
     },
 
     unsubscribeAll: function () {
@@ -651,7 +658,7 @@
       }
     },
 
-    // ── Histórico de alterações ────────────────────────────────
+    // ── Change log ─────────────────────────────────────────────
     getChangeLog: async function (tableFilter, limit) {
       var q = this.client
         .from('change_log')
@@ -664,7 +671,7 @@
       return res.data;
     },
 
-    // ── Gestão de utilizadores (admin) ─────────────────────────
+    // ── User management (admin) ────────────────────────────────
     listUsers: async function () {
       var res = await this.client
         .from('user_metadata')
@@ -709,58 +716,55 @@
       if (res.error) throw res.error;
     },
 
-    // Criação/actualização de utilizadores via Edge Function
-    // (a Edge Function usa service_role key para chamar auth.admin API)
+    // User creation/update via Edge Function
+    // (Edge Function uses service_role key to call auth.admin API)
     upsertUser: async function (userObj) {
-      var res = await this.client.functions.invoke('upsert-user', {
-        body: userObj
-      });
+      var res = await this.client.functions.invoke('upsert-user', { body: userObj });
       if (res.error) throw res.error;
       return res.data;
     },
 
     deleteUser: async function (userId) {
-      var res = await this.client.functions.invoke('delete-user', {
-        body: { user_id: userId }
-      });
+      var res = await this.client.functions.invoke('delete-user', { body: { user_id: userId } });
       if (res.error) throw res.error;
     },
 
-    // ── Catálogo de Pessoas ────────────────────────────────────
+    // ── People catalogue ───────────────────────────────────────
     loadPessoas: async function () {
       if (!this.isOnline) return [];
+      var self = this;
       var res = await this.client
-        .from('pessoas')
+        .from('people')
         .select('*')
-        .order('nome');
+        .order('name');
       if (res.error) throw res.error;
-      return res.data || [];
+      return (res.data || []).map(function (row) { return self._mapPessoa(row); });
     },
 
     savePessoa: async function (p) {
       var payload = {
-        nome      : p.nome     || '',
+        name      : p.nome     || '',
         email     : p.email    || '',
-        unidade   : p.unidade  || '',
-        perfil    : p.perfil   || '',
-        tipo      : p.tipo     || 'interno',
-        notas     : p.notas    || '',
-        activo    : p.activo   !== false,
+        org_unit  : p.unidade  || '',
+        role      : p.perfil   || '',
+        type      : p.tipo     || 'interno',
+        notes     : p.notas    || '',
+        active    : p.activo   !== false,
         sort_order: p.sort_order || 0,
         updated_by: this.currentUserId
       };
       if (p.id) {
-        var res = await this.client.from('pessoas').update(payload).eq('id', p.id).select('id').single();
+        var res = await this.client.from('people').update(payload).eq('id', p.id).select('id').single();
         if (res.error) throw res.error;
         return res.data.id;
       }
-      var res = await this.client.from('pessoas').insert(payload).select('id').single();
+      var res = await this.client.from('people').insert(payload).select('id').single();
       if (res.error) throw res.error;
       return res.data.id;
     },
 
     deletePessoa: async function (id) {
-      var res = await this.client.from('pessoas').delete().eq('id', id);
+      var res = await this.client.from('people').delete().eq('id', id);
       if (res.error) throw res.error;
     }
   };

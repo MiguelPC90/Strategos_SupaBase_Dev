@@ -1,44 +1,43 @@
--- ── Gestão de Recursos FTE ────────────────────────────────────────────────────
--- Tabela de recursos humanos por plano de acção (pds_entry)
--- Substitui a tabela `resources` (v1, baseada em id0/horas)
+-- ── FTE Resources Table ───────────────────────────────────────────────────────
+-- Per-plan human resource allocation (replaces legacy `resources` table).
 
-CREATE TABLE IF NOT EXISTS fte_recursos (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  pds_id       uuid NOT NULL REFERENCES pds_entries(id) ON DELETE CASCADE,
-  app_id       text        NOT NULL DEFAULT '',  -- ID gerado pela app (uid())
-  nome         text        NOT NULL DEFAULT '',
-  unidade      text                 DEFAULT '',
-  perfil       text                 DEFAULT '',
-  tipo         text                 DEFAULT 'interno', -- interno | externo
-  custo_dia    numeric(10,2)        DEFAULT 0,
-  id2          text                 DEFAULT '',  -- projecto (N2)
-  data_inicio  date,
-  data_fim     date,
-  alocacao_pct numeric(5,1)         DEFAULT 100, -- % alocação (100 = 1 FTE)
-  contrato_id  text                 DEFAULT '',  -- ref a fin_contratos.app_id
-  estado       text                 DEFAULT 'activo', -- activo | inactivo
-  sort_order   integer              DEFAULT 0,
-  updated_at   timestamptz          DEFAULT now(),
-  updated_by   uuid REFERENCES auth.users(id)
+CREATE TABLE IF NOT EXISTS fte_resources (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  pds_id         uuid NOT NULL REFERENCES pds_entries(id) ON DELETE CASCADE,
+  app_id         text        NOT NULL DEFAULT '',   -- client-side uid()
+  name           text        NOT NULL DEFAULT '',
+  org_unit       text                 DEFAULT '',
+  role           text                 DEFAULT '',
+  type           text                 DEFAULT 'internal',  -- internal | external
+  daily_cost     numeric(10,2)        DEFAULT 0,
+  id2            text                 DEFAULT '',          -- project ref (N2)
+  start_date     date,
+  end_date       date,
+  allocation_pct numeric(5,1)         DEFAULT 100,         -- 100 = 1 FTE
+  contract_id    text                 DEFAULT '',          -- ref to fin_contracts.app_id
+  status         text                 DEFAULT 'active',    -- active | inactive
+  sort_order     integer              DEFAULT 0,
+  updated_at     timestamptz          DEFAULT now(),
+  updated_by     uuid REFERENCES auth.users(id)
 );
 
-ALTER TABLE fte_recursos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fte_resources ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Authenticated read fte_recursos"
-  ON fte_recursos FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Editor insert fte_recursos"
-  ON fte_recursos FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Editor update fte_recursos"
-  ON fte_recursos FOR UPDATE TO authenticated USING (true);
-CREATE POLICY "Editor delete fte_recursos"
-  ON fte_recursos FOR DELETE TO authenticated USING (true);
+CREATE POLICY "Authenticated read fte_resources"
+  ON fte_resources FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Editor insert fte_resources"
+  ON fte_resources FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "Editor update fte_resources"
+  ON fte_resources FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "Editor delete fte_resources"
+  ON fte_resources FOR DELETE TO authenticated USING (true);
 
-CREATE INDEX IF NOT EXISTS fte_recursos_pds_id_idx ON fte_recursos(pds_id);
+CREATE INDEX IF NOT EXISTS fte_resources_pds_id_idx ON fte_resources(pds_id);
 
-CREATE TRIGGER fte_recursos_updated_at
-  BEFORE UPDATE ON fte_recursos
+CREATE TRIGGER fte_resources_updated_at
+  BEFORE UPDATE ON fte_resources
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- dias_úteis por mês configurável por plano
+-- FTE working days per month configurable per plan
 ALTER TABLE pds_entries
-  ADD COLUMN IF NOT EXISTS fte_dias_uteis smallint DEFAULT 22;
+  ADD COLUMN IF NOT EXISTS fte_working_days smallint DEFAULT 22;

@@ -1,10 +1,10 @@
 -- ============================================================
--- Strategos PMO — Supabase Schema (idempotente — pode re-correr)
+-- Strategos PMO — Supabase Schema (idempotent — safe to re-run)
 -- ============================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- ── 1. PERFIS DE PERMISSÃO ───────────────────────────────────
+-- ── 1. USER PROFILES ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.user_profiles (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name       TEXT NOT NULL,
@@ -13,10 +13,9 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
--- Adicionar coluna n0s se a tabela já existia sem ela
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS n0s JSONB NOT NULL DEFAULT '[]'::jsonb;
 
--- ── 2. METADADOS DE UTILIZADOR ───────────────────────────────
+-- ── 2. USER METADATA ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.user_metadata (
   id           UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   display_name TEXT NOT NULL DEFAULT '',
@@ -27,12 +26,12 @@ CREATE TABLE IF NOT EXISTS public.user_metadata (
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- ── 3. ACTIVIDADES & GANTT ───────────────────────────────────
+-- ── 3. ACTIVITIES & GANTT ────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.activities (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   source     TEXT NOT NULL CHECK (source IN ('act','gantt')),
-  nivel      INTEGER NOT NULL,
-  nome       TEXT NOT NULL DEFAULT '',
+  level      INTEGER NOT NULL,
+  name       TEXT NOT NULL DEFAULT '',
   n0         TEXT NOT NULL DEFAULT '',
   n1         TEXT NOT NULL DEFAULT '',
   n2         TEXT NOT NULL DEFAULT '',
@@ -46,7 +45,7 @@ CREATE TABLE IF NOT EXISTS public.activities (
   rf         DATE,
   pct        NUMERIC(5,2) NOT NULL DEFAULT 0,
   pct_prev   NUMERIC(5,2) NOT NULL DEFAULT 0,
-  status     TEXT NOT NULL DEFAULT 'Em dia',
+  status     TEXT NOT NULL DEFAULT 'On track',
   sponsor    TEXT NOT NULL DEFAULT '',
   owner      TEXT NOT NULL DEFAULT '',
   finish     DATE,
@@ -60,42 +59,42 @@ CREATE TABLE IF NOT EXISTS public.activities (
 CREATE INDEX IF NOT EXISTS idx_activities_source  ON public.activities(source);
 CREATE INDEX IF NOT EXISTS idx_activities_n0_n1   ON public.activities(n0, n1);
 CREATE INDEX IF NOT EXISTS idx_activities_id0_id2 ON public.activities(id0, id2);
-CREATE INDEX IF NOT EXISTS idx_activities_nivel   ON public.activities(nivel);
+CREATE INDEX IF NOT EXISTS idx_activities_level   ON public.activities(level);
 
--- ── 4. ENTRADAS PDS ──────────────────────────────────────────
+-- ── 4. PLAN ENTRIES (PDS) ────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.pds_entries (
-  id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  id0                TEXT NOT NULL DEFAULT '1',
-  id1                TEXT NOT NULL DEFAULT '',
-  id2                TEXT NOT NULL DEFAULT '',
-  plano              TEXT NOT NULL DEFAULT '',
-  n0                 TEXT NOT NULL DEFAULT '',
-  n1                 TEXT NOT NULL DEFAULT '',
-  compromissos_items JSONB NOT NULL DEFAULT '[]'::jsonb,
-  avancos_items      JSONB NOT NULL DEFAULT '[]'::jsonb,
-  proximos_items     JSONB NOT NULL DEFAULT '[]'::jsonb,
-  atencao_items      JSONB NOT NULL DEFAULT '[]'::jsonb,
-  compromissos       TEXT,
-  avancos            TEXT,
-  proximos           TEXT,
-  atencao            TEXT,
-  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_by         UUID REFERENCES auth.users(id),
+  id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id0                 TEXT NOT NULL DEFAULT '1',
+  id1                 TEXT NOT NULL DEFAULT '',
+  id2                 TEXT NOT NULL DEFAULT '',
+  plan_name           TEXT NOT NULL DEFAULT '',
+  n0                  TEXT NOT NULL DEFAULT '',
+  n1                  TEXT NOT NULL DEFAULT '',
+  commitments_items   JSONB NOT NULL DEFAULT '[]'::jsonb,
+  progress_items      JSONB NOT NULL DEFAULT '[]'::jsonb,
+  next_steps_items    JSONB NOT NULL DEFAULT '[]'::jsonb,
+  attention_items     JSONB NOT NULL DEFAULT '[]'::jsonb,
+  commitments         TEXT,
+  progress            TEXT,
+  next_steps          TEXT,
+  attention           TEXT,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_by          UUID REFERENCES auth.users(id),
   UNIQUE(id0, id2)
 );
 
 CREATE INDEX IF NOT EXISTS idx_pds_id0_id2 ON public.pds_entries(id0, id2);
 CREATE INDEX IF NOT EXISTS idx_pds_n0_n1   ON public.pds_entries(n0, n1);
 
--- ── 5. RISCOS ────────────────────────────────────────────────
+-- ── 5. RISKS ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.risks (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   pds_id      UUID NOT NULL REFERENCES public.pds_entries(id) ON DELETE CASCADE,
   description TEXT NOT NULL DEFAULT '',
   impact      INTEGER NOT NULL DEFAULT 1 CHECK (impact BETWEEN 1 AND 5),
-  prob        INTEGER NOT NULL DEFAULT 1 CHECK (prob BETWEEN 1 AND 5),
-  status      TEXT NOT NULL DEFAULT 'Aberto',
+  probability INTEGER NOT NULL DEFAULT 1 CHECK (probability BETWEEN 1 AND 5),
+  status      TEXT NOT NULL DEFAULT 'Open',
   mitigation  TEXT NOT NULL DEFAULT '',
   sort_order  INTEGER NOT NULL DEFAULT 0,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -105,72 +104,72 @@ CREATE TABLE IF NOT EXISTS public.risks (
 
 CREATE INDEX IF NOT EXISTS idx_risks_pds_id ON public.risks(pds_id);
 
--- ── 6. FINANÇAS — RUBRICAS ───────────────────────────────────
-CREATE TABLE IF NOT EXISTS public.fin_rubricas (
+-- ── 6. FINANCES — BUDGET LINES ───────────────────────────────
+CREATE TABLE IF NOT EXISTS public.fin_budget_lines (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   pds_id     UUID NOT NULL REFERENCES public.pds_entries(id) ON DELETE CASCADE,
   app_id     TEXT NOT NULL DEFAULT '',
-  categoria  TEXT NOT NULL DEFAULT '',
+  category   TEXT NOT NULL DEFAULT '',
   capex      BOOLEAN NOT NULL DEFAULT false,
-  moeda      TEXT NOT NULL DEFAULT '€',
-  valores    JSONB NOT NULL DEFAULT '{}'::jsonb,
-  nota       TEXT,
-  fonte      TEXT,
+  currency   TEXT NOT NULL DEFAULT '€',
+  values     JSONB NOT NULL DEFAULT '{}'::jsonb,
+  note       TEXT,
+  source_ref TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_by UUID REFERENCES auth.users(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_fin_rubricas_pds_id ON public.fin_rubricas(pds_id);
+CREATE INDEX IF NOT EXISTS idx_fin_budget_lines_pds_id ON public.fin_budget_lines(pds_id);
 
--- ── 7. FINANÇAS — CONTRATOS ──────────────────────────────────
-CREATE TABLE IF NOT EXISTS public.fin_contratos (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  pds_id      UUID NOT NULL REFERENCES public.pds_entries(id) ON DELETE CASCADE,
-  app_id      TEXT NOT NULL DEFAULT '',
-  fornecedor  TEXT NOT NULL DEFAULT '',
-  categoria   TEXT NOT NULL DEFAULT '',
-  moeda       TEXT NOT NULL DEFAULT '€',
-  cambio_ref  NUMERIC,
-  valor_total NUMERIC NOT NULL DEFAULT 0,
-  data_adj    DATE,
-  descricao   TEXT,
-  sort_order  INTEGER NOT NULL DEFAULT 0,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_by  UUID REFERENCES auth.users(id)
+-- ── 7. FINANCES — CONTRACTS ──────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.fin_contracts (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  pds_id            UUID NOT NULL REFERENCES public.pds_entries(id) ON DELETE CASCADE,
+  app_id            TEXT NOT NULL DEFAULT '',
+  supplier          TEXT NOT NULL DEFAULT '',
+  category          TEXT NOT NULL DEFAULT '',
+  currency          TEXT NOT NULL DEFAULT '€',
+  exchange_rate_ref NUMERIC,
+  total_amount      NUMERIC NOT NULL DEFAULT 0,
+  award_date        DATE,
+  description       TEXT,
+  sort_order        INTEGER NOT NULL DEFAULT 0,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_by        UUID REFERENCES auth.users(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_fin_contratos_pds_id ON public.fin_contratos(pds_id);
+CREATE INDEX IF NOT EXISTS idx_fin_contracts_pds_id ON public.fin_contracts(pds_id);
 
--- ── 8. FINANÇAS — FACTURAS ───────────────────────────────────
-CREATE TABLE IF NOT EXISTS public.fin_facturas (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  pds_id          UUID NOT NULL REFERENCES public.pds_entries(id) ON DELETE CASCADE,
-  contrato_id     UUID REFERENCES public.fin_contratos(id) ON DELETE SET NULL,
-  app_id          TEXT NOT NULL DEFAULT '',
-  app_contrato_id TEXT NOT NULL DEFAULT '',
-  ref             TEXT NOT NULL DEFAULT '',
-  fornecedor      TEXT NOT NULL DEFAULT '',
-  doc_tipo        TEXT,
-  descricao       TEXT,
-  valor           NUMERIC NOT NULL DEFAULT 0,
-  moeda           TEXT NOT NULL DEFAULT '€',
-  cambio          NUMERIC,
-  data_emissao    DATE,
-  data_vencimento DATE,
-  data_pagamento  DATE,
-  estado          TEXT NOT NULL DEFAULT 'Por facturar',
-  memorando       TEXT,
-  sort_order      INTEGER NOT NULL DEFAULT 0,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_by      UUID REFERENCES auth.users(id)
+-- ── 8. FINANCES — INVOICES ───────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.fin_invoices (
+  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  pds_id           UUID NOT NULL REFERENCES public.pds_entries(id) ON DELETE CASCADE,
+  contract_id      UUID REFERENCES public.fin_contracts(id) ON DELETE SET NULL,
+  app_id           TEXT NOT NULL DEFAULT '',
+  app_contract_id  TEXT NOT NULL DEFAULT '',
+  ref              TEXT NOT NULL DEFAULT '',
+  supplier         TEXT NOT NULL DEFAULT '',
+  doc_type         TEXT,
+  description      TEXT,
+  amount           NUMERIC NOT NULL DEFAULT 0,
+  currency         TEXT NOT NULL DEFAULT '€',
+  exchange_rate    NUMERIC,
+  issue_date       DATE,
+  due_date         DATE,
+  payment_date     DATE,
+  status           TEXT NOT NULL DEFAULT 'Pending',
+  memo             TEXT,
+  sort_order       INTEGER NOT NULL DEFAULT 0,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_by       UUID REFERENCES auth.users(id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_fin_facturas_pds_id      ON public.fin_facturas(pds_id);
-CREATE INDEX IF NOT EXISTS idx_fin_facturas_contrato_id ON public.fin_facturas(contrato_id);
+CREATE INDEX IF NOT EXISTS idx_fin_invoices_pds_id      ON public.fin_invoices(pds_id);
+CREATE INDEX IF NOT EXISTS idx_fin_invoices_contract_id ON public.fin_invoices(contract_id);
 
 -- ── 9. SNAPSHOTS ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.snapshots (
@@ -185,7 +184,7 @@ CREATE TABLE IF NOT EXISTS public.snapshots (
 
 CREATE INDEX IF NOT EXISTS idx_snapshots_date ON public.snapshots(snap_date DESC);
 
--- ── 10. HISTÓRICO DE ALTERAÇÕES ──────────────────────────────
+-- ── 10. CHANGE LOG ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.change_log (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   table_name TEXT NOT NULL,
@@ -203,7 +202,7 @@ CREATE INDEX IF NOT EXISTS idx_change_log_table      ON public.change_log(table_
 CREATE INDEX IF NOT EXISTS idx_change_log_changed_at ON public.change_log(changed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_change_log_user       ON public.change_log(changed_by);
 
--- ── 11. CONFIGURAÇÃO DA APP ──────────────────────────────────
+-- ── 11. APP CONFIG ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.app_config (
   id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   config_key TEXT UNIQUE NOT NULL DEFAULT 'main',
@@ -218,7 +217,7 @@ ON CONFLICT (config_key) DO NOTHING;
 
 
 -- ============================================================
--- TRIGGERS: updated_at automático (idempotente)
+-- TRIGGERS: auto updated_at (idempotent)
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.set_updated_at()
@@ -235,7 +234,7 @@ BEGIN
   FOREACH t IN ARRAY ARRAY[
     'user_profiles','user_metadata',
     'activities','pds_entries','risks',
-    'fin_rubricas','fin_contratos','fin_facturas','app_config'
+    'fin_budget_lines','fin_contracts','fin_invoices','app_config'
   ] LOOP
     IF NOT EXISTS (
       SELECT 1 FROM pg_trigger
@@ -254,7 +253,7 @@ $$;
 
 
 -- ============================================================
--- TRIGGER: change_log automático (idempotente)
+-- TRIGGER: auto change_log (idempotent)
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.log_change()
@@ -279,7 +278,7 @@ DECLARE t TEXT;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'activities','pds_entries','risks',
-    'fin_rubricas','fin_contratos','fin_facturas'
+    'fin_budget_lines','fin_contracts','fin_invoices'
   ] LOOP
     IF NOT EXISTS (
       SELECT 1 FROM pg_trigger
@@ -301,17 +300,17 @@ $$;
 -- ROW LEVEL SECURITY (RLS)
 -- ============================================================
 
-ALTER TABLE public.user_profiles  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_metadata   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.activities      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.pds_entries     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.risks           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.fin_rubricas    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.fin_contratos   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.fin_facturas    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.snapshots       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.change_log      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.app_config      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_profiles    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_metadata    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.activities       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pds_entries      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.risks            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.fin_budget_lines ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.fin_contracts    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.fin_invoices     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.snapshots        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.change_log       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.app_config       ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.current_user_role()
 RETURNS TEXT LANGUAGE sql STABLE SECURITY DEFINER AS $$
@@ -366,51 +365,51 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- ── fin_rubricas ─────────────────────────────────────────────
+-- ── fin_budget_lines ─────────────────────────────────────────
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_rubricas' AND policyname='rub_select') THEN
-    CREATE POLICY "rub_select" ON public.fin_rubricas FOR SELECT TO authenticated USING (true);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_budget_lines' AND policyname='rub_select') THEN
+    CREATE POLICY "rub_select" ON public.fin_budget_lines FOR SELECT TO authenticated USING (true);
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_rubricas' AND policyname='rub_insert') THEN
-    CREATE POLICY "rub_insert" ON public.fin_rubricas FOR INSERT TO authenticated WITH CHECK (public.current_user_role() IN ('editor','admin'));
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_budget_lines' AND policyname='rub_insert') THEN
+    CREATE POLICY "rub_insert" ON public.fin_budget_lines FOR INSERT TO authenticated WITH CHECK (public.current_user_role() IN ('editor','admin'));
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_rubricas' AND policyname='rub_update') THEN
-    CREATE POLICY "rub_update" ON public.fin_rubricas FOR UPDATE TO authenticated USING (true) WITH CHECK (public.current_user_role() IN ('editor','admin'));
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_budget_lines' AND policyname='rub_update') THEN
+    CREATE POLICY "rub_update" ON public.fin_budget_lines FOR UPDATE TO authenticated USING (true) WITH CHECK (public.current_user_role() IN ('editor','admin'));
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_rubricas' AND policyname='rub_delete') THEN
-    CREATE POLICY "rub_delete" ON public.fin_rubricas FOR DELETE TO authenticated USING (public.current_user_role() IN ('editor','admin'));
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_budget_lines' AND policyname='rub_delete') THEN
+    CREATE POLICY "rub_delete" ON public.fin_budget_lines FOR DELETE TO authenticated USING (public.current_user_role() IN ('editor','admin'));
   END IF;
 END $$;
 
--- ── fin_contratos ────────────────────────────────────────────
+-- ── fin_contracts ────────────────────────────────────────────
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_contratos' AND policyname='cnt_select') THEN
-    CREATE POLICY "cnt_select" ON public.fin_contratos FOR SELECT TO authenticated USING (true);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_contracts' AND policyname='cnt_select') THEN
+    CREATE POLICY "cnt_select" ON public.fin_contracts FOR SELECT TO authenticated USING (true);
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_contratos' AND policyname='cnt_insert') THEN
-    CREATE POLICY "cnt_insert" ON public.fin_contratos FOR INSERT TO authenticated WITH CHECK (public.current_user_role() IN ('editor','admin'));
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_contracts' AND policyname='cnt_insert') THEN
+    CREATE POLICY "cnt_insert" ON public.fin_contracts FOR INSERT TO authenticated WITH CHECK (public.current_user_role() IN ('editor','admin'));
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_contratos' AND policyname='cnt_update') THEN
-    CREATE POLICY "cnt_update" ON public.fin_contratos FOR UPDATE TO authenticated USING (true) WITH CHECK (public.current_user_role() IN ('editor','admin'));
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_contracts' AND policyname='cnt_update') THEN
+    CREATE POLICY "cnt_update" ON public.fin_contracts FOR UPDATE TO authenticated USING (true) WITH CHECK (public.current_user_role() IN ('editor','admin'));
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_contratos' AND policyname='cnt_delete') THEN
-    CREATE POLICY "cnt_delete" ON public.fin_contratos FOR DELETE TO authenticated USING (public.current_user_role() IN ('editor','admin'));
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_contracts' AND policyname='cnt_delete') THEN
+    CREATE POLICY "cnt_delete" ON public.fin_contracts FOR DELETE TO authenticated USING (public.current_user_role() IN ('editor','admin'));
   END IF;
 END $$;
 
--- ── fin_facturas ─────────────────────────────────────────────
+-- ── fin_invoices ─────────────────────────────────────────────
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_facturas' AND policyname='fat_select') THEN
-    CREATE POLICY "fat_select" ON public.fin_facturas FOR SELECT TO authenticated USING (true);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_invoices' AND policyname='fat_select') THEN
+    CREATE POLICY "fat_select" ON public.fin_invoices FOR SELECT TO authenticated USING (true);
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_facturas' AND policyname='fat_insert') THEN
-    CREATE POLICY "fat_insert" ON public.fin_facturas FOR INSERT TO authenticated WITH CHECK (public.current_user_role() IN ('editor','admin'));
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_invoices' AND policyname='fat_insert') THEN
+    CREATE POLICY "fat_insert" ON public.fin_invoices FOR INSERT TO authenticated WITH CHECK (public.current_user_role() IN ('editor','admin'));
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_facturas' AND policyname='fat_update') THEN
-    CREATE POLICY "fat_update" ON public.fin_facturas FOR UPDATE TO authenticated USING (true) WITH CHECK (public.current_user_role() IN ('editor','admin'));
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_invoices' AND policyname='fat_update') THEN
+    CREATE POLICY "fat_update" ON public.fin_invoices FOR UPDATE TO authenticated USING (true) WITH CHECK (public.current_user_role() IN ('editor','admin'));
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_facturas' AND policyname='fat_delete') THEN
-    CREATE POLICY "fat_delete" ON public.fin_facturas FOR DELETE TO authenticated USING (public.current_user_role() IN ('editor','admin'));
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fin_invoices' AND policyname='fat_delete') THEN
+    CREATE POLICY "fat_delete" ON public.fin_invoices FOR DELETE TO authenticated USING (public.current_user_role() IN ('editor','admin'));
   END IF;
 END $$;
 
@@ -483,7 +482,7 @@ END $$;
 
 
 -- ============================================================
--- REALTIME (idempotente)
+-- REALTIME (idempotent)
 -- ============================================================
 DO $$
 DECLARE t TEXT;

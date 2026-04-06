@@ -1,20 +1,20 @@
--- ── Gestão de Recursos Humanos/Esforço ──────────────────────────────────────
--- Tabela para gerir alocação de recursos humanos por projecto (N2)
+-- ── Legacy Resources Table (v1 — hour-based allocation per project) ──────────
+-- Superseded by fte_resources (migration 003). Keep for backwards compatibility.
 
 CREATE TABLE IF NOT EXISTS resources (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  id0              text NOT NULL,              -- plano / programa (n0)
-  id1              text,                       -- sub-programa (n1) opcional
-  id2              text,                       -- projecto (n2)
-  nome             text NOT NULL,
-  unidade          text,
-  perfil           text,
-  alocacao_total   numeric(8,2) DEFAULT 0,     -- horas totais disponíveis
-  alocacao_projeto numeric(8,2) DEFAULT 0,     -- horas alocadas ao projecto
-  periodo_inicio   date,
-  periodo_fim      date,
-  custo_hora       numeric(10,2),
-  notas            text,
+  id0              text NOT NULL,
+  id1              text,
+  id2              text,
+  name             text NOT NULL,
+  org_unit         text,
+  role             text,
+  total_hours      numeric(8,2) DEFAULT 0,
+  project_hours    numeric(8,2) DEFAULT 0,
+  period_start     date,
+  period_end       date,
+  hourly_cost      numeric(10,2),
+  notes            text,
   sort_order       integer DEFAULT 0,
   created_at       timestamptz DEFAULT now(),
   updated_at       timestamptz DEFAULT now(),
