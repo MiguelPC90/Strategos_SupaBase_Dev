@@ -356,6 +356,63 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
           <button class="abtn abtn-primary" onclick="adminAddResUnidade()">+ Adicionar</button>
         </div>
       </div>
+      <div class="acard" style="margin-top:16px">
+        <div class="acard-title">Catálogo de Pessoas</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:10px">
+          Registo central de pessoas. Ao adicionar um recurso em Gestão de Recursos,
+          o nome é sugerido a partir deste catálogo.
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <input class="ainput" id="pess-search" placeholder="Filtrar por nome…"
+            style="flex:1;min-width:160px" oninput="renderAdminPessoas()">
+          <button class="abtn abtn-primary" onclick="adminAddPessoa()">+ Nova Pessoa</button>
+        </div>
+        <div id="pess-form" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px">
+          <input type="hidden" id="pess-form-id">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div>
+              <div class="acard-title" style="font-size:11px;margin-bottom:4px">Nome *</div>
+              <input class="ainput" id="pess-form-nome" placeholder="Nome completo">
+            </div>
+            <div>
+              <div class="acard-title" style="font-size:11px;margin-bottom:4px">Email</div>
+              <input class="ainput" id="pess-form-email" type="email" placeholder="email@org.pt">
+            </div>
+            <div>
+              <div class="acard-title" style="font-size:11px;margin-bottom:4px">Unidade</div>
+              <select class="ainput" id="pess-form-unidade"></select>
+            </div>
+            <div>
+              <div class="acard-title" style="font-size:11px;margin-bottom:4px">Perfil</div>
+              <select class="ainput" id="pess-form-perfil"></select>
+            </div>
+            <div>
+              <div class="acard-title" style="font-size:11px;margin-bottom:4px">Tipo</div>
+              <select class="ainput" id="pess-form-tipo">
+                <option value="interno">Interno</option>
+                <option value="externo">Externo</option>
+              </select>
+            </div>
+            <div>
+              <div class="acard-title" style="font-size:11px;margin-bottom:4px">Estado</div>
+              <select class="ainput" id="pess-form-activo">
+                <option value="true">Activo</option>
+                <option value="false">Inactivo</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-bottom:8px">
+            <div class="acard-title" style="font-size:11px;margin-bottom:4px">Notas</div>
+            <input class="ainput" id="pess-form-notas" placeholder="Observações opcionais">
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="abtn abtn-primary" onclick="adminSavePessoa()">💾 Guardar</button>
+            <button class="abtn" onclick="adminCancelPessoa()">Cancelar</button>
+            <span id="pess-form-err" style="color:var(--red);font-size:12px;align-self:center"></span>
+          </div>
+        </div>
+        <div id="admin-pess-list" style="max-height:400px;overflow-y:auto"></div>
+      </div>
     </div>
 
     <!-- FINANCEIRO -->
@@ -717,7 +774,7 @@ function showPanel(id,el){
   // Refresh panel-specific content
   if(id==='estrutura'){ autoDetectPrograms(); renderEstrutura(); }
   if(id==='financeiro'){ autoDetectPrograms(); renderFinAdmin(); }
-  if(id==='recursos'){ renderResPerfilAdmin(); renderResUnidadeAdmin(); }
+  if(id==='recursos'){ renderResPerfilAdmin(); renderResUnidadeAdmin(); loadAdminPessoas(); }
   if(id==='historico') renderHistorico();
   if(id==='risco') renderRisco();
   if(id==='cores') renderCores();
@@ -1129,6 +1186,117 @@ function adminRemoveResUnidade(i){
 function adminAddEixo(){
   // Eixos are managed via Excel import — just inform
   toast('Os eixos são criados via importação de Excel ou na Gestão de Iniciativas.','var(--amber)');
+}
+
+// ── Catálogo de Pessoas ────────────────────────────────────────────────────────
+var _adminPessoas=[];
+
+async function loadAdminPessoas(){
+  if(!SB.isOnline) return;
+  try{
+    _adminPessoas=await SB.loadPessoas();
+    renderAdminPessoas();
+  }catch(e){ console.warn('Pessoas load err',e); }
+}
+
+function renderAdminPessoas(){
+  var q=(document.getElementById('pess-search')||{}).value||'';
+  q=q.toLowerCase().trim();
+  var list=q?_adminPessoas.filter(function(p){return (p.nome||'').toLowerCase().includes(q);}):_adminPessoas;
+  var html='';
+  if(!list.length){
+    html='<div style="padding:12px;color:var(--text3);font-size:13px">Sem resultados.</div>';
+  }else{
+    html=list.map(function(p){
+      var safeId=esc(p.id), safeNome=esc(p.nome);
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid var(--border)">'
+        +'<span style="flex:2;font-size:13px;font-weight:500">'+safeNome+'</span>'
+        +'<span style="flex:1;font-size:11px;color:var(--text2)">'+esc(p.unidade||'—')+'</span>'
+        +'<span style="flex:1;font-size:11px;color:var(--text2)">'+esc(p.perfil||'—')+'</span>'
+        +'<span style="flex:0 0 60px;font-size:11px;color:var(--text2)">'+esc(p.tipo||'interno')+'</span>'
+        +'<span style="flex:0 0 50px;font-size:11px;color:'+(p.activo!==false?'var(--green)':'var(--text3)')+'">'+
+          (p.activo!==false?'Activo':'Inactivo')+'</span>'
+        +'<button class="abtn abtn-sm" onclick="adminEditPessoa(\''+safeId+'\')">Editar</button>'
+        +'<button class="abtn abtn-sm" style="color:var(--red)" onclick="adminDeletePessoa(\''+safeId+'\',\''+safeNome+'\')">Remover</button>'
+        +'</div>';
+    }).join('');
+  }
+  document.getElementById('admin-pess-list').innerHTML=html;
+}
+
+function adminAddPessoa(){
+  document.getElementById('pess-form-id').value='';
+  ['nome','email','notas'].forEach(function(f){ document.getElementById('pess-form-'+f).value=''; });
+  _populatePessSelects('','');
+  document.getElementById('pess-form-tipo').value='interno';
+  document.getElementById('pess-form-activo').value='true';
+  document.getElementById('pess-form-err').textContent='';
+  document.getElementById('pess-form').style.display='';
+  document.getElementById('pess-form-nome').focus();
+}
+
+function adminEditPessoa(id){
+  var p=_adminPessoas.find(function(x){ return x.id===id; });
+  if(!p) return;
+  document.getElementById('pess-form-id').value=p.id;
+  document.getElementById('pess-form-nome').value=p.nome||'';
+  document.getElementById('pess-form-email').value=p.email||'';
+  document.getElementById('pess-form-notas').value=p.notas||'';
+  _populatePessSelects(p.unidade||'',p.perfil||'');
+  document.getElementById('pess-form-tipo').value=p.tipo||'interno';
+  document.getElementById('pess-form-activo').value=String(p.activo!==false);
+  document.getElementById('pess-form-err').textContent='';
+  document.getElementById('pess-form').style.display='';
+  document.getElementById('pess-form-nome').focus();
+}
+
+function _populatePessSelects(selUnidade,selPerfil){
+  var unidades=CFG.resUnidades||[];
+  var perfis=CFG.resPerfis||[];
+  var uOpts='<option value="">— unidade —</option>'+
+    unidades.map(function(u){ return '<option value="'+esc(u)+'"'+(u===selUnidade?' selected':'')+'>'+esc(u)+'</option>'; }).join('');
+  if(selUnidade && !unidades.includes(selUnidade))
+    uOpts+='<option value="'+esc(selUnidade)+'" selected>'+esc(selUnidade)+'</option>';
+  document.getElementById('pess-form-unidade').innerHTML=uOpts;
+  var pOpts='<option value="">— perfil —</option>'+
+    perfis.map(function(p){ return '<option value="'+esc(p)+'"'+(p===selPerfil?' selected':'')+'>'+esc(p)+'</option>'; }).join('');
+  if(selPerfil && !perfis.includes(selPerfil))
+    pOpts+='<option value="'+esc(selPerfil)+'" selected>'+esc(selPerfil)+'</option>';
+  document.getElementById('pess-form-perfil').innerHTML=pOpts;
+}
+
+async function adminSavePessoa(){
+  var nome=document.getElementById('pess-form-nome').value.trim();
+  if(!nome){ document.getElementById('pess-form-err').textContent='Nome obrigatório.'; return; }
+  var obj={
+    id      : document.getElementById('pess-form-id').value||null,
+    nome    : nome,
+    email   : document.getElementById('pess-form-email').value.trim(),
+    unidade : document.getElementById('pess-form-unidade').value,
+    perfil  : document.getElementById('pess-form-perfil').value,
+    tipo    : document.getElementById('pess-form-tipo').value,
+    notas   : document.getElementById('pess-form-notas').value.trim(),
+    activo  : document.getElementById('pess-form-activo').value==='true'
+  };
+  try{
+    await SB.savePessoa(obj);
+    document.getElementById('pess-form').style.display='none';
+    await loadAdminPessoas();
+  }catch(e){
+    document.getElementById('pess-form-err').textContent=e.message||'Erro ao guardar.';
+  }
+}
+
+function adminCancelPessoa(){
+  document.getElementById('pess-form').style.display='none';
+}
+
+async function adminDeletePessoa(id,nome){
+  if(!confirm('Remover "'+nome+'" do catálogo? Esta acção não afecta recursos já guardados nos planos.')) return;
+  try{
+    await SB.deletePessoa(id);
+    await loadAdminPessoas();
+  }catch(e){ alert('Erro ao remover: '+(e.message||e)); }
 }
 
 // ── FINANCEIRO ────────────────────────────────────────────────────────────────

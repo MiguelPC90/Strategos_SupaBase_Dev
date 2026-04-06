@@ -1234,6 +1234,8 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
         onchange="gresSetDiasUteis(this.value)">
       <span style="color:var(--text3)">(usado no cálculo do custo estimado)</span>
     </div>
+    <!-- Datalist para autocomplete de nomes de pessoas -->
+    <datalist id="pessoas-datalist"></datalist>
     <!-- Lista de recursos -->
     <div id="gres-list"></div>
     <button class="btn ro-hide" style="font-size:12px;margin-top:10px;width:100%" onclick="addGRes()">+ Adicionar Recurso</button>
@@ -1567,6 +1569,8 @@ function debounce(fn,ms){let t;return function(){clearTimeout(t);t=setTimeout(fn
 let ALL_ACT=[];
 
 let ALL_GANTT=[];
+
+let _PESSOAS=[];  // Catálogo de pessoas — carregado de SB.loadPessoas()
 
 let ALL_PDS=[];
 
@@ -3837,6 +3841,9 @@ async function loadData(){
 (async function(){
   if(window.SB) await SB.init();
   await loadData();
+  if(window.SB && SB.isOnline){
+    SB.loadPessoas().then(function(rows){ _PESSOAS=rows||[]; }).catch(function(){});
+  }
   // Subscrever actualizações em tempo real de outros utilizadores
   if(window.SB && SB.isOnline){
     SB.subscribeToChanges(
@@ -5801,6 +5808,7 @@ async function loadGRes(){
   document.getElementById('gres-dias-uteis').value=_gresDraft.dias_uteis||22;
   gresUnsaved=false;
   document.getElementById('gres-unsaved').classList.remove('show');
+  _refreshPessasDatalist();
   _fteRenderKPIs();
   renderGRes(p);
 }
@@ -5820,7 +5828,7 @@ function renderGRes(p){
     html+='<div class="fte-card">'
       // Linha 1: nome, perfil, tipo, % aloc, estado, delete
       +'<div class="fte-card-main">'
-      +'<div><div class="fte-lbl">Nome *</div><input class="risk-input" value="'+esc(r.nome)+'" placeholder="Nome do recurso" onchange="gresField('+i+',\'nome\',this.value)"></div>'
+      +'<div><div class="fte-lbl">Nome *</div><input class="risk-input" list="pessoas-datalist" value="'+esc(r.nome)+'" placeholder="Nome do recurso" onchange="gresPickPessoa('+i+',this.value)"></div>'
       +'<div><div class="fte-lbl">Perfil</div>'+_gresPerfisSelect(i, r.perfil)+'</div>'
       +'<div><div class="fte-lbl">Tipo</div><select class="risk-select" onchange="gresField('+i+',\'tipo\',this.value);renderGRes()"><option value="interno"'+(r.tipo==='interno'?' selected':'')+'>Interno</option><option value="externo"'+(r.tipo==='externo'?' selected':'')+'>Externo</option></select></div>'
       +'<div><div class="fte-lbl">% Aloc.</div><input class="risk-input" type="number" min="0" max="200" step="5" style="text-align:right" value="'+(r.alocacao_pct||100)+'" onchange="gresField('+i+',\'alocacao_pct\',this.value)"></div>'
@@ -5842,6 +5850,29 @@ function renderGRes(p){
   wrap.querySelectorAll('.gres-del-btn').forEach(function(btn){
     btn.addEventListener('click',function(){ deleteGRes(parseInt(this.dataset.ri)); });
   });
+}
+
+function _refreshPessasDatalist(){
+  var dl=document.getElementById('pessoas-datalist');
+  if(!dl) return;
+  dl.innerHTML=(_PESSOAS||[])
+    .filter(function(p){ return p.activo!==false; })
+    .map(function(p){ return '<option value="'+esc(p.nome)+'">'; })
+    .join('');
+}
+
+function gresPickPessoa(i, val){
+  gresField(i,'nome',val);
+  var match=(_PESSOAS||[]).find(function(p){
+    return (p.nome||'').toLowerCase().trim()===(val||'').toLowerCase().trim();
+  });
+  if(!match) return;
+  var r=_gresDraft&&_gresDraft.recursos[i];
+  if(!r) return;
+  if(!r.unidade && match.unidade) gresField(i,'unidade',match.unidade);
+  if(!r.perfil  && match.perfil)  gresField(i,'perfil', match.perfil);
+  if(match.tipo) gresField(i,'tipo',match.tipo);
+  renderGRes(_fteGetCurrentPDS());
 }
 
 function gresField(i, field, val){

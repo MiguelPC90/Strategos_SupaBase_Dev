@@ -724,6 +724,44 @@
         body: { user_id: userId }
       });
       if (res.error) throw res.error;
+    },
+
+    // ── Catálogo de Pessoas ────────────────────────────────────
+    loadPessoas: async function () {
+      if (!this.isOnline) return [];
+      var res = await this.client
+        .from('pessoas')
+        .select('*')
+        .order('nome');
+      if (res.error) throw res.error;
+      return res.data || [];
+    },
+
+    savePessoa: async function (p) {
+      var payload = {
+        nome      : p.nome     || '',
+        email     : p.email    || '',
+        unidade   : p.unidade  || '',
+        perfil    : p.perfil   || '',
+        tipo      : p.tipo     || 'interno',
+        notas     : p.notas    || '',
+        activo    : p.activo   !== false,
+        sort_order: p.sort_order || 0,
+        updated_by: this.currentUserId
+      };
+      if (p.id) {
+        var res = await this.client.from('pessoas').update(payload).eq('id', p.id).select('id').single();
+        if (res.error) throw res.error;
+        return res.data.id;
+      }
+      var res = await this.client.from('pessoas').insert(payload).select('id').single();
+      if (res.error) throw res.error;
+      return res.data.id;
+    },
+
+    deletePessoa: async function (id) {
+      var res = await this.client.from('pessoas').delete().eq('id', id);
+      if (res.error) throw res.error;
     }
   };
 
