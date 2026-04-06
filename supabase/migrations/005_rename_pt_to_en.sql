@@ -107,6 +107,9 @@ END $$;
 
 -- ── fin_invoices (was fin_facturas) ──────────────────────────────────────────
 DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fin_invoices' AND column_name='contrato_id') THEN
+    ALTER TABLE fin_invoices RENAME COLUMN contrato_id TO contract_id;
+  END IF;
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fin_invoices' AND column_name='fornecedor') THEN
     ALTER TABLE fin_invoices RENAME COLUMN fornecedor TO supplier;
   END IF;
