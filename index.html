@@ -4245,8 +4245,8 @@ function initPM(){
       const fd = rf ? new Date(rf) : null;
       if(fd) fd.setHours(0,0,0,0);
       const td = new Date(); td.setHours(0,0,0,0);
-      if(r.nivel===4) r.status = n>=100?'Concluído':(fd&&fd>td)?'Em dia':'Em atraso';
-      // Propagate up to all ancestors
+      if(isLeafRow(idx)) r.status = n>=100?'Concluído':(fd&&fd>td)?'Em dia':'Em atraso';
+
       rollupFromLeafFull(idx);
       r._modified = true;
       markDirty();
@@ -4299,7 +4299,7 @@ function renderPMTable(){
   const today = new Date().toISOString().split('T')[0];
   tbody.innerHTML = rows.map(r => {
     const indent = (r.nivel-1)*14;
-    const sc = r.nivel===4 ? (SC[r.status]||SC['Em dia']) : null;
+    const sc = isLeafRow(r._idx) ? (SC[r.status]||SC['Em dia']) : null;
     const badge = sc ? `<span class="pm-badge" style="background:${sc.bg};color:${sc.tc}">${r.status}</span>` : '';
     const sel = r._idx === pmSelectedIdx;
     const dd = d => d ? d.substring(5).replace('-','/') : '—';
@@ -4411,7 +4411,7 @@ function quickPct(idx){
   const fd = rf ? new Date(rf) : null;
   fd && fd.setHours(0,0,0,0);
   const td = new Date(); td.setHours(0,0,0,0);
-  if(r.nivel===4) r.status = n>=100?'Concluído':(fd&&fd>td)?'Em dia':'Em atraso';
+  if(isLeafRow(idx)) r.status = n>=100?'Concluído':(fd&&fd>td)?'Em dia':'Em atraso';
   markDirty();
   renderPMTable();
   if(pmSelectedIdx===idx) selectPMRow(idx);
@@ -6136,11 +6136,12 @@ function rollupPct(idx){
       else if(PM_DATA[i].nivel <= nivel) break;
     }
   } else {
-    // N0-N3: use all N4 descendants
+    // N0-N3: use all leaf descendants
     for(let i=idx+1; i<PM_DATA.length; i++){
       if(PM_DATA[i]._deleted) continue;
-      if(PM_DATA[i].nivel === 4) children.push(PM_DATA[i]);
-      else if(PM_DATA[i].nivel <= nivel) break;
+      if(PM_DATA[i].nivel > nivel){
+        if(isLeafRow(i)) children.push(PM_DATA[i]);
+      } else break;
     }
   }
 
@@ -6202,13 +6203,13 @@ function rollupStatus(idx){
   const r = PM_DATA[idx];
   if(!r || r._deleted || isLeafRow(idx)) return;
   const nivel = r.nivel;
-  // Collect all N4 descendants
+  // Collect all leaf descendants
   let n4s = [];
   for(let i=idx+1; i<PM_DATA.length; i++){
     const c = PM_DATA[i];
     if(c._deleted) continue;
     if(c.nivel > nivel){
-      if(c.nivel === 4) n4s.push(c);
+      if(isLeafRow(i)) n4s.push(c);
     } else break;
   }
   if(!n4s.length) return;
