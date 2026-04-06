@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS public.activities (
   n1         TEXT NOT NULL DEFAULT '',
   n2         TEXT NOT NULL DEFAULT '',
   n3         TEXT NOT NULL DEFAULT '',
+  n4         TEXT NOT NULL DEFAULT '',
+  n5         TEXT NOT NULL DEFAULT '',
   id0        TEXT NOT NULL DEFAULT '1',
   id1        TEXT NOT NULL DEFAULT '',
   id2        TEXT NOT NULL DEFAULT '',

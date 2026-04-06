@@ -125,6 +125,8 @@ tr.hover-row:hover td{background:var(--bg2)}
 .gantt-row-n2 td.g-sticky,.gantt-row-n2 td.g-sticky-2,.gantt-row-n2 td.g-sticky-3,.gantt-row-n2 td.g-sticky-4,.gantt-row-n2 td.g-sticky-5{background:#f4f5f7}
 .gantt-row-n3 td{font-weight:500}
 .gantt-row-n4 td{color:var(--text2)}
+.gantt-row-n5 td{color:var(--text2);font-size:12px}
+.gantt-row-n6 td{color:var(--text3);font-size:11px}
 .g-toggle{background:none;border:none;cursor:pointer;font-size:10px;padding:0 3px;color:var(--navy);font-weight:700;line-height:1}
 .g-name{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:3px}
 .g-chart-cell{position:relative;height:26px;padding:0!important;min-width:400px}
@@ -1560,7 +1562,7 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
   window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indpcm9rcXRncnZseHd2eXBtYmVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MDQ3NzQsImV4cCI6MjA5MDI4MDc3NH0.QuWS6kM_mrTMjzgvaZCM7qnDBYuEhoqItATI14atApg';
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
-<script src="supabase-adapter.js?v=2"></script>
+<script src="supabase-adapter.js?v=3"></script>
 <script>
 // ── DEBOUNCE UTILITY ──────────────────────────────────────────────────────────
 function debounce(fn,ms){let t;return function(){clearTimeout(t);t=setTimeout(fn,ms);};}
@@ -1581,7 +1583,7 @@ let _gresDraft=null,_gresDraftKey=null; // working copy — never touches ALL_PD
 let ALL_RES=[];
 const GCOL={};    // gantt collapsed
 const ACOL={};    // activities collapsed
-let ganttMaxLevel=4;
+let ganttMaxLevel=6;
 let ganttGranularity='month'; // 'week' | 'month' | 'quarter'
 let eixoView='eixo';
 var _resView='plano'; // 'plano' | 'recurso'
