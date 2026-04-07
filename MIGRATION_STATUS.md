@@ -201,9 +201,9 @@
 
 - **Complexity/Dependencies**: Minimal external dependencies
   - Only `react-router-dom` and `@supabase/supabase-js` are essential
-  - No Zustand, Redux, React Query, Tailwind, or component libraries
+  - No Zustand or Redux
   - All state management via React Context + custom hooks
-  - All styling via vanilla CSS (preserve all original styles from `index.html`)
+  - Preserve all original styles from `index.html`
 - **Testing**: Jest + React Testing Library (not included until Phase 6 when needed)
 - **Deployment**: Cloudflare Pages (configured in Phase 8)
 - **PWA**: Deferred to post-migration; original `sw.js` and `manifest.json` untouched
