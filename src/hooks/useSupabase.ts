@@ -56,7 +56,7 @@ export function useActivities(filters?: {
         return () => {
             isMounted = false;
         };
-    }, [filters, filters?.n0, filters?.n1]);
+    }, [filters?.n0, filters?.n1]);
 
     return state;
 }
@@ -100,7 +100,7 @@ export function usePDSEntries(filters?: {
         return () => {
             isMounted = false;
         };
-    }, [filters, filters?.n0, filters?.n1]);
+    }, [filters?.n0, filters?.n1]);
 
     return state;
 }
