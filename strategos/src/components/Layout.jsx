@@ -154,7 +154,7 @@ function NavItem({ to, label, icon, collapsed }) {
 }
 
 export default function Layout() {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
   const [filterOpen, setFilterOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef(null)
@@ -209,7 +209,7 @@ export default function Layout() {
       </nav>
 
       {/* ── Topbar ── */}
-      <header className={`topbar${cls}`}>
+      <header className={`topbar${cls}`} style={{ position: 'fixed' }}>
         <button
           className="topbar-toggle"
           onClick={() => setCollapsed(c => !c)}
@@ -222,8 +222,21 @@ export default function Layout() {
           </svg>
         </button>
 
+        {/* Centered title */}
         <span className="topbar-title">Strategos</span>
+
         <div className="topbar-spacer" />
+
+        {/* Right-side actions */}
+        <button className="topbar-btn">
+          <svg viewBox="0 0 24 24">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="12" y1="18" x2="12" y2="12" />
+            <polyline points="9 15 12 12 15 15" />
+          </svg>
+          Importar Excel
+        </button>
 
         <button
           className={`topbar-btn${filterOpen ? ' active' : ''}`}

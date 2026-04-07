@@ -3,6 +3,7 @@ export default function Card({ title, children, className = '', actions }) {
     <div className={`card ${className}`}>
       {title && (
         <div className="card-header">
+          <span className="card-title-accent" />
           <h3 className="card-title">{title}</h3>
           {actions && <div className="card-actions">{actions}</div>}
         </div>
