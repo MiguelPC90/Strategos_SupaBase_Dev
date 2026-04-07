@@ -606,6 +606,8 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
 </head>
 <body class="sidebar-collapsed">
 
+<div id="app-shell" style="display:none">
+
 <!-- SIDEBAR -->
 <nav id="sidebar" aria-label="Navegação principal">
   <div class="sidebar-nav">
@@ -1929,6 +1931,7 @@ async function doLogin(){
       currentProfile = { id: profile.id, name: profile.name, tabs: profile.tabs||{}, n0s: profile.n0s||[] };
       localStorage.setItem('pmo_session', JSON.stringify({userId: authData.user.id}));
       document.getElementById('login-screen').style.display='none';
+      document.getElementById('app-shell').style.display='';
       const nameEl=document.getElementById('topbar-user-name');
       if(nameEl) nameEl.textContent=meta.display_name||uval;
       _initProfileDesk();
@@ -1957,6 +1960,7 @@ async function doLogin(){
   currentProfile={id:profile.id, name:profile.name, tabs:profile.tabs||{}, n0s:profile.n0s||[]};
   localStorage.setItem('pmo_session',JSON.stringify({userId:user.id}));
   document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-shell').style.display='';
   const nameEl=document.getElementById('topbar-user-name');
   if(nameEl) nameEl.textContent=user.name||user.username;
   _initProfileDesk();
@@ -3715,6 +3719,7 @@ initUsers();
         if(nameEl) nameEl.textContent=u.name||u.username;
         _initProfileDesk();
         document.getElementById('login-screen').style.display='none';
+        document.getElementById('app-shell').style.display='';
         applyProfile(p);
         return;
       }
@@ -7655,6 +7660,8 @@ switchTab = function(id, btn){
     </div>
   </div>
 </div>
+
+</div><!-- /app-shell -->
 
 <!-- LOGIN SCREEN -->
 <div id="login-screen" class="login-screen">

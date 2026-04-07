@@ -150,6 +150,8 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
   </div>
 </div>
 
+<div id="admin-shell" style="display:none">
+
 <!-- Topbar -->
 <div class="admin-topbar">
   <button class="sidebar-toggle-btn" onclick="toggleAdminSidebar()" aria-label="Menu">
@@ -634,6 +636,8 @@ body.dark{--bg:#1a1a1e;--bg2:#242428;--bg3:#2e2e32;--text:#e8e8e4;--text2:#a0a09
   </main>
 </div>
 
+</div><!-- /admin-shell -->
+
 <div id="admin-toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -705,6 +709,7 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
         const meta = await SB.getUserMeta(session.user.id);
         if(meta && meta.role === 'admin'){
           document.getElementById('lock-screen').style.display='none';
+          document.getElementById('admin-shell').style.display='';
           initAdmin();
           return;
         }
@@ -724,6 +729,7 @@ async function unlock(){
         const meta = await SB.getUserMeta(session.user.id);
         if(meta && meta.role === 'admin'){
           document.getElementById('lock-screen').style.display='none';
+          document.getElementById('admin-shell').style.display='';
           initAdmin();
           return;
         } else if(meta){
@@ -739,6 +745,7 @@ async function unlock(){
   // Fallback: password local
   if(pwd===(CFG.password||'admin')){
     document.getElementById('lock-screen').style.display='none';
+    document.getElementById('admin-shell').style.display='';
     initAdmin();
   } else {
     errEl.textContent='Password incorrecta.';
