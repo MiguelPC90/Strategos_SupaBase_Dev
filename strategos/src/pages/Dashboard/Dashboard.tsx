@@ -24,7 +24,7 @@ export default function Dashboard() {
   return (
     <>
       {/* ── Row 1: Dados Gerais + Indicadores ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div className="dashboard-top-grid">
 
         {/* Dados Gerais */}
         <Card title="Dados Gerais">
@@ -67,7 +67,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Row 2: Bar chart + Donut ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div className="dashboard-charts-grid">
         <Card title="Actividades por Eixo — Estado">
           <div className="page-placeholder" style={{ minHeight: 200 }}>
             <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="var(--text3)" strokeWidth="1.5">

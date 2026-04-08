@@ -43,9 +43,6 @@ src/
 │   ├── MultiSelect/
 │   │   ├── MultiSelect.tsx
 │   │   └── MultiSelect.css
-│   ├── PageHeader/
-│   │   ├── PageHeader.tsx
-│   │   └── PageHeader.css
 │   ├── ProgressBar/
 │   │   ├── ProgressBar.tsx
 │   │   └── ProgressBar.css
@@ -70,6 +67,8 @@ src/
 │   └── Admin/Admin.tsx
 ├── hooks/            # Custom React hooks (data fetching, filters)
 ├── context/          # React context providers (auth, filters)
+├── types/
+│   └── index.ts      # Shared TypeScript interfaces and types
 ├── lib/
 │   └── supabase.ts   # Supabase client
 ├── App.tsx           # Router and route definitions
@@ -159,8 +158,6 @@ Always use these existing components instead of creating new ones:
 - **ProgressBar** — thin progress bar with percentage. Props: `value`, `color`, `showLabel`
 - **MultiSelect** — dropdown with checkboxes. Props: `label`, `options`, `placeholder`
 - **Table** — styled sortable table. Props: `columns` (Column[]), `rows`, `emptyMessage`. Export `Column` type for use in pages.
-- **PageHeader** — page title with optional actions. Props: `title`, `subtitle`, `children`
-
 If a new UI pattern appears in 2+ pages, extract it as a reusable component.
 
 ## Design Rules

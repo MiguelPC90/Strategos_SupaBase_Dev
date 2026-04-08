@@ -1,3 +1,17 @@
+/* Layout grids */
+.dashboard-top-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.dashboard-charts-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
 /* Indicadores sections */
 .ind-section { margin-bottom: 10px; }
 .ind-section:last-child { margin-bottom: 0; }
