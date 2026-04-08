@@ -1,4 +1,3 @@
-import PageHeader from '../components/PageHeader'
 import Card from '../components/Card'
 import Table from '../components/Table'
 import Badge from '../components/Badge'
@@ -19,20 +18,17 @@ const CONTRACT_COLS = [
 
 export default function GestaoFinanceira() {
   return (
-    <>
-      <PageHeader title="Gestão Financeira" subtitle="Orçamento, contratos e faturas">
-        <button className="topbar-btn">+ Nova rubrica</button>
-      </PageHeader>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Card
+        title="Rubricas orçamentais"
+        actions={<button className="topbar-btn" style={{ fontSize: 11 }}>+ Nova rubrica</button>}
+      >
+        <Table columns={BUDGET_COLS} rows={[]} emptyMessage="Sem rubricas carregadas" />
+      </Card>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Card title="Rubricas orçamentais">
-          <Table columns={BUDGET_COLS} rows={[]} emptyMessage="Sem rubricas carregadas" />
-        </Card>
-
-        <Card title="Contratos">
-          <Table columns={CONTRACT_COLS} rows={[]} emptyMessage="Sem contratos carregados" />
-        </Card>
-      </div>
-    </>
+      <Card title="Contratos">
+        <Table columns={CONTRACT_COLS} rows={[]} emptyMessage="Sem contratos carregados" />
+      </Card>
+    </div>
   )
 }

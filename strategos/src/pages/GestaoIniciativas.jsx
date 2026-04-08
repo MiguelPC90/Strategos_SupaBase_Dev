@@ -1,4 +1,3 @@
-import PageHeader from '../components/PageHeader'
 import Card from '../components/Card'
 import Table from '../components/Table'
 import Badge from '../components/Badge'
@@ -17,13 +16,11 @@ const COLUMNS = [
 
 export default function GestaoIniciativas() {
   return (
-    <>
-      <PageHeader title="Gestão de Iniciativas" subtitle="Gerir e editar iniciativas do plano">
-        <button className="topbar-btn">+ Nova iniciativa</button>
-      </PageHeader>
-      <Card title="Iniciativas">
-        <Table columns={COLUMNS} rows={[]} emptyMessage="Sem iniciativas carregadas" />
-      </Card>
-    </>
+    <Card
+      title="Iniciativas"
+      actions={<button className="topbar-btn" style={{ fontSize: 11 }}>+ Nova iniciativa</button>}
+    >
+      <Table columns={COLUMNS} rows={[]} emptyMessage="Sem iniciativas carregadas" />
+    </Card>
   )
 }

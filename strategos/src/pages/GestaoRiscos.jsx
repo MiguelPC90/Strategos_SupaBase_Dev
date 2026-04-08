@@ -1,4 +1,3 @@
-import PageHeader from '../components/PageHeader'
 import Card from '../components/Card'
 import Table from '../components/Table'
 import Badge from '../components/Badge'
@@ -17,18 +16,17 @@ const COLUMNS = [
 export default function GestaoRiscos() {
   return (
     <>
-      <PageHeader title="Gestão de Riscos" subtitle="Identificação e acompanhamento de riscos">
-        <button className="topbar-btn">+ Novo risco</button>
-      </PageHeader>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 14 }}>
         <KpiCard label="Total riscos" value="—" subtitle="Identificados" />
         <KpiCard label="Críticos" value="—" subtitle="Nível alto" color="red" />
         <KpiCard label="Médios" value="—" subtitle="Em mitigação" color="amber" />
         <KpiCard label="Baixos / fechados" value="—" subtitle="Controlados" color="green" />
       </div>
 
-      <Card title="Registo de riscos">
+      <Card
+        title="Registo de riscos"
+        actions={<button className="topbar-btn" style={{ fontSize: 11 }}>+ Novo risco</button>}
+      >
         <Table columns={COLUMNS} rows={[]} emptyMessage="Sem riscos registados" />
       </Card>
     </>

@@ -1,13 +1,10 @@
-import PageHeader from '../components/PageHeader'
 import Card from '../components/Card'
 import KpiCard from '../components/KpiCard'
 
 export default function Evolucao() {
   return (
     <>
-      <PageHeader title="Evolução" subtitle="Evolução temporal do plano" />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 14 }}>
         <KpiCard label="Snapshots" value="—" subtitle="Registos históricos" />
         <KpiCard label="Último snapshot" value="—" subtitle="Data" color="blue" />
         <KpiCard label="Tendência" value="—" subtitle="vs. snapshot anterior" color="green" />

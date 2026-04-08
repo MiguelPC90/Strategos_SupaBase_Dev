@@ -1,4 +1,3 @@
-import PageHeader from '../components/PageHeader'
 import Card from '../components/Card'
 import Table from '../components/Table'
 import Badge from '../components/Badge'
@@ -13,11 +12,8 @@ const COLUMNS = [
 
 export default function PontoSituacao() {
   return (
-    <>
-      <PageHeader title="Ponto de Situação" subtitle="Relatório de situação por plano de ação" />
-      <Card title="Pontos de situação">
-        <Table columns={COLUMNS} rows={[]} emptyMessage="Sem pontos de situação carregados" />
-      </Card>
-    </>
+    <Card title="Ponto de situação">
+      <Table columns={COLUMNS} rows={[]} emptyMessage="Sem pontos de situação carregados" />
+    </Card>
   )
 }

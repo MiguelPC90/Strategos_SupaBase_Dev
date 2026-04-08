@@ -1,4 +1,3 @@
-import PageHeader from '../components/PageHeader'
 import Card from '../components/Card'
 import KpiCard from '../components/KpiCard'
 import Table from '../components/Table'
@@ -15,9 +14,7 @@ const COLUMNS = [
 export default function Recursos() {
   return (
     <>
-      <PageHeader title="Recursos" subtitle="Gestão de recursos humanos e alocação" />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 14 }}>
         <KpiCard label="Total recursos" value="—" subtitle="Pessoas" />
         <KpiCard label="FTE alocado" value="—" subtitle="Equivalente tempo inteiro" color="blue" />
         <KpiCard label="Taxa ocupação" value="—" subtitle="Média da equipa" color="green" />

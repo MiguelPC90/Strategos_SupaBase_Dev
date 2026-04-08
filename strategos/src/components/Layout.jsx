@@ -140,12 +140,12 @@ const NAV_MANAGE = [
   },
 ]
 
-function NavItem({ to, label, icon, collapsed }) {
+function NavItem({ to, label, icon }) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-      title={collapsed ? label : undefined}
+      title={label}
     >
       {icon}
       <span className="nav-label">{label}</span>
@@ -154,7 +154,6 @@ function NavItem({ to, label, icon, collapsed }) {
 }
 
 export default function Layout() {
-  const [collapsed, setCollapsed] = useState(true)
   const [filterOpen, setFilterOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef(null)
@@ -169,27 +168,20 @@ export default function Layout() {
     return () => document.removeEventListener('mousedown', handle)
   }, [])
 
-  const cls = collapsed ? ' collapsed' : ''
-
   return (
     <>
-      {/* ── Sidebar ── */}
-      <nav className={`sidebar${cls}`}>
-        <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">S</div>
-          <span className="sidebar-logo-text">Strategos</span>
-        </div>
-
+      {/* ── Sidebar (always collapsed, expands on hover) ── */}
+      <nav className="sidebar collapsed">
         <div className="sidebar-nav">
           <span className="sidebar-group-lbl">Visualização</span>
           {NAV_VIEW.map(item => (
-            <NavItem key={item.to} {...item} collapsed={collapsed} />
+            <NavItem key={item.to} {...item} />
           ))}
 
           <div className="sidebar-sep" />
           <span className="sidebar-group-lbl">Gestão</span>
           {NAV_MANAGE.map(item => (
-            <NavItem key={item.to} {...item} collapsed={collapsed} />
+            <NavItem key={item.to} {...item} />
           ))}
         </div>
 
@@ -197,7 +189,6 @@ export default function Layout() {
           <NavItem
             to="/admin"
             label="Administração"
-            collapsed={collapsed}
             icon={
               <svg viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="3" />
@@ -209,25 +200,16 @@ export default function Layout() {
       </nav>
 
       {/* ── Topbar ── */}
-      <header className={`topbar${cls}`} style={{ position: 'fixed' }}>
-        <button
-          className="topbar-toggle"
-          onClick={() => setCollapsed(c => !c)}
-          aria-label="Toggle sidebar"
-        >
-          <svg viewBox="0 0 24 24">
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
-        </button>
-
-        {/* Centered title */}
-        <span className="topbar-title">Strategos</span>
+      <header className="topbar">
+        {/* Left: brand */}
+        <div className="topbar-brand">
+          <span className="topbar-brand-icon">S</span>
+          <span className="topbar-title">Strategos</span>
+        </div>
 
         <div className="topbar-spacer" />
 
-        {/* Right-side actions */}
+        {/* Right: actions */}
         <button className="topbar-btn">
           <svg viewBox="0 0 24 24">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
@@ -282,7 +264,7 @@ export default function Layout() {
       </header>
 
       {/* ── Main content ── */}
-      <main className={`main-content${cls}`}>
+      <main className="main-content">
         {filterOpen && <FilterBar />}
         <div className="page-body">
           <Outlet />

@@ -9,9 +9,12 @@ const DETAIL_COLS = [
   { key: 'concluidas', label: 'Concluídas',    sortable: true },
   { key: 'em_dia',     label: 'Em dia',        sortable: true },
   { key: 'em_atraso',  label: 'Em atraso',     sortable: true },
-  { key: 'grau_exec',  label: 'Grau execução', sortable: true },
-  { key: 'conc_geral', label: 'Conc. geral',   sortable: true },
-  { key: 'conc_data',  label: 'Conc. à data',  sortable: true },
+  { key: 'grau_exec',  label: 'Grau Execução', sortable: true },
+  { key: 'exec_obj',   label: 'Exec. obj.',    sortable: true },
+  { key: 'conc_geral', label: 'Conc. Geral',   sortable: true },
+  { key: 'cg_obj',     label: 'C.G.Obj.',      sortable: true },
+  { key: 'conc_data',  label: 'Conc. Data',    sortable: true },
+  { key: 'cd_obj',     label: 'C.D.Obj.',      sortable: true },
 ]
 
 export default function Dashboard() {

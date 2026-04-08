@@ -1,4 +1,3 @@
-import PageHeader from '../components/PageHeader'
 import Card from '../components/Card'
 import KpiCard from '../components/KpiCard'
 import Table from '../components/Table'
@@ -14,9 +13,7 @@ const COLUMNS = [
 export default function ExecucaoFinanceira() {
   return (
     <>
-      <PageHeader title="Execução Financeira" subtitle="Acompanhamento da execução orçamental" />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 14 }}>
         <KpiCard label="Orçamento total" value="—" subtitle="€" color="navy" />
         <KpiCard label="Executado" value="—" subtitle="€ / %" color="green" />
         <KpiCard label="Comprometido" value="—" subtitle="€" color="blue" />

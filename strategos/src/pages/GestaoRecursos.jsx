@@ -1,4 +1,3 @@
-import PageHeader from '../components/PageHeader'
 import Card from '../components/Card'
 import Table from '../components/Table'
 
@@ -19,20 +18,17 @@ const FTE_COLS = [
 
 export default function GestaoRecursos() {
   return (
-    <>
-      <PageHeader title="Gestão de Recursos" subtitle="Catálogo de pessoas e alocações FTE">
-        <button className="topbar-btn">+ Nova pessoa</button>
-      </PageHeader>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Card
+        title="Catálogo de pessoas"
+        actions={<button className="topbar-btn" style={{ fontSize: 11 }}>+ Nova pessoa</button>}
+      >
+        <Table columns={PESSOAS_COLS} rows={[]} emptyMessage="Sem pessoas no catálogo" />
+      </Card>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Card title="Catálogo de pessoas">
-          <Table columns={PESSOAS_COLS} rows={[]} emptyMessage="Sem pessoas no catálogo" />
-        </Card>
-
-        <Card title="Alocações FTE">
-          <Table columns={FTE_COLS} rows={[]} emptyMessage="Sem alocações registadas" />
-        </Card>
-      </div>
-    </>
+      <Card title="Alocações FTE">
+        <Table columns={FTE_COLS} rows={[]} emptyMessage="Sem alocações registadas" />
+      </Card>
+    </div>
   )
 }

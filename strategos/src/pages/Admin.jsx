@@ -1,4 +1,3 @@
-import PageHeader from '../components/PageHeader'
 import Card from '../components/Card'
 
 const SECTIONS = [
@@ -11,19 +10,15 @@ const SECTIONS = [
 
 export default function Admin() {
   return (
-    <>
-      <PageHeader title="Administração" subtitle="Configuração e gestão da plataforma" />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
-        {SECTIONS.map(s => (
-          <Card key={s.title} title={s.title}>
-            <p style={{ fontSize: 13, color: 'var(--text3)', margin: 0 }}>{s.desc}</p>
-            <div className="page-placeholder" style={{ minHeight: 80 }}>
-              <p>A implementar</p>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+      {SECTIONS.map(s => (
+        <Card key={s.title} title={s.title}>
+          <p style={{ fontSize: 13, color: 'var(--text3)', margin: 0 }}>{s.desc}</p>
+          <div className="page-placeholder" style={{ minHeight: 80 }}>
+            <p>A implementar</p>
+          </div>
+        </Card>
+      ))}
+    </div>
   )
 }
