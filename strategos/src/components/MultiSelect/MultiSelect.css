@@ -1,0 +1,76 @@
+.ms-wrap {
+  position: relative;
+  display: inline-block;
+}
+.ms-trigger {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  background: var(--bg);
+  font-size: 12px;
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ms-trigger:hover { background: var(--bg2); }
+.ms-trigger.open  { border-color: var(--navy); }
+.ms-label {
+  font-weight: 600;
+  color: var(--text3);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.ms-sep {
+  color: var(--border2);
+  margin: 0 1px;
+}
+.ms-value { color: var(--text); }
+.ms-trigger svg { width: 10px; height: 6px; color: var(--text3); flex-shrink: 0; }
+.ms-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: var(--rl);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  padding: 6px;
+  min-width: 180px;
+  z-index: 300;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.ms-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--r);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+  transition: background 0.12s;
+}
+.ms-option:hover { background: var(--bg2); }
+.ms-option input[type="checkbox"] { accent-color: var(--navy); cursor: pointer; }
+.ms-empty { padding: 10px 8px; font-size: 13px; color: var(--text3); }
+.ms-clear {
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  border: none;
+  border-top: 1px solid var(--border);
+  background: none;
+  font-size: 12px;
+  color: var(--text3);
+  cursor: pointer;
+  text-align: left;
+  border-radius: 0 0 var(--r) var(--r);
+}
+.ms-clear:hover { color: var(--text); }
