@@ -200,9 +200,48 @@ If a new UI pattern appears in 2+ pages, extract it as a reusable component.
 
 ### Auth
 
-- Email + password authentication
-- Protected routes redirect to login page
-- User profile stored in Supabase
+- Email + password via `signIn(email, password)` — calls `supabase.auth.signInWithPassword`
+- Magic link via `signInWithMagicLink(email)` — calls `supabase.auth.signInWithOtp`
+- Session hydrated on load via `supabase.auth.getSession()`, kept in sync via `onAuthStateChange`
+- No self-registration — accounts created by admin only
+
+### Auth files
+
+| File | Purpose |
+|---|---|
+| `src/context/AuthContext.tsx` | Provides `user`, `session`, `loading`, `signIn`, `signInWithMagicLink`, `signOut` |
+| `src/hooks/useAuth.ts` | Consumes `AuthContext`; throws if used outside `AuthProvider` |
+| `src/hooks/useRole.ts` | Fetches `profiles` row for current user; returns `profile`, `role`, `isAdmin`, `isGestor`, `isViewer`, `loading` |
+| `src/pages/Login/Login.tsx` | Login page — two tabs (email+password, magic link); not in the router, rendered by `ProtectedRoute` |
+| `src/lib/schema.sql` | `profiles` table DDL + trigger + RLS policies |
+
+### ProtectedRoute
+
+Defined inside `src/App.tsx`. Wraps the root `<Route>` element:
+- While `loading`: shows a centered spinner
+- No `user`: renders `<Login />` (replaces the entire page, no redirect)
+- Authenticated: renders children (which include `<Layout>` and all child routes)
+
+### profiles table
+
+Columns: `id` (FK → auth.users), `email`, `full_name`, `role` (`admin | gestor | viewer`), `avatar_url`
+
+Auto-created on signup via `handle_new_user()` trigger. Default role is `viewer`.
+
+RLS policies:
+- All authenticated users can `SELECT` all profiles
+- Users can `UPDATE` their own row
+- Admins can do everything (`ALL`)
+
+### Roles
+
+| Role | Access |
+|---|---|
+| `admin` | Full access + Admin page visible in sidebar |
+| `gestor` | Can edit data, no Admin page |
+| `viewer` | Read-only |
+
+The Admin sidebar link is conditionally rendered: only shown when `isAdmin === true` (from `useRole`).
 
 ## Important Rules
 

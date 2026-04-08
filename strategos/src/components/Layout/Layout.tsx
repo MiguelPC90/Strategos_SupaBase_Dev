@@ -2,6 +2,9 @@ import './Layout.css'
 import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import FilterBar from '../FilterBar/FilterBar'
+import Badge from '../Badge/Badge'
+import { useAuth } from '../../hooks/useAuth'
+import { useRole } from '../../hooks/useRole'
 
 interface NavItemConfig {
   to: string
@@ -166,7 +169,28 @@ function NavItem({ to, label, icon, isManage = false }: NavItemProps) {
   )
 }
 
+function getInitials(fullName: string | null | undefined, email: string | undefined): string {
+  if (fullName && fullName.trim()) {
+    const parts = fullName.trim().split(/\s+/)
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    }
+    return fullName.slice(0, 2).toUpperCase()
+  }
+  if (email) return email.slice(0, 2).toUpperCase()
+  return 'U'
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'Admin',
+  gestor: 'Gestor',
+  viewer: 'Visualizador',
+}
+
 export default function Layout() {
+  const { signOut, user } = useAuth()
+  const { profile, role, isAdmin } = useRole()
+
   const [filterOpen, setFilterOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
@@ -180,6 +204,11 @@ export default function Layout() {
     document.addEventListener('mousedown', handle)
     return () => document.removeEventListener('mousedown', handle)
   }, [])
+
+  const initials = getInitials(profile?.full_name, user?.email)
+  const displayName = profile?.full_name || user?.email || 'Utilizador'
+  const displayEmail = user?.email ?? ''
+  const roleLabel = role ? (ROLE_LABEL[role] ?? role) : null
 
   return (
     <>
@@ -198,18 +227,20 @@ export default function Layout() {
           ))}
         </div>
 
-        <div className="sidebar-bottom">
-          <NavItem
-            to="/admin"
-            label="Administração"
-            icon={
-              <svg viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
-              </svg>
-            }
-          />
-        </div>
+        {isAdmin && (
+          <div className="sidebar-bottom">
+            <NavItem
+              to="/admin"
+              label="Administração"
+              icon={
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+                </svg>
+              }
+            />
+          </div>
+        )}
       </nav>
 
       {/* ── Topbar ── */}
@@ -241,21 +272,24 @@ export default function Layout() {
           <button
             className="topbar-avatar"
             onClick={() => setProfileOpen(o => !o)}
-            aria-label="Profile menu"
+            aria-label="Menu de perfil"
           >
-            U
+            {initials}
           </button>
           {profileOpen && (
             <div className="profile-dropdown">
-              <div className="profile-dropdown-name">Utilizador</div>
-              <button className="dropdown-item">
-                <svg viewBox="0 0 24 24">
-                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
-                Perfil
-              </button>
-              <button className="dropdown-item">
+              <div className="profile-dropdown-header">
+                <div className="profile-dropdown-name">{displayName}</div>
+                <div className="profile-dropdown-email">{displayEmail}</div>
+                {roleLabel && (
+                  <div className="profile-dropdown-role">
+                    <Badge variant={role === 'admin' ? 'navy' : role === 'gestor' ? 'blue' : 'grey'}>
+                      {roleLabel}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+              <button className="dropdown-item" onClick={() => signOut()}>
                 <svg viewBox="0 0 24 24">
                   <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
                   <polyline points="16 17 21 12 16 7" />
