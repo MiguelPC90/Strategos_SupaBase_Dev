@@ -20,43 +20,80 @@ Strategos is a PMO (Project Management Office) dashboard for organizations manag
 
 ## Project Structure
 
+Each component and page lives in its own folder with a co-located `.css` file for component-specific styles. Import directly from the component file — no index barrel files.
+
 ```
 src/
-├── components/       # Reusable UI components
-│   ├── Badge.tsx
-│   ├── Card.tsx
-│   ├── FilterBar.tsx
-│   ├── KpiCard.tsx
-│   ├── Layout.tsx     # Main app shell (sidebar + topbar + content)
-│   ├── MultiSelect.tsx
-│   ├── PageHeader.tsx
-│   ├── ProgressBar.tsx
-│   └── Table.tsx
-├── pages/            # One file per page/route
-│   ├── Dashboard.tsx
-│   ├── Actividades.tsx
-│   ├── Gantt.tsx
-│   ├── Evolucao.tsx
-│   ├── PontoSituacao.tsx
-│   ├── ExecucaoFinanceira.tsx
-│   ├── Recursos.tsx
-│   ├── GestaoIniciativas.tsx
-│   ├── GestaoPDS.tsx
-│   ├── GestaoRiscos.tsx
-│   ├── GestaoFinanceira.tsx
-│   ├── GestaoRecursos.tsx
-│   └── Admin.tsx
+├── components/
+│   ├── Badge/
+│   │   ├── Badge.tsx
+│   │   └── Badge.css
+│   ├── Card/
+│   │   ├── Card.tsx
+│   │   └── Card.css
+│   ├── FilterBar/
+│   │   ├── FilterBar.tsx
+│   │   └── FilterBar.css
+│   ├── KpiCard/
+│   │   ├── KpiCard.tsx
+│   │   └── KpiCard.css
+│   ├── Layout/            # Main app shell (sidebar + topbar + content)
+│   │   ├── Layout.tsx
+│   │   └── Layout.css
+│   ├── MultiSelect/
+│   │   ├── MultiSelect.tsx
+│   │   └── MultiSelect.css
+│   ├── PageHeader/
+│   │   ├── PageHeader.tsx
+│   │   └── PageHeader.css
+│   ├── ProgressBar/
+│   │   ├── ProgressBar.tsx
+│   │   └── ProgressBar.css
+│   └── Table/
+│       ├── Table.tsx
+│       └── Table.css
+├── pages/
+│   ├── Dashboard/
+│   │   ├── Dashboard.tsx
+│   │   └── Dashboard.css  # ind-section, toggle chips
+│   ├── Actividades/Actividades.tsx
+│   ├── Gantt/Gantt.tsx
+│   ├── Evolucao/Evolucao.tsx
+│   ├── PontoSituacao/PontoSituacao.tsx
+│   ├── ExecucaoFinanceira/ExecucaoFinanceira.tsx
+│   ├── Recursos/Recursos.tsx
+│   ├── GestaoIniciativas/GestaoIniciativas.tsx
+│   ├── GestaoPDS/GestaoPDS.tsx
+│   ├── GestaoRiscos/GestaoRiscos.tsx
+│   ├── GestaoFinanceira/GestaoFinanceira.tsx
+│   ├── GestaoRecursos/GestaoRecursos.tsx
+│   └── Admin/Admin.tsx
 ├── hooks/            # Custom React hooks (data fetching, filters)
 ├── context/          # React context providers (auth, filters)
-├── lib/              # Utilities and config
+├── lib/
 │   └── supabase.ts   # Supabase client
 ├── App.tsx           # Router and route definitions
-└── index.css         # Global styles, CSS variables, Tailwind import
+└── index.css         # Global tokens, reset, scrollbar, .page-placeholder
 .env.local            # Supabase credentials (not in git)
 vite.config.js
 package.json
 tsconfig.json
 ```
+
+### Import pattern
+
+```ts
+// Always import directly from the component file — no index.ts barrels
+import Badge from '../../components/Badge/Badge'
+import Table, { type Column } from '../../components/Table/Table'
+```
+
+### CSS co-location rules
+
+- Each component imports its own `.css` at the top: `import './Badge.css'`
+- Only create a `.css` file when there are custom CSS rules (not Tailwind-only)
+- `index.css` holds only: design tokens (`:root`), global reset, scrollbar, and `.page-placeholder`
+- Do NOT add component-specific rules to `index.css`
 
 ## Code Conventions
 
