@@ -243,6 +243,145 @@ RLS policies:
 
 The Admin sidebar link is conditionally rendered: only shown when `isAdmin === true` (from `useRole`).
 
+## Phase 3 — Data Layer
+
+### TypeScript Types (`src/types/index.ts`)
+
+All interfaces mirror the Supabase schema exactly. Import from `'../types/index'`.
+
+| Type | Description |
+|---|---|
+| `Program` | Strategic program / portfolio entry |
+| `Activity` | Work breakdown item (hierarchy via n0–n5, id0–id2) |
+| `PdsItem` | Single item in a PDS list (text, optional date/status) |
+| `PdsEntry` | PDS report for a program period; uses JSONB arrays (`commitments_items`, `progress_items`, `next_steps_items`, `attention_items`) |
+| `FinBudgetLine` | Budget line; `values` is `Record<string, number>` (period → amount) |
+| `FinContract` | Procurement contract |
+| `FinInvoice` | Invoice linked to a contract |
+| `FteResource` | FTE / staff resource record |
+| `Risk` | Risk entry with impact, probability, mitigation |
+| `Person` | People directory entry |
+| `SnapshotKpi` | KPI bundle: total, concluidas, em_dia, em_atraso, exec_media |
+| `Snapshot` | Point-in-time KPI snapshot; `by_n0` and `by_n1` are `Record<string, SnapshotKpi>` |
+| `Profile` | User profile row (mirrors `profiles` table) |
+| `UserPermission` | Per-user, per-page, per-program access level |
+| `AppConfig` | Key-value app configuration stored in Supabase |
+| `AccessLevel` | `'none' \| 'view' \| 'edit'` |
+| `UserRole` | `'admin' \| 'gestor' \| 'viewer'` |
+| `PageKey` | Union of all valid route page keys |
+
+> **Note on activities:** `source` field exists in DB but is unused — omit it from types and queries. `id0` is a legacy text field — keep but prefer `program_id` for filtering.
+
+### Data Hooks (`src/hooks/`)
+
+All hooks follow the same pattern: `useEffect` with cancelled flag, proper loading/error state, and dependency arrays.
+
+#### `usePrograms()`
+```ts
+const { programs, loading, error, refetch } = usePrograms()
+```
+Fetches all programs ordered by `sort_order`. Call `refetch()` to re-query.
+
+#### `useActivities(filters?)`
+```ts
+const { activities, loading, error, refetch } = useActivities({
+  program_id?: string,
+  n1?: string,
+  n2?: string,
+  owner?: string,
+  sponsor?: string,
+  status?: string,
+  cutoffDate?: string | null,
+})
+```
+All filters are optional. When `cutoffDate` is provided, leaf activities past their deadline with `pct < 100` are recalculated to `status = 'atrasada'` client-side.
+
+#### `usePdsEntries(program_id?)`
+```ts
+const { entries, loading, error } = usePdsEntries('uuid-or-undefined')
+```
+Fetches PDS entries. Uses explicit column list to get only JSONB fields (not the legacy text fields).
+
+#### `useFinancials(program_id?)`
+```ts
+const { budgetLines, contracts, invoices, loading, error } = useFinancials('uuid')
+```
+Fetches all three financial tables in parallel with `Promise.all`.
+
+#### `useResources(program_id?)`
+```ts
+const { resources, loading, error } = useResources('uuid')
+```
+
+#### `useRisks(program_id?)`
+```ts
+const { risks, loading, error } = useRisks('uuid')
+```
+
+#### `usePeople()`
+```ts
+const { people, loading, error } = usePeople()
+```
+Ordered by name. No program filter (people are org-wide).
+
+#### `useSnapshots(program_id?)`
+```ts
+const { snapshots, loading, error } = useSnapshots('uuid')
+```
+Ordered by `snap_date`. When `program_id` is provided, filters client-side by checking if the key exists in `by_n0`.
+
+#### `usePermissions()`
+```ts
+const { permissions, hasAccess, canEdit, loading } = usePermissions()
+hasAccess('gestao-riscos', programId)  // → boolean
+canEdit('actividades')                 // → boolean
+```
+
+### Permission System
+
+Resolution order (first match wins):
+
+1. **admin role** → always `hasAccess=true`, `canEdit=true`
+2. **gestor role** → always `hasAccess=true`, `canEdit=true`
+3. **Specific permission row** (matching `page` + `program_id`) → use `access_level`
+4. **Page-level permission row** (`program_id = null`) → use `access_level`
+5. **viewer default** → `hasAccess=true` for view pages only, `canEdit=false` always
+
+View pages for viewer default: `dashboard`, `actividades`, `gantt`, `evolucao`, `ponto-situacao`, `exec-financeira`, `recursos`
+
+`access_level = 'none'` always blocks access regardless of role.
+
+### Filter Context (`src/context/FilterContext.tsx`)
+
+Global filter state shared across all pages. Provider is in `main.tsx`, inside `AuthProvider`, outside `BrowserRouter`.
+
+```ts
+const { filters, setFilter, resetFilters, getFilteredActivities } = useFilters()
+```
+
+**`FilterState` fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `programIds` | `string[]` | Selected program UUIDs |
+| `n1Values` | `string[]` | Selected eixo names |
+| `n2Values` | `string[]` | Selected plano names |
+| `owners` | `string[]` | Selected owners |
+| `sponsors` | `string[]` | Selected sponsors |
+| `statuses` | `string[]` | Selected status values |
+| `cutoffDate` | `string \| null` | ISO date for status recalculation |
+
+**Cascading resets:**
+- Changing `programIds` → clears `n1Values` and `n2Values`
+- Changing `n1Values` → clears `n2Values`
+
+**Usage in a page:**
+```ts
+const { filters, setFilter, getFilteredActivities } = useFilters()
+const { activities } = useActivities({ program_id: filters.programIds[0] })
+const visible = getFilteredActivities(activities)
+```
+
 ## Important Rules
 
 1. **Do NOT modify existing reusable components** without checking if other pages depend on them
