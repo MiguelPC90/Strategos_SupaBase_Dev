@@ -1,8 +1,9 @@
 import './Dashboard.css'
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell,
+  PieChart, Pie, Cell, Label, LabelList,
   LineChart, Line,
 } from 'recharts'
 import Card from '../../components/Card/Card'
@@ -18,6 +19,24 @@ import type { Activity } from '../../types/index'
 const CLR_CONCLUIDAS = '#95BB42'
 const CLR_EM_DIA     = '#002E5E'
 const CLR_EM_ATRASO  = '#E24B4A'
+
+// ── Pie slice label ───────────────────────────────────────────
+interface PieLabelProps {
+  cx: number; cy: number; midAngle: number
+  innerRadius: number; outerRadius: number; percent: number
+}
+function renderPieLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent }: PieLabelProps) {
+  if (percent < 0.05) return null
+  const r = innerRadius + (outerRadius - innerRadius) * 0.5
+  const x = cx + r * Math.cos(-midAngle * (Math.PI / 180))
+  const y = cy + r * Math.sin(-midAngle * (Math.PI / 180))
+  return (
+    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central"
+      style={{ fontSize: 11, fontWeight: 600, pointerEvents: 'none' }}>
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  )
+}
 
 // ── Types ─────────────────────────────────────────────────────
 type EvoMetric = 'grau_exec' | 'conc_geral' | 'conc_data'
@@ -142,7 +161,8 @@ export default function Dashboard() {
   const [chip, setChip]           = useState<'eixo' | 'eixo-plano'>('eixo')
   const [evoMetric, setEvoMetric] = useState<EvoMetric>('grau_exec')
 
-  const { filters, getFilteredActivities } = useFilters()
+  const navigate = useNavigate()
+  const { filters, setFilter, getFilteredActivities } = useFilters()
   const { activities, loading }            = useActivities({ cutoffDate: filters.cutoffDate })
   const { programs }                       = usePrograms()
   const snapshotProgramId                  = filters.programIds[0]
@@ -259,22 +279,30 @@ export default function Dashboard() {
   const tableRows = useMemo((): Record<string, unknown>[] => {
     if (chip === 'eixo') {
       const groups = groupBy(leaves, a => a.n1 || '(sem eixo)')
-      return Array.from(groups.entries()).map(([n1, acts]) =>
-        buildRow(n1, calcMetrics(acts), false),
-      )
+      return Array.from(groups.entries()).map(([n1, acts]) => ({
+        ...buildRow(n1, calcMetrics(acts), false),
+        _n1: n1,
+      }))
     }
     // Eixo + Plano: parent row per eixo, child rows per plano
     const byEixo = groupBy(leaves, a => a.n1 || '(sem eixo)')
     const rows: Record<string, unknown>[] = []
     for (const [eixo, eixoActs] of byEixo) {
-      rows.push(buildRow(eixo, calcMetrics(eixoActs), true))
+      rows.push({ ...buildRow(eixo, calcMetrics(eixoActs), true), _n1: eixo })
       const byPlano = groupBy(eixoActs, a => a.n2 || '(sem plano)')
       for (const [plano, planoActs] of byPlano) {
-        rows.push(buildRow(`↳ ${plano}`, calcMetrics(planoActs), false))
+        rows.push({ ...buildRow(`↳ ${plano}`, calcMetrics(planoActs), false), _n1: eixo, _n2: plano })
       }
     }
     return rows
   }, [chip, leaves])
+
+  // ── Last snapshot date for Evolution card ────────────────────
+  const lastSnapDate = useMemo(() => {
+    if (snapshots.length === 0) return null
+    const d = new Date(snapshots[snapshots.length - 1].snap_date)
+    return d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  }, [snapshots])
 
   // ── Totals row ───────────────────────────────────────────────
   const totalsRow = useMemo((): Record<string, unknown> => ({
@@ -292,6 +320,14 @@ export default function Dashboard() {
       ? fmtPct(safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100) : '—',
     cd_obj:     '100%',
   }), [m])
+
+  // ── Row click → navigate to Actividades with n1 filter ───────
+  function handleRowClick(row: Record<string, unknown>) {
+    if (row._isTotals) return
+    const n1 = row._n1 as string | undefined
+    setFilter('n1Values', n1 ? [n1] : [])
+    navigate('/actividades')
+  }
 
   return (
     <>
@@ -366,15 +402,21 @@ export default function Dashboard() {
                   <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                   <Tooltip />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS} />
-                  <Bar dataKey="em_dia"     name="Em dia"     stackId="a" fill={CLR_EM_DIA} />
-                  <Bar
-                    dataKey="em_atraso"
-                    name="Em atraso"
-                    stackId="a"
-                    fill={CLR_EM_ATRASO}
-                    radius={[3, 3, 0, 0]}
-                  />
+                  <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS}>
+                    <LabelList dataKey="concluidas" position="inside"
+                      style={{ fontSize: 10, fill: 'white', fontWeight: 600 }}
+                      formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                  </Bar>
+                  <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA}>
+                    <LabelList dataKey="em_dia" position="inside"
+                      style={{ fontSize: 10, fill: 'white', fontWeight: 600 }}
+                      formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                  </Bar>
+                  <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO} radius={[3, 3, 0, 0]}>
+                    <LabelList dataKey="em_atraso" position="inside"
+                      style={{ fontSize: 10, fill: 'white', fontWeight: 600 }}
+                      formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -398,12 +440,34 @@ export default function Dashboard() {
                     cy="50%"
                     innerRadius="42%"
                     outerRadius="68%"
+                    label={renderPieLabel as (props: unknown) => React.ReactElement | null}
+                    labelLine={false}
                   >
                     {pieData.map((entry, idx) => (
                       <Cell key={`cell-${idx}`} fill={entry.color} />
                     ))}
+                    <Label
+                      position="center"
+                      content={(labelProps: unknown) => {
+                        const vb = (labelProps as { viewBox?: { cx?: number; cy?: number } }).viewBox ?? {}
+                        const cx = vb.cx ?? 0
+                        const cy = vb.cy ?? 0
+                        return (
+                          <text textAnchor="middle">
+                            <tspan x={cx} y={cy - 6} fontSize={22} fontWeight="700" fill="var(--text)">{m.total}</tspan>
+                            <tspan x={cx} y={cy + 14} fontSize={11} fill="var(--text3)">total</tspan>
+                          </text>
+                        )
+                      }}
+                    />
                   </Pie>
-                  <Tooltip />
+                  <Tooltip
+                    formatter={(value: unknown) => {
+                      const v = Number(value)
+                      const pct = m.total > 0 ? ((v / m.total) * 100).toFixed(1) : '0'
+                      return [`${v} (${pct}%)`]
+                    }}
+                  />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -414,7 +478,12 @@ export default function Dashboard() {
 
       {/* ── Row 3: Evolution chart ───────────────────────────── */}
       <div style={{ marginBottom: 14 }}>
-        <Card title="Evolução">
+        <Card
+          title="Evolução"
+          actions={lastSnapDate
+            ? <span className="dash-prog-label">Último registo: {lastSnapDate}</span>
+            : undefined}
+        >
           <div className="toggle-chips">
             <button
               className={`chip${evoMetric === 'grau_exec' ? ' active' : ''}`}
@@ -494,7 +563,7 @@ export default function Dashboard() {
             Eixo + Plano
           </button>
         </div>
-        <Table columns={DETAIL_COLS} rows={tableRows} emptyMessage="Sem dados carregados" layout="fixed" footerRow={totalsRow} />
+        <Table columns={DETAIL_COLS} rows={tableRows} emptyMessage="Sem dados carregados" layout="fixed" footerRow={totalsRow} onRowClick={handleRowClick} />
       </Card>
     </>
   )

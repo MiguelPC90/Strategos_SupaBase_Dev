@@ -18,13 +18,13 @@ interface TableProps {
   columns?: Column[]
   rows?: Record<string, unknown>[]
   emptyMessage?: string
-  /** Set to 'fixed' to enable table-layout:fixed with colgroup widths. */
   layout?: 'auto' | 'fixed'
-  /** Optional summary/totals row rendered below all data rows, never sorted. */
   footerRow?: Record<string, unknown>
+  /** Called when a data row is clicked. Footer row is never clickable. */
+  onRowClick?: (row: Record<string, unknown>) => void
 }
 
-export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dados', layout = 'auto', footerRow }: TableProps) {
+export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dados', layout = 'auto', footerRow, onRowClick }: TableProps) {
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
@@ -87,7 +87,11 @@ export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dad
             </tr>
           ) : (
             sorted.map((row, i) => (
-              <tr key={String(row['id'] ?? i)}>
+              <tr
+                key={String(row['id'] ?? i)}
+                className={onRowClick ? 'tbl-row-clickable' : undefined}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+              >
                 {columns.map((col, idx) => (
                   <td key={col.key} style={{ textAlign: col.align ?? (idx === 0 ? 'left' : 'center'), minWidth: col.minWidth }}>
                     {col.render
