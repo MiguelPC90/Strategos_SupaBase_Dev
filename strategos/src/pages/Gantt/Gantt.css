@@ -1,11 +1,11 @@
 @layer components {
   /* ── Toolbar — white background, standard controls ─────────── */
   .gantt-toolbar {
-    padding: 6px 16px;
+    padding: 4px 16px;
     background: var(--bg);
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 8px;
     flex-wrap: nowrap;
     border-bottom: 1px solid var(--border);
     margin-bottom: 0;
@@ -35,8 +35,7 @@
   /* Scale chips — light style, active: navy bg + white text */
   .gantt-scale-chips { display: flex; gap: 3px; }
   .gantt-scale-chip {
-    height: 26px;
-    padding: 0 10px;
+    padding: 3px 10px;
     border: 1px solid var(--border2);
     border-radius: 20px;
     background: var(--bg2);
@@ -51,8 +50,7 @@
 
   /* Collapse/Expand buttons — standard light style */
   .gantt-toolbar-btn {
-    height: 26px;
-    padding: 0 10px;
+    padding: 3px 10px;
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--bg2);
@@ -186,6 +184,8 @@
     font-size: 11px;
     color: var(--text2);
   }
+  /* In the header, exec section inherits white from .gantt-th */
+  .gantt-th .gantt-sticky-exec { color: inherit; }
 
   /* ── Row levels ─────────────────────────────────────────────── */
   .gantt-row-n1 { background: var(--bg2); }
