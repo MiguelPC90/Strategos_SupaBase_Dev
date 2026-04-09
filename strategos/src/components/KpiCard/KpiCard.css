@@ -18,6 +18,10 @@
     line-height: 1.2;
     color: var(--text);
   }
+  .kpi-trend {
+    font-size: 11px;
+    line-height: 1;
+  }
   .kpi-subtitle {
     font-size: 10px;
     color: var(--text3);

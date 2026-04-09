@@ -7,6 +7,8 @@ interface KpiCardProps {
   label: string
   value?: ReactNode
   subtitle?: string
+  /** Optional trend indicator rendered below the value (e.g. "▲ 2.3%"). */
+  trend?: ReactNode
   color?: KpiColor
 }
 
@@ -19,13 +21,14 @@ const colorMap: Record<KpiColor, string> = {
   text:  'var(--text)',
 }
 
-export default function KpiCard({ label, value, subtitle, color = 'text' }: KpiCardProps) {
+export default function KpiCard({ label, value, subtitle, trend, color = 'text' }: KpiCardProps) {
   return (
     <div className="kpi-card">
       <span className="kpi-label">{label}</span>
       <span className="kpi-value" style={{ color: colorMap[color] }}>
         {value ?? '—'}
       </span>
+      {trend !== undefined && <span className="kpi-trend">{trend}</span>}
       {subtitle && <span className="kpi-subtitle">{subtitle}</span>}
     </div>
   )

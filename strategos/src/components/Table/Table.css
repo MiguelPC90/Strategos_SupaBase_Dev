@@ -38,4 +38,11 @@
   }
   .tbl tbody tr:last-child td { border-bottom: none; }
   .tbl tbody tr:hover td { background: var(--bg2); }
+  .tbl .tbl-footer-row td {
+    background: var(--bg2);
+    font-weight: 700;
+    border-top: 2px solid var(--border2);
+    border-bottom: none;
+  }
+  .tbl .tbl-footer-row:hover td { background: var(--bg3); }
 }

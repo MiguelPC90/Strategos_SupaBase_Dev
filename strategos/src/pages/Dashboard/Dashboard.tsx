@@ -64,6 +64,20 @@ function calcMetrics(acts: Activity[]): Metrics {
 function fmtPct(n: number): string { return `${n.toFixed(1)}%` }
 function safeDiv(a: number, b: number): number { return b > 0 ? a / b : 0 }
 
+function mkTrend(
+  current: number,
+  prev: number | null | undefined,
+  fmt: (n: number) => string,
+  inverted = false,
+) {
+  if (prev == null) return undefined
+  const diff = current - prev
+  if (diff === 0) return undefined
+  const better = inverted ? diff < 0 : diff > 0
+  const color = better ? '#3B6D11' : '#A32D2D'
+  return <span style={{ color }}>{diff > 0 ? '▲' : '▼'} {fmt(Math.abs(diff))}</span>
+}
+
 function groupBy<T>(items: T[], keyFn: (item: T) => string): Map<string, T[]> {
   const map = new Map<string, T[]>()
   for (const item of items) {
@@ -103,7 +117,10 @@ const DETAIL_COLS: Column[] = [
     sortable: false,
     minWidth: '250px',
     render: (_v, row) => (
-      <span style={{ fontWeight: Boolean(row._isParent) ? 700 : 400 }}>
+      <span style={{
+        fontWeight: Boolean(row._isTotals) || Boolean(row._isParent) ? 700 : 400,
+        color: Boolean(row._isTotals) ? 'var(--navy)' : undefined,
+      }}>
         {String(row.nome ?? '')}
       </span>
     ),
@@ -159,6 +176,41 @@ export default function Dashboard() {
   const kpiExecObj   = m.total > 0 ? fmtPct(m.exec_obj) : '—'
   const kpiCgObj     = m.total > 0
     ? fmtPct(safeDiv(m.concluidas + m.em_atraso, m.total) * 100) : '—'
+
+  // ── Previous snapshot KPI (for trend arrows) ──────────────────
+  const prevKpi = useMemo(() => {
+    if (snapshots.length === 0) return null
+    const today = new Date().toISOString().slice(0, 10)
+    for (let i = snapshots.length - 1; i >= 0; i--) {
+      if (snapshots[i].snap_date.slice(0, 10) < today) {
+        const snap = snapshots[i]
+        const pid = snapshotProgramId
+        return (pid !== undefined && pid in snap.by_n0) ? snap.by_n0[pid] : snap.kpi
+      }
+    }
+    return null
+  }, [snapshots, snapshotProgramId])
+
+  // ── Trend indicators ─────────────────────────────────────────
+  const fmtN   = (n: number) => String(Math.round(n))
+  const fmtPct1 = (n: number) => `${n.toFixed(1)}%`
+  const trendTotal    = mkTrend(m.total,     prevKpi?.total,     fmtN)
+  const trendConc     = mkTrend(m.concluidas, prevKpi?.concluidas, fmtN)
+  const trendEmDia    = mkTrend(m.em_dia,    prevKpi?.em_dia,    fmtN)
+  const trendEmAtraso = mkTrend(m.em_atraso, prevKpi?.em_atraso, fmtN, true)
+  const trendGrauExec = mkTrend(m.grau_exec, prevKpi?.exec_media, fmtPct1)
+  const trendConcGeral = mkTrend(
+    m.total > 0 ? safeDiv(m.concluidas, m.total) * 100 : 0,
+    prevKpi && prevKpi.total > 0 ? safeDiv(prevKpi.concluidas, prevKpi.total) * 100 : null,
+    fmtPct1,
+  )
+  const trendConcData = mkTrend(
+    m.concluidas + m.em_atraso > 0 ? safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100 : 0,
+    prevKpi && prevKpi.concluidas + prevKpi.em_atraso > 0
+      ? safeDiv(prevKpi.concluidas, prevKpi.concluidas + prevKpi.em_atraso) * 100
+      : null,
+    fmtPct1,
+  )
 
   // ── Bar chart data ───────────────────────────────────────────
   const barData = useMemo(() => {
@@ -224,6 +276,23 @@ export default function Dashboard() {
     return rows
   }, [chip, leaves])
 
+  // ── Totals row ───────────────────────────────────────────────
+  const totalsRow = useMemo((): Record<string, unknown> => ({
+    _isTotals: true,
+    nome:      'TOTAL',
+    total:      m.total,
+    concluidas: m.concluidas,
+    em_dia:     m.em_dia,
+    em_atraso:  m.em_atraso,
+    grau_exec:  m.total > 0 ? fmtPct(m.grau_exec) : '—',
+    exec_obj:   m.total > 0 ? fmtPct(m.exec_obj)  : '—',
+    conc_geral: m.total > 0 ? fmtPct(safeDiv(m.concluidas, m.total) * 100) : '—',
+    cg_obj:     m.total > 0 ? fmtPct(safeDiv(m.concluidas + m.em_atraso, m.total) * 100) : '—',
+    conc_data:  m.concluidas + m.em_atraso > 0
+      ? fmtPct(safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100) : '—',
+    cd_obj:     '100%',
+  }), [m])
+
   return (
     <>
       {/* Subtle fetch indicator */}
@@ -239,10 +308,10 @@ export default function Dashboard() {
             : undefined}
         >
           <div className="kpi-2col">
-            <KpiCard label="Total actividades" value={m.total} />
-            <KpiCard label="Concluídas"  value={m.concluidas} color="green" />
-            <KpiCard label="Em dia"      value={m.em_dia}     color="blue" />
-            <KpiCard label="Em atraso"   value={m.em_atraso}  color="red" />
+            <KpiCard label="Total actividades" value={m.total}     trend={trendTotal} />
+            <KpiCard label="Concluídas"  value={m.concluidas} color="green" trend={trendConc} />
+            <KpiCard label="Em dia"      value={m.em_dia}     color="blue"  trend={trendEmDia} />
+            <KpiCard label="Em atraso"   value={m.em_atraso}  color="red"   trend={trendEmAtraso} />
           </div>
         </Card>
 
@@ -253,9 +322,9 @@ export default function Dashboard() {
               Realizado
             </div>
             <div className="kpi-3col">
-              <KpiCard label="Grau execução" value={kpiGrauExec}  color="navy" />
-              <KpiCard label="Conc. geral"   value={kpiConcGeral} color="navy" />
-              <KpiCard label="Conc. à data"  value={kpiConcData}  color="navy" />
+              <KpiCard label="Grau execução" value={kpiGrauExec}  color="navy" trend={trendGrauExec} />
+              <KpiCard label="Conc. geral"   value={kpiConcGeral} color="navy" trend={trendConcGeral} />
+              <KpiCard label="Conc. à data"  value={kpiConcData}  color="navy" trend={trendConcData} />
             </div>
           </div>
           <div className="ind-section">
@@ -425,7 +494,7 @@ export default function Dashboard() {
             Eixo + Plano
           </button>
         </div>
-        <Table columns={DETAIL_COLS} rows={tableRows} emptyMessage="Sem dados carregados" layout="fixed" />
+        <Table columns={DETAIL_COLS} rows={tableRows} emptyMessage="Sem dados carregados" layout="fixed" footerRow={totalsRow} />
       </Card>
     </>
   )

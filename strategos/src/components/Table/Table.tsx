@@ -20,9 +20,11 @@ interface TableProps {
   emptyMessage?: string
   /** Set to 'fixed' to enable table-layout:fixed with colgroup widths. */
   layout?: 'auto' | 'fixed'
+  /** Optional summary/totals row rendered below all data rows, never sorted. */
+  footerRow?: Record<string, unknown>
 }
 
-export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dados', layout = 'auto' }: TableProps) {
+export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dados', layout = 'auto', footerRow }: TableProps) {
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
@@ -95,6 +97,17 @@ export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dad
                 ))}
               </tr>
             ))
+          )}
+          {footerRow && (
+            <tr className="tbl-footer-row">
+              {columns.map((col, idx) => (
+                <td key={col.key} style={{ textAlign: col.align ?? (idx === 0 ? 'left' : 'center'), minWidth: col.minWidth }}>
+                  {col.render
+                    ? col.render(footerRow[col.key], footerRow)
+                    : (footerRow[col.key] as ReactNode) ?? '—'}
+                </td>
+              ))}
+            </tr>
           )}
         </tbody>
       </table>
