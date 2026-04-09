@@ -1,5 +1,5 @@
 @layer components {
-  /* Layout grids */
+  /* ── Layout grids ────────────────────────────────────────── */
   .dashboard-top-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -13,7 +13,39 @@
     margin-bottom: 14px;
   }
 
-  /* Indicadores sections */
+  /* ── Loading bar ─────────────────────────────────────────── */
+  .dash-loading-bar {
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      var(--navy) 0%,
+      var(--green) 50%,
+      var(--navy) 100%
+    );
+    background-size: 200% 100%;
+    animation: dash-shimmer 1.4s linear infinite;
+    border-radius: 2px;
+    margin-bottom: 12px;
+  }
+  @keyframes dash-shimmer {
+    0%   { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* ── Program scope label ─────────────────────────────────── */
+  .dash-prog-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text3);
+    white-space: nowrap;
+  }
+
+  /* ── Chart container ─────────────────────────────────────── */
+  .dash-chart-container {
+    height: 280px;
+  }
+
+  /* ── Indicadores sections ────────────────────────────────── */
   .ind-section { margin-bottom: 10px; }
   .ind-section:last-child { margin-bottom: 0; }
   .ind-section-header {
@@ -39,7 +71,7 @@
     padding: 8px;
   }
 
-  /* Toggle chips */
+  /* ── Toggle chips ────────────────────────────────────────── */
   .toggle-chips {
     display: flex;
     gap: 4px;

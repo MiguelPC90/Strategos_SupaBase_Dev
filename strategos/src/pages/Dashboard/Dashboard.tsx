@@ -1,11 +1,107 @@
 import './Dashboard.css'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell,
+} from 'recharts'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import Table, { type Column } from '../../components/Table/Table'
+import { useActivities } from '../../hooks/useActivities'
+import { usePrograms } from '../../hooks/usePrograms'
+import { useFilters } from '../../context/FilterContext'
+import type { Activity } from '../../types/index'
 
+// ── Chart colours ─────────────────────────────────────────────
+const CLR_CONCLUIDAS = '#95BB42'
+const CLR_EM_DIA     = '#002E5E'
+const CLR_EM_ATRASO  = '#E24B4A'
+
+// ── Metric helpers ────────────────────────────────────────────
+interface Metrics {
+  total: number
+  concluidas: number
+  em_dia: number
+  em_atraso: number
+  /** Average pct × 100 */
+  grau_exec: number
+  /** Average pct_prev × 100 */
+  exec_obj: number
+}
+
+function classify(a: Activity): 'concluida' | 'em_dia' | 'em_atraso' {
+  if (a.pct >= 1) return 'concluida'
+  if (a.status === 'Em dia') return 'em_dia'
+  return 'em_atraso'
+}
+
+function calcMetrics(acts: Activity[]): Metrics {
+  const total = acts.length
+  if (total === 0) {
+    return { total: 0, concluidas: 0, em_dia: 0, em_atraso: 0, grau_exec: 0, exec_obj: 0 }
+  }
+  let concluidas = 0, em_dia = 0, em_atraso = 0, sumPct = 0, sumPrev = 0
+  for (const a of acts) {
+    const cls = classify(a)
+    if (cls === 'concluida') concluidas++
+    else if (cls === 'em_dia') em_dia++
+    else em_atraso++
+    sumPct  += a.pct
+    sumPrev += a.pct_prev
+  }
+  return {
+    total, concluidas, em_dia, em_atraso,
+    grau_exec: (sumPct  / total) * 100,
+    exec_obj:  (sumPrev / total) * 100,
+  }
+}
+
+function fmtPct(n: number): string { return `${n.toFixed(1)}%` }
+function safeDiv(a: number, b: number): number { return b > 0 ? a / b : 0 }
+
+function groupBy<T>(items: T[], keyFn: (item: T) => string): Map<string, T[]> {
+  const map = new Map<string, T[]>()
+  for (const item of items) {
+    const key = keyFn(item)
+    const existing = map.get(key)
+    if (existing) existing.push(item)
+    else map.set(key, [item])
+  }
+  return map
+}
+
+function buildRow(nome: string, m: Metrics, isParent: boolean): Record<string, unknown> {
+  const concGeral = safeDiv(m.concluidas, m.total) * 100
+  const concData  = safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100
+  const cgObj     = safeDiv(m.concluidas + m.em_atraso, m.total) * 100
+  return {
+    _isParent: isParent,
+    nome,
+    total:      m.total,
+    concluidas: m.concluidas,
+    em_dia:     m.em_dia,
+    em_atraso:  m.em_atraso,
+    grau_exec:  m.total > 0 ? fmtPct(m.grau_exec) : '—',
+    exec_obj:   m.total > 0 ? fmtPct(m.exec_obj)  : '—',
+    conc_geral: m.total > 0 ? fmtPct(concGeral)   : '—',
+    cg_obj:     m.total > 0 ? fmtPct(cgObj)       : '—',
+    conc_data:  m.concluidas + m.em_atraso > 0 ? fmtPct(concData) : '—',
+    cd_obj:     '100%',
+  }
+}
+
+// ── Table columns ─────────────────────────────────────────────
 const DETAIL_COLS: Column[] = [
-  { key: 'nome',       label: 'Designação',    sortable: true },
+  {
+    key: 'nome',
+    label: 'Designação',
+    sortable: false,
+    render: (_v, row) => (
+      <span style={{ fontWeight: Boolean(row._isParent) ? 700 : 400 }}>
+        {String(row.nome ?? '')}
+      </span>
+    ),
+  },
   { key: 'total',      label: 'Total',         sortable: true },
   { key: 'concluidas', label: 'Concluídas',    sortable: true },
   { key: 'em_dia',     label: 'Em dia',        sortable: true },
@@ -18,76 +114,206 @@ const DETAIL_COLS: Column[] = [
   { key: 'cd_obj',     label: 'C.D.Obj.',      sortable: true },
 ]
 
+// ── Component ─────────────────────────────────────────────────
 export default function Dashboard() {
-  const [chip, setChip] = useState('eixo')
+  const [chip, setChip] = useState<'eixo' | 'eixo-plano'>('eixo')
+
+  const { filters, getFilteredActivities } = useFilters()
+  const { activities, loading }            = useActivities({ cutoffDate: filters.cutoffDate })
+  const { programs }                       = usePrograms()
+
+  // Apply global filters then restrict to leaf level (level 4)
+  const filtered = useMemo(
+    () => getFilteredActivities(activities),
+    [activities, getFilteredActivities],
+  )
+  const leaves = useMemo(() => filtered.filter(a => a.level === 4), [filtered])
+  const m      = useMemo(() => calcMetrics(leaves), [leaves])
+
+  // Program scope label (uses programs list)
+  const activeProgramCount = useMemo(() => {
+    const ids = new Set(
+      leaves.map(a => a.program_id).filter((id): id is string => id !== null),
+    )
+    return ids.size
+  }, [leaves])
+  const programLabel = programs.length > 0
+    ? `${activeProgramCount} / ${programs.length} prog.`
+    : undefined
+
+  // ── Derived KPI strings ──────────────────────────────────────
+  const kpiGrauExec  = m.total > 0 ? fmtPct(m.grau_exec) : '—'
+  const kpiConcGeral = m.total > 0
+    ? fmtPct(safeDiv(m.concluidas, m.total) * 100) : '—'
+  const kpiConcData  = m.concluidas + m.em_atraso > 0
+    ? fmtPct(safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100) : '—'
+  const kpiExecObj   = m.total > 0 ? fmtPct(m.exec_obj) : '—'
+  const kpiCgObj     = m.total > 0
+    ? fmtPct(safeDiv(m.concluidas + m.em_atraso, m.total) * 100) : '—'
+
+  // ── Bar chart data ───────────────────────────────────────────
+  const barData = useMemo(() => {
+    const groups = groupBy(leaves, a => a.n1 || '(sem eixo)')
+    return Array.from(groups.entries()).map(([n1, acts]) => {
+      let concluidas = 0, em_dia = 0, em_atraso = 0
+      for (const a of acts) {
+        const cls = classify(a)
+        if (cls === 'concluida') concluidas++
+        else if (cls === 'em_dia') em_dia++
+        else em_atraso++
+      }
+      return { n1, concluidas, em_dia, em_atraso }
+    })
+  }, [leaves])
+
+  // ── Pie chart data ───────────────────────────────────────────
+  const pieData = useMemo(() => [
+    { name: 'Concluídas', value: m.concluidas, color: CLR_CONCLUIDAS },
+    { name: 'Em dia',     value: m.em_dia,     color: CLR_EM_DIA },
+    { name: 'Em atraso',  value: m.em_atraso,  color: CLR_EM_ATRASO },
+  ], [m])
+
+  // ── Detail table rows ────────────────────────────────────────
+  const tableRows = useMemo((): Record<string, unknown>[] => {
+    if (chip === 'eixo') {
+      const groups = groupBy(leaves, a => a.n1 || '(sem eixo)')
+      return Array.from(groups.entries()).map(([n1, acts]) =>
+        buildRow(n1, calcMetrics(acts), false),
+      )
+    }
+    // Eixo + Plano: parent row per eixo, child rows per plano
+    const byEixo = groupBy(leaves, a => a.n1 || '(sem eixo)')
+    const rows: Record<string, unknown>[] = []
+    for (const [eixo, eixoActs] of byEixo) {
+      rows.push(buildRow(eixo, calcMetrics(eixoActs), true))
+      const byPlano = groupBy(eixoActs, a => a.n2 || '(sem plano)')
+      for (const [plano, planoActs] of byPlano) {
+        rows.push(buildRow(`↳ ${plano}`, calcMetrics(planoActs), false))
+      }
+    }
+    return rows
+  }, [chip, leaves])
 
   return (
     <>
-      {/* ── Row 1: Dados Gerais + Indicadores ── */}
+      {/* Subtle fetch indicator */}
+      {loading && <div className="dash-loading-bar" />}
+
+      {/* ── Row 1: KPI cards ──────────────────────────────────── */}
       <div className="dashboard-top-grid">
 
-        {/* Dados Gerais */}
-        <Card title="Dados Gerais">
+        <Card
+          title="Dados Gerais"
+          actions={programLabel
+            ? <span className="dash-prog-label">{programLabel}</span>
+            : undefined}
+        >
           <div className="kpi-2col">
-            <KpiCard label="Total actividades" value="—" />
-            <KpiCard label="Concluídas"        value="—" color="green" />
-            <KpiCard label="Em dia"            value="—" color="blue" />
-            <KpiCard label="Em atraso"         value="—" color="red" />
+            <KpiCard label="Total actividades" value={m.total} />
+            <KpiCard label="Concluídas"  value={m.concluidas} color="green" />
+            <KpiCard label="Em dia"      value={m.em_dia}     color="blue" />
+            <KpiCard label="Em atraso"   value={m.em_atraso}  color="red" />
           </div>
         </Card>
 
-        {/* Indicadores de Concretização */}
         <Card title="Indicadores de Concretização">
-          {/* Realizado */}
           <div className="ind-section">
             <div className="ind-section-header">
               <span className="ind-dot" style={{ background: 'var(--navy)' }} />
               Realizado
             </div>
             <div className="kpi-3col">
-              <KpiCard label="Grau execução"  value="—" color="navy" />
-              <KpiCard label="Conc. geral"    value="—" color="navy" />
-              <KpiCard label="Conc. à data"   value="—" color="navy" />
+              <KpiCard label="Grau execução" value={kpiGrauExec}  color="navy" />
+              <KpiCard label="Conc. geral"   value={kpiConcGeral} color="navy" />
+              <KpiCard label="Conc. à data"  value={kpiConcData}  color="navy" />
             </div>
           </div>
-
-          {/* Objectivo */}
           <div className="ind-section">
             <div className="ind-section-header">
               <span className="ind-dot" style={{ background: 'var(--green)' }} />
               Objectivo
             </div>
             <div className="kpi-3col ind-dashed">
-              <KpiCard label="Exec. obj."        value="—" color="green" />
-              <KpiCard label="Conc. geral obj."  value="—" color="green" />
-              <KpiCard label="Conc. data obj."   value="—" color="green" />
+              <KpiCard label="Exec. obj."       value={kpiExecObj} color="green" />
+              <KpiCard label="Conc. geral obj." value={kpiCgObj}   color="green" />
+              <KpiCard label="Conc. data obj."  value="100%"       color="green" />
             </div>
           </div>
         </Card>
       </div>
 
-      {/* ── Row 2: Bar chart + Donut ── */}
+      {/* ── Row 2: Charts ─────────────────────────────────────── */}
       <div className="dashboard-charts-grid">
+
         <Card title="Actividades por Eixo — Estado">
-          <div className="page-placeholder" style={{ minHeight: 200 }}>
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="var(--text3)" strokeWidth="1.5">
-              <rect x="3" y="12" width="4" height="9" /><rect x="10" y="7" width="4" height="14" /><rect x="17" y="4" width="4" height="17" />
-            </svg>
-            <p>Gráfico de barras — a implementar</p>
-          </div>
+          {barData.length === 0 ? (
+            <div className="page-placeholder" style={{ minHeight: 220 }}>
+              <p>Sem dados carregados</p>
+            </div>
+          ) : (
+            <div className="dash-chart-container">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={barData}
+                  margin={{ top: 4, right: 8, left: -16, bottom: 48 }}
+                >
+                  <XAxis
+                    dataKey="n1"
+                    tick={{ fontSize: 11 }}
+                    angle={-35}
+                    textAnchor="end"
+                    interval={0}
+                  />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS} />
+                  <Bar dataKey="em_dia"     name="Em dia"     stackId="a" fill={CLR_EM_DIA} />
+                  <Bar
+                    dataKey="em_atraso"
+                    name="Em atraso"
+                    stackId="a"
+                    fill={CLR_EM_ATRASO}
+                    radius={[3, 3, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </Card>
 
         <Card title="Estado Global">
-          <div className="page-placeholder" style={{ minHeight: 200 }}>
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="var(--text3)" strokeWidth="1.5">
-              <circle cx="12" cy="12" r="9" /><path d="M12 3a9 9 0 015.657 15.657" strokeDasharray="3 2" />
-            </svg>
-            <p>Gráfico donut — a implementar</p>
-          </div>
+          {m.total === 0 ? (
+            <div className="page-placeholder" style={{ minHeight: 220 }}>
+              <p>Sem dados carregados</p>
+            </div>
+          ) : (
+            <div className="dash-chart-container">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="42%"
+                    outerRadius="68%"
+                  >
+                    {pieData.map((entry, idx) => (
+                      <Cell key={`cell-${idx}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </Card>
       </div>
 
-      {/* ── Row 3: Detalhe table ── */}
+      {/* ── Row 3: Detail table ───────────────────────────────── */}
       <Card title="Detalhe por Eixo e Plano de Acção">
         <div className="toggle-chips">
           <button
@@ -103,7 +329,7 @@ export default function Dashboard() {
             Eixo + Plano
           </button>
         </div>
-        <Table columns={DETAIL_COLS} rows={[]} emptyMessage="Sem dados carregados" />
+        <Table columns={DETAIL_COLS} rows={tableRows} emptyMessage="Sem dados carregados" />
       </Card>
     </>
   )
