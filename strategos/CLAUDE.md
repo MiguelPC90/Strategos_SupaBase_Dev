@@ -271,6 +271,7 @@ All interfaces mirror the Supabase schema exactly. Import from `'../types/index'
 | `PageKey` | Union of all valid route page keys |
 
 > **Note on activities:** `source` field exists in DB but is unused — omit it from types and queries. `id0` is a legacy text field — keep but prefer `program_id` for filtering.
+> **`pct` and `pct_prev` scale:** Both fields are stored as **0–100** (e.g. `85` means 85%). Do NOT multiply by 100 when computing averages or displaying values. An activity is "concluída" when `pct >= 100`, not `>= 1`. The `exec_media` field in `SnapshotKpi` follows the same 0–100 convention.
 
 ### Data Hooks (`src/hooks/`)
 

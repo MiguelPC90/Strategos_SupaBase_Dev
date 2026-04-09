@@ -28,14 +28,14 @@ interface Metrics {
   concluidas: number
   em_dia: number
   em_atraso: number
-  /** Average pct × 100 */
+  /** Average pct (0–100) */
   grau_exec: number
-  /** Average pct_prev × 100 */
+  /** Average pct_prev (0–100) */
   exec_obj: number
 }
 
 function classify(a: Activity): 'concluida' | 'em_dia' | 'em_atraso' {
-  if (a.pct >= 1) return 'concluida'
+  if (a.pct >= 100) return 'concluida'
   if (a.status === 'Em dia') return 'em_dia'
   return 'em_atraso'
 }
@@ -56,8 +56,8 @@ function calcMetrics(acts: Activity[]): Metrics {
   }
   return {
     total, concluidas, em_dia, em_atraso,
-    grau_exec: (sumPct  / total) * 100,
-    exec_obj:  (sumPrev / total) * 100,
+    grau_exec: sumPct  / total,
+    exec_obj:  sumPrev / total,
   }
 }
 
@@ -191,7 +191,7 @@ export default function Dashboard() {
       .toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })
     return {
       date,
-      grau_exec_real:  total > 0 ? +(kpi.exec_media * 100).toFixed(1) : null,
+      grau_exec_real:  total > 0 ? +kpi.exec_media.toFixed(1) : null,
       grau_exec_obj:   total > 0 ? +(due / total * 100).toFixed(1)    : null,
       conc_geral_real: total > 0 ? +(concluidas / total * 100).toFixed(1) : null,
       conc_geral_obj:  total > 0 ? +(due / total * 100).toFixed(1)    : null,
