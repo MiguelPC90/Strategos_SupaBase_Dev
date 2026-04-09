@@ -1,63 +1,65 @@
-/* Layout grids */
-.dashboard-top-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  margin-bottom: 14px;
-}
-.dashboard-charts-grid {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr;
-  gap: 14px;
-  margin-bottom: 14px;
-}
+@layer components {
+  /* Layout grids */
+  .dashboard-top-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .dashboard-charts-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
 
-/* Indicadores sections */
-.ind-section { margin-bottom: 10px; }
-.ind-section:last-child { margin-bottom: 0; }
-.ind-section-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text3);
-}
-.ind-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.ind-dashed {
-  border: 1px dashed var(--border2);
-  border-radius: var(--r);
-  padding: 8px;
-}
+  /* Indicadores sections */
+  .ind-section { margin-bottom: 10px; }
+  .ind-section:last-child { margin-bottom: 0; }
+  .ind-section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text3);
+  }
+  .ind-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .ind-dashed {
+    border: 1px dashed var(--border2);
+    border-radius: var(--r);
+    padding: 8px;
+  }
 
-/* Toggle chips */
-.toggle-chips {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 12px;
-}
-.chip {
-  padding: 4px 14px;
-  border-radius: 100px;
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid var(--border2);
-  background: var(--bg);
-  color: var(--text2);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.chip:hover { background: var(--bg3); }
-.chip.active {
-  background: var(--navy);
-  color: #fff;
-  border-color: var(--navy);
+  /* Toggle chips */
+  .toggle-chips {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+  .chip {
+    padding: 4px 14px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border2);
+    background: var(--bg);
+    color: var(--text2);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .chip:hover { background: var(--bg3); }
+  .chip.active {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+  }
 }
