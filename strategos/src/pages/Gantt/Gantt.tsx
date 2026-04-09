@@ -326,6 +326,7 @@ export default function Gantt() {
         </td>
         <td className="gantt-meta-td gantt-sticky-3">{groupAvgPct(n1g.allActs)}%</td>
         {makeTimeline(n1dr.bs, n1dr.bf, n1dr.rs, n1dr.rf, n1st, null)}
+        <td className="gantt-filler-td" />
       </tr>
     )
     if (n1col) continue
@@ -349,6 +350,7 @@ export default function Gantt() {
           </td>
           <td className="gantt-meta-td gantt-sticky-3">{groupAvgPct(n2g.allActs)}%</td>
           {makeTimeline(n2dr.bs, n2dr.bf, n2dr.rs, n2dr.rf, n2st, null)}
+          <td className="gantt-filler-td" />
         </tr>
       )
       if (n2col) continue
@@ -373,6 +375,7 @@ export default function Gantt() {
               </td>
               <td className="gantt-meta-td gantt-sticky-3">{groupAvgPct(n3g.acts)}%</td>
               {makeTimeline(n3dr.bs, n3dr.bf, n3dr.rs, n3dr.rf, n3st, null)}
+              <td className="gantt-filler-td" />
             </tr>
           )
           if (n3col) continue
@@ -393,6 +396,7 @@ export default function Gantt() {
               </td>
               <td className="gantt-meta-td gantt-sticky-3">{a.pct}%</td>
               {makeTimeline(a.bs, a.bf, a.rs, a.rf, ast, a)}
+              <td className="gantt-filler-td" />
             </tr>
           )
         }
@@ -438,18 +442,19 @@ export default function Gantt() {
           </div>
         ) : (
           <div className="gantt-scroll-wrap">
+            {/* Issue 4: minWidth ensures scroll when needed; width:100% fills card when there's room */}
             <table
               className="gantt-table"
-              style={{ tableLayout: 'fixed', width: 280 + 80 + 60 + periods.length * colW }}
+              style={{ tableLayout: 'fixed', minWidth: 280 + 80 + 60 + periods.length * colW, width: '100%' }}
             >
               <colgroup>
                 <col style={{ width: 280 }} />
                 <col style={{ width: 80 }} />
                 <col style={{ width: 60 }} />
                 {periods.map((_, i) => <col key={i} style={{ width: colW }} />)}
+                <col /> {/* filler: gets remaining width */}
               </colgroup>
               <thead>
-                {/* Fix 4: header row navy bg via .gantt-th class */}
                 <tr>
                   <th className="gantt-th gantt-sticky-1">Designação</th>
                   <th className="gantt-th gantt-sticky-2" style={{ textAlign: 'center' }}>Estado</th>
@@ -457,6 +462,8 @@ export default function Gantt() {
                   {periods.map((p, i) => (
                     <th key={i} className="gantt-th gantt-th-period">{p.label}</th>
                   ))}
+                  {/* Issue 4: filler header — empty, navy bg extends to right edge */}
+                  <th className="gantt-th gantt-th-filler" />
                 </tr>
               </thead>
               <tbody>{rows}</tbody>

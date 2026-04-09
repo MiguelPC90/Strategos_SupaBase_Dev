@@ -1,16 +1,14 @@
 @layer components {
-  /* ── Fix 1: Toolbar — navy background, ghost controls ───────── */
+  /* ── Toolbar — white background, standard controls ─────────── */
   .gantt-toolbar {
-    /* Bleed edge-to-edge from card-body padding (16px each side) */
-    margin: -16px -16px 0;
-    padding: 8px 16px;
-    background: var(--navy);
-    color: rgba(255,255,255,0.85);
+    padding: 8px 0 10px;
+    background: var(--bg);
     display: flex;
     align-items: center;
     gap: 14px;
     flex-wrap: wrap;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
   }
 
   .gantt-legend {
@@ -23,7 +21,7 @@
     align-items: center;
     gap: 5px;
     font-size: 11px;
-    color: rgba(255,255,255,0.75);
+    color: var(--text2);
   }
   .gantt-legend-swatch {
     width: 22px;
@@ -31,40 +29,40 @@
     border-radius: 2px;
     flex-shrink: 0;
   }
-  .gantt-swatch-baseline { background: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.4); }
-  .gantt-swatch-real     { background: rgba(255,255,255,0.85); }
+  .gantt-swatch-baseline { background: rgba(0,46,94,0.18); border: 1px solid rgba(0,46,94,0.35); }
+  .gantt-swatch-real     { background: var(--navy); }
 
-  /* Scale chips — ghost on navy, active: white bg + navy text */
+  /* Scale chips — light style, active: navy bg + white text */
   .gantt-scale-chips { display: flex; gap: 3px; }
   .gantt-scale-chip {
     height: 26px;
     padding: 0 10px;
-    border: 1px solid rgba(255,255,255,0.4);
+    border: 1px solid var(--border2);
     border-radius: 20px;
-    background: transparent;
+    background: var(--bg2);
     font-size: 11px;
     font-weight: 500;
-    color: rgba(255,255,255,0.85);
+    color: var(--text2);
     cursor: pointer;
     transition: background 0.12s, color 0.12s, border-color 0.12s;
   }
-  .gantt-scale-chip:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.6); }
-  .gantt-scale-chip.active { background: #fff; color: var(--navy); border-color: #fff; font-weight: 600; }
+  .gantt-scale-chip:hover { background: var(--bg3); }
+  .gantt-scale-chip.active { background: var(--navy); color: #fff; border-color: var(--navy); font-weight: 600; }
 
-  /* Collapse/Expand buttons — same ghost style */
+  /* Collapse/Expand buttons — standard light style */
   .gantt-toolbar-btn {
     height: 26px;
     padding: 0 10px;
-    border: 1px solid rgba(255,255,255,0.4);
+    border: 1px solid var(--border);
     border-radius: 6px;
-    background: transparent;
+    background: var(--bg2);
     font-size: 11px;
     font-weight: 500;
-    color: rgba(255,255,255,0.85);
+    color: var(--text2);
     cursor: pointer;
-    transition: background 0.12s, border-color 0.12s;
+    transition: background 0.12s;
   }
-  .gantt-toolbar-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.6); }
+  .gantt-toolbar-btn:hover { background: var(--bg3); }
 
   /* Row toggle button (▶/▼) */
   .gantt-toggle {
@@ -84,8 +82,18 @@
   .gantt-scroll-wrap {
     overflow-x: auto;
     overflow-y: visible;
-    margin: 0 -16px -16px;  /* bleed to card edges */
+    margin: 0 -16px -16px; /* bleed table to card edges for full-width fill */
   }
+
+  /* Issue 4: filler column data cell */
+  .gantt-filler-td {
+    border-bottom: 1px solid var(--border);
+  }
+  .gantt-row-n1 .gantt-filler-td { background: var(--bg2); }
+  .gantt-row-n1:hover .gantt-filler-td,
+  .gantt-row-n2:hover .gantt-filler-td,
+  .gantt-row-n3:hover .gantt-filler-td,
+  .gantt-row-n4:hover .gantt-filler-td { background: var(--bg3); }
 
   /* ── Table ──────────────────────────────────────────────────── */
   .gantt-table {
@@ -109,11 +117,17 @@
     top: 0;
     z-index: 4;
   }
+  /* Issue 2: period cells explicitly centered */
   .gantt-th.gantt-th-period {
-    text-align: center;
+    text-align: center !important;
     border-left: 1px solid rgba(255,255,255,0.12);
     font-weight: 500;
     font-size: 10px;
+  }
+  /* Filler header (empty, navy bg, no border-left) */
+  .gantt-th.gantt-th-filler {
+    border-left: none;
+    padding: 0;
   }
 
   /* ── Fix 3: Sticky left columns — explicit solid backgrounds ─── */
