@@ -3,12 +3,14 @@ import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell,
+  LineChart, Line,
 } from 'recharts'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import Table, { type Column } from '../../components/Table/Table'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
+import { useSnapshots } from '../../hooks/useSnapshots'
 import { useFilters } from '../../context/FilterContext'
 import type { Activity } from '../../types/index'
 
@@ -16,6 +18,9 @@ import type { Activity } from '../../types/index'
 const CLR_CONCLUIDAS = '#95BB42'
 const CLR_EM_DIA     = '#002E5E'
 const CLR_EM_ATRASO  = '#E24B4A'
+
+// ── Types ─────────────────────────────────────────────────────
+type EvoMetric = 'grau_exec' | 'conc_geral' | 'conc_data'
 
 // ── Metric helpers ────────────────────────────────────────────
 interface Metrics {
@@ -116,11 +121,14 @@ const DETAIL_COLS: Column[] = [
 
 // ── Component ─────────────────────────────────────────────────
 export default function Dashboard() {
-  const [chip, setChip] = useState<'eixo' | 'eixo-plano'>('eixo')
+  const [chip, setChip]           = useState<'eixo' | 'eixo-plano'>('eixo')
+  const [evoMetric, setEvoMetric] = useState<EvoMetric>('grau_exec')
 
   const { filters, getFilteredActivities } = useFilters()
   const { activities, loading }            = useActivities({ cutoffDate: filters.cutoffDate })
   const { programs }                       = usePrograms()
+  const snapshotProgramId                  = filters.programIds[0]
+  const { snapshots }                      = useSnapshots(snapshotProgramId)
 
   // Apply global filters then restrict to leaf level (level 4)
   const filtered = useMemo(
@@ -172,6 +180,25 @@ export default function Dashboard() {
     { name: 'Em dia',     value: m.em_dia,     color: CLR_EM_DIA },
     { name: 'Em atraso',  value: m.em_atraso,  color: CLR_EM_ATRASO },
   ], [m])
+
+  // ── Line chart data ──────────────────────────────────────────
+  const lineData = useMemo(() => snapshots.map(s => {
+    const pid = snapshotProgramId
+    const kpi = (pid !== undefined && pid in s.by_n0) ? s.by_n0[pid] : s.kpi
+    const { total, concluidas, em_atraso } = kpi
+    const due  = concluidas + em_atraso
+    const date = new Date(s.snap_date + 'T00:00:00')
+      .toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })
+    return {
+      date,
+      grau_exec_real:  total > 0 ? +(kpi.exec_media * 100).toFixed(1) : null,
+      grau_exec_obj:   total > 0 ? +(due / total * 100).toFixed(1)    : null,
+      conc_geral_real: total > 0 ? +(concluidas / total * 100).toFixed(1) : null,
+      conc_geral_obj:  total > 0 ? +(due / total * 100).toFixed(1)    : null,
+      conc_data_real:  due   > 0 ? +(concluidas / due   * 100).toFixed(1) : null,
+      conc_data_obj:   100,
+    }
+  }), [snapshots, snapshotProgramId])
 
   // ── Detail table rows ────────────────────────────────────────
   const tableRows = useMemo((): Record<string, unknown>[] => {
@@ -313,7 +340,73 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* ── Row 3: Detail table ───────────────────────────────── */}
+      {/* ── Row 3: Evolution chart ───────────────────────────── */}
+      <div style={{ marginBottom: 14 }}>
+        <Card title="Evolução">
+          <div className="toggle-chips">
+            <button
+              className={`chip${evoMetric === 'grau_exec' ? ' active' : ''}`}
+              onClick={() => setEvoMetric('grau_exec')}
+            >
+              Grau de execução
+            </button>
+            <button
+              className={`chip${evoMetric === 'conc_geral' ? ' active' : ''}`}
+              onClick={() => setEvoMetric('conc_geral')}
+            >
+              Concretização geral
+            </button>
+            <button
+              className={`chip${evoMetric === 'conc_data' ? ' active' : ''}`}
+              onClick={() => setEvoMetric('conc_data')}
+            >
+              Concretização à data
+            </button>
+          </div>
+          {lineData.length === 0 ? (
+            <div className="page-placeholder" style={{ minHeight: 220 }}>
+              <p>Sem dados históricos — os snapshots são guardados automaticamente todos os dias às 23:59</p>
+            </div>
+          ) : (
+            <div className="dash-chart-container">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={lineData}
+                  margin={{ top: 4, right: 20, left: -16, bottom: 4 }}
+                >
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    domain={[0, 100]}
+                    tickFormatter={(v: number) => `${v}%`}
+                  />
+                  <Tooltip formatter={(v) => `${Number(v).toFixed(1)}%`} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Line
+                    dataKey={`${evoMetric}_real`}
+                    name="Real"
+                    stroke={CLR_EM_DIA}
+                    strokeWidth={2}
+                    dot={false}
+                    connectNulls
+                  />
+                  <Line
+                    dataKey={`${evoMetric}_obj`}
+                    name="Objectivo"
+                    stroke={CLR_CONCLUIDAS}
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                    connectNulls
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* ── Row 4: Detail table ───────────────────────────────── */}
       <Card title="Detalhe por Eixo e Plano de Acção">
         <div className="toggle-chips">
           <button
