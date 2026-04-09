@@ -7,12 +7,12 @@ import { useFilters } from '../../context/FilterContext'
 import type { Activity } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
-type StatusCls   = 'concluida' | 'em_dia' | 'em_atraso'
+type StatusCls    = 'concluida' | 'em_dia' | 'em_atraso'
 type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
-type Scale       = 'Semana' | 'Mês' | 'Trimestre'
+type Scale        = 'Semana' | 'Mês' | 'Trimestre'
 
-const SCALES: Scale[]  = ['Semana', 'Mês', 'Trimestre']
-const COL_WIDTH: Record<Scale, number> = { Semana: 28, Mês: 60, Trimestre: 100 }
+const SCALES: Scale[] = ['Semana', 'Mês', 'Trimestre']
+const COL_WIDTH: Record<Scale, number> = { Semana: 40, Mês: 60, Trimestre: 100 }
 const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 // ── Status helpers ─────────────────────────────────────────────
@@ -75,7 +75,7 @@ function buildTree(activities: Activity[]): N1Group[] {
   })
 }
 
-// ── Date / range helpers ───────────────────────────────────────
+// ── Date / period helpers ──────────────────────────────────────
 interface Period { label: string; start: Date }
 
 function addMonths(d: Date, n: number): Date {
@@ -97,31 +97,33 @@ function startOfWeek(d: Date): Date {
   return r
 }
 
-function isoWeek(d: Date): number {
-  const thu = new Date(d)
-  thu.setDate(d.getDate() - (d.getDay() + 6) % 7 + 3)
-  const jan4 = new Date(thu.getFullYear(), 0, 4)
-  return 1 + Math.round((thu.getTime() - jan4.getTime()) / 604800000)
-}
-
 function buildPeriods(rangeStart: Date, rangeEnd: Date, scale: Scale): Period[] {
   const periods: Period[] = []
   if (scale === 'Mês') {
     let cur = startOfMonth(rangeStart)
     while (cur <= rangeEnd) {
-      periods.push({ label: `${MONTHS_PT[cur.getMonth()]} ${String(cur.getFullYear()).slice(2)}`, start: new Date(cur) })
+      periods.push({
+        label: `${MONTHS_PT[cur.getMonth()]} ${String(cur.getFullYear()).slice(2)}`,
+        start: new Date(cur),
+      })
       cur = addMonths(cur, 1)
     }
   } else if (scale === 'Semana') {
+    // Fix 2: show Monday date as DD/MM instead of week number
     let cur = startOfWeek(rangeStart)
     while (cur <= rangeEnd) {
-      periods.push({ label: `S${String(isoWeek(cur)).padStart(2, '0')}`, start: new Date(cur) })
+      const dd = String(cur.getDate()).padStart(2, '0')
+      const mm = String(cur.getMonth() + 1).padStart(2, '0')
+      periods.push({ label: `${dd}/${mm}`, start: new Date(cur) })
       cur = new Date(cur.getTime() + 7 * 86400000)
     }
   } else {
     let cur = new Date(rangeStart.getFullYear(), Math.floor(rangeStart.getMonth() / 3) * 3, 1)
     while (cur <= rangeEnd) {
-      periods.push({ label: `T${Math.floor(cur.getMonth() / 3) + 1} ${String(cur.getFullYear()).slice(2)}`, start: new Date(cur) })
+      periods.push({
+        label: `T${Math.floor(cur.getMonth() / 3) + 1} ${String(cur.getFullYear()).slice(2)}`,
+        start: new Date(cur),
+      })
       cur = addMonths(cur, 3)
     }
   }
@@ -255,9 +257,9 @@ export default function Gantt() {
     return { rangeStart, totalMs, periods, todayPct }
   }, [filtered, scale])
 
-  const colW         = COL_WIDTH[scale]
-  const timelineW    = Math.max(periods.length, 1) * colW
-  const nPeriodCols  = Math.max(periods.length, 1)
+  const colW        = COL_WIDTH[scale]
+  const nPeriodCols = Math.max(periods.length, 1)
+  const timelineW   = nPeriodCols * colW
 
   // ── Timeline cell factory ──────────────────────────────────────
   function makeTimeline(
@@ -287,9 +289,11 @@ export default function Gantt() {
         {periods.map((_, i) => i > 0 && (
           <div key={i} className="gantt-grid-line" style={{ left: `${(i / periods.length) * 100}%` }} />
         ))}
-        {/* Today marker */}
+        {/* Fix 6: Today marker with "Hoje" label */}
         {todayPct >= 0 && todayPct <= 100 && (
-          <div className="gantt-today-line" style={{ left: `${todayPct}%` }} />
+          <div className="gantt-today-line" style={{ left: `${todayPct}%` }}>
+            <span className="gantt-today-label">Hoje</span>
+          </div>
         )}
         {/* Bars */}
         <GanttBar start={bs} end={bf} rangeStart={rangeStart} totalMs={totalMs} variant="baseline" lane="top"    status={status} />
@@ -311,8 +315,10 @@ export default function Gantt() {
       <tr key={n1key} className="gantt-row-n1">
         <td className="gantt-name-td gantt-sticky-1">
           <div className="gantt-name-cell" style={{ paddingLeft: 4 }}>
-            <button className="act-toggle" onClick={() => toggle(n1key)}>{n1col ? '▶' : '▼'}</button>
-            <span className="gantt-name-n1">{n1g.n1}</span>
+            {/* Fix 4: use gantt-toggle, not act-toggle */}
+            <button className="gantt-toggle" onClick={() => toggle(n1key)}>{n1col ? '▶' : '▼'}</button>
+            {/* Fix 5: title attribute for native browser tooltip */}
+            <span className="gantt-name-n1" title={n1g.n1}>{n1g.n1}</span>
           </div>
         </td>
         <td className="gantt-meta-td gantt-sticky-2">
@@ -334,8 +340,8 @@ export default function Gantt() {
         <tr key={n2key} className="gantt-row-n2">
           <td className="gantt-name-td gantt-sticky-1">
             <div className="gantt-name-cell" style={{ paddingLeft: 20 }}>
-              <button className="act-toggle" onClick={() => toggle(n2key)}>{n2col ? '▶' : '▼'}</button>
-              <span className="gantt-name-n2">{n2g.n2}</span>
+              <button className="gantt-toggle" onClick={() => toggle(n2key)}>{n2col ? '▶' : '▼'}</button>
+              <span className="gantt-name-n2" title={n2g.n2}>{n2g.n2}</span>
             </div>
           </td>
           <td className="gantt-meta-td gantt-sticky-2">
@@ -358,8 +364,8 @@ export default function Gantt() {
             <tr key={n3key} className="gantt-row-n3">
               <td className="gantt-name-td gantt-sticky-1">
                 <div className="gantt-name-cell" style={{ paddingLeft: 36 }}>
-                  <button className="act-toggle" onClick={() => toggle(n3key)}>{n3col ? '▶' : '▼'}</button>
-                  <span className="gantt-name-n3">{n3g.n3}</span>
+                  <button className="gantt-toggle" onClick={() => toggle(n3key)}>{n3col ? '▶' : '▼'}</button>
+                  <span className="gantt-name-n3" title={n3g.n3}>{n3g.n3}</span>
                 </div>
               </td>
               <td className="gantt-meta-td gantt-sticky-2">
@@ -378,6 +384,7 @@ export default function Gantt() {
             <tr key={a.id} className="gantt-row-n4">
               <td className="gantt-name-td gantt-sticky-1">
                 <div className="gantt-name-cell" style={{ paddingLeft: n3g.n3 ? 52 : 36 }}>
+                  {/* Fix 5: title already present for N4 */}
                   <span className="gantt-name-n4" title={a.name}>{a.name}</span>
                 </div>
               </td>
@@ -393,36 +400,34 @@ export default function Gantt() {
     }
   }
 
-  // ── Toolbar ────────────────────────────────────────────────────
-  const toolbar = (
-    <div className="gantt-toolbar">
-      <div className="gantt-legend">
-        <span className="gantt-legend-item">
-          <span className="gantt-legend-swatch gantt-swatch-baseline" />Baseline
-        </span>
-        <span className="gantt-legend-item">
-          <span className="gantt-legend-swatch gantt-swatch-real" />Real
-        </span>
-      </div>
-      <div className="gantt-scale-chips">
-        {SCALES.map(s => (
-          <button
-            key={s}
-            className={`gantt-scale-chip${scale === s ? ' active' : ''}`}
-            onClick={() => setScale(s)}
-          >{s}</button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button className="act-btn" onClick={collapseAll}>Colapsar</button>
-        <button className="act-btn" onClick={expandAll}>Expandir</button>
-      </div>
-    </div>
-  )
-
   return (
     <>
-      <Card title="GANTT" actions={toolbar}>
+      <Card title="GANTT">
+        {/* Fix 1: Toolbar with navy background, inside card body bleeding edge-to-edge */}
+        <div className="gantt-toolbar">
+          <div className="gantt-legend">
+            <span className="gantt-legend-item">
+              <span className="gantt-legend-swatch gantt-swatch-baseline" />Baseline
+            </span>
+            <span className="gantt-legend-item">
+              <span className="gantt-legend-swatch gantt-swatch-real" />Real
+            </span>
+          </div>
+          <div className="gantt-scale-chips">
+            {SCALES.map(s => (
+              <button
+                key={s}
+                className={`gantt-scale-chip${scale === s ? ' active' : ''}`}
+                onClick={() => setScale(s)}
+              >{s}</button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+            <button className="gantt-toolbar-btn" onClick={collapseAll}>Colapsar</button>
+            <button className="gantt-toolbar-btn" onClick={expandAll}>Expandir</button>
+          </div>
+        </div>
+
         {loading ? (
           <div className="gantt-empty">A carregar…</div>
         ) : filtered.length === 0 ? (
@@ -444,6 +449,7 @@ export default function Gantt() {
                 {periods.map((_, i) => <col key={i} style={{ width: colW }} />)}
               </colgroup>
               <thead>
+                {/* Fix 4: header row navy bg via .gantt-th class */}
                 <tr>
                   <th className="gantt-th gantt-sticky-1">Designação</th>
                   <th className="gantt-th gantt-sticky-2" style={{ textAlign: 'center' }}>Estado</th>
