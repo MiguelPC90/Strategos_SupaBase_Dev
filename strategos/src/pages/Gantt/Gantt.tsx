@@ -452,12 +452,12 @@ export default function Gantt() {
           <div className="gantt-scroll-wrap">
             <table
               className="gantt-table"
-              style={{ tableLayout: 'fixed' }}
+              style={{ tableLayout: 'fixed', width: '100%' }}
             >
               <colgroup>
                 <col style={{ width: COL_NAME + COL_STATUS + COL_EXEC }} />
                 {periods.map((_, i) => <col key={i} style={{ width: colW }} />)}
-                <col style={{ width: colW }} />
+                <col /> {/* filler: absorbs remaining card width */}
               </colgroup>
               <thead>
                 <tr>
