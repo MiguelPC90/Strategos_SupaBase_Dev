@@ -316,16 +316,18 @@ export default function Gantt() {
 
     rows.push(
       <tr key={n1key} className="gantt-row-n1">
-        <td className="gantt-name-td gantt-sticky-1" style={{ left: 0 }}>
-          <div className="gantt-name-cell" style={{ paddingLeft: 4 }}>
-            <button className="gantt-toggle" onClick={() => toggle(n1key)}>{n1col ? '▶' : '▼'}</button>
-            <span className="gantt-name-n1" title={n1g.n1}>{n1g.n1}</span>
+        <td className="gantt-sticky">
+          <div className="gantt-sticky-cell">
+            <div className="gantt-sticky-name">
+              <div className="gantt-name-cell" style={{ paddingLeft: 4 }}>
+                <button className="gantt-toggle" onClick={() => toggle(n1key)}>{n1col ? '▶' : '▼'}</button>
+                <span className="gantt-name-n1" title={n1g.n1}>{n1g.n1}</span>
+              </div>
+            </div>
+            <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n1st]}>{STATUS_LABEL[n1st]}</Badge></div>
+            <div className="gantt-sticky-exec">{groupAvgPct(n1g.allActs)}%</div>
           </div>
         </td>
-        <td className="gantt-meta-td gantt-sticky-2" style={{ left: COL_NAME }}>
-          <Badge variant={BADGE_VARIANT[n1st]}>{STATUS_LABEL[n1st]}</Badge>
-        </td>
-        <td className="gantt-meta-td gantt-sticky-3" style={{ left: COL_NAME + COL_STATUS }}>{groupAvgPct(n1g.allActs)}%</td>
         {makeTimeline(n1dr.bs, n1dr.bf, n1dr.rs, n1dr.rf, n1st, null)}
         <td className="gantt-filler-td" />
       </tr>
@@ -340,16 +342,18 @@ export default function Gantt() {
 
       rows.push(
         <tr key={n2key} className="gantt-row-n2">
-          <td className="gantt-name-td gantt-sticky-1" style={{ left: 0 }}>
-            <div className="gantt-name-cell" style={{ paddingLeft: 20 }}>
-              <button className="gantt-toggle" onClick={() => toggle(n2key)}>{n2col ? '▶' : '▼'}</button>
-              <span className="gantt-name-n2" title={n2g.n2}>{n2g.n2}</span>
+          <td className="gantt-sticky">
+            <div className="gantt-sticky-cell">
+              <div className="gantt-sticky-name">
+                <div className="gantt-name-cell" style={{ paddingLeft: 20 }}>
+                  <button className="gantt-toggle" onClick={() => toggle(n2key)}>{n2col ? '▶' : '▼'}</button>
+                  <span className="gantt-name-n2" title={n2g.n2}>{n2g.n2}</span>
+                </div>
+              </div>
+              <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n2st]}>{STATUS_LABEL[n2st]}</Badge></div>
+              <div className="gantt-sticky-exec">{groupAvgPct(n2g.allActs)}%</div>
             </div>
           </td>
-          <td className="gantt-meta-td gantt-sticky-2" style={{ left: COL_NAME }}>
-            <Badge variant={BADGE_VARIANT[n2st]}>{STATUS_LABEL[n2st]}</Badge>
-          </td>
-          <td className="gantt-meta-td gantt-sticky-3" style={{ left: COL_NAME + COL_STATUS }}>{groupAvgPct(n2g.allActs)}%</td>
           {makeTimeline(n2dr.bs, n2dr.bf, n2dr.rs, n2dr.rf, n2st, null)}
           <td className="gantt-filler-td" />
         </tr>
@@ -365,16 +369,18 @@ export default function Gantt() {
 
           rows.push(
             <tr key={n3key} className="gantt-row-n3">
-              <td className="gantt-name-td gantt-sticky-1" style={{ left: 0 }}>
-                <div className="gantt-name-cell" style={{ paddingLeft: 36 }}>
-                  <button className="gantt-toggle" onClick={() => toggle(n3key)}>{n3col ? '▶' : '▼'}</button>
-                  <span className="gantt-name-n3" title={n3g.n3}>{n3g.n3}</span>
+              <td className="gantt-sticky">
+                <div className="gantt-sticky-cell">
+                  <div className="gantt-sticky-name">
+                    <div className="gantt-name-cell" style={{ paddingLeft: 36 }}>
+                      <button className="gantt-toggle" onClick={() => toggle(n3key)}>{n3col ? '▶' : '▼'}</button>
+                      <span className="gantt-name-n3" title={n3g.n3}>{n3g.n3}</span>
+                    </div>
+                  </div>
+                  <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n3st]}>{STATUS_LABEL[n3st]}</Badge></div>
+                  <div className="gantt-sticky-exec">{groupAvgPct(n3g.acts)}%</div>
                 </div>
               </td>
-              <td className="gantt-meta-td gantt-sticky-2" style={{ left: COL_NAME }}>
-                <Badge variant={BADGE_VARIANT[n3st]}>{STATUS_LABEL[n3st]}</Badge>
-              </td>
-              <td className="gantt-meta-td gantt-sticky-3" style={{ left: COL_NAME + COL_STATUS }}>{groupAvgPct(n3g.acts)}%</td>
               {makeTimeline(n3dr.bs, n3dr.bf, n3dr.rs, n3dr.rf, n3st, null)}
               <td className="gantt-filler-td" />
             </tr>
@@ -386,15 +392,17 @@ export default function Gantt() {
           const ast = actStatus(a)
           rows.push(
             <tr key={a.id} className="gantt-row-n4">
-              <td className="gantt-name-td gantt-sticky-1" style={{ left: 0 }}>
-                <div className="gantt-name-cell" style={{ paddingLeft: n3g.n3 ? 52 : 36 }}>
-                  <span className="gantt-name-n4" title={a.name}>{a.name}</span>
+              <td className="gantt-sticky">
+                <div className="gantt-sticky-cell">
+                  <div className="gantt-sticky-name">
+                    <div className="gantt-name-cell" style={{ paddingLeft: n3g.n3 ? 52 : 36 }}>
+                      <span className="gantt-name-n4" title={a.name}>{a.name}</span>
+                    </div>
+                  </div>
+                  <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge></div>
+                  <div className="gantt-sticky-exec">{a.pct}%</div>
                 </div>
               </td>
-              <td className="gantt-meta-td gantt-sticky-2" style={{ left: COL_NAME }}>
-                <Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge>
-              </td>
-              <td className="gantt-meta-td gantt-sticky-3" style={{ left: COL_NAME + COL_STATUS }}>{a.pct}%</td>
               {makeTimeline(a.bs, a.bf, a.rs, a.rf, ast, a)}
               <td className="gantt-filler-td" />
             </tr>
@@ -447,17 +455,19 @@ export default function Gantt() {
               style={{ tableLayout: 'fixed' }}
             >
               <colgroup>
-                <col style={{ width: COL_NAME }} />
-                <col style={{ width: COL_STATUS }} />
-                <col style={{ width: COL_EXEC }} />
+                <col style={{ width: COL_NAME + COL_STATUS + COL_EXEC }} />
                 {periods.map((_, i) => <col key={i} style={{ width: colW }} />)}
                 <col style={{ width: 60 }} />
               </colgroup>
               <thead>
                 <tr>
-                  <th className="gantt-th gantt-sticky-1" style={{ left: 0 }}>Designação</th>
-                  <th className="gantt-th gantt-sticky-2" style={{ left: COL_NAME, textAlign: 'center' }}>Estado</th>
-                  <th className="gantt-th gantt-sticky-3" style={{ left: COL_NAME + COL_STATUS, textAlign: 'center' }}>Exec.</th>
+                  <th className="gantt-th gantt-sticky">
+                    <div className="gantt-sticky-cell">
+                      <div className="gantt-sticky-name" style={{ paddingLeft: 8 }}>Designação</div>
+                      <div className="gantt-sticky-status">Estado</div>
+                      <div className="gantt-sticky-exec">Exec.</div>
+                    </div>
+                  </th>
                   {periods.map((p, i) => (
                     <th key={i} className="gantt-th gantt-th-period">{p.label}</th>
                   ))}
