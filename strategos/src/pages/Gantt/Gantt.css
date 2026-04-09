@@ -1,12 +1,12 @@
 @layer components {
   /* ── Toolbar — white background, standard controls ─────────── */
   .gantt-toolbar {
-    padding: 8px 16px;
+    padding: 6px 16px;
     background: var(--bg);
     display: flex;
     align-items: center;
     gap: 14px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     border-bottom: 1px solid var(--border);
     margin-bottom: 0;
   }
@@ -97,7 +97,8 @@
 
   /* ── Table ──────────────────────────────────────────────────── */
   .gantt-table {
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: 12px;
   }
 
@@ -188,7 +189,6 @@
   .gantt-meta-td {
     padding: 5px 8px;
     border-bottom: 1px solid var(--border);
-    border-left: 1px solid var(--border);
     text-align: center;
     vertical-align: middle;
     white-space: nowrap;

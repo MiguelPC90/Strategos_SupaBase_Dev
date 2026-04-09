@@ -451,7 +451,7 @@ export default function Gantt() {
                 <col style={{ width: 80 }} />
                 <col style={{ width: 60 }} />
                 {periods.map((_, i) => <col key={i} style={{ width: colW }} />)}
-                <col style={{ width: 40 }} />
+                <col style={{ width: 60 }} />
               </colgroup>
               <thead>
                 <tr>
