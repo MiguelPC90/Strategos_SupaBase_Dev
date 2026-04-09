@@ -11,6 +11,8 @@ export interface Column {
   width?: string
   /** Minimum column width applied to th/td, e.g. "250px". */
   minWidth?: string
+  /** Optional color applied to the header label, e.g. "var(--green)". */
+  headerColor?: string
   render?: (value: unknown, row: Record<string, unknown>) => ReactNode
 }
 
@@ -65,7 +67,7 @@ export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dad
                   col.sortable ? 'sortable' : '',
                   sortKey === col.key ? `sort-${sortDir}` : '',
                 ].filter(Boolean).join(' ')}
-                style={{ textAlign: col.align ?? (idx === 0 ? 'left' : 'center'), minWidth: col.minWidth }}
+                style={{ textAlign: col.align ?? (idx === 0 ? 'left' : 'center'), minWidth: col.minWidth, color: col.headerColor }}
                 onClick={col.sortable ? () => handleSort(col.key) : undefined}
               >
                 {col.label}

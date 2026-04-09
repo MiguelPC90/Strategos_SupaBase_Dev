@@ -103,6 +103,7 @@
     justify-content: flex-start;
     gap: 0;
   }
+  .sidebar.collapsed:hover .nav-item { gap: 10px; }
   .sidebar.collapsed:hover .nav-label {
     opacity: 1;
     max-width: 160px;
@@ -219,6 +220,58 @@
     padding: 0 3px;
     pointer-events: none;
   }
+
+  /* ── Active filter chips bar ──────────────────────────────── */
+  .filter-chips-bar {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 6px 3px 8px;
+    border: 1px solid var(--border2);
+    border-radius: 100px;
+    background: var(--bg2);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .filter-chip-label {
+    color: var(--text3);
+    font-size: 11px;
+  }
+  .filter-chip-value {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .filter-chip-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text3);
+    font-size: 10px;
+    padding: 0 0 0 2px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+  }
+  .filter-chip-remove:hover { color: var(--red); }
+  .filter-chip-clear-all {
+    font-size: 11px;
+    color: var(--text3);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 3px 4px;
+    margin-left: 2px;
+  }
+  .filter-chip-clear-all:hover { color: var(--text); }
 
   .topbar-avatar {
     width: 30px;

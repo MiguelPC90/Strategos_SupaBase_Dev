@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, Label, LabelList,
+  PieChart, Pie, Cell, LabelList,
   LineChart, Line,
 } from 'recharts'
 import Card from '../../components/Card/Card'
@@ -149,11 +149,23 @@ const DETAIL_COLS: Column[] = [
   { key: 'em_dia',     label: 'Em dia',        sortable: true, width: '70px'  },
   { key: 'em_atraso',  label: 'Em atraso',     sortable: true, width: '80px'  },
   { key: 'grau_exec',  label: 'Grau Execução', sortable: true, width: '110px' },
-  { key: 'exec_obj',   label: 'Exec. obj.',    sortable: true, width: '90px'  },
+  {
+    key: 'exec_obj',   label: 'Exec. obj.',    sortable: true, width: '90px',
+    headerColor: 'var(--green)',
+    render: (v) => <span style={{ color: 'var(--green)' }}>{v as string ?? '—'}</span>,
+  },
   { key: 'conc_geral', label: 'Conc. Geral',   sortable: true, width: '100px' },
-  { key: 'cg_obj',     label: 'C.G.Obj.',      sortable: true, width: '80px'  },
+  {
+    key: 'cg_obj',     label: 'C.G.Obj.',      sortable: true, width: '80px',
+    headerColor: 'var(--green)',
+    render: (v) => <span style={{ color: 'var(--green)' }}>{v as string ?? '—'}</span>,
+  },
   { key: 'conc_data',  label: 'Conc. Data',    sortable: true, width: '90px'  },
-  { key: 'cd_obj',     label: 'C.D.Obj.',      sortable: true, width: '80px'  },
+  {
+    key: 'cd_obj',     label: 'C.D.Obj.',      sortable: true, width: '80px',
+    headerColor: 'var(--green)',
+    render: (v) => <span style={{ color: 'var(--green)' }}>{v as string ?? '—'}</span>,
+  },
 ]
 
 // ── Component ─────────────────────────────────────────────────

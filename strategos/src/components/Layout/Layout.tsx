@@ -1,11 +1,12 @@
 import './Layout.css'
-import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import FilterBar from '../FilterBar/FilterBar'
 import Badge from '../Badge/Badge'
 import { useAuth } from '../../hooks/useAuth'
 import { useRole } from '../../hooks/useRole'
 import { useFilters } from '../../context/FilterContext'
+import { usePrograms } from '../../hooks/usePrograms'
 
 interface NavItemConfig {
   to: string
@@ -192,10 +193,53 @@ export default function Layout() {
   const { signOut, user } = useAuth()
   const { profile, role, isAdmin } = useRole()
 
-  const { filters } = useFilters()
+  const { filters, setFilter, resetFilters } = useFilters()
+  const { programs } = usePrograms()
+
   const activeFilterCount =
     filters.programIds.length + filters.n1Values.length + filters.n2Values.length +
     filters.owners.length + filters.sponsors.length + filters.statuses.length
+
+  // Build chip list from active filters
+  const programIdToName = useMemo(
+    () => new Map(programs.map(p => [p.id, p.name])),
+    [programs],
+  )
+
+  interface FilterChip { id: string; label: string; value: string; remove: () => void }
+  const filterChips = useMemo((): FilterChip[] => {
+    const chips: FilterChip[] = []
+    filters.programIds.forEach(id => {
+      const name = programIdToName.get(id) ?? id
+      chips.push({
+        id: `prog:${id}`,
+        label: 'Programa',
+        value: name,
+        remove: () => setFilter('programIds', filters.programIds.filter(x => x !== id)),
+      })
+    })
+    filters.n1Values.forEach(v => chips.push({
+      id: `n1:${v}`, label: 'Eixo', value: v,
+      remove: () => setFilter('n1Values', filters.n1Values.filter(x => x !== v)),
+    }))
+    filters.n2Values.forEach(v => chips.push({
+      id: `n2:${v}`, label: 'Plano', value: v,
+      remove: () => setFilter('n2Values', filters.n2Values.filter(x => x !== v)),
+    }))
+    filters.owners.forEach(v => chips.push({
+      id: `owner:${v}`, label: 'Responsável', value: v,
+      remove: () => setFilter('owners', filters.owners.filter(x => x !== v)),
+    }))
+    filters.sponsors.forEach(v => chips.push({
+      id: `sponsor:${v}`, label: 'Sponsor', value: v,
+      remove: () => setFilter('sponsors', filters.sponsors.filter(x => x !== v)),
+    }))
+    filters.statuses.forEach(v => chips.push({
+      id: `status:${v}`, label: 'Estado', value: v,
+      remove: () => setFilter('statuses', filters.statuses.filter(x => x !== v)),
+    }))
+    return chips
+  }, [filters, programIdToName, setFilter])
 
   const [filterOpen, setFilterOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -316,6 +360,20 @@ export default function Layout() {
       {/* ── Main content ── */}
       <main className="main-content">
         {filterOpen && <FilterBar />}
+
+        {filterChips.length > 0 && (
+          <div className="filter-chips-bar">
+            {filterChips.map(chip => (
+              <span key={chip.id} className="filter-chip">
+                <span className="filter-chip-label">{chip.label}:</span>
+                <span className="filter-chip-value">{chip.value}</span>
+                <button className="filter-chip-remove" onClick={chip.remove} aria-label={`Remover ${chip.value}`}>✕</button>
+              </span>
+            ))}
+            <button className="filter-chip-clear-all" onClick={resetFilters}>Limpar tudo</button>
+          </div>
+        )}
+
         <div className="page-body">
           <Outlet />
         </div>
