@@ -362,7 +362,7 @@ export default function Layout() {
         {filterOpen && <FilterBar />}
 
         {filterChips.length > 0 && (
-          <div className="filter-chips-bar">
+          <div className={`filter-chips-bar${filterOpen ? ' filter-bar-visible' : ''}`}>
             {filterChips.map(chip => (
               <span key={chip.id} className="filter-chip">
                 <span className="filter-chip-label">{chip.label}:</span>

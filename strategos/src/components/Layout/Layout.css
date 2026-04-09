@@ -223,13 +223,20 @@
 
   /* ── Active filter chips bar ──────────────────────────────── */
   .filter-chips-bar {
-    background: var(--bg);
+    background: var(--bg3);
     border-bottom: 1px solid var(--border);
     padding: 6px 20px;
     display: flex;
     align-items: center;
     gap: 6px;
     flex-wrap: wrap;
+    position: sticky;
+    top: var(--topbar-h);
+    z-index: 49;
+  }
+  /* When the filter bar (51px tall) is also visible, push chips below it */
+  .filter-chips-bar.filter-bar-visible {
+    top: calc(var(--topbar-h) + 51px);
   }
   .filter-chip {
     display: inline-flex;

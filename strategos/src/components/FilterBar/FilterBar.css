@@ -7,6 +7,9 @@
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+    position: sticky;
+    top: var(--topbar-h);
+    z-index: 50;
   }
   .filter-label {
     font-size: 11px;
