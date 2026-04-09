@@ -2,11 +2,12 @@ import './Actividades.css'
 import { useState, useMemo, useCallback } from 'react'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
+import KpiCard from '../../components/KpiCard/KpiCard'
 import { useActivities } from '../../hooks/useActivities'
-
-type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
 import { useFilters } from '../../context/FilterContext'
 import type { Activity } from '../../types/index'
+
+type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
 
 // ── Status helpers ─────────────────────────────────────────────
 type StatusCls = 'concluida' | 'em_dia' | 'em_atraso'
@@ -302,27 +303,12 @@ export default function Actividades() {
 
   return (
     <>
-      <div className="act-summary">
-        <div className="act-kpi">
-          <span className="act-kpi-lbl">Total</span>
-          <span className="act-kpi-val" style={{ color: 'var(--navy)' }}>{summary.total}</span>
-        </div>
-        <div className="act-kpi">
-          <span className="act-kpi-lbl">Concluídas</span>
-          <span className="act-kpi-val" style={{ color: 'var(--green)' }}>{summary.concluidas}</span>
-        </div>
-        <div className="act-kpi">
-          <span className="act-kpi-lbl">Em dia</span>
-          <span className="act-kpi-val" style={{ color: 'var(--blue)' }}>{summary.em_dia}</span>
-        </div>
-        <div className="act-kpi">
-          <span className="act-kpi-lbl">Em atraso</span>
-          <span className="act-kpi-val" style={{ color: 'var(--red)' }}>{summary.em_atraso}</span>
-        </div>
-        <div className="act-kpi">
-          <span className="act-kpi-lbl">Exec. real</span>
-          <span className="act-kpi-val" style={{ color: 'var(--navy)' }}>{Math.round(summary.exec)}%</span>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 14 }}>
+        <KpiCard label="Total actividades" value={summary.total} />
+        <KpiCard label="Concluídas"        value={summary.concluidas} color="green" />
+        <KpiCard label="Em dia"            value={summary.em_dia}     color="blue" />
+        <KpiCard label="Em atraso"         value={summary.em_atraso}  color="red" />
+        <KpiCard label="Exec. real"        value={`${Math.round(summary.exec)}%`} color="navy" />
       </div>
 
       <Card
@@ -341,14 +327,21 @@ export default function Actividades() {
           <div className="act-empty">A carregar…</div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table className="act-table">
+            <table className="act-table" style={{ tableLayout: 'fixed', width: '100%' }}>
+              <colgroup>
+                <col />
+                <col style={{ width: '90px' }} />
+                <col style={{ width: '100px' }} />
+                <col style={{ width: '180px' }} />
+                <col style={{ width: '110px' }} />
+              </colgroup>
               <thead>
                 <tr>
-                  <th style={{ minWidth: 260 }}>Designação</th>
-                  <th className="act-th-c" style={{ minWidth: 90 }}>Estado</th>
-                  <th className="act-th-c" style={{ minWidth: 90 }}>C / D / A</th>
-                  <th className="act-th-c" style={{ minWidth: 170 }}>Exec. real / prev.</th>
-                  <th className="act-th-c" style={{ minWidth: 80 }}>Prazo</th>
+                  <th style={{ minWidth: 300 }}>Designação</th>
+                  <th className="act-th-c">Estado</th>
+                  <th className="act-th-c">C / D / A</th>
+                  <th className="act-th-c">Exec. real / prev.</th>
+                  <th className="act-th-c">Prazo</th>
                 </tr>
               </thead>
               <tbody>

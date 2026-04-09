@@ -20,6 +20,7 @@
   }
   .ms-trigger:hover { background: var(--bg2); }
   .ms-trigger.open  { border-color: var(--navy); }
+  .ms-trigger.has-value { border-color: var(--navy); background: rgba(0,46,94,0.06); }
   .ms-label {
     font-weight: 600;
     color: var(--text3);

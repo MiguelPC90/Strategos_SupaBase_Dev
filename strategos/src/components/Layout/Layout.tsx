@@ -5,6 +5,7 @@ import FilterBar from '../FilterBar/FilterBar'
 import Badge from '../Badge/Badge'
 import { useAuth } from '../../hooks/useAuth'
 import { useRole } from '../../hooks/useRole'
+import { useFilters } from '../../context/FilterContext'
 
 interface NavItemConfig {
   to: string
@@ -191,6 +192,11 @@ export default function Layout() {
   const { signOut, user } = useAuth()
   const { profile, role, isAdmin } = useRole()
 
+  const { filters } = useFilters()
+  const activeFilterCount =
+    filters.programIds.length + filters.n1Values.length + filters.n2Values.length +
+    filters.owners.length + filters.sponsors.length + filters.statuses.length
+
   const [filterOpen, setFilterOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
@@ -256,17 +262,22 @@ export default function Layout() {
 
         <div className="topbar-spacer" />
 
-        <button
-          className={`topbar-icon-btn${filterOpen ? ' active' : ''}`}
-          onClick={() => setFilterOpen(o => !o)}
-          title="Filtros"
-        >
-          <svg viewBox="0 0 24 24">
-            <line x1="4" y1="6" x2="20" y2="6" />
-            <line x1="8" y1="12" x2="16" y2="12" />
-            <line x1="11" y1="18" x2="13" y2="18" />
-          </svg>
-        </button>
+        <div style={{ position: 'relative', display: 'inline-flex' }}>
+          <button
+            className={`topbar-icon-btn${filterOpen ? ' active' : ''}`}
+            onClick={() => setFilterOpen(o => !o)}
+            title="Filtros"
+          >
+            <svg viewBox="0 0 24 24">
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="8" y1="12" x2="16" y2="12" />
+              <line x1="11" y1="18" x2="13" y2="18" />
+            </svg>
+          </button>
+          {activeFilterCount > 0 && (
+            <span className="filter-badge">{activeFilterCount}</span>
+          )}
+        </div>
 
         <div style={{ position: 'relative' }} ref={profileRef}>
           <button

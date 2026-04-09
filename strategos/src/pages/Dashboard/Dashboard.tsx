@@ -321,11 +321,14 @@ export default function Dashboard() {
     cd_obj:     '100%',
   }), [m])
 
-  // ── Row click → navigate to Actividades with n1 filter ───────
+  // ── Row click → navigate to Actividades with n1/n2 filter ───
   function handleRowClick(row: Record<string, unknown>) {
     if (row._isTotals) return
     const n1 = row._n1 as string | undefined
+    const n2 = row._n2 as string | undefined
     setFilter('n1Values', n1 ? [n1] : [])
+    // setFilter('n1Values') cascades n2Values=[] — then set n2 if present
+    if (n2) setFilter('n2Values', [n2])
     navigate('/actividades')
   }
 
@@ -429,7 +432,20 @@ export default function Dashboard() {
               <p>Sem dados carregados</p>
             </div>
           ) : (
-            <div className="dash-chart-container">
+            <div className="dash-chart-container" style={{ position: 'relative' }}>
+              {/* Center label overlay — avoids SVG clipping issues */}
+              <div style={{
+                position: 'absolute', top: '50%', left: '50%',
+                transform: 'translate(-50%, -62%)',
+                textAlign: 'center', pointerEvents: 'none', zIndex: 1,
+              }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', lineHeight: 1.1 }}>
+                  {m.total}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>
+                  actividades
+                </div>
+              </div>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -446,20 +462,6 @@ export default function Dashboard() {
                     {pieData.map((entry, idx) => (
                       <Cell key={`cell-${idx}`} fill={entry.color} />
                     ))}
-                    <Label
-                      position="center"
-                      content={(labelProps: unknown) => {
-                        const vb = (labelProps as { viewBox?: { cx?: number; cy?: number } }).viewBox ?? {}
-                        const cx = vb.cx ?? 0
-                        const cy = vb.cy ?? 0
-                        return (
-                          <text textAnchor="middle">
-                            <tspan x={cx} y={cy - 6} fontSize={22} fontWeight="700" fill="var(--text)">{m.total}</tspan>
-                            <tspan x={cx} y={cy + 14} fontSize={11} fill="var(--text3)">total</tspan>
-                          </text>
-                        )
-                      }}
-                    />
                   </Pie>
                   <Tooltip
                     formatter={(value: unknown) => {

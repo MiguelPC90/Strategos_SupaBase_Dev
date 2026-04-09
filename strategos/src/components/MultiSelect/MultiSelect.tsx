@@ -5,12 +5,26 @@ interface MultiSelectProps {
   label: string
   options?: string[]
   placeholder?: string
+  /** Controlled selection — when provided, internal state is bypassed */
+  value?: string[]
+  /** Called with the new selection whenever it changes */
+  onChange?: (v: string[]) => void
 }
 
-export default function MultiSelect({ label, options = [], placeholder = 'Todos' }: MultiSelectProps) {
+export default function MultiSelect({
+  label,
+  options = [],
+  placeholder = 'Todos',
+  value,
+  onChange,
+}: MultiSelectProps) {
+  const [localSelected, setLocalSelected] = useState<string[]>([])
   const [open, setOpen] = useState(false)
-  const [selected, setSelected] = useState<string[]>([])
   const ref = useRef<HTMLDivElement>(null)
+
+  // Controlled vs uncontrolled
+  const isControlled = value !== undefined
+  const selected = isControlled ? value : localSelected
 
   useEffect(() => {
     function handle(e: MouseEvent) {
@@ -21,9 +35,16 @@ export default function MultiSelect({ label, options = [], placeholder = 'Todos'
   }, [])
 
   function toggle(opt: string) {
-    setSelected(prev =>
-      prev.includes(opt) ? prev.filter(x => x !== opt) : [...prev, opt]
-    )
+    const next = selected.includes(opt)
+      ? selected.filter(x => x !== opt)
+      : [...selected, opt]
+    if (!isControlled) setLocalSelected(next)
+    onChange?.(next)
+  }
+
+  function clearAll() {
+    if (!isControlled) setLocalSelected([])
+    onChange?.([])
   }
 
   const displayValue =
@@ -36,7 +57,7 @@ export default function MultiSelect({ label, options = [], placeholder = 'Todos'
   return (
     <div className="ms-wrap" ref={ref}>
       <button
-        className={`ms-trigger${open ? ' open' : ''}`}
+        className={`ms-trigger${open ? ' open' : ''}${selected.length > 0 ? ' has-value' : ''}`}
         onClick={() => setOpen(o => !o)}
         type="button"
       >
@@ -65,7 +86,7 @@ export default function MultiSelect({ label, options = [], placeholder = 'Todos'
             ))
           )}
           {selected.length > 0 && (
-            <button className="ms-clear" onClick={() => setSelected([])}>
+            <button className="ms-clear" onClick={clearAll}>
               Limpar seleção
             </button>
           )}
