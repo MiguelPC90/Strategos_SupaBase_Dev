@@ -12,7 +12,7 @@ type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
 type Scale        = 'Semana' | 'Mês' | 'Trimestre'
 
 const SCALES: Scale[] = ['Semana', 'Mês', 'Trimestre']
-const COL_WIDTH: Record<Scale, number> = { Semana: 40, Mês: 60, Trimestre: 100 }
+const COL_WIDTH: Record<Scale, number> = { Semana: 40, Mês: 80, Trimestre: 120 }
 const COL_NAME   = 280
 const COL_STATUS = 80
 const COL_EXEC   = 60
@@ -457,7 +457,7 @@ export default function Gantt() {
               <colgroup>
                 <col style={{ width: COL_NAME + COL_STATUS + COL_EXEC }} />
                 {periods.map((_, i) => <col key={i} style={{ width: colW }} />)}
-                <col style={{ width: 60 }} />
+                <col style={{ width: colW }} />
               </colgroup>
               <thead>
                 <tr>
