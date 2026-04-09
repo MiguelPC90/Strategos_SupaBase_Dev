@@ -442,17 +442,16 @@ export default function Gantt() {
           </div>
         ) : (
           <div className="gantt-scroll-wrap">
-            {/* Issue 4: minWidth ensures scroll when needed; width:100% fills card when there's room */}
             <table
               className="gantt-table"
-              style={{ tableLayout: 'fixed', minWidth: 280 + 80 + 60 + periods.length * colW, width: '100%' }}
+              style={{ tableLayout: 'fixed' }}
             >
               <colgroup>
                 <col style={{ width: 280 }} />
                 <col style={{ width: 80 }} />
                 <col style={{ width: 60 }} />
                 {periods.map((_, i) => <col key={i} style={{ width: colW }} />)}
-                <col /> {/* filler: gets remaining width */}
+                <col style={{ width: 40 }} />
               </colgroup>
               <thead>
                 <tr>
