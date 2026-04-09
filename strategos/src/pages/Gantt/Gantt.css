@@ -1,0 +1,212 @@
+@layer components {
+  /* ── Toolbar ────────────────────────────────────────────────── */
+  .gantt-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .gantt-legend {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .gantt-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .gantt-legend-swatch {
+    width: 22px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .gantt-swatch-baseline { background: rgba(0,46,94,0.22); border: 1px solid rgba(0,46,94,0.35); }
+  .gantt-swatch-real     { background: var(--navy); }
+
+  .gantt-scale-chips { display: flex; gap: 3px; }
+  .gantt-scale-chip {
+    padding: 3px 10px;
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    background: var(--bg);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text2);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+  .gantt-scale-chip:hover { background: var(--bg2); }
+  .gantt-scale-chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+  /* ── Scroll wrapper ─────────────────────────────────────────── */
+  .gantt-scroll-wrap {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+
+  /* ── Table ──────────────────────────────────────────────────── */
+  .gantt-table {
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  /* ── Header ─────────────────────────────────────────────────── */
+  .gantt-th {
+    padding: 7px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    text-align: left;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 4;
+  }
+  .gantt-th.gantt-th-period {
+    text-align: center;
+    border-left: 1px solid var(--border);
+    font-weight: 500;
+  }
+
+  /* ── Sticky left columns ────────────────────────────────────── */
+  .gantt-sticky-1 { position: sticky; left: 0;     z-index: 3; background: inherit; }
+  .gantt-sticky-2 { position: sticky; left: 280px; z-index: 3; background: inherit; }
+  .gantt-sticky-3 { position: sticky; left: 360px; z-index: 3; background: inherit; }
+  /* Header sticky cells need higher z-index to layer over body sticky cells */
+  .gantt-th.gantt-sticky-1,
+  .gantt-th.gantt-sticky-2,
+  .gantt-th.gantt-sticky-3 { z-index: 5; }
+
+  /* ── Row levels ─────────────────────────────────────────────── */
+  .gantt-row-n1            { background: var(--bg2); }
+  .gantt-row-n1:hover td   { background: var(--bg3) !important; }
+  .gantt-row-n2:hover td   { background: var(--bg3) !important; }
+  .gantt-row-n3:hover td   { background: var(--bg3) !important; }
+  .gantt-row-n4:hover td   { background: var(--bg3) !important; }
+
+  /* ── Left data cells ────────────────────────────────────────── */
+  .gantt-name-td {
+    padding: 0;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    overflow: hidden;
+  }
+  .gantt-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+  }
+  .gantt-meta-td {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  .gantt-meta-td:last-of-type { font-size: 11px; color: var(--text2); }
+
+  /* Name label levels */
+  .gantt-name-n1 { font-weight: 700; color: var(--navy); white-space: nowrap; }
+  .gantt-name-n2 { font-weight: 600; color: var(--text); white-space: nowrap; }
+  .gantt-name-n3 { color: var(--text2); white-space: nowrap; }
+  .gantt-name-n4 {
+    color: var(--text2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+    display: block;
+  }
+
+  /* ── Timeline cell ──────────────────────────────────────────── */
+  .gantt-tl-td {
+    position: relative;
+    height: 34px;
+    padding: 0;
+    border-bottom: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    vertical-align: middle;
+    overflow: hidden;
+  }
+  .gantt-tl-hoverable { cursor: default; }
+
+  /* Period grid lines */
+  .gantt-grid-line {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 0;
+    border-left: 1px solid var(--border);
+    pointer-events: none;
+  }
+
+  /* Today marker */
+  .gantt-today-line {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 0;
+    border-left: 2px dashed rgba(163,45,45,0.7);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* Gantt bars */
+  .gantt-bar {
+    position: absolute;
+    border-radius: 2px;
+    min-width: 2px;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .gantt-bar-top    { top: 5px;    height: 10px; }
+  .gantt-bar-bottom { bottom: 5px; height: 10px; }
+
+  /* ── Tooltip ────────────────────────────────────────────────── */
+  .gantt-tooltip {
+    position: fixed;
+    background: #1a1a18;
+    color: #fff;
+    border-radius: var(--r);
+    padding: 9px 12px;
+    font-size: 11px;
+    pointer-events: none;
+    z-index: 9999;
+    max-width: 260px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    white-space: nowrap;
+  }
+  .gantt-tt-name {
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 6px;
+    white-space: normal;
+    line-height: 1.4;
+  }
+  .gantt-tt-row {
+    line-height: 1.7;
+    color: rgba(255,255,255,0.7);
+  }
+  .gantt-tt-row span {
+    color: rgba(255,255,255,0.4);
+    margin-right: 5px;
+    min-width: 60px;
+    display: inline-block;
+  }
+
+  /* ── Empty state ────────────────────────────────────────────── */
+  .gantt-empty {
+    text-align: center;
+    color: var(--text3);
+    padding: 48px;
+    font-size: 13px;
+  }
+}
