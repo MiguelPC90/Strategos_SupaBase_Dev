@@ -187,8 +187,10 @@ export default function Dashboard() {
     const kpi = (pid !== undefined && pid in s.by_n0) ? s.by_n0[pid] : s.kpi
     const { total, concluidas, em_atraso } = kpi
     const due  = concluidas + em_atraso
-    const date = new Date(s.snap_date + 'T00:00:00')
-      .toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })
+    const d    = new Date(s.snap_date)
+    const date = d.getFullYear() === new Date().getFullYear()
+      ? d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })
+      : d.toLocaleDateString('pt-PT', { month: 'short', year: '2-digit' })
     return {
       date,
       grau_exec_real:  total > 0 ? +kpi.exec_media.toFixed(1) : null,

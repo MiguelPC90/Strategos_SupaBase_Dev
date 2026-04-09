@@ -5,6 +5,8 @@ export interface Column {
   key: string
   label: string
   sortable?: boolean
+  /** Text alignment. Defaults to 'left' for the first column, 'center' for all others. */
+  align?: 'left' | 'center' | 'right'
   render?: (value: unknown, row: Record<string, unknown>) => ReactNode
 }
 
@@ -41,13 +43,14 @@ export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dad
       <table className="tbl">
         <thead>
           <tr>
-            {columns.map(col => (
+            {columns.map((col, idx) => (
               <th
                 key={col.key}
                 className={[
                   col.sortable ? 'sortable' : '',
                   sortKey === col.key ? `sort-${sortDir}` : '',
                 ].filter(Boolean).join(' ')}
+                style={{ textAlign: col.align ?? (idx === 0 ? 'left' : 'center') }}
                 onClick={col.sortable ? () => handleSort(col.key) : undefined}
               >
                 {col.label}
@@ -70,8 +73,8 @@ export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dad
           ) : (
             sorted.map((row, i) => (
               <tr key={String(row['id'] ?? i)}>
-                {columns.map(col => (
-                  <td key={col.key}>
+                {columns.map((col, idx) => (
+                  <td key={col.key} style={{ textAlign: col.align ?? (idx === 0 ? 'left' : 'center') }}>
                     {col.render
                       ? col.render(row[col.key], row)
                       : (row[col.key] as ReactNode) ?? '—'}
