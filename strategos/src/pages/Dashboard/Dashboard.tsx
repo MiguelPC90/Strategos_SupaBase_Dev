@@ -101,22 +101,23 @@ const DETAIL_COLS: Column[] = [
     key: 'nome',
     label: 'Designação',
     sortable: false,
+    minWidth: '250px',
     render: (_v, row) => (
       <span style={{ fontWeight: Boolean(row._isParent) ? 700 : 400 }}>
         {String(row.nome ?? '')}
       </span>
     ),
   },
-  { key: 'total',      label: 'Total',         sortable: true },
-  { key: 'concluidas', label: 'Concluídas',    sortable: true },
-  { key: 'em_dia',     label: 'Em dia',        sortable: true },
-  { key: 'em_atraso',  label: 'Em atraso',     sortable: true },
-  { key: 'grau_exec',  label: 'Grau Execução', sortable: true },
-  { key: 'exec_obj',   label: 'Exec. obj.',    sortable: true },
-  { key: 'conc_geral', label: 'Conc. Geral',   sortable: true },
-  { key: 'cg_obj',     label: 'C.G.Obj.',      sortable: true },
-  { key: 'conc_data',  label: 'Conc. Data',    sortable: true },
-  { key: 'cd_obj',     label: 'C.D.Obj.',      sortable: true },
+  { key: 'total',      label: 'Total',         sortable: true, width: '70px'  },
+  { key: 'concluidas', label: 'Concluídas',    sortable: true, width: '90px'  },
+  { key: 'em_dia',     label: 'Em dia',        sortable: true, width: '70px'  },
+  { key: 'em_atraso',  label: 'Em atraso',     sortable: true, width: '80px'  },
+  { key: 'grau_exec',  label: 'Grau Execução', sortable: true, width: '110px' },
+  { key: 'exec_obj',   label: 'Exec. obj.',    sortable: true, width: '90px'  },
+  { key: 'conc_geral', label: 'Conc. Geral',   sortable: true, width: '100px' },
+  { key: 'cg_obj',     label: 'C.G.Obj.',      sortable: true, width: '80px'  },
+  { key: 'conc_data',  label: 'Conc. Data',    sortable: true, width: '90px'  },
+  { key: 'cd_obj',     label: 'C.D.Obj.',      sortable: true, width: '80px'  },
 ]
 
 // ── Component ─────────────────────────────────────────────────
@@ -424,7 +425,7 @@ export default function Dashboard() {
             Eixo + Plano
           </button>
         </div>
-        <Table columns={DETAIL_COLS} rows={tableRows} emptyMessage="Sem dados carregados" />
+        <Table columns={DETAIL_COLS} rows={tableRows} emptyMessage="Sem dados carregados" layout="fixed" />
       </Card>
     </>
   )

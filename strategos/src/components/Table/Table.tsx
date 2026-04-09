@@ -7,6 +7,10 @@ export interface Column {
   sortable?: boolean
   /** Text alignment. Defaults to 'left' for the first column, 'center' for all others. */
   align?: 'left' | 'center' | 'right'
+  /** Fixed column width, e.g. "70px". Used in <colgroup> with table-layout:fixed. */
+  width?: string
+  /** Minimum column width applied to th/td, e.g. "250px". */
+  minWidth?: string
   render?: (value: unknown, row: Record<string, unknown>) => ReactNode
 }
 
@@ -14,9 +18,11 @@ interface TableProps {
   columns?: Column[]
   rows?: Record<string, unknown>[]
   emptyMessage?: string
+  /** Set to 'fixed' to enable table-layout:fixed with colgroup widths. */
+  layout?: 'auto' | 'fixed'
 }
 
-export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dados' }: TableProps) {
+export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dados', layout = 'auto' }: TableProps) {
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
@@ -40,7 +46,14 @@ export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dad
 
   return (
     <div className="tbl-wrap">
-      <table className="tbl">
+      <table className="tbl" style={layout === 'fixed' ? { tableLayout: 'fixed', width: '100%' } : undefined}>
+        {layout === 'fixed' && (
+          <colgroup>
+            {columns.map(col => (
+              <col key={col.key} style={{ width: col.width }} />
+            ))}
+          </colgroup>
+        )}
         <thead>
           <tr>
             {columns.map((col, idx) => (
@@ -50,7 +63,7 @@ export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dad
                   col.sortable ? 'sortable' : '',
                   sortKey === col.key ? `sort-${sortDir}` : '',
                 ].filter(Boolean).join(' ')}
-                style={{ textAlign: col.align ?? (idx === 0 ? 'left' : 'center') }}
+                style={{ textAlign: col.align ?? (idx === 0 ? 'left' : 'center'), minWidth: col.minWidth }}
                 onClick={col.sortable ? () => handleSort(col.key) : undefined}
               >
                 {col.label}
@@ -74,7 +87,7 @@ export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dad
             sorted.map((row, i) => (
               <tr key={String(row['id'] ?? i)}>
                 {columns.map((col, idx) => (
-                  <td key={col.key} style={{ textAlign: col.align ?? (idx === 0 ? 'left' : 'center') }}>
+                  <td key={col.key} style={{ textAlign: col.align ?? (idx === 0 ? 'left' : 'center'), minWidth: col.minWidth }}>
                     {col.render
                       ? col.render(row[col.key], row)
                       : (row[col.key] as ReactNode) ?? '—'}
