@@ -62,30 +62,6 @@
   }
   .evol-date-input:focus { outline: none; border-color: var(--navy); }
 
-  /* ── Metric chips ───────────────────────────────────────────── */
-  .evol-chips {
-    display: flex;
-    gap: 4px;
-  }
-
-  .evol-chip {
-    padding: 4px 12px;
-    border-radius: 100px;
-    font-size: 12px;
-    font-weight: 500;
-    border: 1px solid var(--border2);
-    background: var(--bg);
-    color: var(--text2);
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
-  }
-  .evol-chip:hover { background: var(--bg3); }
-  .evol-chip.active {
-    background: var(--navy);
-    color: #fff;
-    border-color: var(--navy);
-  }
-
   /* ── KPI row ────────────────────────────────────────────────── */
   .evol-kpi-row {
     display: grid;
@@ -116,11 +92,54 @@
     color: var(--text3);
   }
 
-  .evol-empty-inner {
+  /* ── Comparison table ───────────────────────────────────────── */
+  .evol-comp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .evol-comp-table th {
+    padding: 6px 10px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text2);
+    border-bottom: 2px solid var(--border2);
+    white-space: nowrap;
+  }
+
+  .evol-comp-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+
+  .evol-comp-table tr:last-child td { border-bottom: none; }
+
+  .evol-comp-group td {
+    font-weight: 700;
+    color: var(--navy);
+    background: var(--bg2);
+    border-top: 1px solid var(--border2);
+    border-bottom: 1px solid var(--border2);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 5px 10px;
+  }
+
+  .evol-comp-center {
     text-align: center;
-    color: var(--text3);
-    padding: 16px;
-    font-size: 12px;
-    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .evol-comp-var {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
   }
 }
