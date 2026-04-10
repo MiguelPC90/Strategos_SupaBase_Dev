@@ -332,11 +332,11 @@ export default function ExecucaoFinanceira() {
 
           {/* Charts row */}
           <div className="ef-charts-row">
-            <Card title="Execução por tipo">
-              <CapexOpexChart data={pieData} />
-            </Card>
             <Card title="Execução mensal">
               <MonthlyChart data={monthlyData} />
+            </Card>
+            <Card title="Execução por tipo">
+              <CapexOpexChart data={pieData} />
             </Card>
           </div>
 
