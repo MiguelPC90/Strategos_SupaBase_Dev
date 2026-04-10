@@ -5,11 +5,12 @@
     gap: 14px;
   }
 
-  /* ── Plan selector ──────────────────────────────────────────── */
+  /* ── Controls bar ───────────────────────────────────────────── */
   .ef-selector-bar {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: var(--r);
@@ -25,9 +26,16 @@
     white-space: nowrap;
   }
 
+  .ef-selector-sep {
+    width: 1px;
+    height: 18px;
+    background: var(--border2);
+    flex-shrink: 0;
+  }
+
   .ef-selector-select {
     flex: 1;
-    max-width: 480px;
+    max-width: 420px;
     border: 1px solid var(--border2);
     border-radius: var(--r);
     padding: 5px 10px;
@@ -37,6 +45,42 @@
     cursor: pointer;
   }
   .ef-selector-select:focus { outline: none; border-color: var(--navy); }
+
+  .ef-year-select {
+    width: 110px;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 5px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg2);
+    cursor: pointer;
+  }
+  .ef-year-select:focus { outline: none; border-color: var(--navy); }
+
+  /* ── CAPEX/OPEX chips ───────────────────────────────────────── */
+  .ef-chips {
+    display: flex;
+    gap: 4px;
+  }
+
+  .ef-chip {
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border2);
+    background: var(--bg);
+    color: var(--text2);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .ef-chip:hover { background: var(--bg3); }
+  .ef-chip.active {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+  }
 
   /* ── Empty states ───────────────────────────────────────────── */
   .ef-empty-page {
