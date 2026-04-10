@@ -101,12 +101,17 @@ export default function PontoSituacao() {
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
   }, [entries, selectedKey])
 
-  // Risks linked to any entry of the selected plan
+  // Risks linked to any pds_entry sharing id0+id2 with the selected plan
   const planRisks = useMemo(() => {
     if (!planEntries.length) return []
-    const ids = new Set(planEntries.map(e => e.id))
-    return risks.filter(r => ids.has(r.pds_id))
-  }, [risks, planEntries])
+    const { id0, id2 } = planEntries[0]
+    const matchIds = new Set(
+      entries
+        .filter(e => e.id0 === id0 && e.id2 === id2)
+        .map(e => e.id)
+    )
+    return risks.filter(r => matchIds.has(r.pds_id))
+  }, [risks, planEntries, entries])
 
   function handlePlanChange(key: string) {
     setSelectedKey(key)
