@@ -157,4 +157,50 @@
     flex-shrink: 0;
     opacity: 0.55;
   }
+
+  /* ── Risks table ─────────────────────────────────────────────── */
+  .pds-risk-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .pds-risk-table th {
+    padding: 6px 10px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text2);
+    border-bottom: 2px solid var(--border2);
+    white-space: nowrap;
+  }
+
+  .pds-risk-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+    line-height: 1.45;
+  }
+
+  .pds-risk-table tr:last-child td { border-bottom: none; }
+  .pds-risk-table tr:hover td { background: var(--bg2); }
+
+  .pds-risk-table th.pds-risk-num,
+  .pds-risk-table td.pds-risk-num {
+    text-align: center;
+    width: 80px;
+  }
+
+  .pds-risk-table th.pds-risk-status,
+  .pds-risk-table td.pds-risk-status {
+    width: 120px;
+  }
+
+  .pds-risk-table td.pds-risk-mitigation {
+    color: var(--text2);
+    font-size: 12px;
+  }
 }

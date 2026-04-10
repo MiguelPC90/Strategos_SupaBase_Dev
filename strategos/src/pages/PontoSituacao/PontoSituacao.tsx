@@ -4,6 +4,7 @@ import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import { usePdsEntries } from '../../hooks/usePdsEntries'
 import { usePrograms } from '../../hooks/usePrograms'
+import { useRisks } from '../../hooks/useRisks'
 import { useFilters } from '../../context/FilterContext'
 import type { PdsItem } from '../../types/index'
 
@@ -45,6 +46,24 @@ function fmtDate(iso: string): string {
   })
 }
 
+// ── Risk helpers ────────────────────────────────────────────────
+type RiskBadge = 'green' | 'amber' | 'red' | 'grey'
+
+function grauVariant(grau: number): RiskBadge {
+  if (grau <= 4)  return 'green'
+  if (grau <= 9)  return 'amber'
+  return 'red'
+}
+
+function estadoVariant(status: string): RiskBadge {
+  const s = status.toLowerCase()
+  if (s === 'aberto')         return 'red'
+  if (s === 'em mitigação')   return 'amber'
+  if (s === 'mitigado')       return 'grey'
+  if (s === 'fechado')        return 'green'
+  return 'grey'
+}
+
 // ── Main page ──────────────────────────────────────────────────
 export default function PontoSituacao() {
   const { filters }  = useFilters()
@@ -53,6 +72,9 @@ export default function PontoSituacao() {
 
   const [selectedKey, setSelectedKey] = useState('')
   const [entryIdx, setEntryIdx]       = useState(0)
+
+  const programId = selectedKey ? selectedKey.split('|')[0] : undefined
+  const { risks } = useRisks(programId)
 
   // Unique plan options derived from loaded entries
   const planOptions = useMemo(() => {
@@ -78,6 +100,13 @@ export default function PontoSituacao() {
       .filter(e => String(e.program_id) === pid && e.n0 === n0 && e.n1 === n1)
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
   }, [entries, selectedKey])
+
+  // Risks linked to any entry of the selected plan
+  const planRisks = useMemo(() => {
+    if (!planEntries.length) return []
+    const ids = new Set(planEntries.map(e => e.id))
+    return risks.filter(r => ids.has(r.pds_id))
+  }, [risks, planEntries])
 
   function handlePlanChange(key: string) {
     setSelectedKey(key)
@@ -157,6 +186,43 @@ export default function PontoSituacao() {
               <ItemList items={entry?.attention_items ?? []} className="pds-attention-list" />
             </Card>
           </div>
+
+          {/* Risks table — only shown when there are risks for this plan */}
+          {planRisks.length > 0 && (
+            <Card title="Riscos">
+              <table className="pds-risk-table">
+                <thead>
+                  <tr>
+                    <th>Descrição</th>
+                    <th className="pds-risk-num">Impacto</th>
+                    <th className="pds-risk-num">Probabilidade</th>
+                    <th className="pds-risk-num">Grau</th>
+                    <th className="pds-risk-status">Estado</th>
+                    <th>Mitigação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {planRisks.map(r => {
+                    const grau = r.impact * r.probability
+                    return (
+                      <tr key={r.id}>
+                        <td>{r.description}</td>
+                        <td className="pds-risk-num">{r.impact}</td>
+                        <td className="pds-risk-num">{r.probability}</td>
+                        <td className="pds-risk-num">
+                          <Badge variant={grauVariant(grau)}>{grau}</Badge>
+                        </td>
+                        <td className="pds-risk-status">
+                          <Badge variant={estadoVariant(r.status)}>{r.status}</Badge>
+                        </td>
+                        <td className="pds-risk-mitigation">{r.mitigation}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </Card>
+          )}
         </>
       )}
     </div>
