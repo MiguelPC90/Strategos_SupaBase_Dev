@@ -1,0 +1,119 @@
+@layer components {
+  .ef-page {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* ── Plan selector ──────────────────────────────────────────── */
+  .ef-selector-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 8px 16px;
+  }
+
+  .ef-selector-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+
+  .ef-selector-select {
+    flex: 1;
+    max-width: 480px;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 5px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg2);
+    cursor: pointer;
+  }
+  .ef-selector-select:focus { outline: none; border-color: var(--navy); }
+
+  /* ── Empty states ───────────────────────────────────────────── */
+  .ef-empty-page {
+    text-align: center;
+    color: var(--text3);
+    padding: 56px;
+    font-size: 13px;
+  }
+
+  .ef-empty {
+    text-align: center;
+    color: var(--text3);
+    padding: 24px;
+    font-size: 13px;
+    margin: 0;
+  }
+
+  /* ── KPI row ────────────────────────────────────────────────── */
+  .ef-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+
+  /* ── Charts row ─────────────────────────────────────────────── */
+  .ef-charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  /* ── Tables ─────────────────────────────────────────────────── */
+  .ef-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .ef-table th {
+    padding: 6px 10px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text2);
+    border-bottom: 2px solid var(--border2);
+    white-space: nowrap;
+  }
+
+  .ef-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+
+  .ef-table tr:last-child td { border-bottom: none; }
+  .ef-table tbody tr:hover td { background: var(--bg2); }
+
+  /* Right-aligned numeric columns */
+  .ef-th-r { text-align: right !important; }
+  .ef-td-r { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* Centered percentage columns */
+  .ef-th-c { text-align: center !important; }
+  .ef-td-c { text-align: center; }
+
+  /* Totals / footer row */
+  .ef-total td {
+    font-weight: 600;
+    background: var(--bg2);
+    border-top: 2px solid var(--border2);
+    border-bottom: none;
+  }
+
+  /* Variance colors */
+  .ef-red { color: var(--red); }
+  .ef-grn { color: var(--green); }
+}
