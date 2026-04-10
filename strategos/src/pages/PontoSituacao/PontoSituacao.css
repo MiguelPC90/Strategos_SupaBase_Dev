@@ -1,0 +1,160 @@
+@layer components {
+
+  .pds-page {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* ── Plan selector bar ───────────────────────────────────────── */
+  .pds-selector-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 8px 16px;
+  }
+
+  .pds-selector-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+
+  .pds-selector-select {
+    flex: 1;
+    max-width: 560px;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 5px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg2);
+    cursor: pointer;
+  }
+  .pds-selector-select:focus { outline: none; border-color: var(--navy); }
+
+  /* ── Empty / loading placeholder ────────────────────────────── */
+  .pds-placeholder {
+    text-align: center;
+    color: var(--text3);
+    padding: 56px;
+    font-size: 13px;
+  }
+
+  /* ── Header bar — navy bg ────────────────────────────────────── */
+  .pds-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: var(--navy);
+    border-radius: var(--r);
+    padding: 10px 16px;
+  }
+
+  .pds-header-path {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pds-header-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .pds-header-date {
+    font-size: 12px;
+    color: rgba(255,255,255,0.75);
+    white-space: nowrap;
+  }
+
+  .pds-header-count {
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+  }
+
+  .pds-nav-btn {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    padding: 3px 9px;
+    font-size: 14px;
+    line-height: 1.4;
+    transition: background 0.12s;
+  }
+  .pds-nav-btn:hover:not(:disabled) { background: rgba(255,255,255,0.22); }
+  .pds-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ── 2×2 card grid ───────────────────────────────────────────── */
+  .pds-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  /* ── Item list ───────────────────────────────────────────────── */
+  .pds-item-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .pds-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+  .pds-item:last-child { border-bottom: none; }
+
+  .pds-item-text {
+    flex: 1;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .pds-item-date {
+    font-size: 11px;
+    color: var(--text3);
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .pds-empty-items {
+    font-size: 13px;
+    color: var(--text3);
+    padding: 20px 0;
+    margin: 0;
+    text-align: center;
+  }
+
+  /* ── Attention items — amber left bar ────────────────────────── */
+  .pds-attention-list .pds-item::before {
+    content: '';
+    width: 3px;
+    align-self: stretch;
+    background: var(--amber);
+    border-radius: 2px;
+    flex-shrink: 0;
+    opacity: 0.55;
+  }
+}
