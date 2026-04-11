@@ -1,0 +1,334 @@
+@layer components {
+  .gr-page {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* ── Controls bar ───────────────────────────────────────────── */
+  .gr-controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 8px 16px;
+  }
+
+  .gr-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+
+  .gr-plan-select {
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 5px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    font-family: inherit;
+    min-width: 240px;
+    max-width: 420px;
+  }
+  .gr-plan-select:focus   { outline: none; border-color: var(--navy); }
+  .gr-plan-select:disabled { opacity: 0.6; }
+
+  .gr-spacer { flex: 1; }
+
+  .gr-toast {
+    font-size: 12px;
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────── */
+  .gr-btn {
+    padding: 5px 12px;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.1s;
+    font-family: inherit;
+  }
+  .gr-btn:hover:not(:disabled) { background: var(--bg2); }
+  .gr-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .gr-btn-primary {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    font-weight: 600;
+  }
+  .gr-btn-primary:hover:not(:disabled) { background: #003f7a; }
+
+  .gr-btn-save {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    font-weight: 600;
+  }
+  .gr-btn-save:hover:not(:disabled) { background: #003f7a; }
+
+  .gr-btn-danger {
+    color: var(--red);
+    border-color: var(--red);
+  }
+  .gr-btn-danger:hover:not(:disabled) { background: #fff0f0; }
+
+  /* ── Table ──────────────────────────────────────────────────── */
+  .gr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    table-layout: fixed;
+  }
+
+  .gr-table th {
+    padding: 7px 10px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #fff;
+    background: var(--navy);
+    white-space: nowrap;
+  }
+  .gr-table th:first-child { border-radius: 6px 0 0 0; }
+  .gr-table th:last-child  { border-radius: 0 6px 0 0; }
+
+  .gr-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+
+  .gr-th-c { text-align: center !important; }
+  .gr-td-c { text-align: center; }
+
+  .gr-td-wrap {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 0;    /* forces ellipsis with table-layout:fixed */
+    white-space: nowrap;
+  }
+
+  .gr-row { cursor: default; }
+  .gr-row:hover td { background: var(--bg2); }
+  .gr-row:last-child td { border-bottom: none; }
+
+  /* ── Grau badges ────────────────────────────────────────────── */
+  .gr-grau-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    border: 1px solid currentColor;
+  }
+
+  .gr-grau-baixo { background: #eaf5d3; color: #3B6D11; }
+  .gr-grau-medio { background: #fef5e7; color: #854F0B; }
+  .gr-grau-alto  { background: #fdecea; color: #A32D2D; }
+  .gr-grau-crit  { background: #f5d5d5; color: #7B0000; }
+
+  /* ── Empty ──────────────────────────────────────────────────── */
+  .gr-empty {
+    text-align: center;
+    color: var(--text3);
+    padding: 40px 24px;
+    font-size: 13px;
+  }
+
+  /* ── ⋯ menu ─────────────────────────────────────────────────── */
+  .gr-menu-wrap {
+    position: relative;
+    display: flex;
+    justify-content: center;
+  }
+
+  .gr-icon-btn {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 15px;
+    color: var(--text2);
+    padding: 0;
+    font-family: inherit;
+    letter-spacing: 1px;
+  }
+  .gr-icon-btn:hover { background: var(--bg3); }
+
+  .gr-menu {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    min-width: 150px;
+    padding: 4px 0;
+  }
+
+  .gr-menu-item {
+    display: block;
+    width: 100%;
+    padding: 7px 14px;
+    border: none;
+    background: none;
+    text-align: left;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .gr-menu-item:hover:not(:disabled) { background: var(--bg2); }
+  .gr-menu-item:disabled { color: var(--text3); cursor: not-allowed; }
+  .gr-menu-item.danger { color: var(--red); }
+  .gr-menu-item.danger:hover { background: #fff0f0; }
+
+  .gr-menu-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+
+  /* ── Side panel ─────────────────────────────────────────────── */
+  .gr-panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.2);
+    z-index: 200;
+  }
+
+  .gr-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 400px;
+    background: var(--bg);
+    border-left: 1px solid var(--border2);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+    z-index: 201;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .gr-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .gr-panel-title {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .gr-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .gr-panel-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .gr-panel-err {
+    font-size: 12px;
+    color: var(--red);
+    width: 100%;
+  }
+
+  /* ── Form fields ────────────────────────────────────────────── */
+  .gr-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .gr-field-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text2);
+  }
+
+  .gr-field-input,
+  .gr-field-select,
+  .gr-field-textarea {
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .gr-field-input:focus,
+  .gr-field-select:focus,
+  .gr-field-textarea:focus { outline: none; border-color: var(--navy); }
+
+  .gr-field-textarea {
+    resize: vertical;
+    min-height: 64px;
+  }
+
+  .gr-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  /* Read-only grau display in panel */
+  .gr-grau-display {
+    padding: 6px 0 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .gr-grau-num {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text2);
+  }
+}

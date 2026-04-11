@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Risk } from '../types/index'
 
@@ -6,12 +6,16 @@ interface UseRisksResult {
   risks: Risk[]
   loading: boolean
   error: string | null
+  refetch: () => void
 }
 
 export function useRisks(program_id?: string): UseRisksResult {
   const [risks, setRisks]     = useState<Risk[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
+  const [tick, setTick]       = useState(0)
+
+  const refetch = useCallback(() => setTick(t => t + 1), [])
 
   useEffect(() => {
     let cancelled = false
@@ -36,7 +40,7 @@ export function useRisks(program_id?: string): UseRisksResult {
     })
 
     return () => { cancelled = true }
-  }, [program_id])
+  }, [program_id, tick])
 
-  return { risks, loading, error }
+  return { risks, loading, error, refetch }
 }
