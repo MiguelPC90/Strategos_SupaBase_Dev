@@ -1,0 +1,535 @@
+@layer components {
+  .gf-page {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* ── Controls bar ────────────────────────────────────────────── */
+  .gf-controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 8px 16px;
+  }
+
+  .gf-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+
+  .gf-plan-select {
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 5px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    font-family: inherit;
+    min-width: 240px;
+    max-width: 420px;
+  }
+  .gf-plan-select:focus   { outline: none; border-color: var(--navy); }
+  .gf-plan-select:disabled { opacity: 0.6; }
+
+  .gf-spacer { flex: 1; }
+
+  .gf-toast {
+    font-size: 12px;
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  /* ── Tabs ────────────────────────────────────────────────────── */
+  .gf-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 6px 12px;
+    flex-wrap: wrap;
+  }
+
+  .gf-tab {
+    padding: 5px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text2);
+    font-family: inherit;
+    transition: background 0.1s, color 0.1s;
+  }
+  .gf-tab:hover:not(.gf-tab--active) { background: var(--bg2); color: var(--text); }
+  .gf-tab--active { background: var(--navy); color: #fff; }
+
+  /* ── Buttons ─────────────────────────────────────────────────── */
+  .gf-btn {
+    padding: 5px 12px;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.1s;
+    font-family: inherit;
+  }
+  .gf-btn:hover:not(:disabled) { background: var(--bg2); }
+  .gf-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .gf-btn-primary {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    font-weight: 600;
+  }
+  .gf-btn-primary:hover:not(:disabled) { background: #003f7a; }
+
+  .gf-btn-save {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    font-weight: 600;
+  }
+  .gf-btn-save:hover:not(:disabled) { background: #003f7a; }
+
+  .gf-btn-danger {
+    color: var(--red);
+    border-color: var(--red);
+  }
+  .gf-btn-danger:hover:not(:disabled) { background: #fff0f0; }
+
+  /* ── KPI row ─────────────────────────────────────────────────── */
+  .gf-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+
+  /* ── Save error ──────────────────────────────────────────────── */
+  .gf-save-err {
+    font-size: 12px;
+    color: var(--red);
+  }
+
+  /* ── Budget tab ──────────────────────────────────────────────── */
+  .gf-budget-wrap {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+    overflow: hidden;
+  }
+
+  .gf-budget-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .gf-budget-toolbar-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--navy);
+    flex: 1;
+  }
+
+  .gf-budget-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    table-layout: auto;
+  }
+
+  .gf-budget-table th {
+    padding: 7px 10px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #fff;
+    background: var(--navy);
+    white-space: nowrap;
+  }
+  .gf-budget-table th:first-child { border-radius: 0; }
+  .gf-budget-table th.gf-th-c { text-align: center; }
+  .gf-budget-table th.gf-th-r { text-align: right; }
+
+  .gf-budget-table td {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  .gf-budget-table tr:last-child td { border-bottom: none; }
+  .gf-budget-table tr:hover td { background: var(--bg2); }
+
+  .gf-budget-table td.gf-td-c { text-align: center; }
+  .gf-budget-table td.gf-td-r { text-align: right; }
+  .gf-budget-table td.gf-td-total {
+    font-weight: 700;
+    text-align: right;
+    color: var(--navy);
+  }
+
+  .gf-total-row td {
+    background: var(--bg2);
+    font-weight: 700;
+    border-top: 2px solid var(--border2);
+    color: var(--navy);
+  }
+
+  /* Inline edit inputs */
+  .gf-cell-input {
+    width: 100%;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 13px;
+    color: var(--text);
+    background: transparent;
+    font-family: inherit;
+    box-sizing: border-box;
+  }
+  .gf-cell-input:focus {
+    outline: none;
+    border-color: var(--navy);
+    background: var(--bg);
+  }
+  .gf-cell-input--num {
+    text-align: right;
+    width: 90px;
+  }
+  .gf-cell-select {
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 3px 4px;
+    font-size: 13px;
+    color: var(--text);
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .gf-cell-select:focus {
+    outline: none;
+    border-color: var(--navy);
+    background: var(--bg);
+  }
+
+  .gf-icon-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--text3);
+    padding: 0;
+    font-family: inherit;
+  }
+  .gf-icon-btn:hover { background: var(--bg3); color: var(--red); }
+  .gf-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Contracts tab ───────────────────────────────────────────── */
+  .gf-contracts-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .gf-contracts-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .gf-contract-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .gf-contract-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .gf-contract-title {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .gf-contract-meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .gf-contract-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .gf-meta-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text3);
+  }
+
+  .gf-meta-value {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .gf-contract-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .gf-contract-progress-label {
+    font-size: 11px;
+    color: var(--text2);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .gf-contract-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .gf-empty {
+    text-align: center;
+    color: var(--text3);
+    padding: 40px 24px;
+    font-size: 13px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+  }
+
+  /* ── Invoices tab ────────────────────────────────────────────── */
+  .gf-invoices-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .gf-invoices-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .gf-status-chips {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .gf-chip {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid var(--border2);
+    cursor: pointer;
+    background: var(--bg);
+    color: var(--text2);
+    font-family: inherit;
+    transition: background 0.1s, color 0.1s;
+  }
+  .gf-chip:hover { background: var(--bg2); }
+  .gf-chip--active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+  .gf-invoices-table-wrap {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+    overflow: hidden;
+  }
+
+  .gf-invoices-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    table-layout: fixed;
+  }
+
+  .gf-invoices-table th {
+    padding: 7px 10px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #fff;
+    background: var(--navy);
+    white-space: nowrap;
+  }
+  .gf-invoices-table th.gf-th-c { text-align: center; }
+  .gf-invoices-table th.gf-th-r { text-align: right; }
+
+  .gf-invoices-table td {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  .gf-invoices-table td.gf-td-c { text-align: center; }
+  .gf-invoices-table td.gf-td-r { text-align: right; font-variant-numeric: tabular-nums; }
+  .gf-invoices-table td.gf-td-wrap {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 0;
+    white-space: nowrap;
+  }
+
+  .gf-inv-row:hover td { background: var(--bg2); }
+  .gf-inv-row:last-child td { border-bottom: none; }
+  .gf-inv-row--overdue td { background: #fff5f5; }
+  .gf-inv-row--overdue:hover td { background: #ffeded; }
+
+  /* ── Side panel ──────────────────────────────────────────────── */
+  .gf-panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.2);
+    z-index: 200;
+  }
+
+  .gf-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 420px;
+    background: var(--bg);
+    border-left: 1px solid var(--border2);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+    z-index: 201;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .gf-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .gf-panel-title {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .gf-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .gf-panel-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .gf-panel-err {
+    font-size: 12px;
+    color: var(--red);
+    width: 100%;
+  }
+
+  /* ── Form fields ─────────────────────────────────────────────── */
+  .gf-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .gf-field-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text2);
+  }
+
+  .gf-field-input,
+  .gf-field-select,
+  .gf-field-textarea {
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .gf-field-input:focus,
+  .gf-field-select:focus,
+  .gf-field-textarea:focus { outline: none; border-color: var(--navy); }
+
+  .gf-field-textarea {
+    resize: vertical;
+    min-height: 56px;
+  }
+
+  .gf-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+}

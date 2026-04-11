@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import type { FinBudgetLine, FinContract, FinInvoice } from '../types/index'
 
@@ -8,6 +8,7 @@ interface UseFinancialsResult {
   invoices: FinInvoice[]
   loading: boolean
   error: string | null
+  refetch: () => void
 }
 
 export function useFinancials(program_id?: string): UseFinancialsResult {
@@ -16,6 +17,9 @@ export function useFinancials(program_id?: string): UseFinancialsResult {
   const [invoices, setInvoices]       = useState<FinInvoice[]>([])
   const [loading, setLoading]         = useState(true)
   const [error, setError]             = useState<string | null>(null)
+  const [tick, setTick]               = useState(0)
+
+  const refetch = useCallback(() => setTick(t => t + 1), [])
 
   useEffect(() => {
     let cancelled = false
@@ -63,7 +67,7 @@ export function useFinancials(program_id?: string): UseFinancialsResult {
     })
 
     return () => { cancelled = true }
-  }, [program_id])
+  }, [program_id, tick])
 
-  return { budgetLines, contracts, invoices, loading, error }
+  return { budgetLines, contracts, invoices, loading, error, refetch }
 }
