@@ -196,10 +196,6 @@
   .gi-icon-btn:hover { background: var(--bg3); }
 
   .gi-menu {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    z-index: 100;
     background: var(--bg);
     border: 1px solid var(--border2);
     border-radius: var(--r);

@@ -1,5 +1,6 @@
 import './GestaoIniciativas.css'
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import { useActivities } from '../../hooks/useActivities'
@@ -280,25 +281,46 @@ interface RowMenuProps {
   onDelete: () => void; onMoveUp: () => void; onMoveDown: () => void
 }
 
+const MENU_H = 220 // conservative estimate for flip threshold
+
 function RowMenu({ actId, openId, canUp, canDown, onOpen, onEdit, onDuplicate, onDelete, onMoveUp, onMoveDown }: RowMenuProps) {
-  const open = openId === actId
+  const open   = openId === actId
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!open && btnRef.current) {
+      const rect       = btnRef.current.getBoundingClientRect()
+      const right      = window.innerWidth - rect.right
+      const spaceBelow = window.innerHeight - rect.bottom
+      setPos(spaceBelow >= MENU_H
+        ? { top: rect.bottom + 4, right }
+        : { bottom: window.innerHeight - rect.top + 4, right }
+      )
+    }
+    onOpen(open ? null : actId)
+  }
+
+  const menu = (
+    <div
+      className="gi-menu"
+      style={{ position: 'fixed', zIndex: 300, ...(pos ?? {}) }}
+      onClick={e => e.stopPropagation()}
+    >
+      <button className="gi-menu-item" onClick={() => { onOpen(null); onEdit() }}>Editar</button>
+      <button className="gi-menu-item" onClick={() => { onOpen(null); onDuplicate() }}>Duplicar</button>
+      <button className="gi-menu-item" onClick={() => { onOpen(null); onMoveUp() }} disabled={!canUp}>Mover para cima</button>
+      <button className="gi-menu-item" onClick={() => { onOpen(null); onMoveDown() }} disabled={!canDown}>Mover para baixo</button>
+      <div className="gi-menu-sep" />
+      <button className="gi-menu-item danger" onClick={() => { onOpen(null); onDelete() }}>Eliminar</button>
+    </div>
+  )
+
   return (
     <div className="gi-menu-wrap">
-      <button
-        className="gi-icon-btn"
-        onClick={e => { e.stopPropagation(); onOpen(open ? null : actId) }}
-        title="Acções"
-      >⋯</button>
-      {open && (
-        <div className="gi-menu" onClick={e => e.stopPropagation()}>
-          <button className="gi-menu-item" onClick={() => { onOpen(null); onEdit() }}>Editar</button>
-          <button className="gi-menu-item" onClick={() => { onOpen(null); onDuplicate() }}>Duplicar</button>
-          <button className="gi-menu-item" onClick={() => { onOpen(null); onMoveUp() }} disabled={!canUp}>Mover para cima</button>
-          <button className="gi-menu-item" onClick={() => { onOpen(null); onMoveDown() }} disabled={!canDown}>Mover para baixo</button>
-          <div className="gi-menu-sep" />
-          <button className="gi-menu-item danger" onClick={() => { onOpen(null); onDelete() }}>Eliminar</button>
-        </div>
-      )}
+      <button ref={btnRef} className="gi-icon-btn" onClick={handleClick} title="Acções">⋯</button>
+      {open && pos !== null && createPortal(menu, document.body)}
     </div>
   )
 }
