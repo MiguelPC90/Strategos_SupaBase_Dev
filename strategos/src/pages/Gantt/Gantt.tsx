@@ -4,6 +4,7 @@ import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import { useActivities } from '../../hooks/useActivities'
 import { useFilters } from '../../context/FilterContext'
+import { rollupPct, rollupStatus } from '../../lib/rollup'
 import type { Activity } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
@@ -26,11 +27,9 @@ function actStatus(a: Activity): StatusCls {
 }
 
 function groupStatus(acts: Activity[]): StatusCls {
-  const total      = acts.length
-  const concluidas = acts.filter(a => actStatus(a) === 'concluida').length
-  const em_atraso  = acts.filter(a => actStatus(a) === 'em_atraso').length
-  if (total > 0 && concluidas === total) return 'concluida'
-  if (em_atraso > 0) return 'em_atraso'
+  const s = rollupStatus(acts)
+  if (s === 'Concluída') return 'concluida'
+  if (s === 'Em atraso') return 'em_atraso'
   return 'em_dia'
 }
 
@@ -158,11 +157,6 @@ function groupDateRange(acts: Activity[]) {
     if (a.rf && (!maxRf || a.rf > maxRf)) maxRf = a.rf
   }
   return { bs: minBs, bf: maxBf, rs: minRs, rf: maxRf }
-}
-
-function groupAvgPct(acts: Activity[]): number {
-  if (acts.length === 0) return 0
-  return Math.round(acts.reduce((s, a) => s + a.pct, 0) / acts.length)
 }
 
 function fmt(d: string | null): string {
@@ -325,7 +319,7 @@ export default function Gantt() {
               </div>
             </div>
             <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n1st]}>{STATUS_LABEL[n1st]}</Badge></div>
-            <div className="gantt-sticky-exec">{groupAvgPct(n1g.allActs)}%</div>
+            <div className="gantt-sticky-exec">{Math.round(rollupPct(n1g.allActs))}%</div>
           </div>
         </td>
         {makeTimeline(n1dr.bs, n1dr.bf, n1dr.rs, n1dr.rf, n1st, null)}
@@ -351,7 +345,7 @@ export default function Gantt() {
                 </div>
               </div>
               <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n2st]}>{STATUS_LABEL[n2st]}</Badge></div>
-              <div className="gantt-sticky-exec">{groupAvgPct(n2g.allActs)}%</div>
+              <div className="gantt-sticky-exec">{Math.round(rollupPct(n2g.allActs))}%</div>
             </div>
           </td>
           {makeTimeline(n2dr.bs, n2dr.bf, n2dr.rs, n2dr.rf, n2st, null)}
@@ -378,7 +372,7 @@ export default function Gantt() {
                     </div>
                   </div>
                   <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n3st]}>{STATUS_LABEL[n3st]}</Badge></div>
-                  <div className="gantt-sticky-exec">{groupAvgPct(n3g.acts)}%</div>
+                  <div className="gantt-sticky-exec">{Math.round(rollupPct(n3g.acts))}%</div>
                 </div>
               </td>
               {makeTimeline(n3dr.bs, n3dr.bf, n3dr.rs, n3dr.rf, n3st, null)}

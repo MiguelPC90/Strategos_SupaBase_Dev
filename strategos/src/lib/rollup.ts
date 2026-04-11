@@ -25,13 +25,13 @@ export function rollupPctPrev(activities: Activity[], today: string): number {
 
 /**
  * Rollup status from a set of activities:
- * - All pct >= 100 → 'Concluída'
+ * - All pct >= 100 or status === 'Concluído' → 'Concluída'
  * - Any 'Em atraso' or 'atrasada' → 'Em atraso'
  * - Otherwise → 'Em dia'
  */
 export function rollupStatus(activities: Activity[]): string {
   if (activities.length === 0) return 'Em dia'
-  if (activities.every(a => a.pct >= 100)) return 'Concluída'
+  if (activities.every(a => a.pct >= 100 || a.status === 'Concluído')) return 'Concluída'
   if (activities.some(a => a.status === 'Em atraso' || a.status === 'atrasada')) return 'Em atraso'
   return 'Em dia'
 }
