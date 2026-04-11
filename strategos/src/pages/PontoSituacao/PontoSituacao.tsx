@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import { usePdsEntries } from '../../hooks/usePdsEntries'
-import { usePrograms } from '../../hooks/usePrograms'
+import { useEixos } from '../../hooks/useEixos'
 import { useRisks } from '../../hooks/useRisks'
 import { useFilters } from '../../context/FilterContext'
 import type { PdsItem } from '../../types/index'
@@ -67,37 +67,32 @@ function estadoVariant(status: string): RiskBadge {
 // ── Main page ──────────────────────────────────────────────────
 export default function PontoSituacao() {
   const { filters }  = useFilters()
-  const { programs } = usePrograms()
-  const { entries, loading } = usePdsEntries(filters.programIds[0])
+  const programId    = filters.programIds[0] as string | undefined
+  const { entries, loading } = usePdsEntries(programId)
+  const { eixos } = useEixos(programId)
 
   const [selectedKey, setSelectedKey] = useState('')
   const [entryIdx, setEntryIdx]       = useState(0)
 
-  const programId = selectedKey ? selectedKey.split('|')[0] : undefined
   const { risks } = useRisks(programId)
 
-  // Unique plan options derived from loaded entries
-  const planOptions = useMemo(() => {
-    const seen = new Set<string>()
-    const opts: { key: string; label: string }[] = []
-    for (const e of entries) {
-      const key = `${e.program_id}|${e.n0}|${e.n1}`
-      if (!seen.has(key)) {
-        seen.add(key)
-        const prog  = programs.find(p => p.id === e.program_id)
-        const parts = [prog?.name ?? '', e.n0, e.plan_name || e.n1].filter(Boolean)
-        opts.push({ key, label: parts.join(' › ') })
-      }
-    }
-    return opts
-  }, [entries, programs])
+  // Plan options from eixos table
+  const planOptions = useMemo(() =>
+    eixos.map(eixo => ({ key: eixo.id, label: eixo.name })),
+    [eixos]
+  )
 
-  // Entries for the selected plan, sorted newest first
+  // Selected eixo
+  const selectedEixo = useMemo(
+    () => eixos.find(e => e.id === selectedKey) ?? null,
+    [eixos, selectedKey]
+  )
+
+  // Entries for the selected eixo, sorted newest first
   const planEntries = useMemo(() => {
-    if (!selectedKey) return []
-    const [pid, n0, n1] = selectedKey.split('|')
+    if (!selectedEixo) return []
     return entries
-      .filter(e => String(e.program_id) === pid && e.n0 === n0 && e.n1 === n1)
+      .filter(e => e.n1 === selectedEixo.name)
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
   }, [entries, selectedKey])
 

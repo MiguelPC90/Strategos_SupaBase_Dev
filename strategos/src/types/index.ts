@@ -21,6 +21,33 @@ export type PageKey =
   | 'gestao-recursos'
   | 'admin'
 
+// ── Eixos ─────────────────────────────────────────────────────
+export interface Eixo {
+  id: string
+  program_id: string | null
+  code: string
+  name: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+// ── Planos ────────────────────────────────────────────────────
+export interface Plano {
+  id: string
+  eixo_id: string
+  program_id: string | null
+  code: string
+  name: string
+  owner: string | null
+  sponsor: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+  /** Joined from eixos when queried with eixo:eixos(name,code) */
+  eixo: { name: string; code: string } | null
+}
+
 // ── programs ──────────────────────────────────────────────────
 export interface Program {
   id: string
@@ -51,6 +78,8 @@ export interface Activity {
   id1: string
   id2: string
   program_id: string | null
+  /** UUID of the linked plano (null for legacy data) */
+  plano_id: string | null
   /** Baseline start */
   bs: string | null
   /** Baseline finish */

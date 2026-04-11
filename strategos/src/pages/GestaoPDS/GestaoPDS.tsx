@@ -2,7 +2,7 @@ import './GestaoPDS.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
-import { useActivities } from '../../hooks/useActivities'
+import { usePlanos } from '../../hooks/usePlanos'
 import { usePdsEntries } from '../../hooks/usePdsEntries'
 import type { PdsItem } from '../../types/index'
 
@@ -208,32 +208,28 @@ function PdsSection({
 export default function GestaoPDS() {
   const { filters }  = useFilters()
   const programId    = filters.programIds[0] as string | undefined
-  const { activities } = useActivities({ program_id: programId })
-  const { entries, loading } = usePdsEntries(programId)
+  const { planos, loading: planosLoading } = usePlanos(programId)
+  const { entries, loading: entriesLoading } = usePdsEntries(programId)
+  const loading = entriesLoading || planosLoading
 
-  // ── Plan options from level-2 activities ────────────────────
-  const planOptions = useMemo<PlanOption[]>(() => {
-    const seen = new Set<string>()
-    const opts: PlanOption[] = []
-    for (const a of activities) {
-      if (a.level !== 2) continue
-      const key = `${a.n1}|||${a.n2}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      opts.push({
-        key,
-        label:      a.n1 ? `${a.n1} › ${a.n2}` : (a.n2 || '(sem nome)'),
-        n0:         a.n0,
-        n1:         a.n1,
-        n2:         a.n2,
-        id0:        a.id0,
-        id1:        a.id1,
-        id2:        a.id2,
-        program_id: a.program_id,
-      })
-    }
-    return opts
-  }, [activities])
+  // ── Plan options from planos table ──────────────────────────
+  const planOptions = useMemo<PlanOption[]>(() =>
+    planos.map(p => {
+      const eixoName = p.eixo?.name ?? ''
+      return {
+        key:        p.id,
+        label:      eixoName ? `${eixoName} › ${p.name}` : p.name,
+        n0:         '',
+        n1:         eixoName,
+        n2:         p.name,
+        id0:        '',
+        id1:        p.eixo?.code ?? '',
+        id2:        p.code,
+        program_id: p.program_id,
+      }
+    }),
+    [planos]
+  )
 
   const [selectedKey, setSelectedKey] = useState<string>('')
 
@@ -417,7 +413,7 @@ export default function GestaoPDS() {
   }
 
   const noProgram = !programId
-  const noPlans   = !noProgram && planOptions.length === 0
+  const noPlans   = !noProgram && !planosLoading && planOptions.length === 0
 
   return (
     <div className="pds-page">

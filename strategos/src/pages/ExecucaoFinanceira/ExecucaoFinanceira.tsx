@@ -9,6 +9,7 @@ import KpiCard from '../../components/KpiCard/KpiCard'
 import Badge from '../../components/Badge/Badge'
 import { useFinancials } from '../../hooks/useFinancials'
 import { usePdsEntries } from '../../hooks/usePdsEntries'
+import { useEixos } from '../../hooks/useEixos'
 import { useFilters } from '../../context/FilterContext'
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -116,36 +117,33 @@ export default function ExecucaoFinanceira() {
 
   const { budgetLines, contracts, invoices, loading } = useFinancials(programId)
   const { entries }                                   = usePdsEntries(programId)
+  const { eixos }                                     = useEixos(programId)
 
   const [planKey,     setPlanKey]     = useState('')
   const [capexFilter, setCapexFilter] = useState<CapexFilter>('all')
   const [yearFilter,  setYearFilter]  = useState('')
 
-  // ── Plan selector options ────────────────────────────────────
-  const planOptions = useMemo(() => {
-    const seen = new Set<string>()
-    const opts: { key: string; label: string }[] = []
-    for (const e of entries) {
-      const k = `${e.program_id}|${e.n0}|${e.n1}`
-      if (!seen.has(k)) {
-        seen.add(k)
-        const parts = [e.n0, e.plan_name || e.n1].filter(Boolean)
-        opts.push({ key: k, label: parts.join(' › ') })
-      }
-    }
-    return opts
-  }, [entries])
+  // ── Plan selector options from eixos table ───────────────────
+  const planOptions = useMemo(() =>
+    eixos.map(eixo => ({ key: eixo.id, label: eixo.name })),
+    [eixos]
+  )
 
-  // ── Entry IDs for selected plan (null = all plans) ───────────
+  // ── Selected eixo ─────────────────────────────────────────────
+  const selectedEixo = useMemo(
+    () => eixos.find(e => e.id === planKey) ?? null,
+    [eixos, planKey]
+  )
+
+  // ── Entry IDs for selected eixo (null = all) ─────────────────
   const planIds = useMemo<Set<string> | null>(() => {
-    if (!planKey) return null
-    const [pid, n0, n1] = planKey.split('|')
+    if (!selectedEixo) return null
     return new Set(
       entries
-        .filter(e => String(e.program_id) === pid && e.n0 === n0 && e.n1 === n1)
+        .filter(e => e.n1 === selectedEixo.name)
         .map(e => e.id)
     )
-  }, [entries, planKey])
+  }, [entries, selectedEixo])
 
   // ── Step 1: plan-filtered data ───────────────────────────────
   const planLines = useMemo(

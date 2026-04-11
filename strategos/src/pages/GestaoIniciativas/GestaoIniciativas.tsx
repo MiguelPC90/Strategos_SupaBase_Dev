@@ -6,6 +6,8 @@ import Badge from '../../components/Badge/Badge'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { usePeople } from '../../hooks/usePeople'
+import { useEixos } from '../../hooks/useEixos'
+import { usePlanos } from '../../hooks/usePlanos'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange } from '../../lib/rollup'
@@ -333,14 +335,14 @@ export default function GestaoIniciativas() {
   const { activities, loading, refetch } = useActivities({ program_id: programId })
   const { programs } = usePrograms()
   const { people } = usePeople()
+  const { eixos: dbEixos } = useEixos(programId)
+  const { planos: dbPlanos } = usePlanos(programId)
 
   const program    = useMemo(() => programs.find(p => p.id === programId), [programs, programId])
   const peopleNames = useMemo(() => people.filter(p => p.active !== false).map(p => p.name), [people])
 
-  // Derived eixos/planos from existing activity data (no separate DB tables)
-  const eixos = useMemo(() =>
-    [...new Set(activities.map(a => a.n1).filter(Boolean))].sort(),
-    [activities])
+  // Eixo and plano names from DB tables (Panel dropdowns)
+  const eixos = useMemo(() => dbEixos.map(e => e.name), [dbEixos])
 
   // Dirty changes: id → { pct?, sort_order? }
   const [dirty, setDirty] = useState<Map<string, DirtyChange>>(new Map())
@@ -363,12 +365,13 @@ export default function GestaoIniciativas() {
 
   const tree = useMemo(() => buildTree(localActs), [localActs])
 
-  // Planos filtered by selected n1 in panel
+  // Planos filtered by selected eixo (n1) in panel
   const planos = useMemo(() => {
     const n1 = panelForm?.n1 ?? ''
-    const source = n1 ? activities.filter(a => a.n1 === n1) : activities
-    return [...new Set(source.map(a => a.n2).filter(Boolean))].sort()
-  }, [activities, panelForm?.n1])
+    return dbPlanos
+      .filter(p => !n1 || p.eixo?.name === n1)
+      .map(p => p.name)
+  }, [dbPlanos, panelForm?.n1])
 
   // Close menu on outside click
   useEffect(() => {

@@ -5,6 +5,7 @@ import KpiCard from '../../components/KpiCard/KpiCard'
 import Badge from '../../components/Badge/Badge'
 import { useResources } from '../../hooks/useResources'
 import { usePdsEntries } from '../../hooks/usePdsEntries'
+import { useEixos } from '../../hooks/useEixos'
 import { usePeople } from '../../hooks/usePeople'
 import { useFilters } from '../../context/FilterContext'
 import type { FteResource, PdsEntry, Person } from '../../types/index'
@@ -317,6 +318,7 @@ export default function Recursos() {
 
   const { resources, loading } = useResources(programId)
   const { entries }            = usePdsEntries(programId)
+  const { eixos }              = useEixos(programId)
   const { people }             = usePeople()
 
   const [view,          setView]          = useState<ViewMode>('plano')
@@ -334,30 +336,27 @@ export default function Recursos() {
     return m
   }, [entries])
 
-  // ── Plan selector options ─────────────────────────────────────
-  const planOptions = useMemo(() => {
-    const seen = new Set<string>()
-    const opts: { key: string; label: string }[] = []
-    for (const e of entries) {
-      const k = `${e.program_id}|${e.n0}|${e.n1}`
-      if (!seen.has(k)) {
-        seen.add(k)
-        opts.push({ key: k, label: planLabel(e) })
-      }
-    }
-    return opts
-  }, [entries])
+  // ── Plan selector options from eixos table ────────────────────
+  const planOptions = useMemo(() =>
+    eixos.map(eixo => ({ key: eixo.id, label: eixo.name })),
+    [eixos]
+  )
 
-  // ── Entry IDs for selected plan (null = all) ──────────────────
+  // ── Selected eixo ─────────────────────────────────────────────
+  const selectedEixo = useMemo(
+    () => eixos.find(e => e.id === planKey_) ?? null,
+    [eixos, planKey_]
+  )
+
+  // ── Entry IDs for selected eixo (null = all) ──────────────────
   const planIds = useMemo<Set<string> | null>(() => {
-    if (!planKey_) return null
-    const [pid, n0, n1] = planKey_.split('|')
+    if (!selectedEixo) return null
     return new Set(
       entries
-        .filter(e => String(e.program_id) === pid && e.n0 === n0 && e.n1 === n1)
+        .filter(e => e.n1 === selectedEixo.name)
         .map(e => e.id)
     )
-  }, [entries, planKey_])
+  }, [entries, selectedEixo])
 
   // ── Scoped resources ──────────────────────────────────────────
   const scoped = useMemo(
