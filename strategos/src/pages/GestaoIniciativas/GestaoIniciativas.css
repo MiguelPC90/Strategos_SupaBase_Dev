@@ -26,6 +26,12 @@
 
   .gi-spacer { flex: 1; }
 
+  .gi-toast {
+    font-size: 12px;
+    color: var(--green);
+    font-weight: 600;
+  }
+
   /* ── Buttons ────────────────────────────────────────────────── */
   .gi-btn {
     padding: 5px 12px;
@@ -50,12 +56,12 @@
   .gi-btn-primary:hover:not(:disabled) { background: #003f7a; }
 
   .gi-btn-save {
-    background: var(--green);
+    background: var(--navy);
     color: #fff;
-    border-color: var(--green);
+    border-color: var(--navy);
     font-weight: 600;
   }
-  .gi-btn-save:hover:not(:disabled) { background: #82a63a; }
+  .gi-btn-save:hover:not(:disabled) { background: #003f7a; }
 
   .gi-btn-danger {
     color: var(--red);
@@ -98,7 +104,11 @@
   .gi-row-n1 td { background: var(--bg2); font-weight: 700; color: var(--navy); }
   .gi-row-n2 td { font-weight: 600; }
   .gi-row-n3 td { font-weight: 500; color: var(--text2); }
-  .gi-row-n4:hover td { background: #f8f9fa; }
+  .gi-row-n4 td { color: var(--text2); font-size: 12px; }
+  .gi-row-n5 td { color: var(--text3); font-size: 12px; }
+
+  .gi-row-leaf:hover td { background: #f8f9fa; cursor: pointer; }
+  .gi-row-leaf.selected td { background: #eef4ff; border-left: 2px solid var(--blue) !important; }
 
   /* ── Name cell ──────────────────────────────────────────────── */
   .gi-name-cell {
@@ -156,10 +166,10 @@
 
   .gi-pct-unit { font-size: 11px; color: var(--text3); }
 
-  /* ── Action buttons ─────────────────────────────────────────── */
-  .gi-act-btns {
+  /* ── ⋯ menu ─────────────────────────────────────────────────── */
+  .gi-menu-wrap {
+    position: relative;
     display: flex;
-    gap: 4px;
     justify-content: center;
   }
 
@@ -173,13 +183,50 @@
     background: none;
     cursor: pointer;
     border-radius: 4px;
-    font-size: 13px;
+    font-size: 15px;
     color: var(--text2);
     padding: 0;
     font-family: inherit;
+    letter-spacing: 1px;
   }
   .gi-icon-btn:hover { background: var(--bg3); }
-  .gi-icon-btn.del:hover { background: #fff0f0; color: var(--red); }
+
+  .gi-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 100;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    min-width: 160px;
+    padding: 4px 0;
+  }
+
+  .gi-menu-item {
+    display: block;
+    width: 100%;
+    padding: 7px 14px;
+    border: none;
+    background: none;
+    text-align: left;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .gi-menu-item:hover:not(:disabled) { background: var(--bg2); }
+  .gi-menu-item:disabled { color: var(--text3); cursor: not-allowed; }
+  .gi-menu-item.danger { color: var(--red); }
+  .gi-menu-item.danger:hover { background: #fff0f0; }
+
+  .gi-menu-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
 
   /* ── Empty / loading ────────────────────────────────────────── */
   .gi-empty {
