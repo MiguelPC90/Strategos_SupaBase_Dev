@@ -1,0 +1,430 @@
+@layer components {
+  .gres-page {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* ── Controls bar ───────────────────────────────────────────── */
+  .gres-controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 8px 16px;
+  }
+
+  .gres-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+
+  .gres-plan-select {
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 5px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    font-family: inherit;
+    min-width: 240px;
+    max-width: 380px;
+  }
+  .gres-plan-select:focus   { outline: none; border-color: var(--navy); }
+  .gres-plan-select:disabled { opacity: 0.6; }
+
+  .gres-days-input {
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 5px 8px;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--bg);
+    font-family: inherit;
+    width: 52px;
+    text-align: right;
+  }
+  .gres-days-input:focus { outline: none; border-color: var(--navy); }
+
+  .gres-spacer { flex: 1; }
+
+  .gres-toast {
+    font-size: 12px;
+    color: var(--green);
+    font-weight: 600;
+  }
+  .gres-warn {
+    font-size: 12px;
+    color: var(--amber);
+    font-weight: 600;
+    max-width: 280px;
+  }
+  .gres-save-err {
+    font-size: 12px;
+    color: var(--red);
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────── */
+  .gres-btn {
+    padding: 5px 12px;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.1s;
+    font-family: inherit;
+  }
+  .gres-btn:hover:not(:disabled) { background: var(--bg2); }
+  .gres-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .gres-btn-primary {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    font-weight: 600;
+  }
+  .gres-btn-primary:hover:not(:disabled) { background: #003f7a; }
+
+  .gres-btn-save {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    font-weight: 600;
+  }
+  .gres-btn-save:hover:not(:disabled) { background: #003f7a; }
+
+  .gres-icon-btn {
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--text3);
+    padding: 0;
+    font-family: inherit;
+    flex-shrink: 0;
+  }
+  .gres-icon-btn:hover { background: var(--bg3); }
+  .gres-icon-btn.danger:hover { background: #fff0f0; color: var(--red); }
+
+  /* ── KPI row ────────────────────────────────────────────────── */
+  .gres-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  /* ── Plan header bar ────────────────────────────────────────── */
+  .gres-header-bar {
+    background: var(--navy);
+    color: #fff;
+    border-radius: var(--r);
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .gres-header-bar .sep { opacity: 0.5; }
+
+  /* ── Summary table ──────────────────────────────────────────── */
+  .gres-summary-wrap {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+    overflow: hidden;
+  }
+
+  .gres-summary-title {
+    padding: 8px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--navy);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .gres-summary-title::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 12px;
+    background: var(--navy);
+    border-radius: 2px;
+  }
+
+  .gres-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .gres-summary-table th {
+    padding: 5px 10px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text2);
+    background: var(--bg2);
+    white-space: nowrap;
+  }
+  .gres-summary-table th.gres-th-r { text-align: right; }
+  .gres-summary-table td {
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .gres-summary-table td.gres-td-r { text-align: right; }
+  .gres-summary-table tr:last-child td { border-bottom: none; }
+  .gres-summary-row { cursor: pointer; }
+  .gres-summary-row:hover td { background: var(--bg2); }
+
+  /* ── Cards section ──────────────────────────────────────────── */
+  .gres-cards-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .gres-cards-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .gres-cards-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--navy);
+    flex: 1;
+  }
+
+  .gres-empty {
+    text-align: center;
+    color: var(--text3);
+    padding: 40px 24px;
+    font-size: 13px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+  }
+
+  /* ── Resource card ──────────────────────────────────────────── */
+  .gres-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+    transition: border-color 0.15s;
+    overflow: hidden;
+  }
+  .gres-card:hover { border-color: rgba(0,46,94,0.3); }
+  .gres-card--overallocated { border-left: 3px solid var(--red); }
+  .gres-card--inactive { opacity: 0.72; }
+
+  .gres-card-body {
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Main row */
+  .gres-card-main {
+    display: grid;
+    grid-template-columns: 2fr 1fr 100px 88px 100px auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  /* Detail row */
+  .gres-card-detail {
+    display: grid;
+    grid-template-columns: 1fr 1fr 130px 130px 1fr;
+    gap: 8px;
+    align-items: center;
+  }
+  .gres-card-detail--contract {
+    grid-template-columns: 1fr 1fr 130px 130px 1fr 1fr;
+  }
+
+  /* Field group */
+  .gres-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .gres-field-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text3);
+  }
+
+  .gres-input,
+  .gres-select {
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--bg2);
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .gres-input:focus,
+  .gres-select:focus {
+    outline: none;
+    border-color: var(--navy);
+    background: var(--bg);
+  }
+  .gres-input--err {
+    border-color: var(--red) !important;
+    background: #fff5f5 !important;
+  }
+  .gres-input--name {
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  /* Card footer with cost + hint */
+  .gres-card-footer {
+    padding: 4px 14px 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .gres-cost-hint {
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .gres-cost-hint strong { color: var(--navy); font-weight: 600; }
+
+  .gres-inactive-hint {
+    font-size: 11px;
+    color: var(--amber);
+    font-weight: 600;
+  }
+
+  .gres-card-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  /* ── Import panel overlay ───────────────────────────────────── */
+  .gres-panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.2);
+    z-index: 200;
+  }
+
+  .gres-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 480px;
+    background: var(--bg);
+    border-left: 1px solid var(--border2);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+    z-index: 201;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .gres-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .gres-panel-title {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .gres-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .gres-panel-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .gres-import-plan-select {
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    font-family: inherit;
+    width: 100%;
+  }
+  .gres-import-plan-select:focus { outline: none; border-color: var(--navy); }
+
+  .gres-import-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .gres-import-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .gres-import-item:hover { background: var(--bg2); }
+  .gres-import-item--selected { background: #eef3ff; border-color: var(--blue); }
+
+  .gres-import-item-name { font-size: 13px; font-weight: 600; flex: 1; }
+  .gres-import-item-meta { font-size: 11px; color: var(--text2); }
+}
