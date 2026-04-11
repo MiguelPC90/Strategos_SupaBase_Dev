@@ -1,0 +1,320 @@
+@layer components {
+  .pds-page {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* ── Controls bar ───────────────────────────────────────────── */
+  .pds-controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 8px 16px;
+  }
+
+  .pds-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+
+  .pds-plan-select {
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 5px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    font-family: inherit;
+    min-width: 240px;
+    max-width: 420px;
+  }
+  .pds-plan-select:focus { outline: none; border-color: var(--navy); }
+  .pds-plan-select:disabled { opacity: 0.6; }
+
+  .pds-spacer { flex: 1; }
+
+  .pds-toast {
+    font-size: 12px;
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  .pds-save-err {
+    font-size: 12px;
+    color: var(--red);
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────── */
+  .pds-btn {
+    padding: 5px 12px;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.1s;
+    font-family: inherit;
+  }
+  .pds-btn:hover:not(:disabled) { background: var(--bg2); }
+  .pds-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .pds-btn-save {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    font-weight: 600;
+  }
+  .pds-btn-save:hover:not(:disabled) { background: #003f7a; }
+
+  /* ── Status / empty ─────────────────────────────────────────── */
+  .pds-status {
+    text-align: center;
+    color: var(--text3);
+    padding: 40px 24px;
+    font-size: 13px;
+  }
+
+  /* ── 2×2 grid ───────────────────────────────────────────────── */
+  .pds-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  /* ── Section card ───────────────────────────────────────────── */
+  .pds-section {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+    display: flex;
+    flex-direction: column;
+    min-height: 220px;
+    overflow: hidden;
+  }
+
+  .pds-section-head {
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--navy);
+    border-bottom: 2px solid var(--border);
+    background: var(--bg2);
+    flex-shrink: 0;
+  }
+
+  .pds-items-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .pds-empty-items {
+    padding: 20px 12px;
+    text-align: center;
+    color: var(--text3);
+    font-size: 12px;
+    font-style: italic;
+  }
+
+  /* ── Item ───────────────────────────────────────────────────── */
+  .pds-item {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border2);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: border-left-color 0.15s;
+  }
+
+  .pds-item--active {
+    border-left-color: var(--navy);
+  }
+
+  /* Status colour coding (sections with date/status) */
+  .pds-item[data-status="Em curso"]  { border-left-color: var(--blue); }
+  .pds-item[data-status="Concluído"] { border-left-color: var(--green); }
+
+  /* ── Mini toolbar ───────────────────────────────────────────── */
+  .pds-toolbar {
+    display: flex;
+    gap: 2px;
+    padding: 4px 6px;
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pds-toolbar-btn {
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: serif;
+    line-height: 1;
+    padding: 0;
+  }
+  .pds-toolbar-btn:hover { background: var(--bg2); }
+
+  .pds-toolbar-btn--i {
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  /* ── Item row ───────────────────────────────────────────────── */
+  .pds-item-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 5px 6px 5px 4px;
+  }
+
+  .pds-move-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .pds-move-btn {
+    width: 18px;
+    height: 16px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 8px;
+    color: var(--text3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 2px;
+    font-family: inherit;
+    line-height: 1;
+  }
+  .pds-move-btn:hover:not(:disabled) { background: var(--bg3); color: var(--text2); }
+  .pds-move-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+  .pds-item-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .pds-item-text {
+    width: 100%;
+    border: none;
+    border-radius: 3px;
+    padding: 3px 5px;
+    font-size: 13px;
+    color: var(--text);
+    background: transparent;
+    font-family: inherit;
+    resize: none;
+    line-height: 1.5;
+    box-sizing: border-box;
+    min-height: 34px;
+  }
+  .pds-item-text:focus { outline: none; }
+
+  /* ── Meta row (date + status) ───────────────────────────────── */
+  .pds-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 0 4px 2px;
+  }
+
+  .pds-item-date {
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    color: var(--text);
+    background: var(--bg);
+    font-family: inherit;
+  }
+  .pds-item-date:focus { outline: none; border-color: var(--navy); }
+
+  .pds-item-status {
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    color: var(--text);
+    background: var(--bg);
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .pds-item-status:focus { outline: none; border-color: var(--navy); }
+
+  /* ── Remove button ──────────────────────────────────────────── */
+  .pds-remove-btn {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--text3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    padding: 0;
+    font-family: inherit;
+    margin-top: 4px;
+  }
+  .pds-remove-btn:hover { background: #fff0f0; color: var(--red); }
+
+  /* ── Add button (ghost) ─────────────────────────────────────── */
+  .pds-add-btn {
+    display: block;
+    width: calc(100% - 16px);
+    margin: 0 8px 8px;
+    padding: 6px;
+    border: 1px dashed var(--border2);
+    border-radius: 6px;
+    background: none;
+    color: var(--text3);
+    font-size: 12px;
+    cursor: pointer;
+    text-align: center;
+    font-family: inherit;
+    transition: border-color 0.1s, color 0.1s, background 0.1s;
+    flex-shrink: 0;
+  }
+  .pds-add-btn:hover {
+    border-color: var(--navy);
+    color: var(--navy);
+    background: #f0f4ff;
+  }
+}
