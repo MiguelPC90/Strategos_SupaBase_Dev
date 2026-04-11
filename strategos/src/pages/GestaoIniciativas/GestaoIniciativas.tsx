@@ -521,6 +521,7 @@ export default function GestaoIniciativas() {
           key={a.id}
           className={`gi-row-${level} gi-row-leaf${isSelected ? ' selected' : ''}`}
           onClick={() => setSelectedId(isSelected ? null : a.id)}
+          onDoubleClick={() => openPanel(a)}
         >
           <td>
             <div className="gi-name-cell" style={{ paddingLeft: indent }}>

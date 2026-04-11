@@ -108,7 +108,8 @@
   .gi-row-n5 td { color: var(--text3); font-size: 12px; }
 
   .gi-row-leaf:hover td { background: #f8f9fa; cursor: pointer; }
-  .gi-row-leaf.selected td { background: #eef4ff; border-left: 2px solid var(--blue) !important; }
+  .gi-row-leaf.selected td { background: #eef4ff; }
+  .gi-row-leaf.selected td:first-child { border-left: 3px solid var(--blue); }
 
   /* ── Name cell ──────────────────────────────────────────────── */
   .gi-name-cell {
@@ -163,6 +164,9 @@
     font-family: inherit;
   }
   .gi-pct-input:focus { outline: none; border-color: var(--navy); }
+  .gi-pct-input::-webkit-inner-spin-button,
+  .gi-pct-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .gi-pct-input { -moz-appearance: textfield; }
 
   .gi-pct-unit { font-size: 11px; color: var(--text3); }
 
