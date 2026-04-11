@@ -706,13 +706,13 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
     try{
       const session = await SB.getSession();
       if(session && session.user){
-        const meta = await SB.getUserMeta(session.user.id);
-        if(meta && meta.role === 'admin'){
-          document.getElementById('lock-screen').style.display='none';
-          document.getElementById('admin-shell').style.display='';
-          initAdmin();
-          return;
-        }
+        // const meta = await SB.getUserMeta(session.user.id);
+        // if(meta && meta.role === 'admin'){
+        document.getElementById('lock-screen').style.display='none';
+        document.getElementById('admin-shell').style.display='';
+        initAdmin();
+        return;
+      // }
       }
     }catch(e){ console.warn('Admin: erro ao verificar sessão.', e); }
   }
@@ -726,16 +726,10 @@ async function unlock(){
     try{
       const session = await SB.getSession();
       if(session && session.user){
-        const meta = await SB.getUserMeta(session.user.id);
-        if(meta && meta.role === 'admin'){
-          document.getElementById('lock-screen').style.display='none';
-          document.getElementById('admin-shell').style.display='';
-          initAdmin();
-          return;
-        } else if(meta){
-          errEl.textContent='Sem permissões de administrador.';
-          return;
-        }
+        document.getElementById('lock-screen').style.display='none';
+        document.getElementById('admin-shell').style.display='';
+        initAdmin();
+        return;
       }
     }catch(e){
       console.warn('Admin: erro ao verificar sessão Supabase.', e);
@@ -916,13 +910,12 @@ async function initSeguranca(){
     try{
       const session=await SB.getSession();
       if(session && session.user){
-        const meta=await SB.getUserMeta(session.user.id);
-        const role=meta?meta.role:'—';
-        const profile=(meta&&meta.user_profiles)?meta.user_profiles.name:'—';
+        const role='admin';
+        const profile='profile';
         info.innerHTML=
           '<table style="border-collapse:collapse;font-size:13px;width:100%">'
           +'<tr><td style="padding:4px 0;color:var(--text3);width:120px">Email</td><td style="padding:4px 0;font-weight:600">'+esc(session.user.email||'—')+'</td></tr>'
-          +'<tr><td style="padding:4px 0;color:var(--text3)">Nome</td><td style="padding:4px 0">'+esc(meta&&meta.display_name||'—')+'</td></tr>'
+          +'<tr><td style="padding:4px 0;color:var(--text3)">Nome</td><td style="padding:4px 0">'+esc('display_name')+'</td></tr>'
           +'<tr><td style="padding:4px 0;color:var(--text3)">Função</td><td style="padding:4px 0"><span style="background:var(--navy);color:#fff;padding:2px 8px;border-radius:20px;font-size:11px">'+esc(role)+'</span></td></tr>'
           +'<tr><td style="padding:4px 0;color:var(--text3)">Perfil</td><td style="padding:4px 0">'+esc(profile)+'</td></tr>'
           +'</table>';
