@@ -270,6 +270,9 @@ All interfaces mirror the Supabase schema exactly. Import from `'../types/index'
 | `UserRole` | `'admin' \| 'gestor' \| 'viewer'` |
 | `PageKey` | Union of all valid route page keys |
 
+> **`cost_categories` schema:** `id`, `name` (text), `is_capex` (boolean). No `program_id` column — program assignments live in the join table below.
+> **`cost_category_programs` join table:** `id`, `category_id` (FK → `cost_categories` ON DELETE CASCADE), `program_id` (FK → `programs` ON DELETE CASCADE), UNIQUE(`category_id`, `program_id`). Used by `CategoriasTab` (Admin → Financeiro) for many-to-many category-program assignment.
+
 > **Note on activities:** `source` field exists in DB but is unused — omit it from types and queries. `id0` is a legacy text field — keep but prefer `program_id` for filtering.
 > **`pct` and `pct_prev` scale:** Both fields are stored as **0–100** (e.g. `85` means 85%). Do NOT multiply by 100 when computing averages or displaying values. An activity is "concluída" when `pct >= 100`, not `>= 1`. The `exec_media` field in `SnapshotKpi` follows the same 0–100 convention.
 

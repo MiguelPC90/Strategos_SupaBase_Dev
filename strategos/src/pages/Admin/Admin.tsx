@@ -1471,10 +1471,10 @@ function AdminRecursos() {
 type FinTab = 'moedas' | 'categorias' | 'anos'
 
 interface Currency     { id: string; code: string; name: string; is_default: boolean }
-interface CostCategory { id: string; program_id: string; name: string; is_capex: boolean }
+interface CostCategory { id: string; name: string; is_capex: boolean }
 interface ManagementYear { id: string; program_id: string; year: number }
 interface DraftCurrency  { id: string | null; code: string; name: string }
-interface DraftCategory  { id: string | null; name: string; is_capex: boolean; programId: string }
+interface DraftCategory  { id: string | null; name: string; is_capex: boolean; programIds: string[] }
 
 // ── Tab: Moedas ────────────────────────────────────────────────
 function MoedasTab() {
@@ -1638,33 +1638,34 @@ interface ProgTabProps { programs: Program[]; progsLoading: boolean }
 
 
 function CategoriasTab({ programs }: ProgTabProps) {
-  const [categories, setCategories] = useState<CostCategory[]>([])
-  const [loading,    setLoading]    = useState(true)
-  const [draft,      setDraft]      = useState<DraftCategory | null>(null)
-  const [errMsg,     setErrMsg]     = useState('')
+  const [categories,       setCategories]       = useState<CostCategory[]>([])
+  const [categoryPrograms, setCategoryPrograms] = useState<Record<string, string[]>>({})
+  const [loading,          setLoading]          = useState(true)
+  const [draft,            setDraft]            = useState<DraftCategory | null>(null)
+  const [errMsg,           setErrMsg]           = useState('')
 
   function showErr(msg: string) { setErrMsg(msg); setTimeout(() => setErrMsg(''), 3000) }
+
+  async function loadAll() {
+    const [catRes, linkRes] = await Promise.all([
+      supabase.from('cost_categories').select('id, name, is_capex').order('name'),
+      supabase.from('cost_category_programs').select('category_id, program_id'),
+    ])
+    setCategories((catRes.data ?? []) as CostCategory[])
+    const map: Record<string, string[]> = {}
+    for (const row of (linkRes.data ?? []) as { category_id: string; program_id: string }[]) {
+      if (!map[row.category_id]) map[row.category_id] = []
+      map[row.category_id].push(row.program_id)
+    }
+    setCategoryPrograms(map)
+  }
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    supabase.from('cost_categories')
-      .select('id, program_id, name, is_capex')
-      .order('name')
-      .then(({ data }) => {
-        if (cancelled) return
-        setCategories((data ?? []) as CostCategory[])
-        setLoading(false)
-      })
+    loadAll().then(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
-
-  async function reloadCategories() {
-    const { data } = await supabase.from('cost_categories')
-      .select('id, program_id, name, is_capex')
-      .order('name')
-    setCategories((data ?? []) as CostCategory[])
-  }
 
   async function toggleCapex(cat: CostCategory) {
     const newVal = !cat.is_capex
@@ -1673,27 +1674,57 @@ function CategoriasTab({ programs }: ProgTabProps) {
   }
 
   async function saveCategory() {
-    if (!draft || !draft.name.trim() || !draft.programId) return
-    const payload = {
-      name:       draft.name.trim(),
-      is_capex:   draft.is_capex,
-      program_id: draft.programId,
-    }
+    if (!draft || !draft.name.trim() || draft.programIds.length === 0) return
+    const payload = { name: draft.name.trim(), is_capex: draft.is_capex }
+    let savedId: string
     if (draft.id) {
       const { error } = await supabase.from('cost_categories').update(payload).eq('id', draft.id)
       if (error) { showErr(error.message); return }
+      savedId = draft.id
     } else {
-      const { error } = await supabase.from('cost_categories').insert(payload)
-      if (error) { showErr(error.message); return }
+      const { data: inserted, error } = await supabase
+        .from('cost_categories').insert(payload).select('id').single()
+      if (error || !inserted) { showErr(error?.message ?? 'Erro ao criar'); return }
+      savedId = (inserted as { id: string }).id
     }
+    // Re-sync join table: delete old links, then insert new
+    await supabase.from('cost_category_programs').delete().eq('category_id', savedId)
+    const { error: linkErr } = await supabase.from('cost_category_programs').insert(
+      draft.programIds.map(pid => ({ category_id: savedId, program_id: pid }))
+    )
+    if (linkErr) { showErr(linkErr.message); return }
     setDraft(null)
-    await reloadCategories()
+    await loadAll()
   }
 
   async function deleteCategory(id: string) {
     if (!window.confirm('Remover esta categoria?')) return
+    // FK cascade handles cost_category_programs; delete category row
     await supabase.from('cost_categories').delete().eq('id', id)
     setCategories(prev => prev.filter(c => c.id !== id))
+    setCategoryPrograms(prev => { const n = { ...prev }; delete n[id]; return n })
+  }
+
+  function renderProgramChecklist(selectedIds: string[], onChange: (ids: string[]) => void) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {programs.map(p => (
+          <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+            <input type="checkbox" checked={selectedIds.includes(p.id)}
+              onChange={e => {
+                const next = e.target.checked
+                  ? [...selectedIds, p.id]
+                  : selectedIds.filter(id => id !== p.id)
+                if (next.length === 0) return  // at least 1 required
+                onChange(next)
+              }}
+            />
+            {p.name}
+          </label>
+        ))}
+        {programs.length === 0 && <span style={{ fontSize: 12, color: 'var(--text3)' }}>Sem programas</span>}
+      </div>
+    )
   }
 
   return (
@@ -1713,7 +1744,8 @@ function CategoriasTab({ programs }: ProgTabProps) {
             </thead>
             <tbody>
               {categories.map(cat => {
-                const editing = draft?.id === cat.id
+                const editing    = draft?.id === cat.id
+                const catProgIds = categoryPrograms[cat.id] ?? []
                 return (
                   <tr key={cat.id} className={editing ? 'editing' : undefined}>
                     <td>
@@ -1738,15 +1770,12 @@ function CategoriasTab({ programs }: ProgTabProps) {
                     </td>
                     <td>
                       {editing ? (
-                        <select className="adm-select" style={{ width: '100%' }}
-                          value={draft!.programId}
-                          onChange={ev => setDraft(d => d ? { ...d, programId: ev.target.value } : d)}>
-                          {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                          {programs.length === 0 && <option value="">Sem programas</option>}
-                        </select>
+                        renderProgramChecklist(draft!.programIds, ids => setDraft(d => d ? { ...d, programIds: ids } : d))
                       ) : (
                         <span style={{ fontSize: 12, color: 'var(--text2)' }}>
-                          {programs.find(p => p.id === cat.program_id)?.name ?? '—'}
+                          {catProgIds.length > 0
+                            ? catProgIds.map(id => programs.find(p => p.id === id)?.name ?? id).join(', ')
+                            : '—'}
                         </span>
                       )}
                     </td>
@@ -1759,7 +1788,7 @@ function CategoriasTab({ programs }: ProgTabProps) {
                       ) : (
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Editar"
-                            onClick={() => setDraft({ id: cat.id, name: cat.name, is_capex: cat.is_capex, programId: cat.program_id })}>✎</button>
+                            onClick={() => setDraft({ id: cat.id, name: cat.name, is_capex: cat.is_capex, programIds: catProgIds })}>✎</button>
                           <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
                             onClick={() => deleteCategory(cat.id)}>🗑</button>
                         </span>
@@ -1788,12 +1817,7 @@ function CategoriasTab({ programs }: ProgTabProps) {
                     </span>
                   </td>
                   <td>
-                    <select className="adm-select" style={{ width: '100%' }}
-                      value={draft.programId}
-                      onChange={ev => setDraft(d => d ? { ...d, programId: ev.target.value } : d)}>
-                      {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      {programs.length === 0 && <option value="">Sem programas</option>}
-                    </select>
+                    {renderProgramChecklist(draft.programIds, ids => setDraft(d => d ? { ...d, programIds: ids } : d))}
                   </td>
                   <td>
                     <span style={{ whiteSpace: 'nowrap' }}>
@@ -1810,7 +1834,7 @@ function CategoriasTab({ programs }: ProgTabProps) {
           </table>
           <div className="adm-panel-footer">
             <button className="adm-add-btn" disabled={draft !== null}
-              onClick={() => setDraft({ id: null, name: '', is_capex: false, programId: programs[0]?.id ?? '' })}>
+              onClick={() => setDraft({ id: null, name: '', is_capex: false, programIds: programs.length > 0 ? [programs[0].id] : [] })}>
               + Nova Categoria
             </button>
           </div>
