@@ -49,4 +49,130 @@
   .adm-placeholder {
     min-height: 120px;
   }
+
+  /* ── Geral section ── */
+  .adm-section-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .adm-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .adm-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+  }
+
+  .adm-input {
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 7px 10px;
+    font-size: 13.5px;
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  .adm-input:focus {
+    border-color: var(--navy);
+  }
+
+  .adm-help {
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  .adm-logo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .adm-logo-preview {
+    max-height: 120px;
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+    padding: 8px;
+    background: var(--bg2);
+  }
+
+  .adm-file-hidden {
+    display: none;
+  }
+
+  .adm-btn-primary {
+    padding: 8px 18px;
+    background: var(--navy);
+    color: white;
+    border: none;
+    border-radius: var(--r);
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .adm-btn-primary:hover:not(:disabled) {
+    background: var(--navy2, #003f7f);
+  }
+
+  .adm-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .adm-btn-secondary {
+    padding: 7px 16px;
+    background: var(--bg2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    font-size: 13px;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+
+  .adm-btn-secondary:hover:not(:disabled) {
+    background: var(--bg3);
+  }
+
+  .adm-btn-secondary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .adm-btn-ghost {
+    background: transparent;
+    border: none;
+    color: var(--red);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+
+  .adm-btn-ghost:hover {
+    text-decoration: underline;
+  }
+
+  .adm-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--navy);
+    color: white;
+    padding: 10px 18px;
+    border-radius: var(--r);
+    font-size: 13px;
+    z-index: 999;
+  }
 }
