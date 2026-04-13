@@ -4,6 +4,7 @@ import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { usePrograms } from '../../hooks/usePrograms'
 import type { Program, Eixo, Plano, Profile, UserRole } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
@@ -730,7 +731,159 @@ function AdminProgramas() {
   )
 }
 
-// ── Section 3: Utilizadores ───────────────────────────────────
+// ── Section 3b: Permissões matrix ─────────────────────────────
+const MATRIX_PAGES: { key: string; label: string }[] = [
+  { key: 'dashboard',           label: 'Dashboard'     },
+  { key: 'actividades',         label: 'Actividades'   },
+  { key: 'gantt',               label: 'Gantt'         },
+  { key: 'ponto-situacao',      label: 'PDS'           },
+  { key: 'execucao-financeira', label: 'Financeiro'    },
+  { key: 'recursos',            label: 'Recursos'      },
+  { key: 'evolucao',            label: 'Evolução'      },
+  { key: 'gestao-iniciativas',  label: 'G.Iniciativas' },
+  { key: 'gestao-pds',          label: 'G.PDS'         },
+  { key: 'gestao-riscos',       label: 'G.Riscos'      },
+  { key: 'gestao-financeira',   label: 'G.Financeira'  },
+  { key: 'gestao-recursos',     label: 'G.Recursos'    },
+]
+
+type CellValue = '' | 'view' | 'edit'
+type PermMap   = Record<string, Record<string, CellValue>>
+
+function AdminPermissoes({ profiles }: { profiles: Profile[] }) {
+  const { programs } = usePrograms()
+  const [selProgId,    setSelProgId]    = useState<string | null>(null)
+  const [permMap,      setPermMap]      = useState<PermMap>({})
+  const [loadingPerms, setLoadingPerms] = useState(false)
+  const [flashCells,   setFlashCells]   = useState<Set<string>>(new Set())
+
+  // Set first program as default once programs load
+  useEffect(() => {
+    if (programs.length > 0 && !selProgId) {
+      setSelProgId(programs[0].id)
+    }
+  }, [programs, selProgId])
+
+  // Load permissions whenever selected program changes
+  useEffect(() => {
+    if (!selProgId) return
+    let cancelled = false
+    setLoadingPerms(true)
+    supabase
+      .from('user_permissions')
+      .select('user_id, page, access_level')
+      .eq('program_id', selProgId)
+      .then(({ data }) => {
+        if (cancelled) return
+        const map: PermMap = {}
+        for (const row of (data ?? [])) {
+          if (!map[row.user_id]) map[row.user_id] = {}
+          map[row.user_id][row.page] = (row.access_level === 'none' ? '' : row.access_level) as CellValue
+        }
+        setPermMap(map)
+        setLoadingPerms(false)
+      })
+    return () => { cancelled = true }
+  }, [selProgId])
+
+  async function handleCellChange(userId: string, page: string, value: CellValue) {
+    if (!selProgId) return
+    // Optimistic update
+    setPermMap(m => ({ ...m, [userId]: { ...(m[userId] ?? {}), [page]: value } }))
+    if (value === '') {
+      await supabase.from('user_permissions')
+        .delete()
+        .eq('user_id', userId)
+        .eq('program_id', selProgId)
+        .eq('page', page)
+    } else {
+      await supabase.from('user_permissions')
+        .upsert(
+          { user_id: userId, program_id: selProgId, page, access_level: value },
+          { onConflict: 'user_id, program_id, page' },
+        )
+    }
+    // Flash green border for 300ms
+    const cellKey = `${userId}-${page}`
+    setFlashCells(s => { const n = new Set(s); n.add(cellKey); return n })
+    setTimeout(() => {
+      setFlashCells(s => { const n = new Set(s); n.delete(cellKey); return n })
+    }, 300)
+  }
+
+  const nonAdminProfiles = profiles.filter(p => p.role !== 'admin')
+
+  return (
+    <Card title="Permissões">
+      <div className="adm-program-bar">
+        <span>Programa:</span>
+        <select
+          className="adm-select"
+          value={selProgId ?? ''}
+          onChange={e => setSelProgId(e.target.value || null)}
+        >
+          {programs.map(p => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+          {programs.length === 0 && <option value="">Sem programas</option>}
+        </select>
+      </div>
+
+      {loadingPerms ? (
+        <p className="adm-help">A carregar…</p>
+      ) : (
+        <div className="adm-matrix-wrap">
+          <table className="adm-matrix">
+            <thead>
+              <tr>
+                <th className="adm-matrix-name">Utilizador</th>
+                {MATRIX_PAGES.map(pg => (
+                  <th key={pg.key}>{pg.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {nonAdminProfiles.map(p => (
+                <tr key={p.id}>
+                  <td className="adm-matrix-name">{p.full_name || p.email}</td>
+                  {MATRIX_PAGES.map(pg => {
+                    const val: CellValue = (permMap[p.id]?.[pg.key] as CellValue) ?? ''
+                    const cellKey = `${p.id}-${pg.key}`
+                    return (
+                      <td key={pg.key}>
+                        <select
+                          className={`adm-matrix-select${flashCells.has(cellKey) ? ' saved' : ''}`}
+                          value={val}
+                          onChange={e => handleCellChange(p.id, pg.key, e.target.value as CellValue)}
+                        >
+                          <option value="">–</option>
+                          <option value="view">Ver</option>
+                          <option value="edit">Editar</option>
+                        </select>
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+              {nonAdminProfiles.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={MATRIX_PAGES.length + 1}
+                    style={{ textAlign: 'center', color: 'var(--text3)', fontStyle: 'italic', padding: '20px 0' }}
+                  >
+                    Sem utilizadores não-admin
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// ── Section 3a: Utilizadores ───────────────────────────────────
 function roleBadge(role: UserRole) {
   if (role === 'admin')  return <Badge variant="navy">Admin</Badge>
   if (role === 'gestor') return <Badge variant="blue">Gestor</Badge>
@@ -947,13 +1100,8 @@ function AdminUtilizadores() {
           )}
         </Card>
 
-        {/* ── Card 2: Permissões (placeholder) ── */}
-        <Card title="Permissões">
-          <p className="adm-section-desc">Matrix de acessos por utilizador e programa</p>
-          <div className="page-placeholder adm-placeholder">
-            <p>A implementar</p>
-          </div>
-        </Card>
+        {/* ── Card 2: Permissões ── */}
+        <AdminPermissoes profiles={profiles} />
 
       </div>
 

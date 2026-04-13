@@ -266,7 +266,7 @@
     margin: 0;
   }
 
-  /* ── Utilizadores section ── */
+  /* ── Utilizadores / Permissões section ── */
   .adm-invite-form {
     display: flex;
     gap: 10px;
@@ -292,5 +292,66 @@
 
   .adm-select:focus {
     border-color: var(--navy);
+  }
+
+  /* ── Permissions matrix ── */
+  .adm-program-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  .adm-matrix-wrap {
+    overflow-x: auto;
+  }
+
+  .adm-matrix {
+    border-collapse: collapse;
+    font-size: 12px;
+    width: 100%;
+  }
+
+  .adm-matrix th {
+    padding: 6px 8px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .adm-matrix th.adm-matrix-name {
+    text-align: left;
+    min-width: 140px;
+  }
+
+  .adm-matrix td {
+    padding: 5px 6px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .adm-matrix td.adm-matrix-name {
+    text-align: left;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .adm-matrix-select {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 4px;
+    font-size: 12px;
+    background: white;
+    width: 72px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .adm-matrix-select.saved {
+    border-color: var(--green);
   }
 }
