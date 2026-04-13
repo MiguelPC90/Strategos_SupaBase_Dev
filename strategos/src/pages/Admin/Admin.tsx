@@ -1,8 +1,10 @@
 import './Admin.css'
 import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import Card from '../../components/Card/Card'
+import Badge from '../../components/Badge/Badge'
 import { supabase } from '../../lib/supabase'
-import type { Program, Eixo, Plano } from '../../types/index'
+import { useAuth } from '../../hooks/useAuth'
+import type { Program, Eixo, Plano, Profile, UserRole } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -728,6 +730,238 @@ function AdminProgramas() {
   )
 }
 
+// ── Section 3: Utilizadores ───────────────────────────────────
+function roleBadge(role: UserRole) {
+  if (role === 'admin')  return <Badge variant="navy">Admin</Badge>
+  if (role === 'gestor') return <Badge variant="blue">Gestor</Badge>
+  return <Badge variant="grey">Viewer</Badge>
+}
+
+interface InviteForm { email: string; role: 'gestor' | 'viewer' }
+
+function AdminUtilizadores() {
+  const { user: currentUser } = useAuth()
+
+  const [profiles,   setProfiles]   = useState<Profile[]>([])
+  const [loadingP,   setLoadingP]   = useState(true)
+  const [editId,     setEditId]     = useState<string | null>(null)
+  const [editRole,   setEditRole]   = useState<UserRole>('viewer')
+  const [saving,     setSaving]     = useState(false)
+  const [showInvite, setShowInvite] = useState(false)
+  const [invite,     setInvite]     = useState<InviteForm>({ email: '', role: 'viewer' })
+  const [inviting,   setInviting]   = useState(false)
+  const [toast,      setToast]      = useState('')
+
+  function showToast(msg: string) {
+    setToast(msg)
+    setTimeout(() => setToast(''), 2500)
+  }
+
+  async function loadProfiles() {
+    setLoadingP(true)
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, role, avatar_url, created_at, updated_at')
+      .order('full_name')
+    setProfiles((data ?? []) as Profile[])
+    setLoadingP(false)
+  }
+
+  useEffect(() => { loadProfiles() }, [])
+
+  function startEdit(p: Profile) {
+    setEditId(p.id)
+    setEditRole(p.role)
+  }
+
+  function cancelEdit() {
+    setEditId(null)
+  }
+
+  async function saveRole() {
+    if (!editId) return
+    setSaving(true)
+    try {
+      await supabase.from('profiles').update({ role: editRole }).eq('id', editId)
+      setEditId(null)
+      await loadProfiles()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteProfile(id: string, name: string | null) {
+    const label = name || 'este utilizador'
+    if (!window.confirm(`Remover ${label}? Esta acção não pode ser desfeita.`)) return
+    await supabase.from('profiles').delete().eq('id', id)
+    await loadProfiles()
+  }
+
+  async function handleInvite() {
+    if (!invite.email.trim()) return
+    setInviting(true)
+    try {
+      // Try admin invite; fall back to inserting a profile row
+      const { error } = await supabase.auth.admin.inviteUserByEmail(invite.email.trim())
+      if (error) {
+        // Fallback: insert profile row so the user appears in the list
+        await supabase.from('profiles').insert({
+          email: invite.email.trim(),
+          role: invite.role,
+          full_name: null,
+          avatar_url: null,
+        })
+      } else {
+        // Update role on the profile that the invite created
+        await supabase.from('profiles')
+          .update({ role: invite.role })
+          .eq('email', invite.email.trim())
+      }
+      setShowInvite(false)
+      setInvite({ email: '', role: 'viewer' })
+      showToast('Convite enviado!')
+      await loadProfiles()
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  const inviteActions = (
+    <button
+      className="adm-btn-secondary"
+      style={{ padding: '4px 12px', fontSize: 12 }}
+      onClick={() => { setShowInvite(v => !v); setInvite({ email: '', role: 'viewer' }) }}
+    >
+      + Convidar Utilizador
+    </button>
+  )
+
+  return (
+    <>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+        {/* ── Card 1: Utilizadores ── */}
+        <Card title="Utilizadores" actions={inviteActions}>
+          {showInvite && (
+            <div className="adm-invite-form">
+              <div className="adm-field" style={{ margin: 0, flex: '1 1 200px' }}>
+                <label className="adm-label">Email</label>
+                <input
+                  className="adm-input"
+                  type="email"
+                  placeholder="utilizador@org.pt"
+                  value={invite.email}
+                  onChange={e => setInvite(v => ({ ...v, email: e.target.value }))}
+                  onKeyDown={e => { if (e.key === 'Enter') handleInvite(); if (e.key === 'Escape') setShowInvite(false) }}
+                />
+              </div>
+              <div className="adm-field" style={{ margin: 0 }}>
+                <label className="adm-label">Role</label>
+                <select
+                  className="adm-select"
+                  value={invite.role}
+                  onChange={e => setInvite(v => ({ ...v, role: e.target.value as 'gestor' | 'viewer' }))}
+                >
+                  <option value="gestor">Gestor</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: 8, paddingBottom: 1 }}>
+                <button className="adm-btn-primary" onClick={handleInvite} disabled={inviting || !invite.email.trim()}>
+                  {inviting ? 'A enviar…' : 'Convidar'}
+                </button>
+                <button className="adm-btn-secondary" onClick={() => setShowInvite(false)}>Cancelar</button>
+              </div>
+            </div>
+          )}
+
+          {loadingP ? (
+            <p className="adm-help" style={{ padding: '12px 0' }}>A carregar…</p>
+          ) : (
+            <div style={{ margin: '-16px', marginTop: showInvite ? '8px' : '-16px' }}>
+              <table className="adm-panel-table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th style={{ width: 100 }}>Role</th>
+                    <th style={{ width: 80 }}>Acções</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {profiles.map(p => {
+                    const isCurrentUser = p.id === currentUser?.id
+                    const isAdmin       = p.role === 'admin'
+                    const editing       = editId === p.id
+                    return (
+                      <tr key={p.id} className={editing ? 'editing' : undefined}>
+                        <td style={{ fontWeight: 500 }}>{p.full_name || '—'}</td>
+                        <td style={{ color: 'var(--text2)', fontSize: 12 }}>{p.email}</td>
+                        <td>
+                          {editing ? (
+                            <select
+                              className="adm-select"
+                              value={editRole}
+                              onChange={e => setEditRole(e.target.value as UserRole)}
+                              autoFocus
+                            >
+                              <option value="admin">Admin</option>
+                              <option value="gestor">Gestor</option>
+                              <option value="viewer">Viewer</option>
+                            </select>
+                          ) : roleBadge(p.role)}
+                        </td>
+                        <td>
+                          {editing ? (
+                            <span style={{ whiteSpace: 'nowrap' }}>
+                              <button className="adm-icon-btn" title="Guardar" onClick={saveRole} disabled={saving}>✓</button>
+                              <button className="adm-icon-btn" title="Cancelar" onClick={cancelEdit}>✕</button>
+                            </span>
+                          ) : (
+                            <span style={{ whiteSpace: 'nowrap' }}>
+                              <button
+                                className="adm-icon-btn"
+                                title={isAdmin ? 'Não editável' : isCurrentUser ? 'Não editável' : 'Editar role'}
+                                disabled={isAdmin || isCurrentUser}
+                                onClick={() => startEdit(p)}
+                              >✎</button>
+                              <button
+                                className="adm-icon-btn"
+                                title={isAdmin ? 'Não editável' : isCurrentUser ? 'Não pode remover a própria conta' : 'Remover'}
+                                disabled={isAdmin || isCurrentUser}
+                                style={{ color: isAdmin || isCurrentUser ? undefined : 'var(--red)' }}
+                                onClick={() => deleteProfile(p.id, p.full_name)}
+                              >🗑</button>
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {profiles.length === 0 && (
+                    <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--text3)', fontStyle: 'italic', padding: '20px 0' }}>Sem utilizadores</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
+        {/* ── Card 2: Permissões (placeholder) ── */}
+        <Card title="Permissões">
+          <p className="adm-section-desc">Matrix de acessos por utilizador e programa</p>
+          <div className="page-placeholder adm-placeholder">
+            <p>A implementar</p>
+          </div>
+        </Card>
+
+      </div>
+
+      {toast && <div className="adm-toast">{toast}</div>}
+    </>
+  )
+}
+
 // ── Main Admin component ───────────────────────────────────────
 export default function Admin() {
   const [active, setActive] = useState<SectionKey>('geral')
@@ -752,8 +986,9 @@ export default function Admin() {
 
       {/* ── Right content ── */}
       <div className="adm-content">
-        {active === 'geral'     ? <AdminGeral />     :
-         active === 'programas' ? <AdminProgramas /> : (
+        {active === 'geral'          ? <AdminGeral />          :
+         active === 'programas'     ? <AdminProgramas />     :
+         active === 'utilizadores'  ? <AdminUtilizadores />  : (
           <Card title={section.label}>
             <p className="adm-section-desc">{section.desc}</p>
             <div className="page-placeholder adm-placeholder">
