@@ -5,7 +5,7 @@ import Badge from '../../components/Badge/Badge'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { usePrograms } from '../../hooks/usePrograms'
-import type { Program, Eixo, Plano, Profile, UserRole } from '../../types/index'
+import type { Program, Eixo, Plano, Profile, Person, UserRole } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -1110,6 +1110,298 @@ function AdminUtilizadores() {
   )
 }
 
+// ── Section 4: Recursos ───────────────────────────────────────
+type RecursosTab = 'perfis' | 'unidades' | 'pessoas'
+
+interface DraftPerson {
+  id:       string | null
+  name:     string
+  email:    string
+  company:  string   // maps to people.type
+  org_unit: string
+  role:     string
+}
+
+// ── Shared: editable string-list backed by app_config ──────────
+function StringListEditor({ configKey, label }: { configKey: string; label: string }) {
+  const [items,   setItems]   = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving,  setSaving]  = useState(false)
+  const [toast,   setToast]   = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .from('app_config')
+      .select('key, value')
+      .eq('key', configKey)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return
+        setLoading(false)
+        if (!data) return
+        try { setItems(JSON.parse(data.value) as string[]) } catch { /* empty */ }
+      })
+      .catch(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [configKey])
+
+  function update(idx: number, val: string) {
+    setItems(prev => prev.map((it, i) => i === idx ? val : it))
+  }
+
+  function remove(idx: number) {
+    setItems(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  async function save() {
+    setSaving(true)
+    try {
+      const filtered = items.map(s => s.trim()).filter(Boolean)
+      await supabase.from('app_config').upsert(
+        { key: configKey, value: JSON.stringify(filtered) },
+        { onConflict: 'key' },
+      )
+      setItems(filtered)
+      setToast(true)
+      setTimeout(() => setToast(false), 2000)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return <p className="adm-help">A carregar…</p>
+
+  return (
+    <>
+      <p className="adm-section-desc">{label}</p>
+      {items.map((item, idx) => (
+        <div key={idx} className="adm-list-item">
+          <input
+            className="adm-list-input"
+            value={item}
+            onChange={e => update(idx, e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') save() }}
+          />
+          <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
+            onClick={() => remove(idx)}>🗑</button>
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: 10, marginTop: 8, alignItems: 'center' }}>
+        <button className="adm-add-btn" onClick={() => setItems(prev => [...prev, ''])}>
+          + Adicionar
+        </button>
+        <button className="adm-btn-primary" onClick={save} disabled={saving}>
+          {saving ? 'A guardar…' : 'Guardar'}
+        </button>
+        {toast && <span style={{ fontSize: 12, color: 'var(--green)' }}>Guardado!</span>}
+      </div>
+    </>
+  )
+}
+
+// ── Pessoas sub-tab ────────────────────────────────────────────
+function PessoasTab() {
+  const [people,   setPeople]   = useState<Person[]>([])
+  const [loading,  setLoading]  = useState(true)
+  const [draft,    setDraft]    = useState<DraftPerson | null>(null)
+  const [errMsg,   setErrMsg]   = useState('')
+
+  function showErr(msg: string) {
+    setErrMsg(msg)
+    setTimeout(() => setErrMsg(''), 3000)
+  }
+
+  async function loadPeople() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('people')
+      .select('id, name, email, org_unit, role, type, notes, active, sort_order')
+      .order('name')
+    setPeople((data ?? []) as Person[])
+    setLoading(false)
+  }
+
+  useEffect(() => { loadPeople() }, [])
+
+  async function savePerson() {
+    if (!draft || !draft.name.trim()) return
+    const payload = {
+      name:     draft.name.trim(),
+      email:    draft.email.trim() || null,
+      type:     draft.company.trim() || null,
+      org_unit: draft.org_unit.trim() || null,
+      role:     draft.role.trim() || null,
+    }
+    if (draft.id) {
+      const { error } = await supabase.from('people').update(payload).eq('id', draft.id)
+      if (error) { showErr(error.message); return }
+    } else {
+      const { error } = await supabase.from('people').insert({ ...payload, sort_order: 0, active: true })
+      if (error) { showErr(error.message); return }
+    }
+    setDraft(null)
+    await loadPeople()
+  }
+
+  async function deletePerson(id: string) {
+    if (!window.confirm('Remover esta pessoa?')) return
+    await supabase.from('people').delete().eq('id', id)
+    await loadPeople()
+  }
+
+  return (
+    <>
+      {loading ? (
+        <p className="adm-help">A carregar…</p>
+      ) : (
+        <div style={{ margin: '-16px' }}>
+          <table className="adm-panel-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Empresa</th>
+                <th>Unidade</th>
+                <th>Perfil</th>
+                <th style={{ width: 72 }}>Acções</th>
+              </tr>
+            </thead>
+            <tbody>
+              {people.map(p => {
+                const editing = draft?.id === p.id
+                return (
+                  <tr key={p.id} className={editing ? 'editing' : undefined}>
+                    <td>
+                      {editing ? (
+                        <input className="adm-row-input" autoFocus value={draft!.name}
+                          onChange={e => setDraft(d => d ? { ...d, name: e.target.value } : d)}
+                          onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                      ) : (p.name || '—')}
+                    </td>
+                    <td style={{ fontSize: 12, color: 'var(--text2)' }}>
+                      {editing ? (
+                        <input className="adm-row-input" value={draft!.email}
+                          onChange={e => setDraft(d => d ? { ...d, email: e.target.value } : d)}
+                          onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                      ) : (p.email || '—')}
+                    </td>
+                    <td>
+                      {editing ? (
+                        <input className="adm-row-input" value={draft!.company}
+                          onChange={e => setDraft(d => d ? { ...d, company: e.target.value } : d)}
+                          onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                      ) : (p.type || '—')}
+                    </td>
+                    <td>
+                      {editing ? (
+                        <input className="adm-row-input" value={draft!.org_unit}
+                          onChange={e => setDraft(d => d ? { ...d, org_unit: e.target.value } : d)}
+                          onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                      ) : (p.org_unit || '—')}
+                    </td>
+                    <td>
+                      {editing ? (
+                        <input className="adm-row-input" value={draft!.role}
+                          onChange={e => setDraft(d => d ? { ...d, role: e.target.value } : d)}
+                          onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                      ) : (p.role || '—')}
+                    </td>
+                    <td>
+                      {editing ? (
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          <button className="adm-icon-btn" title="Guardar"  onClick={savePerson}>✓</button>
+                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                        </span>
+                      ) : (
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          <button className="adm-icon-btn" title="Editar"
+                            onClick={() => setDraft({ id: p.id, name: p.name, email: p.email ?? '', company: p.type ?? '', org_unit: p.org_unit ?? '', role: p.role ?? '' })}>✎</button>
+                          <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
+                            onClick={() => deletePerson(p.id)}>🗑</button>
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+              {draft !== null && draft.id === null && (
+                <tr className="editing">
+                  <td><input className="adm-row-input" autoFocus placeholder="Nome *"
+                    value={draft.name}
+                    onChange={e => setDraft(d => d ? { ...d, name: e.target.value } : d)}
+                    onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                  </td>
+                  <td><input className="adm-row-input" placeholder="Email"
+                    value={draft.email}
+                    onChange={e => setDraft(d => d ? { ...d, email: e.target.value } : d)}
+                    onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                  </td>
+                  <td><input className="adm-row-input" placeholder="Empresa"
+                    value={draft.company}
+                    onChange={e => setDraft(d => d ? { ...d, company: e.target.value } : d)}
+                    onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                  </td>
+                  <td><input className="adm-row-input" placeholder="Unidade"
+                    value={draft.org_unit}
+                    onChange={e => setDraft(d => d ? { ...d, org_unit: e.target.value } : d)}
+                    onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                  </td>
+                  <td><input className="adm-row-input" placeholder="Perfil"
+                    value={draft.role}
+                    onChange={e => setDraft(d => d ? { ...d, role: e.target.value } : d)}
+                    onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                  </td>
+                  <td>
+                    <span style={{ whiteSpace: 'nowrap' }}>
+                      <button className="adm-icon-btn" title="Guardar"  onClick={savePerson}>✓</button>
+                      <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                    </span>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <div className="adm-panel-footer">
+            <button
+              className="adm-add-btn"
+              disabled={draft !== null}
+              onClick={() => setDraft({ id: null, name: '', email: '', company: '', org_unit: '', role: '' })}
+            >
+              + Nova Pessoa
+            </button>
+          </div>
+        </div>
+      )}
+      {errMsg && <div className="adm-toast" style={{ background: 'var(--red)' }}>{errMsg}</div>}
+    </>
+  )
+}
+
+function AdminRecursos() {
+  const [tab, setTab] = useState<RecursosTab>('perfis')
+
+  return (
+    <Card title="Recursos">
+      <div className="adm-tabs">
+        {(['perfis', 'unidades', 'pessoas'] as RecursosTab[]).map(t => (
+          <button
+            key={t}
+            className={`adm-tab${tab === t ? ' active' : ''}`}
+            onClick={() => setTab(t)}
+          >
+            {t === 'perfis' ? 'Perfis' : t === 'unidades' ? 'Unidades' : 'Pessoas'}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'perfis'   && <StringListEditor configKey="resource_profiles" label="Perfis de recursos disponíveis" />}
+      {tab === 'unidades' && <StringListEditor configKey="org_units"         label="Unidades organizacionais" />}
+      {tab === 'pessoas'  && <PessoasTab />}
+    </Card>
+  )
+}
+
 // ── Main Admin component ───────────────────────────────────────
 export default function Admin() {
   const [active, setActive] = useState<SectionKey>('geral')
@@ -1136,7 +1428,8 @@ export default function Admin() {
       <div className="adm-content">
         {active === 'geral'          ? <AdminGeral />          :
          active === 'programas'     ? <AdminProgramas />     :
-         active === 'utilizadores'  ? <AdminUtilizadores />  : (
+         active === 'utilizadores'  ? <AdminUtilizadores />  :
+         active === 'recursos'      ? <AdminRecursos />      : (
           <Card title={section.label}>
             <p className="adm-section-desc">{section.desc}</p>
             <div className="page-placeholder adm-placeholder">

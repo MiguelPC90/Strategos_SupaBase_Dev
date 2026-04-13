@@ -354,4 +354,57 @@
   .adm-matrix-select.saved {
     border-color: var(--green);
   }
+
+  /* ── Recursos section ── */
+  .adm-tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+  }
+
+  .adm-tab {
+    padding: 7px 14px;
+    font-size: 13px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--text2);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+
+  .adm-tab:hover {
+    color: var(--text);
+  }
+
+  .adm-tab.active {
+    color: var(--navy);
+    font-weight: 500;
+    border-bottom-color: var(--navy);
+  }
+
+  .adm-list-item {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .adm-list-input {
+    flex: 1;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 7px 10px;
+    font-size: 13.5px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  .adm-list-input:focus {
+    border-color: var(--navy);
+  }
 }
