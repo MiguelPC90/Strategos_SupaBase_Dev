@@ -1,0 +1,52 @@
+@layer components {
+  .adm-layout {
+    display: flex;
+    gap: 24px;
+    min-height: calc(100vh - var(--topbar-h, 56px));
+  }
+
+  .adm-nav {
+    width: 200px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .adm-nav-btn {
+    width: 100%;
+    text-align: left;
+    padding: 9px 14px;
+    border-radius: var(--r);
+    font-size: 13.5px;
+    color: var(--text2);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+
+  .adm-nav-btn:hover {
+    background: var(--bg2);
+  }
+
+  .adm-nav-btn.active {
+    background: var(--navy);
+    color: white;
+    font-weight: 500;
+  }
+
+  .adm-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .adm-section-desc {
+    font-size: 13px;
+    color: var(--text2);
+    margin: 0 0 14px;
+  }
+
+  .adm-placeholder {
+    min-height: 120px;
+  }
+}
