@@ -54,21 +54,20 @@ function AdminGeral() {
     let cancelled = false
     supabase
       .from('app_config')
-      .select('key, value')
-      .in('key', [...CONFIG_KEYS])
+      .select('config_key, data')
+      .in('config_key', [...CONFIG_KEYS])
       .then(({ data, error }) => {
         if (cancelled) return
-        console.log('[AdminGeral] fetch:', { data, error })
         setLoading(false)
         if (error || !data) return
         const map: Record<string, string> = {}
-        for (const row of data) map[row.key] = row.value
+        for (const row of data) map[row.config_key] = row.data
         setTitle(map['client_title']     ?? '')
         setSubtitle(map['client_subtitle'] ?? '')
         setLogoUrl(map['client_logo_url']  ?? '')
         setCutoffDate(map['cutoff_date']   ?? '')
       })
-      .catch(err => { if (!cancelled) { console.error('[AdminGeral] fetch error:', err); setLoading(false) } })
+      .catch(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
 
@@ -76,21 +75,13 @@ function AdminGeral() {
     setSaving(true)
     try {
       const pairs = [
-        { key: 'client_title',    value: title },
-        { key: 'client_subtitle', value: subtitle },
-        { key: 'cutoff_date',     value: cutoffDate },
+        { config_key: 'client_title',    data: title },
+        { config_key: 'client_subtitle', data: subtitle },
+        { config_key: 'cutoff_date',     data: cutoffDate },
       ]
-      const results = await Promise.all(
-        pairs.map(p => supabase.from('app_config').upsert(p, { onConflict: 'key' }))
+      await Promise.all(
+        pairs.map(p => supabase.from('app_config').upsert(p, { onConflict: 'config_key' }))
       )
-      console.log('[AdminGeral] save results:', results)
-
-      // Re-fetch to confirm values were actually written
-      const { data: verify, error: verifyErr } = await supabase
-        .from('app_config')
-        .select('key, value')
-        .in('key', [...CONFIG_KEYS])
-      console.log('[AdminGeral] verify after save:', { data: verify, error: verifyErr })
 
       setToast(true)
       setTimeout(() => setToast(false), 2000)
@@ -114,8 +105,8 @@ function AdminGeral() {
         .from('logos')
         .getPublicUrl(uploadData.path)
       await supabase.from('app_config').upsert(
-        { key: 'client_logo_url', value: publicUrl },
-        { onConflict: 'key' },
+        { config_key: 'client_logo_url', data: publicUrl },
+        { onConflict: 'config_key' },
       )
       setLogoUrl(publicUrl)
       if (fileRef.current) fileRef.current.value = ''
@@ -126,8 +117,8 @@ function AdminGeral() {
 
   async function handleLogoRemove() {
     await supabase.from('app_config').upsert(
-      { key: 'client_logo_url', value: '' },
-      { onConflict: 'key' },
+      { config_key: 'client_logo_url', data: '' },
+      { onConflict: 'config_key' },
     )
     setLogoUrl('')
   }
@@ -1144,14 +1135,14 @@ function StringListEditor({ configKey, label, defaults = [] }: { configKey: stri
     let cancelled = false
     supabase
       .from('app_config')
-      .select('key, value')
-      .eq('key', configKey)
+      .select('config_key, data')
+      .eq('config_key', configKey)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return
         setLoading(false)
         if (!data) { setItems(defaults); return }
-        try { setItems(JSON.parse(data.value) as string[]) } catch { setItems(defaults) }
+        try { setItems(JSON.parse(data.data) as string[]) } catch { setItems(defaults) }
       })
       .catch(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -1170,8 +1161,8 @@ function StringListEditor({ configKey, label, defaults = [] }: { configKey: stri
     try {
       const filtered = items.map(s => s.trim()).filter(Boolean)
       await supabase.from('app_config').upsert(
-        { key: configKey, value: JSON.stringify(filtered) },
-        { onConflict: 'key' },
+        { config_key: configKey, data: JSON.stringify(filtered) },
+        { onConflict: 'config_key' },
       )
       setItems(filtered)
       setToast(true)
@@ -1895,13 +1886,13 @@ function MatrizTab() {
     let cancelled = false
     supabase
       .from('app_config')
-      .select('key, value')
-      .in('key', ['risk_matrix_size', 'risk_thresholds'])
+      .select('config_key, data')
+      .in('config_key', ['risk_matrix_size', 'risk_thresholds'])
       .then(({ data }) => {
         if (cancelled) return
         if (data) {
           const map: Record<string, string> = {}
-          for (const row of data) map[row.key] = row.value
+          for (const row of data) map[row.config_key] = row.data
           if (map['risk_matrix_size']) setSize(parseInt(map['risk_matrix_size'], 10) || 5)
           if (map['risk_thresholds']) {
             try {
@@ -1921,8 +1912,8 @@ function MatrizTab() {
   async function handleSizeClick(newSize: number) {
     setSize(newSize)
     await supabase.from('app_config').upsert(
-      { key: 'risk_matrix_size', value: String(newSize) },
-      { onConflict: 'key' },
+      { config_key: 'risk_matrix_size', data: String(newSize) },
+      { onConflict: 'config_key' },
     )
   }
 
@@ -1930,8 +1921,8 @@ function MatrizTab() {
     setSaving(true)
     try {
       await supabase.from('app_config').upsert(
-        { key: 'risk_thresholds', value: JSON.stringify({ low, medium, high }) },
-        { onConflict: 'key' },
+        { config_key: 'risk_thresholds', data: JSON.stringify({ low, medium, high }) },
+        { onConflict: 'config_key' },
       )
       setToast(true)
       setTimeout(() => setToast(false), 2000)
@@ -2528,14 +2519,14 @@ function RotulosTab() {
     let cancelled = false
     supabase
       .from('app_config')
-      .select('key, value')
-      .eq('key', `filter_labels_${selProgId}`)
+      .select('config_key, data')
+      .eq('config_key', `filter_labels_${selProgId}`)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return
         if (data) {
           try {
-            const parsed = JSON.parse(data.value) as Partial<FilterLabels>
+            const parsed = JSON.parse(data.data) as Partial<FilterLabels>
             setLabels({ n1: parsed.n1 ?? '', n2: parsed.n2 ?? '', owner: parsed.owner ?? '', sponsor: parsed.sponsor ?? '' })
           } catch { setLabels({ n1: '', n2: '', owner: '', sponsor: '' }) }
         } else {
@@ -2550,8 +2541,8 @@ function RotulosTab() {
     setSaving(true)
     try {
       await supabase.from('app_config').upsert(
-        { key: `filter_labels_${selProgId}`, value: JSON.stringify(labels) },
-        { onConflict: 'key' },
+        { config_key: `filter_labels_${selProgId}`, data: JSON.stringify(labels) },
+        { onConflict: 'config_key' },
       )
       setToast(true)
       setTimeout(() => setToast(false), 2000)
