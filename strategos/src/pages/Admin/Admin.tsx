@@ -1,5 +1,6 @@
 import './Admin.css'
 import { useState, useEffect, useRef, type ChangeEvent } from 'react'
+import * as XLSX from 'xlsx'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import { supabase } from '../../lib/supabase'
@@ -2307,6 +2308,319 @@ function AdminHistorico() {
   )
 }
 
+// ── Section 8: Dados e Importação ────────────────────────────
+type DadosTab = 'importar' | 'exportar' | 'rotulos'
+
+interface FilterLabels { n1: string; n2: string; owner: string; sponsor: string }
+
+const EXPORT_TABLES = [
+  'programs', 'eixos', 'planos', 'activities', 'pds_entries',
+  'fin_budget_lines', 'fin_contracts', 'fin_invoices',
+  'fte_resources', 'risks', 'people',
+]
+
+// ── Tab: Importar ──────────────────────────────────────────────
+function ImportarTab() {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [file,         setFile]         = useState<File | null>(null)
+  const [sheets,       setSheets]       = useState<string[]>([])
+  const [selSheet,     setSelSheet]     = useState('')
+  const [previewRows,  setPreviewRows]  = useState<string[][]>([])
+  const [previewCols,  setPreviewCols]  = useState<string[]>([])
+  const [previewing,   setPreviewing]   = useState(false)
+  const [toast,        setToast]        = useState('')
+
+  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3000) }
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null
+    setFile(f)
+    setSheets([])
+    setSelSheet('')
+    setPreviewRows([])
+    setPreviewCols([])
+    if (e.target) e.target.value = ''
+  }
+
+  async function handlePreview() {
+    if (!file) return
+    setPreviewing(true)
+    try {
+      const buf  = await file.arrayBuffer()
+      const wb   = XLSX.read(buf, { type: 'array' })
+      const names = wb.SheetNames
+      setSheets(names)
+      const sheetName = selSheet && names.includes(selSheet) ? selSheet : names[0]
+      setSelSheet(sheetName)
+      renderSheet(wb, sheetName)
+    } finally {
+      setPreviewing(false)
+    }
+  }
+
+  function renderSheet(wb: XLSX.WorkBook, sheetName: string) {
+    const ws   = wb.Sheets[sheetName]
+    const data = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, defval: '' })
+    const head = (data[0] ?? []).map(String)
+    const body = data.slice(1, 6).map(r => head.map((_, i) => String((r as string[])[i] ?? '')))
+    setPreviewCols(head)
+    setPreviewRows(body)
+  }
+
+  async function handleSheetChange(name: string) {
+    setSelSheet(name)
+    if (!file) return
+    const buf = await file.arrayBuffer()
+    const wb  = XLSX.read(buf, { type: 'array' })
+    renderSheet(wb, name)
+  }
+
+  function handleCancel() {
+    setFile(null)
+    setSheets([])
+    setSelSheet('')
+    setPreviewRows([])
+    setPreviewCols([])
+  }
+
+  const hasPreviewed = previewCols.length > 0
+
+  return (
+    <>
+      <p className="adm-section-desc">
+        Faz upload do Excel template preenchido para importar dados para o Supabase.
+        Os dados existentes não são apagados — registos com o mesmo código são actualizados.
+      </p>
+
+      {/* Upload zone */}
+      <div
+        className={`adm-upload-zone${file ? ' has-file' : ''}`}
+        onClick={() => fileRef.current?.click()}
+      >
+        <span style={{ fontSize: 24 }}>📄</span>
+        <br />
+        {file ? file.name : 'Arrasta o ficheiro Excel aqui ou clica para seleccionar'}
+      </div>
+      <input ref={fileRef} type="file" accept=".xlsx" className="adm-file-hidden"
+        onChange={handleFileChange} />
+
+      {/* File info */}
+      {file && (
+        <div className="adm-file-info">
+          <span>{file.name}</span>
+          <span style={{ color: 'var(--text3)' }}>({(file.size / 1024).toFixed(1)} KB)</span>
+        </div>
+      )}
+
+      {/* Sheet selector (after preview) */}
+      {sheets.length > 1 && (
+        <div className="adm-program-bar" style={{ marginTop: 10 }}>
+          <span>Folha:</span>
+          <select className="adm-select" value={selSheet}
+            onChange={e => handleSheetChange(e.target.value)}>
+            {sheets.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      )}
+
+      {/* Preview table */}
+      {hasPreviewed && (
+        <div className="adm-preview-wrap">
+          <table className="adm-preview-table">
+            <thead>
+              <tr>{previewCols.map((h, i) => <th key={i}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {previewRows.map((row, ri) => (
+                <tr key={ri}>{row.map((cell, ci) => <td key={ci}>{cell}</td>)}</tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      {file && (
+        <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+          <button className="adm-btn-primary" onClick={handlePreview} disabled={previewing}>
+            {previewing ? 'A carregar…' : 'Pré-visualizar'}
+          </button>
+          <button className="adm-btn-primary" disabled={!hasPreviewed}
+            onClick={() => showToast('Importação via UI disponível em breve. Usa o script de importação para já.')}>
+            Importar
+          </button>
+          <button className="adm-outline-btn" onClick={handleCancel}>Cancelar</button>
+        </div>
+      )}
+
+      {toast && <div className="adm-toast">{toast}</div>}
+    </>
+  )
+}
+
+// ── Tab: Exportar ──────────────────────────────────────────────
+function ExportarTab() {
+  const [exporting, setExporting] = useState(false)
+  const [toast,     setToast]     = useState('')
+
+  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2500) }
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const results = await Promise.all(
+        EXPORT_TABLES.map(t =>
+          supabase.from(t).select('*').then(({ data }) => ({ table: t, rows: data ?? [] }))
+        )
+      )
+      const wb = XLSX.utils.book_new()
+      for (const { table, rows } of results) {
+        const ws = XLSX.utils.json_to_sheet(rows)
+        XLSX.utils.book_append_sheet(wb, ws, table)
+      }
+      const date = new Date().toISOString().slice(0, 10)
+      XLSX.writeFile(wb, `Strategos_export_${date}.xlsx`)
+      showToast('Exportação concluída!')
+    } catch {
+      showToast('Erro na exportação')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  return (
+    <>
+      <p className="adm-section-desc">
+        Exporta todos os dados do Supabase para um ficheiro Excel com múltiplas folhas.
+      </p>
+      <button className="adm-btn-primary" onClick={handleExport} disabled={exporting}>
+        {exporting ? 'A exportar…' : 'Exportar tudo para Excel'}
+      </button>
+      {toast && <div className="adm-toast">{toast}</div>}
+    </>
+  )
+}
+
+// ── Tab: Rótulos ───────────────────────────────────────────────
+function RotulosTab() {
+  const { programs } = usePrograms()
+  const [selProgId, setSelProgId] = useState<string | null>(null)
+  const [labels,    setLabels]    = useState<FilterLabels>({ n1: '', n2: '', owner: '', sponsor: '' })
+  const [saving,    setSaving]    = useState(false)
+  const [toast,     setToast]     = useState(false)
+
+  useEffect(() => {
+    if (programs.length > 0 && !selProgId) setSelProgId(programs[0].id)
+  }, [programs, selProgId])
+
+  useEffect(() => {
+    if (!selProgId) return
+    let cancelled = false
+    supabase
+      .from('app_config')
+      .select('key, value')
+      .eq('key', `filter_labels_${selProgId}`)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return
+        if (data) {
+          try {
+            const parsed = JSON.parse(data.value) as Partial<FilterLabels>
+            setLabels({ n1: parsed.n1 ?? '', n2: parsed.n2 ?? '', owner: parsed.owner ?? '', sponsor: parsed.sponsor ?? '' })
+          } catch { setLabels({ n1: '', n2: '', owner: '', sponsor: '' }) }
+        } else {
+          setLabels({ n1: '', n2: '', owner: '', sponsor: '' })
+        }
+      })
+    return () => { cancelled = true }
+  }, [selProgId])
+
+  async function handleSave() {
+    if (!selProgId) return
+    setSaving(true)
+    try {
+      await supabase.from('app_config').upsert(
+        { key: `filter_labels_${selProgId}`, value: JSON.stringify(labels) },
+        { onConflict: 'key' },
+      )
+      setToast(true)
+      setTimeout(() => setToast(false), 2000)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <>
+      <p className="adm-section-desc">
+        Personaliza os rótulos dos filtros por programa. Útil quando diferentes
+        programas usam terminologia diferente (ex: "Eixo" vs "Área").
+      </p>
+
+      <div className="adm-program-bar">
+        <span>Programa:</span>
+        <select className="adm-select" value={selProgId ?? ''}
+          onChange={e => setSelProgId(e.target.value || null)}>
+          {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          {programs.length === 0 && <option value="">Sem programas</option>}
+        </select>
+      </div>
+
+      <div className="adm-label-grid">
+        {([
+          ['n1',      'N1 (Eixo)',      'Eixo'          ],
+          ['n2',      'N2 (Plano)',     'Plano'         ],
+          ['owner',   'Owner',          'Responsável'   ],
+          ['sponsor', 'Sponsor',        'Patrocinador'  ],
+        ] as [keyof FilterLabels, string, string][]).map(([key, label, ph]) => (
+          <div key={key} className="adm-field">
+            <label className="adm-label">{label}</label>
+            <input
+              className="adm-input"
+              value={labels[key]}
+              placeholder={ph}
+              onChange={e => setLabels(l => ({ ...l, [key]: e.target.value }))}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 4 }}>
+        <button className="adm-btn-primary" onClick={handleSave} disabled={saving || !selProgId}>
+          {saving ? 'A guardar…' : 'Guardar'}
+        </button>
+        {toast && <span style={{ fontSize: 12, color: 'var(--green)' }}>Guardado!</span>}
+      </div>
+    </>
+  )
+}
+
+function AdminDados() {
+  const [tab, setTab] = useState<DadosTab>('importar')
+
+  const TABS: [DadosTab, string][] = [
+    ['importar', 'Importar'],
+    ['exportar', 'Exportar'],
+    ['rotulos',  'Rótulos'],
+  ]
+
+  return (
+    <Card title="Dados e Importação">
+      <div className="adm-tabs">
+        {TABS.map(([key, label]) => (
+          <button key={key} className={`adm-tab${tab === key ? ' active' : ''}`}
+            onClick={() => setTab(key)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === 'importar' && <ImportarTab />}
+      {tab === 'exportar' && <ExportarTab />}
+      {tab === 'rotulos'  && <RotulosTab />}
+    </Card>
+  )
+}
+
 // ── Main Admin component ───────────────────────────────────────
 export default function Admin() {
   const [active, setActive] = useState<SectionKey>('geral')
@@ -2337,7 +2651,8 @@ export default function Admin() {
          active === 'recursos'      ? <AdminRecursos />      :
          active === 'financeiro'    ? <AdminFinanceiro />    :
          active === 'risco'         ? <AdminRisco />         :
-         active === 'historico'     ? <AdminHistorico />     : (
+         active === 'historico'     ? <AdminHistorico />     :
+         active === 'dados'         ? <AdminDados />         : (
           <Card title={section.label}>
             <p className="adm-section-desc">{section.desc}</p>
             <div className="page-placeholder adm-placeholder">
