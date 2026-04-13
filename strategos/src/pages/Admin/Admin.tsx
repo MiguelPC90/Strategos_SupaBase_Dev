@@ -1402,6 +1402,468 @@ function AdminRecursos() {
   )
 }
 
+// ── Section 5: Financeiro ─────────────────────────────────────
+type FinTab = 'moedas' | 'categorias' | 'anos'
+
+interface Currency     { id: string; code: string; name: string; is_default: boolean }
+interface CostCategory { id: string; program_id: string; name: string; is_capex: boolean }
+interface ManagementYear { id: string; program_id: string; year: number }
+interface DraftCurrency  { id: string | null; code: string; name: string }
+interface DraftCategory  { id: string | null; name: string }
+
+// ── Tab: Moedas ────────────────────────────────────────────────
+function MoedasTab() {
+  const [currencies, setCurrencies] = useState<Currency[]>([])
+  const [loading,    setLoading]    = useState(true)
+  const [draft,      setDraft]      = useState<DraftCurrency | null>(null)
+  const [errMsg,     setErrMsg]     = useState('')
+
+  function showErr(msg: string) { setErrMsg(msg); setTimeout(() => setErrMsg(''), 3000) }
+
+  async function loadCurrencies() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('currencies')
+      .select('id, code, name, is_default')
+      .order('code')
+    const rows = (data ?? []) as Currency[]
+    if (rows.length === 0) {
+      await supabase.from('currencies').insert([
+        { code: 'EUR', name: 'Euro',              is_default: true  },
+        { code: 'USD', name: 'Dólar Americano',   is_default: false },
+        { code: 'AKZ', name: 'Kwanza Angolano',   is_default: false },
+      ])
+      const { data: seeded } = await supabase
+        .from('currencies').select('id, code, name, is_default').order('code')
+      setCurrencies((seeded ?? []) as Currency[])
+    } else {
+      setCurrencies(rows)
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => { loadCurrencies() }, [])
+
+  async function setDefault(id: string) {
+    setCurrencies(prev => prev.map(c => ({ ...c, is_default: c.id === id })))
+    await Promise.all([
+      supabase.from('currencies').update({ is_default: false }).neq('id', id),
+      supabase.from('currencies').update({ is_default: true  }).eq('id', id),
+    ])
+  }
+
+  async function saveCurrency() {
+    if (!draft || !draft.code.trim() || !draft.name.trim()) return
+    const payload = { code: draft.code.trim().toUpperCase().slice(0, 3), name: draft.name.trim() }
+    if (draft.id) {
+      await supabase.from('currencies').update(payload).eq('id', draft.id)
+    } else {
+      await supabase.from('currencies').insert({ ...payload, is_default: false })
+    }
+    setDraft(null)
+    await loadCurrencies()
+  }
+
+  async function deleteCurrency(c: Currency) {
+    if (c.is_default) { showErr('Não é possível apagar a moeda padrão'); return }
+    if (!window.confirm(`Apagar moeda ${c.code}?`)) return
+    await supabase.from('currencies').delete().eq('id', c.id)
+    await loadCurrencies()
+  }
+
+  return (
+    <>
+      {loading ? (
+        <p className="adm-help">A carregar…</p>
+      ) : (
+        <div style={{ margin: '-16px' }}>
+          <table className="adm-panel-table">
+            <thead>
+              <tr>
+                <th style={{ width: 60 }}>Código</th>
+                <th>Nome</th>
+                <th style={{ width: 70, textAlign: 'center' }}>Default</th>
+                <th style={{ width: 72 }}>Acções</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currencies.map(c => {
+                const editing = draft?.id === c.id
+                return (
+                  <tr key={c.id} className={editing ? 'editing' : undefined}>
+                    <td>
+                      {editing ? (
+                        <input className="adm-row-input" autoFocus maxLength={3}
+                          style={{ textTransform: 'uppercase' }}
+                          value={draft!.code}
+                          onChange={ev => setDraft(d => d ? { ...d, code: ev.target.value } : d)}
+                          onKeyDown={ev => { if (ev.key === 'Enter') saveCurrency(); if (ev.key === 'Escape') setDraft(null) }} />
+                      ) : c.code}
+                    </td>
+                    <td>
+                      {editing ? (
+                        <input className="adm-row-input" value={draft!.name}
+                          onChange={ev => setDraft(d => d ? { ...d, name: ev.target.value } : d)}
+                          onKeyDown={ev => { if (ev.key === 'Enter') saveCurrency(); if (ev.key === 'Escape') setDraft(null) }} />
+                      ) : c.name}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <input type="radio" className="adm-radio"
+                        checked={c.is_default} onChange={() => setDefault(c.id)} />
+                    </td>
+                    <td>
+                      {editing ? (
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          <button className="adm-icon-btn" title="Guardar"  onClick={saveCurrency}>✓</button>
+                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                        </span>
+                      ) : (
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          <button className="adm-icon-btn" title="Editar"
+                            onClick={() => setDraft({ id: c.id, code: c.code, name: c.name })}>✎</button>
+                          <button className="adm-icon-btn" title="Apagar" style={{ color: 'var(--red)' }}
+                            onClick={() => deleteCurrency(c)}>🗑</button>
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+              {draft !== null && draft.id === null && (
+                <tr className="editing">
+                  <td>
+                    <input className="adm-row-input" autoFocus maxLength={3}
+                      style={{ textTransform: 'uppercase' }} placeholder="EUR"
+                      value={draft.code}
+                      onChange={ev => setDraft(d => d ? { ...d, code: ev.target.value } : d)}
+                      onKeyDown={ev => { if (ev.key === 'Enter') saveCurrency(); if (ev.key === 'Escape') setDraft(null) }} />
+                  </td>
+                  <td>
+                    <input className="adm-row-input" placeholder="Nome"
+                      value={draft.name}
+                      onChange={ev => setDraft(d => d ? { ...d, name: ev.target.value } : d)}
+                      onKeyDown={ev => { if (ev.key === 'Enter') saveCurrency(); if (ev.key === 'Escape') setDraft(null) }} />
+                  </td>
+                  <td />
+                  <td>
+                    <span style={{ whiteSpace: 'nowrap' }}>
+                      <button className="adm-icon-btn" title="Guardar"  onClick={saveCurrency}>✓</button>
+                      <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                    </span>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <div className="adm-panel-footer">
+            <button className="adm-add-btn" disabled={draft !== null}
+              onClick={() => setDraft({ id: null, code: '', name: '' })}>
+              + Nova Moeda
+            </button>
+          </div>
+        </div>
+      )}
+      {errMsg && <div className="adm-toast" style={{ background: 'var(--red)' }}>{errMsg}</div>}
+    </>
+  )
+}
+
+// ── Tab: Categorias de Custo ───────────────────────────────────
+interface ProgTabProps { programs: Program[]; progsLoading: boolean }
+
+function CategoriasTab({ programs, progsLoading }: ProgTabProps) {
+  const [selProgId,  setSelProgId]  = useState<string | null>(null)
+  const [categories, setCategories] = useState<CostCategory[]>([])
+  const [loading,    setLoading]    = useState(false)
+  const [draft,      setDraft]      = useState<DraftCategory | null>(null)
+
+  useEffect(() => {
+    if (programs.length > 0 && !selProgId) setSelProgId(programs[0].id)
+  }, [programs, selProgId])
+
+  useEffect(() => {
+    if (!selProgId) return
+    let cancelled = false
+    setLoading(true)
+    setDraft(null)
+    supabase.from('cost_categories')
+      .select('id, program_id, name, is_capex')
+      .eq('program_id', selProgId)
+      .order('name')
+      .then(({ data }) => {
+        if (cancelled) return
+        setCategories((data ?? []) as CostCategory[])
+        setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [selProgId])
+
+  async function reloadCategories() {
+    if (!selProgId) return
+    const { data } = await supabase.from('cost_categories')
+      .select('id, program_id, name, is_capex')
+      .eq('program_id', selProgId).order('name')
+    setCategories((data ?? []) as CostCategory[])
+  }
+
+  async function toggleCapex(cat: CostCategory) {
+    const newVal = !cat.is_capex
+    setCategories(prev => prev.map(c => c.id === cat.id ? { ...c, is_capex: newVal } : c))
+    await supabase.from('cost_categories').update({ is_capex: newVal }).eq('id', cat.id)
+  }
+
+  async function saveCategory() {
+    if (!draft || !draft.name.trim() || !selProgId) return
+    if (draft.id) {
+      await supabase.from('cost_categories').update({ name: draft.name.trim() }).eq('id', draft.id)
+    } else {
+      await supabase.from('cost_categories').insert({ program_id: selProgId, name: draft.name.trim(), is_capex: false })
+    }
+    setDraft(null)
+    await reloadCategories()
+  }
+
+  async function deleteCategory(id: string) {
+    if (!window.confirm('Remover esta categoria?')) return
+    await supabase.from('cost_categories').delete().eq('id', id)
+    setCategories(prev => prev.filter(c => c.id !== id))
+  }
+
+  return (
+    <>
+      <div className="adm-program-bar">
+        <span>Programa:</span>
+        {progsLoading ? <span className="adm-help">A carregar…</span> : (
+          <select className="adm-select" value={selProgId ?? ''}
+            onChange={e => setSelProgId(e.target.value || null)}>
+            {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {programs.length === 0 && <option value="">Sem programas</option>}
+          </select>
+        )}
+      </div>
+      {loading ? (
+        <p className="adm-help">A carregar…</p>
+      ) : (
+        <div style={{ margin: '0 -16px -16px' }}>
+          <table className="adm-panel-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th style={{ width: 80 }}>Tipo</th>
+                <th style={{ width: 72 }}>Acções</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map(cat => {
+                const editing = draft?.id === cat.id
+                return (
+                  <tr key={cat.id} className={editing ? 'editing' : undefined}>
+                    <td>
+                      {editing ? (
+                        <input className="adm-row-input" autoFocus value={draft!.name}
+                          onChange={ev => setDraft(d => d ? { ...d, name: ev.target.value } : d)}
+                          onKeyDown={ev => { if (ev.key === 'Enter') saveCategory(); if (ev.key === 'Escape') setDraft(null) }} />
+                      ) : cat.name}
+                    </td>
+                    <td>
+                      <span className="adm-toggle-badge"
+                        onClick={() => toggleCapex(cat)}
+                        style={{
+                          background: cat.is_capex ? '#EBF0FA' : '#FDF3E7',
+                          color:      cat.is_capex ? 'var(--blue)' : 'var(--amber)',
+                        }}
+                      >
+                        {cat.is_capex ? 'CAPEX' : 'OPEX'}
+                      </span>
+                    </td>
+                    <td>
+                      {editing ? (
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          <button className="adm-icon-btn" title="Guardar"  onClick={saveCategory}>✓</button>
+                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                        </span>
+                      ) : (
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          <button className="adm-icon-btn" title="Editar"
+                            onClick={() => setDraft({ id: cat.id, name: cat.name })}>✎</button>
+                          <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
+                            onClick={() => deleteCategory(cat.id)}>🗑</button>
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+              {draft !== null && draft.id === null && (
+                <tr className="editing">
+                  <td>
+                    <input className="adm-row-input" autoFocus placeholder="Nome da categoria"
+                      value={draft.name}
+                      onChange={ev => setDraft(d => d ? { ...d, name: ev.target.value } : d)}
+                      onKeyDown={ev => { if (ev.key === 'Enter') saveCategory(); if (ev.key === 'Escape') setDraft(null) }} />
+                  </td>
+                  <td>
+                    <span className="adm-toggle-badge" style={{ background: '#FDF3E7', color: 'var(--amber)' }}>OPEX</span>
+                  </td>
+                  <td>
+                    <span style={{ whiteSpace: 'nowrap' }}>
+                      <button className="adm-icon-btn" title="Guardar"  onClick={saveCategory}>✓</button>
+                      <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                    </span>
+                  </td>
+                </tr>
+              )}
+              {categories.length === 0 && draft === null && (
+                <tr><td colSpan={3} className="adm-empty-panel">Sem categorias</td></tr>
+              )}
+            </tbody>
+          </table>
+          <div className="adm-panel-footer">
+            <button className="adm-add-btn" disabled={draft !== null || !selProgId}
+              onClick={() => setDraft({ id: null, name: '' })}>
+              + Nova Categoria
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+// ── Tab: Anos de Gestão ────────────────────────────────────────
+function AnosTab({ programs, progsLoading }: ProgTabProps) {
+  const [selProgId, setSelProgId] = useState<string | null>(null)
+  const [years,     setYears]     = useState<ManagementYear[]>([])
+  const [loading,   setLoading]   = useState(false)
+  const [newYear,   setNewYear]   = useState('')
+  const [errMsg,    setErrMsg]    = useState('')
+
+  function showErr(msg: string) { setErrMsg(msg); setTimeout(() => setErrMsg(''), 3000) }
+
+  useEffect(() => {
+    if (programs.length > 0 && !selProgId) setSelProgId(programs[0].id)
+  }, [programs, selProgId])
+
+  useEffect(() => {
+    if (!selProgId) return
+    let cancelled = false
+    setLoading(true)
+    setNewYear('')
+    supabase.from('management_years')
+      .select('id, program_id, year')
+      .eq('program_id', selProgId)
+      .order('year')
+      .then(({ data }) => {
+        if (cancelled) return
+        setYears((data ?? []) as ManagementYear[])
+        setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [selProgId])
+
+  async function addYear() {
+    const y = parseInt(newYear, 10)
+    if (!selProgId || isNaN(y) || y < 2020 || y > 2040) { showErr('Ano inválido (2020–2040)'); return }
+    if (years.some(ey => ey.year === y)) { showErr('Esse ano já existe'); return }
+    const { data } = await supabase.from('management_years')
+      .insert({ program_id: selProgId, year: y })
+      .select('id, program_id, year')
+      .single()
+    if (data) setYears(prev => [...prev, data as ManagementYear].sort((a, b) => a.year - b.year))
+    setNewYear('')
+  }
+
+  async function deleteYear(id: string) {
+    await supabase.from('management_years').delete().eq('id', id)
+    setYears(prev => prev.filter(y => y.id !== id))
+  }
+
+  return (
+    <>
+      <div className="adm-program-bar">
+        <span>Programa:</span>
+        {progsLoading ? <span className="adm-help">A carregar…</span> : (
+          <select className="adm-select" value={selProgId ?? ''}
+            onChange={e => setSelProgId(e.target.value || null)}>
+            {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {programs.length === 0 && <option value="">Sem programas</option>}
+          </select>
+        )}
+      </div>
+      {loading ? (
+        <p className="adm-help">A carregar…</p>
+      ) : (
+        <div style={{ margin: '0 -16px -16px' }}>
+          <table className="adm-panel-table">
+            <thead>
+              <tr>
+                <th>Ano</th>
+                <th style={{ width: 72 }}>Acções</th>
+              </tr>
+            </thead>
+            <tbody>
+              {years.map(y => (
+                <tr key={y.id}>
+                  <td style={{ fontWeight: 500 }}>{y.year}</td>
+                  <td>
+                    <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
+                      onClick={() => deleteYear(y.id)}>🗑</button>
+                  </td>
+                </tr>
+              ))}
+              {years.length === 0 && (
+                <tr><td colSpan={2} className="adm-empty-panel">Sem anos configurados</td></tr>
+              )}
+            </tbody>
+          </table>
+          <div className="adm-panel-footer" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              className="adm-row-input"
+              type="number" min={2020} max={2040}
+              placeholder="AAAA"
+              value={newYear}
+              style={{ width: 80 }}
+              onChange={e => setNewYear(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addYear() }}
+            />
+            <button className="adm-add-btn" disabled={!selProgId || !newYear} onClick={addYear}>
+              + Adicionar Ano
+            </button>
+          </div>
+        </div>
+      )}
+      {errMsg && <div className="adm-toast" style={{ background: 'var(--red)' }}>{errMsg}</div>}
+    </>
+  )
+}
+
+function AdminFinanceiro() {
+  const [tab, setTab] = useState<FinTab>('moedas')
+  const { programs, loading: progsLoading } = usePrograms()
+
+  const TABS: [FinTab, string][] = [
+    ['moedas',     'Moedas'],
+    ['categorias', 'Categorias de Custo'],
+    ['anos',       'Anos de Gestão'],
+  ]
+
+  return (
+    <Card title="Financeiro">
+      <div className="adm-tabs">
+        {TABS.map(([key, label]) => (
+          <button key={key} className={`adm-tab${tab === key ? ' active' : ''}`}
+            onClick={() => setTab(key)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === 'moedas'     && <MoedasTab />}
+      {tab === 'categorias' && <CategoriasTab programs={programs} progsLoading={progsLoading} />}
+      {tab === 'anos'       && <AnosTab      programs={programs} progsLoading={progsLoading} />}
+    </Card>
+  )
+}
+
 // ── Main Admin component ───────────────────────────────────────
 export default function Admin() {
   const [active, setActive] = useState<SectionKey>('geral')
@@ -1429,7 +1891,8 @@ export default function Admin() {
         {active === 'geral'          ? <AdminGeral />          :
          active === 'programas'     ? <AdminProgramas />     :
          active === 'utilizadores'  ? <AdminUtilizadores />  :
-         active === 'recursos'      ? <AdminRecursos />      : (
+         active === 'recursos'      ? <AdminRecursos />      :
+         active === 'financeiro'    ? <AdminFinanceiro />    : (
           <Card title={section.label}>
             <p className="adm-section-desc">{section.desc}</p>
             <div className="page-placeholder adm-placeholder">
