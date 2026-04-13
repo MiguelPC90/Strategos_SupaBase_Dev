@@ -731,9 +731,17 @@ export default function GestaoIniciativas() {
       )
       if (n2col) continue
 
-      rows.push(...leafRows(n2g.leafActs, 36, 'n3'))
+      rows.push(...leafRows(n2g.leafActs.filter(a => a.level !== 2), 36, 'n3'))
 
       for (const n3g of n2g.n3s) {
+        // True children = n4 groups + any leafActs that are NOT the level-3 representative itself
+        const n3ChildLeaves = n3g.leafActs.filter(a => a.level !== 3)
+        const n3HasChildren = n3g.n4s.length > 0 || n3ChildLeaves.length > 0
+        if (!n3HasChildren) {
+          // Leaf-only: the Macroactividade has no children — render as single leaf row
+          rows.push(...leafRows(n3g.leafActs, 36, 'n3'))
+          continue
+        }
         const n3col = collapsed.has(n3g.key)
         const n3pct = rollupPct(n3g.all); const n3prev = rollupPctPrev(n3g.all, TODAY)
         const n3st  = rollupStatus(n3g.all); const n3dr = rollupDateRange(n3g.all)
@@ -752,9 +760,15 @@ export default function GestaoIniciativas() {
         )
         if (n3col) continue
 
-        rows.push(...leafRows(n3g.leafActs, 52, 'n4'))
+        rows.push(...leafRows(n3ChildLeaves, 52, 'n4'))
 
         for (const n4g of n3g.n4s) {
+          const n4ChildLeaves = n4g.leafActs.filter(a => a.level !== 4)
+          const n4HasChildren = n4g.n5s.length > 0 || n4ChildLeaves.length > 0
+          if (!n4HasChildren) {
+            rows.push(...leafRows(n4g.leafActs, 52, 'n4'))
+            continue
+          }
           const n4col = collapsed.has(n4g.key)
           const n4pct = rollupPct(n4g.all); const n4prev = rollupPctPrev(n4g.all, TODAY)
           const n4st  = rollupStatus(n4g.all); const n4dr = rollupDateRange(n4g.all)
@@ -773,20 +787,26 @@ export default function GestaoIniciativas() {
           )
           if (n4col) continue
 
-          rows.push(...leafRows(n4g.leafActs, 68, 'n5'))
+          rows.push(...leafRows(n4ChildLeaves, 68, 'n5'))
 
           for (const n5g of n4g.n5s) {
-            rows.push(
-              <tr key={n5g.key} className="gi-row-n5">
-                <td>
-                  <div className="gi-name-cell" style={{ paddingLeft: 68 }}>
-                    <span className="gi-name-text">{n5g.n5}</span>
-                  </div>
-                </td>
-                <td /><td /><td /><td /><td /><td />
-              </tr>
-            )
-            rows.push(...leafRows(n5g.acts, 84, 'n5'))
+            const n5Leaves = n5g.acts.filter(a => a.level !== 5)
+            if (n5Leaves.length === 0) {
+              // Tarefa with no sub-tasks: single leaf row
+              rows.push(...leafRows(n5g.acts, 68, 'n5'))
+            } else {
+              rows.push(
+                <tr key={n5g.key} className="gi-row-n5">
+                  <td>
+                    <div className="gi-name-cell" style={{ paddingLeft: 68 }}>
+                      <span className="gi-name-text">{n5g.n5}</span>
+                    </div>
+                  </td>
+                  <td /><td /><td /><td /><td /><td />
+                </tr>
+              )
+              rows.push(...leafRows(n5Leaves, 84, 'n5'))
+            }
           }
         }
       }
