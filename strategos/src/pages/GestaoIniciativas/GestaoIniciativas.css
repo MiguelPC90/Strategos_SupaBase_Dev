@@ -376,4 +376,43 @@
     border-bottom: 1px solid var(--border);
     margin-top: 2px;
   }
+
+  /* ── Section toggle ─────────────────────────────────────────── */
+  .gi-section-toggle {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-top: 1px solid var(--border);
+    padding: 10px 0;
+    font-size: 12px;
+    color: var(--text3);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: inherit;
+    margin-top: 4px;
+  }
+  .gi-section-toggle:hover { color: var(--text2); }
+
+  /* ── % Slider ───────────────────────────────────────────────── */
+  .gi-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .gi-slider {
+    flex: 1;
+    accent-color: var(--navy);
+  }
+
+  .gi-slider-val {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--navy);
+    min-width: 36px;
+    text-align: right;
+  }
 }

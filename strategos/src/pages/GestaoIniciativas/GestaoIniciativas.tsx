@@ -87,25 +87,28 @@ function buildTree(acts: Activity[]): N1Group[] {
 interface PanelForm {
   id: string | null; name: string; level: string
   n0: string; n1: string; n2: string; n3: string; n4: string; n5: string
-  bs: string; bf: string; rs: string; rf: string; finish: string
-  pct: string; status: string; owner: string; sponsor: string; notes: string
+  parentId: string       // '' = no parent (level 3 assumed)
+  bs: string; bf: string; rs: string; rf: string
+  pct: string; owner: string; sponsor: string; notes: string
 }
 
 function toForm(a: Activity): PanelForm {
   return {
     id: a.id, name: a.name, level: String(a.level),
     n0: a.n0, n1: a.n1, n2: a.n2, n3: a.n3, n4: a.n4, n5: a.n5,
-    bs: a.bs ?? '', bf: a.bf ?? '', rs: a.rs ?? '', rf: a.rf ?? '', finish: a.finish ?? '',
-    pct: String(a.pct), status: a.status, owner: a.owner, sponsor: a.sponsor, notes: a.notes ?? '',
+    parentId: '',
+    bs: a.bs ?? '', bf: a.bf ?? '', rs: a.rs ?? '', rf: a.rf ?? '',
+    pct: String(a.pct), owner: a.owner, sponsor: a.sponsor, notes: a.notes ?? '',
   }
 }
 
 function blankForm(n0: string, ctx?: Partial<PanelForm>): PanelForm {
   return {
-    id: null, name: '', level: '4', n0,
+    id: null, name: '', level: '3', n0,
     n1: '', n2: '', n3: '', n4: '', n5: '',
-    bs: '', bf: '', rs: '', rf: '', finish: '',
-    pct: '0', status: 'Em dia', owner: '', sponsor: '', notes: '',
+    parentId: '',
+    bs: '', bf: '', rs: '', rf: '',
+    pct: '0', owner: '', sponsor: '', notes: '',
     ...ctx,
   }
 }
@@ -115,6 +118,7 @@ interface PanelProps {
   form: PanelForm
   eixos: string[]
   planos: string[]
+  activities: Activity[]
   peopleNames: string[]
   onChange: (f: PanelForm) => void
   onSave: () => void
@@ -124,15 +128,54 @@ interface PanelProps {
   error: string
 }
 
-function Panel({ form, eixos, planos, peopleNames, onChange, onSave, onDelete, onClose, saving, error }: PanelProps) {
+function Panel({ form, eixos, planos, activities, peopleNames, onChange, onSave, onDelete, onClose, saving, error }: PanelProps) {
+  const [datesOpen, setDatesOpen] = useState(false)
+
   const set = (k: keyof PanelForm) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       onChange({ ...form, [k]: e.target.value })
 
-  const setN1 = (e: React.ChangeEvent<HTMLSelectElement>) =>
-    onChange({ ...form, n1: e.target.value, n2: '' })
+  // Auto-sync the appropriate Nx from name based on current level
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const name = e.target.value
+    const level = Number(form.level)
+    const updated: PanelForm = { ...form, name }
+    if (level === 3)      { updated.n3 = name }
+    else if (level === 4) { updated.n4 = name }
+    else if (level >= 5)  { updated.n5 = name }
+    onChange(updated)
+  }
 
-  const isN2 = form.level === '2'
+  // N1 change → clear N2 and parent
+  const handleN1Change = (e: React.ChangeEvent<HTMLSelectElement>) =>
+    onChange({ ...form, n1: e.target.value, n2: '', parentId: '', n3: '', n4: '', n5: '', level: '3' })
+
+  // N2 change → clear parent
+  const handleN2Change = (e: React.ChangeEvent<HTMLSelectElement>) =>
+    onChange({ ...form, n2: e.target.value, parentId: '', n3: '', n4: '', n5: '', level: '3' })
+
+  // Parent change → derive level and inherit Nx hierarchy
+  const handleParentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const parentId = e.target.value
+    if (!parentId) {
+      onChange({ ...form, parentId: '', level: '3', n3: form.name, n4: '', n5: '' })
+      return
+    }
+    const parent = activities.find(a => a.id === parentId)
+    if (!parent) return
+    const level = Math.min(parent.level + 1, 6)
+    const updated: PanelForm = { ...form, parentId, level: String(level),
+      n1: parent.n1, n2: parent.n2, n3: parent.n3, n4: parent.n4, n5: parent.n5 }
+    if (level === 3)      { updated.n3 = form.name; updated.n4 = ''; updated.n5 = '' }
+    else if (level === 4) { updated.n4 = form.name; updated.n5 = '' }
+    else                  { updated.n5 = form.name }
+    onChange(updated)
+  }
+
+  const parentCandidates = activities.filter(a =>
+    a.n2 === form.n2 && a.id !== form.id && a.level >= 3 && a.level <= 5
+  )
+  const inferredLevel = Number(form.level) || 3
   const listId = 'gi-people-list'
 
   return (
@@ -147,115 +190,108 @@ function Panel({ form, eixos, planos, peopleNames, onChange, onSave, onDelete, o
           <button className="gi-btn" onClick={onClose}>✕</button>
         </div>
         <div className="gi-panel-body">
+
+          {/* ── Secção 1 — Informação ─────────────────────────── */}
           <div className="gi-field">
             <span className="gi-field-label">Nome *</span>
-            <input className="gi-field-input" value={form.name} onChange={set('name')} placeholder="Designação da actividade" />
+            <input
+              className="gi-field-input"
+              value={form.name}
+              onChange={handleNameChange}
+              placeholder="Designação da actividade"
+            />
           </div>
 
-          <div className="gi-section-title">Hierarquia</div>
           <div className="gi-field-row">
             <div className="gi-field">
               <span className="gi-field-label">N1 — Eixo</span>
-              <select className="gi-field-select" value={form.n1} onChange={setN1}>
+              <select className="gi-field-select" value={form.n1} onChange={handleN1Change}>
                 <option value="">— seleccionar —</option>
                 {eixos.map(e => <option key={e} value={e}>{e}</option>)}
               </select>
             </div>
             <div className="gi-field">
               <span className="gi-field-label">N2 — Plano</span>
-              <select className="gi-field-select" value={form.n2} onChange={set('n2')}>
+              <select className="gi-field-select" value={form.n2} onChange={handleN2Change}>
                 <option value="">— seleccionar —</option>
                 {planos.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
           </div>
-          <div className="gi-field-row">
-            <div className="gi-field">
-              <span className="gi-field-label">N3</span>
-              <input className="gi-field-input" value={form.n3} onChange={set('n3')} />
-            </div>
-            <div className="gi-field">
-              <span className="gi-field-label">N4</span>
-              <input className="gi-field-input" value={form.n4} onChange={set('n4')} />
-            </div>
+
+          <div className="gi-field">
+            <span className="gi-field-label">Actividade pai</span>
+            <select className="gi-field-select" value={form.parentId} onChange={handleParentChange}>
+              <option value="">— sem pai (nível {inferredLevel}) —</option>
+              {parentCandidates.map(a => (
+                <option key={a.id} value={a.id}>
+                  {'· '.repeat(a.level - 2)}{a.name}
+                </option>
+              ))}
+            </select>
           </div>
+
           <div className="gi-field-row">
             <div className="gi-field">
-              <span className="gi-field-label">N5</span>
-              <input className="gi-field-input" value={form.n5} onChange={set('n5')} />
+              <span className="gi-field-label">Responsável</span>
+              <input className="gi-field-input" list={listId} value={form.owner} onChange={set('owner')} />
             </div>
             <div className="gi-field">
-              <span className="gi-field-label">Nível</span>
-              <select className="gi-field-select" value={form.level} onChange={set('level')}>
-                {[1,2,3,4,5,6].map(l => <option key={l} value={l}>{`N${l}`}</option>)}
-              </select>
+              <span className="gi-field-label">Sponsor</span>
+              <input className="gi-field-input" list={listId} value={form.sponsor} onChange={set('sponsor')} />
             </div>
           </div>
 
-          <div className="gi-section-title">Datas baseline</div>
-          <div className="gi-field-row">
-            <div className="gi-field">
-              <span className="gi-field-label">Início (BS)</span>
-              <input className="gi-field-input" type="date" value={form.bs} onChange={set('bs')} />
-            </div>
-            <div className="gi-field">
-              <span className="gi-field-label">Fim (BF)</span>
-              <input className="gi-field-input" type="date" value={form.bf} onChange={set('bf')} />
-            </div>
-          </div>
+          {/* ── Secção 2 — Datas e Progresso (colapsável) ──────── */}
+          <button className="gi-section-toggle" onClick={() => setDatesOpen(o => !o)}>
+            <span>Datas e Progresso</span>
+            <span>{datesOpen ? '▲' : '▼'}</span>
+          </button>
 
-          <div className="gi-section-title">Datas reais</div>
-          <div className="gi-field-row">
-            <div className="gi-field">
-              <span className="gi-field-label">Início real (RS)</span>
-              <input className="gi-field-input" type="date" value={form.rs} onChange={set('rs')} />
-            </div>
-            <div className="gi-field">
-              <span className="gi-field-label">Fim real (RF)</span>
-              <input className="gi-field-input" type="date" value={form.rf} onChange={set('rf')} />
-            </div>
-          </div>
-
-          <div className="gi-section-title">Progresso</div>
-          <div className="gi-field-row">
-            <div className="gi-field">
-              <span className="gi-field-label">% Execução</span>
-              <input className="gi-field-input" type="number" min="0" max="100" value={form.pct} onChange={set('pct')} />
-            </div>
-            <div className="gi-field">
-              <span className="gi-field-label">Estado</span>
-              <select className="gi-field-select" value={form.status} onChange={set('status')}>
-                <option>Em dia</option>
-                <option>Em atraso</option>
-                <option>Concluída</option>
-              </select>
-            </div>
-          </div>
-
-          {isN2 && (
+          {datesOpen && (
             <>
-              <div className="gi-section-title">Responsáveis (Plano)</div>
               <div className="gi-field-row">
                 <div className="gi-field">
-                  <span className="gi-field-label">Responsável</span>
-                  <input className="gi-field-input" list={listId} value={form.owner} onChange={set('owner')} />
+                  <span className="gi-field-label">Início baseline (BS)</span>
+                  <input className="gi-field-input" type="date" value={form.bs} onChange={set('bs')} />
                 </div>
                 <div className="gi-field">
-                  <span className="gi-field-label">Sponsor</span>
-                  <input className="gi-field-input" list={listId} value={form.sponsor} onChange={set('sponsor')} />
+                  <span className="gi-field-label">Fim baseline (BF)</span>
+                  <input className="gi-field-input" type="date" value={form.bf} onChange={set('bf')} />
                 </div>
+              </div>
+
+              <div className="gi-field-row">
+                <div className="gi-field">
+                  <span className="gi-field-label">Início real (RS)</span>
+                  <input className="gi-field-input" type="date" value={form.rs} onChange={set('rs')} />
+                </div>
+                <div className="gi-field">
+                  <span className="gi-field-label">Fim real (RF)</span>
+                  <input className="gi-field-input" type="date" value={form.rf} onChange={set('rf')} />
+                </div>
+              </div>
+
+              <div className="gi-field">
+                <span className="gi-field-label">% Execução</span>
+                <div className="gi-slider-row">
+                  <input
+                    className="gi-slider"
+                    type="range" min="0" max="100" step="1"
+                    value={form.pct}
+                    onChange={set('pct')}
+                  />
+                  <span className="gi-slider-val">{form.pct}%</span>
+                </div>
+              </div>
+
+              <div className="gi-field">
+                <span className="gi-field-label">Notas</span>
+                <textarea className="gi-field-textarea" value={form.notes} onChange={set('notes')} rows={3} />
               </div>
             </>
           )}
 
-          <div className="gi-field">
-            <span className="gi-field-label">Prazo (Finish)</span>
-            <input className="gi-field-input" type="date" value={form.finish} onChange={set('finish')} />
-          </div>
-          <div className="gi-field">
-            <span className="gi-field-label">Notas</span>
-            <textarea className="gi-field-textarea" value={form.notes} onChange={set('notes')} rows={3} />
-          </div>
         </div>
         <div className="gi-panel-footer">
           <button className="gi-btn gi-btn-primary" onClick={onSave} disabled={saving}>
@@ -464,8 +500,9 @@ export default function GestaoIniciativas() {
   const openNew = useCallback(() => {
     const sel = selectedId ? activities.find(a => a.id === selectedId) : null
     if (sel) {
+      const level = Math.min(sel.level + 1, 6)
       setPanelForm(blankForm(sel.n0, {
-        level: String(Math.min(sel.level + 1, 6)),
+        parentId: sel.id, level: String(level),
         n1: sel.n1, n2: sel.n2, n3: sel.n3, n4: sel.n4, n5: sel.n5,
         owner: sel.owner, sponsor: sel.sponsor,
       }))
@@ -482,13 +519,14 @@ export default function GestaoIniciativas() {
     if (!panelForm.name.trim()) { setPanelErr('Nome obrigatório.'); return }
     setPanelSaving(true); setPanelErr('')
     const pct = Math.min(100, Math.max(0, Number(panelForm.pct) || 0))
+    const status = pct >= 100 ? 'Concluída' : 'Em dia'
     const payload = {
-      name: panelForm.name.trim(), level: Number(panelForm.level) || 4,
+      name: panelForm.name.trim(), level: Number(panelForm.level) || 3,
       n0: panelForm.n0, n1: panelForm.n1, n2: panelForm.n2,
       n3: panelForm.n3, n4: panelForm.n4, n5: panelForm.n5,
       bs: panelForm.bs || null, bf: panelForm.bf || null,
-      rs: panelForm.rs || null, rf: panelForm.rf || null, finish: panelForm.finish || null,
-      pct, status: panelForm.status,
+      rs: panelForm.rs || null, rf: panelForm.rf || null,
+      pct, status,
       owner: panelForm.owner, sponsor: panelForm.sponsor,
       notes: panelForm.notes || null, program_id: selProgId ?? null,
     }
@@ -781,7 +819,8 @@ export default function GestaoIniciativas() {
 
       {panelForm && (
         <Panel
-          form={panelForm} eixos={eixos} planos={planos} peopleNames={peopleNames}
+          form={panelForm} eixos={eixos} planos={planos} activities={activities}
+          peopleNames={peopleNames}
           onChange={setPanelForm} onSave={handlePanelSave} onDelete={handlePanelDelete}
           onClose={closePanel} saving={panelSaving} error={panelErr}
         />
