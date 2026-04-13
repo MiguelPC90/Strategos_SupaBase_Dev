@@ -129,6 +129,7 @@
   .gi-row-n5 td { color: var(--text3); font-size: 12px; }
 
   .gi-row-leaf:hover td { background: #f8f9fa; cursor: pointer; }
+  .gi-row-editable:hover td { background: #f8f9fa; cursor: pointer; }
   .gi-row-leaf.selected td { background: #eef4ff; }
   .gi-row-leaf.selected td:first-child { border-left: 3px solid var(--blue); }
 

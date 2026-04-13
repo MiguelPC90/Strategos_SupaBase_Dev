@@ -714,7 +714,7 @@ export default function GestaoIniciativas() {
       const n2col = collapsed.has(n2g.key)
       const n2pct = rollupPct(n2g.all); const n2prev = rollupPctPrev(n2g.all, TODAY)
       const n2st  = rollupStatus(n2g.all); const n2dr = rollupDateRange(n2g.all)
-      const n2Owner = n2g.all[0]?.owner || '—'
+      const n2Owner = dbPlanos.find(p => p.name === n2g.n2)?.owner || '—'
       rows.push(
         <tr key={n2g.key} className="gi-row-n2">
           <td>
@@ -745,17 +745,44 @@ export default function GestaoIniciativas() {
         const n3col = collapsed.has(n3g.key)
         const n3pct = rollupPct(n3g.all); const n3prev = rollupPctPrev(n3g.all, TODAY)
         const n3st  = rollupStatus(n3g.all); const n3dr = rollupDateRange(n3g.all)
+        const n3Rep  = n3g.all.find(a => a.level === 3)
+        const n3Sibs = n3Rep
+          ? localActs.filter(a => a.level === 3 && a.n1 === n3Rep.n1 && a.n2 === n3Rep.n2)
+              .sort((a, b) => a.sort_order - b.sort_order)
+          : []
+        const n3RepIdx = n3Rep ? n3Sibs.findIndex(s => s.id === n3Rep.id) : -1
         rows.push(
-          <tr key={n3g.key} className="gi-row-n3">
+          <tr
+            key={n3g.key}
+            className={`gi-row-n3${n3Rep ? ' gi-row-editable' : ''}`}
+            onClick={n3Rep ? () => openPanel(n3Rep) : undefined}
+          >
             <td>
               <div className="gi-name-cell" style={{ paddingLeft: 36 }}>
-                <button className="gi-toggle" onClick={() => toggle(n3g.key)}>{n3col ? '▶' : '▼'}</button>
+                <button
+                  className="gi-toggle"
+                  onClick={e => { e.stopPropagation(); toggle(n3g.key) }}
+                >{n3col ? '▶' : '▼'}</button>
                 <span className="gi-name-text">{n3g.n3}</span>
               </div>
             </td>
             <td className="gi-td-c" /><td className="gi-td-c">{fmtDate(n3dr.bf)}</td>
             <td className="gi-td-r">{Math.round(n3pct)}%</td><td className="gi-td-r">{Math.round(n3prev)}%</td>
-            <td className="gi-td-c"><Badge variant={statusBadge(n3st)}>{n3st}</Badge></td><td />
+            <td className="gi-td-c"><Badge variant={statusBadge(n3st)}>{n3st}</Badge></td>
+            <td onClick={e => e.stopPropagation()}>
+              {n3Rep && (
+                <RowMenu
+                  actId={n3Rep.id} openId={menuId}
+                  canUp={n3RepIdx > 0} canDown={n3RepIdx < n3Sibs.length - 1}
+                  onOpen={setMenuId}
+                  onEdit={() => openPanel(n3Rep)}
+                  onDuplicate={() => handleDuplicate(n3Rep)}
+                  onDelete={() => handleRowDelete(n3Rep)}
+                  onMoveUp={() => handleMove(n3Rep, n3Sibs, 'up')}
+                  onMoveDown={() => handleMove(n3Rep, n3Sibs, 'down')}
+                />
+              )}
+            </td>
           </tr>
         )
         if (n3col) continue
@@ -772,17 +799,44 @@ export default function GestaoIniciativas() {
           const n4col = collapsed.has(n4g.key)
           const n4pct = rollupPct(n4g.all); const n4prev = rollupPctPrev(n4g.all, TODAY)
           const n4st  = rollupStatus(n4g.all); const n4dr = rollupDateRange(n4g.all)
+          const n4Rep  = n4g.all.find(a => a.level === 4)
+          const n4Sibs = n4Rep
+            ? localActs.filter(a => a.level === 4 && a.n1 === n4Rep.n1 && a.n2 === n4Rep.n2 && a.n3 === n4Rep.n3)
+                .sort((a, b) => a.sort_order - b.sort_order)
+            : []
+          const n4RepIdx = n4Rep ? n4Sibs.findIndex(s => s.id === n4Rep.id) : -1
           rows.push(
-            <tr key={n4g.key} className="gi-row-n4">
+            <tr
+              key={n4g.key}
+              className={`gi-row-n4${n4Rep ? ' gi-row-editable' : ''}`}
+              onClick={n4Rep ? () => openPanel(n4Rep) : undefined}
+            >
               <td>
                 <div className="gi-name-cell" style={{ paddingLeft: 52 }}>
-                  <button className="gi-toggle" onClick={() => toggle(n4g.key)}>{n4col ? '▶' : '▼'}</button>
+                  <button
+                    className="gi-toggle"
+                    onClick={e => { e.stopPropagation(); toggle(n4g.key) }}
+                  >{n4col ? '▶' : '▼'}</button>
                   <span className="gi-name-text">{n4g.n4}</span>
                 </div>
               </td>
               <td className="gi-td-c" /><td className="gi-td-c">{fmtDate(n4dr.bf)}</td>
               <td className="gi-td-r">{Math.round(n4pct)}%</td><td className="gi-td-r">{Math.round(n4prev)}%</td>
-              <td className="gi-td-c"><Badge variant={statusBadge(n4st)}>{n4st}</Badge></td><td />
+              <td className="gi-td-c"><Badge variant={statusBadge(n4st)}>{n4st}</Badge></td>
+              <td onClick={e => e.stopPropagation()}>
+                {n4Rep && (
+                  <RowMenu
+                    actId={n4Rep.id} openId={menuId}
+                    canUp={n4RepIdx > 0} canDown={n4RepIdx < n4Sibs.length - 1}
+                    onOpen={setMenuId}
+                    onEdit={() => openPanel(n4Rep)}
+                    onDuplicate={() => handleDuplicate(n4Rep)}
+                    onDelete={() => handleRowDelete(n4Rep)}
+                    onMoveUp={() => handleMove(n4Rep, n4Sibs, 'up')}
+                    onMoveDown={() => handleMove(n4Rep, n4Sibs, 'down')}
+                  />
+                )}
+              </td>
             </tr>
           )
           if (n4col) continue
@@ -795,14 +849,39 @@ export default function GestaoIniciativas() {
               // Tarefa with no sub-tasks: single leaf row
               rows.push(...leafRows(n5g.acts, 68, 'n5'))
             } else {
+              const n5Rep  = n5g.acts.find(a => a.level === 5)
+              const n5Sibs = n5Rep
+                ? localActs.filter(a => a.level === 5 && a.n1 === n5Rep.n1 && a.n2 === n5Rep.n2 && a.n3 === n5Rep.n3 && a.n4 === n5Rep.n4)
+                    .sort((a, b) => a.sort_order - b.sort_order)
+                : []
+              const n5RepIdx = n5Rep ? n5Sibs.findIndex(s => s.id === n5Rep.id) : -1
               rows.push(
-                <tr key={n5g.key} className="gi-row-n5">
+                <tr
+                  key={n5g.key}
+                  className={`gi-row-n5${n5Rep ? ' gi-row-editable' : ''}`}
+                  onClick={n5Rep ? () => openPanel(n5Rep) : undefined}
+                >
                   <td>
                     <div className="gi-name-cell" style={{ paddingLeft: 68 }}>
                       <span className="gi-name-text">{n5g.n5}</span>
                     </div>
                   </td>
-                  <td /><td /><td /><td /><td /><td />
+                  <td /><td /><td /><td />
+                  <td />
+                  <td onClick={e => e.stopPropagation()}>
+                    {n5Rep && (
+                      <RowMenu
+                        actId={n5Rep.id} openId={menuId}
+                        canUp={n5RepIdx > 0} canDown={n5RepIdx < n5Sibs.length - 1}
+                        onOpen={setMenuId}
+                        onEdit={() => openPanel(n5Rep)}
+                        onDuplicate={() => handleDuplicate(n5Rep)}
+                        onDelete={() => handleRowDelete(n5Rep)}
+                        onMoveUp={() => handleMove(n5Rep, n5Sibs, 'up')}
+                        onMoveDown={() => handleMove(n5Rep, n5Sibs, 'down')}
+                      />
+                    )}
+                  </td>
                 </tr>
               )
               rows.push(...leafRows(n5Leaves, 84, 'n5'))
