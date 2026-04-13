@@ -937,11 +937,14 @@ function AdminUtilizadores() {
     if (!editId) return
     setSaving(true)
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .update({ role: editRole })
         .eq('id', editId)
+        .select()
+      console.log('[saveRole] result:', { data, error })
       if (error) { showToast(`Erro: ${error.message}`); return }
+      if (!data || data.length === 0) { showToast('Sem permissão para editar'); return }
       setEditId(null)
       await loadProfiles()
       showToast('Role actualizado')
