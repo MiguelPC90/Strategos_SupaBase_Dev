@@ -1123,7 +1123,7 @@ interface DraftPerson {
 }
 
 // ── Shared: editable string-list backed by app_config ──────────
-function StringListEditor({ configKey, label }: { configKey: string; label: string }) {
+function StringListEditor({ configKey, label, defaults = [] }: { configKey: string; label: string; defaults?: string[] }) {
   const [items,   setItems]   = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [saving,  setSaving]  = useState(false)
@@ -1139,8 +1139,8 @@ function StringListEditor({ configKey, label }: { configKey: string; label: stri
       .then(({ data }) => {
         if (cancelled) return
         setLoading(false)
-        if (!data) return
-        try { setItems(JSON.parse(data.value) as string[]) } catch { /* empty */ }
+        if (!data) { setItems(defaults); return }
+        try { setItems(JSON.parse(data.value) as string[]) } catch { setItems(defaults) }
       })
       .catch(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -1864,6 +1864,192 @@ function AdminFinanceiro() {
   )
 }
 
+// ── Section 6: Risco ──────────────────────────────────────────
+type RiscoTab = 'matriz' | 'estados'
+
+interface RiskThresholds { low: number; medium: number; high: number }
+
+const DEFAULT_RISK_STATES = ['Identificado', 'Em monitorização', 'Mitigado', 'Fechado']
+
+function MatrizTab() {
+  const [size,    setSize]    = useState(5)
+  const [low,     setLow]     = useState(4)
+  const [medium,  setMedium]  = useState(9)
+  const [high,    setHigh]    = useState(16)
+  const [loading, setLoading] = useState(true)
+  const [saving,  setSaving]  = useState(false)
+  const [toast,   setToast]   = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .from('app_config')
+      .select('key, value')
+      .in('key', ['risk_matrix_size', 'risk_thresholds'])
+      .then(({ data }) => {
+        if (cancelled) return
+        if (data) {
+          const map: Record<string, string> = {}
+          for (const row of data) map[row.key] = row.value
+          if (map['risk_matrix_size']) setSize(parseInt(map['risk_matrix_size'], 10) || 5)
+          if (map['risk_thresholds']) {
+            try {
+              const t = JSON.parse(map['risk_thresholds']) as RiskThresholds
+              setLow(t.low ?? 4)
+              setMedium(t.medium ?? 9)
+              setHigh(t.high ?? 16)
+            } catch { /* use defaults */ }
+          }
+        }
+        setLoading(false)
+      })
+      .catch(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  async function handleSizeClick(newSize: number) {
+    setSize(newSize)
+    await supabase.from('app_config').upsert(
+      { key: 'risk_matrix_size', value: String(newSize) },
+      { onConflict: 'key' },
+    )
+  }
+
+  async function saveThresholds() {
+    setSaving(true)
+    try {
+      await supabase.from('app_config').upsert(
+        { key: 'risk_thresholds', value: JSON.stringify({ low, medium, high }) },
+        { onConflict: 'key' },
+      )
+      setToast(true)
+      setTimeout(() => setToast(false), 2000)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function cellStyle(score: number) {
+    if (score <= low)    return { background: '#EBF5E1' }
+    if (score <= medium) return { background: '#FDF3E7' }
+    if (score <= high)   return { background: '#FDECEA' }
+    return { background: '#7B0000', color: 'white' }
+  }
+
+  if (loading) return <p className="adm-help">A carregar…</p>
+
+  const N    = size
+  const cols = Array.from({ length: N }, (_, i) => i + 1)  // 1 … N
+  const rows = Array.from({ length: N }, (_, i) => N - i)  // N … 1 (top → bottom)
+
+  return (
+    <>
+      {/* ── Size selector ── */}
+      <div style={{ marginBottom: 16 }}>
+        <div className="adm-label" style={{ marginBottom: 8 }}>Dimensão da matriz</div>
+        <div className="adm-size-btns">
+          {[3, 4, 5, 6].map(s => (
+            <button
+              key={s}
+              className={`adm-size-btn${size === s ? ' active' : ''}`}
+              onClick={() => handleSizeClick(s)}
+            >
+              {s}×{s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Thresholds ── */}
+      <div className="adm-threshold-row">
+        <div className="adm-field" style={{ margin: 0 }}>
+          <label className="adm-label">Baixo até</label>
+          <input className="adm-input" type="number" min={1} max={N * N}
+            value={low} style={{ width: 80 }}
+            onChange={e => setLow(parseInt(e.target.value, 10) || 0)} />
+        </div>
+        <div className="adm-field" style={{ margin: 0 }}>
+          <label className="adm-label">Médio até</label>
+          <input className="adm-input" type="number" min={1} max={N * N}
+            value={medium} style={{ width: 80 }}
+            onChange={e => setMedium(parseInt(e.target.value, 10) || 0)} />
+        </div>
+        <div className="adm-field" style={{ margin: 0 }}>
+          <label className="adm-label">Alto até</label>
+          <input className="adm-input" type="number" min={1} max={N * N}
+            value={high} style={{ width: 80 }}
+            onChange={e => setHigh(parseInt(e.target.value, 10) || 0)} />
+        </div>
+        <button className="adm-btn-primary" onClick={saveThresholds} disabled={saving}
+          style={{ alignSelf: 'flex-end' }}>
+          {saving ? 'A guardar…' : 'Guardar limiares'}
+        </button>
+        {toast && <span style={{ fontSize: 12, color: 'var(--green)', alignSelf: 'center' }}>Guardado!</span>}
+      </div>
+
+      {/* ── Matrix preview ── */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+        {/* Rotated Probabilidade label */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          height: (N + 1) * 38, width: 14,
+        }}>
+          <span className="adm-axis-label" style={{ transform: 'rotate(-90deg)', whiteSpace: 'nowrap' }}>
+            Probabilidade ↑
+          </span>
+        </div>
+
+        {/* Grid + Impacto label */}
+        <div>
+          <div className="adm-matrix-preview"
+            style={{ gridTemplateColumns: `repeat(${N + 1}, 36px)` }}>
+            {/* Header row: blank + impact numbers */}
+            <div className="adm-matrix-header-cell" />
+            {cols.map(col => (
+              <div key={`ih-${col}`} className="adm-matrix-header-cell">{col}</div>
+            ))}
+            {/* Data rows: prob header + score cells */}
+            {rows.flatMap(prob => [
+              <div key={`ph-${prob}`} className="adm-matrix-header-cell">{prob}</div>,
+              ...cols.map(imp => (
+                <div key={`c-${prob}-${imp}`} className="adm-matrix-cell"
+                  style={cellStyle(imp * prob)}>
+                  {imp * prob}
+                </div>
+              )),
+            ])}
+          </div>
+          {/* Impacto label — centred under data columns (offset by the prob header col) */}
+          <div style={{ textAlign: 'center', marginLeft: 38 }}>
+            <span className="adm-axis-label">Impacto →</span>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function AdminRisco() {
+  const [tab, setTab] = useState<RiscoTab>('matriz')
+
+  return (
+    <Card title="Risco">
+      <div className="adm-tabs">
+        <button className={`adm-tab${tab === 'matriz'  ? ' active' : ''}`} onClick={() => setTab('matriz')}>Matriz</button>
+        <button className={`adm-tab${tab === 'estados' ? ' active' : ''}`} onClick={() => setTab('estados')}>Estados</button>
+      </div>
+      {tab === 'matriz'  && <MatrizTab />}
+      {tab === 'estados' && (
+        <StringListEditor
+          configKey="risk_states"
+          label="Estados de risco disponíveis"
+          defaults={DEFAULT_RISK_STATES}
+        />
+      )}
+    </Card>
+  )
+}
+
 // ── Main Admin component ───────────────────────────────────────
 export default function Admin() {
   const [active, setActive] = useState<SectionKey>('geral')
@@ -1892,7 +2078,8 @@ export default function Admin() {
          active === 'programas'     ? <AdminProgramas />     :
          active === 'utilizadores'  ? <AdminUtilizadores />  :
          active === 'recursos'      ? <AdminRecursos />      :
-         active === 'financeiro'    ? <AdminFinanceiro />    : (
+         active === 'financeiro'    ? <AdminFinanceiro />    :
+         active === 'risco'         ? <AdminRisco />         : (
           <Card title={section.label}>
             <p className="adm-section-desc">{section.desc}</p>
             <div className="page-placeholder adm-placeholder">

@@ -425,4 +425,73 @@
     width: 16px;
     height: 16px;
   }
+
+  /* ── Risco section ── */
+  .adm-size-btns {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+
+  .adm-size-btn {
+    padding: 6px 16px;
+    border-radius: var(--r);
+    border: 1px solid var(--border2);
+    background: white;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text2);
+  }
+
+  .adm-size-btn:hover {
+    background: var(--bg2);
+  }
+
+  .adm-size-btn.active {
+    background: var(--navy);
+    color: white;
+    border-color: var(--navy);
+  }
+
+  .adm-threshold-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .adm-matrix-preview {
+    display: inline-grid;
+    gap: 2px;
+    margin-top: 16px;
+  }
+
+  .adm-matrix-cell {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 3px;
+  }
+
+  .adm-matrix-header-cell {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .adm-axis-label {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 6px;
+    display: inline-block;
+  }
 }
