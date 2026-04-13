@@ -333,13 +333,22 @@ export default function GestaoIniciativas() {
   const [selProgId, setSelProgId] = useState<string | null>(null)
 
   const { programs } = usePrograms()
-  const { activities, loading, refetch } = useActivities({ program_id: selProgId ?? undefined })
+  const { activities: rawActivities, loading, refetch } = useActivities({})
   const { people } = usePeople()
   const { eixos: dbEixos } = useEixos(selProgId ?? undefined)
   const { planos: dbPlanos } = usePlanos(selProgId ?? undefined)
 
-  const program    = useMemo(() => programs.find(p => p.id === selProgId), [programs, selProgId])
+  const program     = useMemo(() => programs.find(p => p.id === selProgId), [programs, selProgId])
   const peopleNames = useMemo(() => people.filter(p => p.active !== false).map(p => p.name), [people])
+
+  // Filter client-side: match by program_id (new data) or by n0 name (legacy data with null program_id)
+  const activities = useMemo(() => {
+    if (!selProgId || !program) return rawActivities
+    return rawActivities.filter(a =>
+      a.program_id === selProgId ||
+      (!a.program_id && a.n0 === program.name)
+    )
+  }, [rawActivities, selProgId, program])
 
   // Eixo and plano names from DB tables (Panel dropdowns)
   const eixos = useMemo(() => dbEixos.map(e => e.name), [dbEixos])
