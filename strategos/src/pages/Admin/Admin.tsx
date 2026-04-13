@@ -2,6 +2,7 @@ import './Admin.css'
 import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import Card from '../../components/Card/Card'
 import { supabase } from '../../lib/supabase'
+import type { Program } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -210,6 +211,193 @@ function AdminGeral() {
   )
 }
 
+// ── Section 2: Programas e Eixos ──────────────────────────────
+interface DraftProg { id: string | null; code: string; name: string }
+
+function AdminProgramas() {
+  const [programs, setPrograms] = useState<Program[]>([])
+  const [progLoad, setProgLoad] = useState(true)
+  const [selProgId, setSelProgId] = useState<string | null>(null)
+  const [draft, setDraft]        = useState<DraftProg | null>(null)
+  const [errMsg, setErrMsg]      = useState('')
+
+  function showErr(msg: string) {
+    setErrMsg(msg)
+    setTimeout(() => setErrMsg(''), 3000)
+  }
+
+  async function loadPrograms() {
+    setProgLoad(true)
+    const { data } = await supabase
+      .from('programs')
+      .select('id, code, name, sort_order')
+      .order('sort_order')
+      .order('name')
+    setPrograms((data ?? []) as Program[])
+    setProgLoad(false)
+  }
+
+  useEffect(() => { loadPrograms() }, [])
+
+  async function saveProg() {
+    if (!draft || !draft.name.trim()) return
+    const payload = { code: draft.code.trim(), name: draft.name.trim(), sort_order: 0 }
+    if (draft.id) {
+      await supabase.from('programs').update(payload).eq('id', draft.id)
+    } else {
+      await supabase.from('programs').insert(payload)
+    }
+    setDraft(null)
+    await loadPrograms()
+  }
+
+  async function deleteProg(id: string) {
+    const { count } = await supabase
+      .from('eixos')
+      .select('id', { count: 'exact', head: true })
+      .eq('program_id', id)
+    if ((count ?? 0) > 0) {
+      showErr('Não é possível apagar — existem eixos associados')
+      return
+    }
+    await supabase.from('programs').delete().eq('id', id)
+    if (selProgId === id) setSelProgId(null)
+    await loadPrograms()
+  }
+
+  const selProg = programs.find(p => p.id === selProgId)
+
+  return (
+    <>
+      <div className="adm-3col">
+
+        {/* ── Panel 1: Programas ── */}
+        <Card title="Programas">
+          <div style={{ margin: '-16px' }}>
+            {progLoad ? (
+              <p className="adm-empty-panel">A carregar…</p>
+            ) : (
+              <table className="adm-panel-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Nome</th>
+                    <th style={{ width: 72 }}>Acções</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {programs.map(p => {
+                    const editing = draft?.id === p.id
+                    const rowCls  = [selProgId === p.id ? 'selected' : '', editing ? 'editing' : ''].filter(Boolean).join(' ')
+                    return (
+                      <tr
+                        key={p.id}
+                        className={rowCls || undefined}
+                        style={{ cursor: editing ? 'default' : 'pointer' }}
+                        onClick={() => !editing && setSelProgId(p.id)}
+                      >
+                        <td style={{ width: 70 }}>
+                          {editing ? (
+                            <input
+                              className="adm-row-input" autoFocus
+                              value={draft!.code}
+                              onChange={e => setDraft(d => d ? { ...d, code: e.target.value } : d)}
+                              onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
+                            />
+                          ) : p.code}
+                        </td>
+                        <td>
+                          {editing ? (
+                            <input
+                              className="adm-row-input"
+                              value={draft!.name}
+                              onChange={e => setDraft(d => d ? { ...d, name: e.target.value } : d)}
+                              onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
+                            />
+                          ) : p.name}
+                        </td>
+                        <td>
+                          {editing ? (
+                            <span style={{ whiteSpace: 'nowrap' }}>
+                              <button className="adm-icon-btn" title="Guardar"  onClick={e => { e.stopPropagation(); saveProg() }}>✓</button>
+                              <button className="adm-icon-btn" title="Cancelar" onClick={e => { e.stopPropagation(); setDraft(null) }}>✕</button>
+                            </span>
+                          ) : (
+                            <span style={{ whiteSpace: 'nowrap' }}>
+                              <button className="adm-icon-btn" title="Editar"
+                                onClick={e => { e.stopPropagation(); setDraft({ id: p.id, code: p.code, name: p.name }) }}>✎</button>
+                              <button className="adm-icon-btn" title="Apagar" style={{ color: 'var(--red)' }}
+                                onClick={e => { e.stopPropagation(); deleteProg(p.id) }}>🗑</button>
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {draft !== null && draft.id === null && (
+                    <tr className="editing">
+                      <td style={{ width: 70 }}>
+                        <input className="adm-row-input" autoFocus placeholder="Cód."
+                          value={draft.code}
+                          onChange={e => setDraft(d => d ? { ...d, code: e.target.value } : d)}
+                          onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
+                        />
+                      </td>
+                      <td>
+                        <input className="adm-row-input" placeholder="Nome"
+                          value={draft.name}
+                          onChange={e => setDraft(d => d ? { ...d, name: e.target.value } : d)}
+                          onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
+                        />
+                      </td>
+                      <td>
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          <button className="adm-icon-btn" title="Guardar"  onClick={saveProg}>✓</button>
+                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                        </span>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+            <div className="adm-panel-footer">
+              <button
+                className="adm-add-btn"
+                disabled={draft !== null}
+                onClick={() => setDraft({ id: null, code: '', name: '' })}
+              >
+                + Novo Programa
+              </button>
+            </div>
+          </div>
+        </Card>
+
+        {/* ── Panel 2: Eixos (placeholder) ── */}
+        <Card title={selProg ? `Eixos — ${selProg.name}` : 'Eixos'}>
+          {!selProgId ? (
+            <p className="adm-empty-panel">Selecciona um programa</p>
+          ) : (
+            <div className="page-placeholder adm-placeholder">
+              <p>A implementar</p>
+            </div>
+          )}
+        </Card>
+
+        {/* ── Panel 3: Planos (placeholder) ── */}
+        <Card title="Planos">
+          <p className="adm-empty-panel">Selecciona um eixo</p>
+        </Card>
+
+      </div>
+
+      {errMsg && (
+        <div className="adm-toast" style={{ background: 'var(--red)' }}>{errMsg}</div>
+      )}
+    </>
+  )
+}
+
 // ── Main Admin component ───────────────────────────────────────
 export default function Admin() {
   const [active, setActive] = useState<SectionKey>('geral')
@@ -234,9 +422,8 @@ export default function Admin() {
 
       {/* ── Right content ── */}
       <div className="adm-content">
-        {active === 'geral' ? (
-          <AdminGeral />
-        ) : (
+        {active === 'geral'     ? <AdminGeral />     :
+         active === 'programas' ? <AdminProgramas /> : (
           <Card title={section.label}>
             <p className="adm-section-desc">{section.desc}</p>
             <div className="page-placeholder adm-placeholder">
