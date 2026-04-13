@@ -1649,41 +1649,24 @@ function parseProgramIds(raw: string | null): string[] {
 interface ProgChecklistProps { selected: string[]; programs: Program[]; onChange: (ids: string[]) => void }
 
 function ProgChecklist({ selected, programs, onChange }: ProgChecklistProps) {
-  const label = selected.length === 0
-    ? 'Seleccionar…'
-    : `${selected.length} programa${selected.length !== 1 ? 's' : ''}`
   return (
-    <details style={{ position: 'relative' }}>
-      <summary style={{
-        listStyle: 'none', cursor: 'pointer', padding: '3px 8px',
-        border: '1px solid var(--border2)', borderRadius: 'var(--r)',
-        background: 'var(--bg)', fontSize: 12, color: 'var(--text)', whiteSpace: 'nowrap',
-      }}>
-        {label} ▾
-      </summary>
-      <div style={{
-        position: 'absolute', top: 'calc(100% + 2px)', left: 0, zIndex: 20,
-        background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 'var(--r)',
-        padding: 8, minWidth: 200, maxHeight: 180, overflowY: 'auto',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-      }}>
-        {programs.map(p => (
-          <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', fontSize: 13, cursor: 'pointer' }}>
-            <input type="checkbox" checked={selected.includes(p.id)}
-              onChange={e => {
-                const next = e.target.checked
-                  ? [...selected, p.id]
-                  : selected.filter(id => id !== p.id)
-                if (next.length === 0) return  // at least 1 required
-                onChange(next)
-              }}
-            />
-            {p.name}
-          </label>
-        ))}
-        {programs.length === 0 && <span style={{ fontSize: 12, color: 'var(--text3)' }}>Sem programas</span>}
-      </div>
-    </details>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {programs.map(p => (
+        <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+          <input type="checkbox" checked={selected.includes(p.id)}
+            onChange={e => {
+              const next = e.target.checked
+                ? [...selected, p.id]
+                : selected.filter(id => id !== p.id)
+              if (next.length === 0) return  // at least 1 required
+              onChange(next)
+            }}
+          />
+          {p.name}
+        </label>
+      ))}
+      {programs.length === 0 && <span style={{ fontSize: 12, color: 'var(--text3)' }}>Sem programas</span>}
+    </div>
   )
 }
 
@@ -1691,6 +1674,9 @@ function CategoriasTab({ programs }: ProgTabProps) {
   const [categories, setCategories] = useState<CostCategory[]>([])
   const [loading,    setLoading]    = useState(true)
   const [draft,      setDraft]      = useState<DraftCategory | null>(null)
+  const [errMsg,     setErrMsg]     = useState('')
+
+  function showErr(msg: string) { setErrMsg(msg); setTimeout(() => setErrMsg(''), 3000) }
 
   useEffect(() => {
     let cancelled = false
@@ -1721,15 +1707,20 @@ function CategoriasTab({ programs }: ProgTabProps) {
 
   async function saveCategory() {
     if (!draft || !draft.name.trim() || draft.programIds.length === 0) return
+    console.log('[saveCategory] draft:', draft)
     const payload = {
       name:       draft.name.trim(),
       is_capex:   draft.is_capex,
       program_id: JSON.stringify(draft.programIds),
     }
     if (draft.id) {
-      await supabase.from('cost_categories').update(payload).eq('id', draft.id)
+      const { data, error } = await supabase.from('cost_categories').update(payload).eq('id', draft.id).select()
+      console.log('[saveCategory] result:', { data, error })
+      if (error) { showErr(error.message); return }
     } else {
-      await supabase.from('cost_categories').insert(payload)
+      const { data, error } = await supabase.from('cost_categories').insert(payload).select()
+      console.log('[saveCategory] result:', { data, error })
+      if (error) { showErr(error.message); return }
     }
     setDraft(null)
     await reloadCategories()
@@ -1860,6 +1851,7 @@ function CategoriasTab({ programs }: ProgTabProps) {
           </div>
         </div>
       )}
+      {errMsg && <div className="adm-toast" style={{ background: 'var(--red)' }}>{errMsg}</div>}
     </>
   )
 }
