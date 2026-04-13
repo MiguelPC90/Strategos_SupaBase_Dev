@@ -56,10 +56,11 @@ function AdminGeral() {
       .from('app_config')
       .select('key, value')
       .in('key', [...CONFIG_KEYS])
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (cancelled) return
+        console.log('[AdminGeral] fetch:', { data, error })
         setLoading(false)
-        if (!data) return
+        if (error || !data) return
         const map: Record<string, string> = {}
         for (const row of data) map[row.key] = row.value
         setTitle(map['client_title']     ?? '')
@@ -67,7 +68,7 @@ function AdminGeral() {
         setLogoUrl(map['client_logo_url']  ?? '')
         setCutoffDate(map['cutoff_date']   ?? '')
       })
-      .catch(() => { if (!cancelled) setLoading(false) })
+      .catch(err => { if (!cancelled) { console.error('[AdminGeral] fetch error:', err); setLoading(false) } })
     return () => { cancelled = true }
   }, [])
 
@@ -79,9 +80,18 @@ function AdminGeral() {
         { key: 'client_subtitle', value: subtitle },
         { key: 'cutoff_date',     value: cutoffDate },
       ]
-      await Promise.all(
+      const results = await Promise.all(
         pairs.map(p => supabase.from('app_config').upsert(p, { onConflict: 'key' }))
       )
+      console.log('[AdminGeral] save results:', results)
+
+      // Re-fetch to confirm values were actually written
+      const { data: verify, error: verifyErr } = await supabase
+        .from('app_config')
+        .select('key, value')
+        .in('key', [...CONFIG_KEYS])
+      console.log('[AdminGeral] verify after save:', { data: verify, error: verifyErr })
+
       setToast(true)
       setTimeout(() => setToast(false), 2000)
     } finally {
