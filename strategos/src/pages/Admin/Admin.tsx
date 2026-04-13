@@ -1212,10 +1212,12 @@ function StringListEditor({ configKey, label, defaults = [] }: { configKey: stri
 
 // ── Pessoas sub-tab ────────────────────────────────────────────
 function PessoasTab() {
-  const [people,   setPeople]   = useState<Person[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [draft,    setDraft]    = useState<DraftPerson | null>(null)
-  const [errMsg,   setErrMsg]   = useState('')
+  const [people,    setPeople]    = useState<Person[]>([])
+  const [loading,   setLoading]   = useState(true)
+  const [draft,     setDraft]     = useState<DraftPerson | null>(null)
+  const [errMsg,    setErrMsg]    = useState('')
+  const [profOpts,  setProfOpts]  = useState<string[]>([])
+  const [unitOpts,  setUnitOpts]  = useState<string[]>([])
 
   function showErr(msg: string) {
     setErrMsg(msg)
@@ -1233,6 +1235,25 @@ function PessoasTab() {
   }
 
   useEffect(() => { loadPeople() }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .from('app_config')
+      .select('config_key, data')
+      .in('config_key', ['resource_profiles', 'org_units'])
+      .then(({ data }) => {
+        if (cancelled || !data) return
+        for (const row of data) {
+          try {
+            const arr = JSON.parse(row.data) as string[]
+            if (row.config_key === 'resource_profiles') setProfOpts(arr)
+            if (row.config_key === 'org_units')         setUnitOpts(arr)
+          } catch { /* leave empty — fallback to text input */ }
+        }
+      })
+    return () => { cancelled = true }
+  }, [])
 
   async function savePerson() {
     if (!draft || !draft.name.trim()) return
@@ -1305,16 +1326,32 @@ function PessoasTab() {
                     </td>
                     <td>
                       {editing ? (
-                        <input className="adm-row-input" value={draft!.org_unit}
-                          onChange={e => setDraft(d => d ? { ...d, org_unit: e.target.value } : d)}
-                          onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                        unitOpts.length > 0 ? (
+                          <select className="adm-select" style={{ width: '100%' }} value={draft!.org_unit}
+                            onChange={e => setDraft(d => d ? { ...d, org_unit: e.target.value } : d)}>
+                            <option value="">— seleccionar —</option>
+                            {unitOpts.map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
+                        ) : (
+                          <input className="adm-row-input" value={draft!.org_unit}
+                            onChange={e => setDraft(d => d ? { ...d, org_unit: e.target.value } : d)}
+                            onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                        )
                       ) : (p.org_unit || '—')}
                     </td>
                     <td>
                       {editing ? (
-                        <input className="adm-row-input" value={draft!.role}
-                          onChange={e => setDraft(d => d ? { ...d, role: e.target.value } : d)}
-                          onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                        profOpts.length > 0 ? (
+                          <select className="adm-select" style={{ width: '100%' }} value={draft!.role}
+                            onChange={e => setDraft(d => d ? { ...d, role: e.target.value } : d)}>
+                            <option value="">— seleccionar —</option>
+                            {profOpts.map(pr => <option key={pr} value={pr}>{pr}</option>)}
+                          </select>
+                        ) : (
+                          <input className="adm-row-input" value={draft!.role}
+                            onChange={e => setDraft(d => d ? { ...d, role: e.target.value } : d)}
+                            onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                        )
                       ) : (p.role || '—')}
                     </td>
                     <td>
@@ -1352,15 +1389,33 @@ function PessoasTab() {
                     onChange={e => setDraft(d => d ? { ...d, company: e.target.value } : d)}
                     onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
                   </td>
-                  <td><input className="adm-row-input" placeholder="Unidade"
-                    value={draft.org_unit}
-                    onChange={e => setDraft(d => d ? { ...d, org_unit: e.target.value } : d)}
-                    onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                  <td>
+                    {unitOpts.length > 0 ? (
+                      <select className="adm-select" style={{ width: '100%' }} value={draft.org_unit}
+                        onChange={e => setDraft(d => d ? { ...d, org_unit: e.target.value } : d)}>
+                        <option value="">— seleccionar —</option>
+                        {unitOpts.map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    ) : (
+                      <input className="adm-row-input" placeholder="Unidade"
+                        value={draft.org_unit}
+                        onChange={e => setDraft(d => d ? { ...d, org_unit: e.target.value } : d)}
+                        onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                    )}
                   </td>
-                  <td><input className="adm-row-input" placeholder="Perfil"
-                    value={draft.role}
-                    onChange={e => setDraft(d => d ? { ...d, role: e.target.value } : d)}
-                    onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                  <td>
+                    {profOpts.length > 0 ? (
+                      <select className="adm-select" style={{ width: '100%' }} value={draft.role}
+                        onChange={e => setDraft(d => d ? { ...d, role: e.target.value } : d)}>
+                        <option value="">— seleccionar —</option>
+                        {profOpts.map(pr => <option key={pr} value={pr}>{pr}</option>)}
+                      </select>
+                    ) : (
+                      <input className="adm-row-input" placeholder="Perfil"
+                        value={draft.role}
+                        onChange={e => setDraft(d => d ? { ...d, role: e.target.value } : d)}
+                        onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                    )}
                   </td>
                   <td>
                     <span style={{ whiteSpace: 'nowrap' }}>
