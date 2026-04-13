@@ -2,7 +2,7 @@ import './Admin.css'
 import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import Card from '../../components/Card/Card'
 import { supabase } from '../../lib/supabase'
-import type { Program } from '../../types/index'
+import type { Program, Eixo, Plano } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -212,14 +212,26 @@ function AdminGeral() {
 }
 
 // ── Section 2: Programas e Eixos ──────────────────────────────
-interface DraftProg { id: string | null; code: string; name: string }
+interface DraftProg  { id: string | null; code: string; name: string }
+interface DraftEixo  { id: string | null; code: string; name: string }
+interface DraftPlano { id: string | null; code: string; name: string; owner: string; sponsor: string }
 
 function AdminProgramas() {
   const [programs, setPrograms] = useState<Program[]>([])
   const [progLoad, setProgLoad] = useState(true)
   const [selProgId, setSelProgId] = useState<string | null>(null)
   const [draft, setDraft]        = useState<DraftProg | null>(null)
-  const [errMsg, setErrMsg]      = useState('')
+
+  const [eixos,     setEixos]     = useState<Eixo[]>([])
+  const [eixoLoad,  setEixoLoad]  = useState(false)
+  const [selEixoId, setSelEixoId] = useState<string | null>(null)
+  const [eixoDraft, setEixoDraft] = useState<DraftEixo | null>(null)
+
+  const [planos,    setPlanos]    = useState<Plano[]>([])
+  const [planoLoad, setPlanoLoad] = useState(false)
+  const [planoDraft, setPlanoDraft] = useState<DraftPlano | null>(null)
+
+  const [errMsg, setErrMsg] = useState('')
 
   function showErr(msg: string) {
     setErrMsg(msg)
@@ -238,6 +250,44 @@ function AdminProgramas() {
   }
 
   useEffect(() => { loadPrograms() }, [])
+
+  async function loadEixos(programId: string) {
+    setEixoLoad(true)
+    const { data } = await supabase
+      .from('eixos')
+      .select('id, program_id, code, name, sort_order, created_at, updated_at')
+      .eq('program_id', programId)
+      .order('sort_order')
+      .order('name')
+    setEixos((data ?? []) as Eixo[])
+    setEixoLoad(false)
+  }
+
+  useEffect(() => {
+    setSelEixoId(null)
+    setEixoDraft(null)
+    setEixos([])
+    setPlanos([])
+    if (selProgId) loadEixos(selProgId)
+  }, [selProgId])
+
+  async function loadPlanos(eixoId: string) {
+    setPlanoLoad(true)
+    const { data } = await supabase
+      .from('planos')
+      .select('id, eixo_id, program_id, code, name, owner, sponsor, sort_order, created_at, updated_at')
+      .eq('eixo_id', eixoId)
+      .order('sort_order')
+      .order('name')
+    setPlanos((data ?? []) as Plano[])
+    setPlanoLoad(false)
+  }
+
+  useEffect(() => {
+    setPlanoDraft(null)
+    setPlanos([])
+    if (selEixoId) loadPlanos(selEixoId)
+  }, [selEixoId])
 
   async function saveProg() {
     if (!draft || !draft.name.trim()) return
@@ -265,7 +315,60 @@ function AdminProgramas() {
     await loadPrograms()
   }
 
-  const selProg = programs.find(p => p.id === selProgId)
+  async function saveEixo() {
+    if (!eixoDraft || !eixoDraft.name.trim() || !selProgId) return
+    const payload = { program_id: selProgId, code: eixoDraft.code.trim(), name: eixoDraft.name.trim(), sort_order: 0 }
+    if (eixoDraft.id) {
+      await supabase.from('eixos').update(payload).eq('id', eixoDraft.id)
+    } else {
+      await supabase.from('eixos').insert(payload)
+    }
+    setEixoDraft(null)
+    await loadEixos(selProgId)
+  }
+
+  async function deleteEixo(id: string) {
+    const { count } = await supabase
+      .from('planos')
+      .select('id', { count: 'exact', head: true })
+      .eq('eixo_id', id)
+    if ((count ?? 0) > 0) {
+      showErr('Não é possível apagar — existem planos associados')
+      return
+    }
+    await supabase.from('eixos').delete().eq('id', id)
+    if (selEixoId === id) setSelEixoId(null)
+    if (selProgId) await loadEixos(selProgId)
+  }
+
+  async function savePlano() {
+    if (!planoDraft || !planoDraft.name.trim() || !selEixoId) return
+    const payload = {
+      eixo_id:    selEixoId,
+      program_id: selProgId,
+      code:       planoDraft.code.trim(),
+      name:       planoDraft.name.trim(),
+      owner:      planoDraft.owner.trim() || null,
+      sponsor:    planoDraft.sponsor.trim() || null,
+      sort_order: 0,
+    }
+    if (planoDraft.id) {
+      await supabase.from('planos').update(payload).eq('id', planoDraft.id)
+    } else {
+      await supabase.from('planos').insert(payload)
+    }
+    setPlanoDraft(null)
+    await loadPlanos(selEixoId)
+  }
+
+  async function deletePlano(id: string) {
+    if (!window.confirm('Apagar este plano? Esta acção não pode ser desfeita.')) return
+    await supabase.from('planos').delete().eq('id', id)
+    if (selEixoId) await loadPlanos(selEixoId)
+  }
+
+  const selProg  = programs.find(p => p.id === selProgId)
+  const selEixo  = eixos.find(e => e.id === selEixoId)
 
   return (
     <>
@@ -373,20 +476,247 @@ function AdminProgramas() {
           </div>
         </Card>
 
-        {/* ── Panel 2: Eixos (placeholder) ── */}
+        {/* ── Panel 2: Eixos ── */}
         <Card title={selProg ? `Eixos — ${selProg.name}` : 'Eixos'}>
           {!selProgId ? (
             <p className="adm-empty-panel">Selecciona um programa</p>
           ) : (
-            <div className="page-placeholder adm-placeholder">
-              <p>A implementar</p>
+            <div style={{ margin: '-16px' }}>
+              {eixoLoad ? (
+                <p className="adm-empty-panel">A carregar…</p>
+              ) : (
+                <table className="adm-panel-table">
+                  <thead>
+                    <tr>
+                      <th>Código</th>
+                      <th>Nome</th>
+                      <th style={{ width: 72 }}>Acções</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {eixos.map(e => {
+                      const editing = eixoDraft?.id === e.id
+                      const rowCls  = [selEixoId === e.id ? 'selected' : '', editing ? 'editing' : ''].filter(Boolean).join(' ')
+                      return (
+                        <tr
+                          key={e.id}
+                          className={rowCls || undefined}
+                          style={{ cursor: editing ? 'default' : 'pointer' }}
+                          onClick={() => !editing && setSelEixoId(e.id)}
+                        >
+                          <td style={{ width: 70 }}>
+                            {editing ? (
+                              <input
+                                className="adm-row-input" autoFocus
+                                value={eixoDraft!.code}
+                                onChange={ev => setEixoDraft(d => d ? { ...d, code: ev.target.value } : d)}
+                                onKeyDown={ev => { if (ev.key === 'Enter') saveEixo(); if (ev.key === 'Escape') setEixoDraft(null) }}
+                              />
+                            ) : e.code}
+                          </td>
+                          <td>
+                            {editing ? (
+                              <input
+                                className="adm-row-input"
+                                value={eixoDraft!.name}
+                                onChange={ev => setEixoDraft(d => d ? { ...d, name: ev.target.value } : d)}
+                                onKeyDown={ev => { if (ev.key === 'Enter') saveEixo(); if (ev.key === 'Escape') setEixoDraft(null) }}
+                              />
+                            ) : e.name}
+                          </td>
+                          <td>
+                            {editing ? (
+                              <span style={{ whiteSpace: 'nowrap' }}>
+                                <button className="adm-icon-btn" title="Guardar"  onClick={ev => { ev.stopPropagation(); saveEixo() }}>✓</button>
+                                <button className="adm-icon-btn" title="Cancelar" onClick={ev => { ev.stopPropagation(); setEixoDraft(null) }}>✕</button>
+                              </span>
+                            ) : (
+                              <span style={{ whiteSpace: 'nowrap' }}>
+                                <button className="adm-icon-btn" title="Editar"
+                                  onClick={ev => { ev.stopPropagation(); setEixoDraft({ id: e.id, code: e.code, name: e.name }) }}>✎</button>
+                                <button className="adm-icon-btn" title="Apagar" style={{ color: 'var(--red)' }}
+                                  onClick={ev => { ev.stopPropagation(); deleteEixo(e.id) }}>🗑</button>
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {eixoDraft !== null && eixoDraft.id === null && (
+                      <tr className="editing">
+                        <td style={{ width: 70 }}>
+                          <input className="adm-row-input" autoFocus placeholder="Cód."
+                            value={eixoDraft.code}
+                            onChange={ev => setEixoDraft(d => d ? { ...d, code: ev.target.value } : d)}
+                            onKeyDown={ev => { if (ev.key === 'Enter') saveEixo(); if (ev.key === 'Escape') setEixoDraft(null) }}
+                          />
+                        </td>
+                        <td>
+                          <input className="adm-row-input" placeholder="Nome"
+                            value={eixoDraft.name}
+                            onChange={ev => setEixoDraft(d => d ? { ...d, name: ev.target.value } : d)}
+                            onKeyDown={ev => { if (ev.key === 'Enter') saveEixo(); if (ev.key === 'Escape') setEixoDraft(null) }}
+                          />
+                        </td>
+                        <td>
+                          <span style={{ whiteSpace: 'nowrap' }}>
+                            <button className="adm-icon-btn" title="Guardar"  onClick={saveEixo}>✓</button>
+                            <button className="adm-icon-btn" title="Cancelar" onClick={() => setEixoDraft(null)}>✕</button>
+                          </span>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+              <div className="adm-panel-footer">
+                <button
+                  className="adm-add-btn"
+                  disabled={eixoDraft !== null}
+                  onClick={() => setEixoDraft({ id: null, code: '', name: '' })}
+                >
+                  + Novo Eixo
+                </button>
+              </div>
             </div>
           )}
         </Card>
 
-        {/* ── Panel 3: Planos (placeholder) ── */}
-        <Card title="Planos">
-          <p className="adm-empty-panel">Selecciona um eixo</p>
+        {/* ── Panel 3: Planos ── */}
+        <Card title={selEixo ? `Planos — ${selEixo.name}` : 'Planos'}>
+          {!selEixoId ? (
+            <p className="adm-empty-panel">Selecciona um eixo</p>
+          ) : (
+            <div style={{ margin: '-16px' }}>
+              {planoLoad ? (
+                <p className="adm-empty-panel">A carregar…</p>
+              ) : (
+                <table className="adm-panel-table">
+                  <thead>
+                    <tr>
+                      <th>Cód.</th>
+                      <th>Nome</th>
+                      <th>Responsável</th>
+                      <th>Patrocinador</th>
+                      <th style={{ width: 72 }}>Acções</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {planos.map(p => {
+                      const editing = planoDraft?.id === p.id
+                      const rowCls  = editing ? 'editing' : ''
+                      return (
+                        <tr key={p.id} className={rowCls || undefined}>
+                          <td style={{ width: 60 }}>
+                            {editing ? (
+                              <input
+                                className="adm-row-input" autoFocus
+                                value={planoDraft!.code}
+                                onChange={ev => setPlanoDraft(d => d ? { ...d, code: ev.target.value } : d)}
+                                onKeyDown={ev => { if (ev.key === 'Enter') savePlano(); if (ev.key === 'Escape') setPlanoDraft(null) }}
+                              />
+                            ) : p.code}
+                          </td>
+                          <td>
+                            {editing ? (
+                              <input
+                                className="adm-row-input"
+                                value={planoDraft!.name}
+                                onChange={ev => setPlanoDraft(d => d ? { ...d, name: ev.target.value } : d)}
+                                onKeyDown={ev => { if (ev.key === 'Enter') savePlano(); if (ev.key === 'Escape') setPlanoDraft(null) }}
+                              />
+                            ) : p.name}
+                          </td>
+                          <td>
+                            {editing ? (
+                              <input
+                                className="adm-row-input"
+                                value={planoDraft!.owner}
+                                onChange={ev => setPlanoDraft(d => d ? { ...d, owner: ev.target.value } : d)}
+                                onKeyDown={ev => { if (ev.key === 'Enter') savePlano(); if (ev.key === 'Escape') setPlanoDraft(null) }}
+                              />
+                            ) : (p.owner ?? '—')}
+                          </td>
+                          <td>
+                            {editing ? (
+                              <input
+                                className="adm-row-input"
+                                value={planoDraft!.sponsor}
+                                onChange={ev => setPlanoDraft(d => d ? { ...d, sponsor: ev.target.value } : d)}
+                                onKeyDown={ev => { if (ev.key === 'Enter') savePlano(); if (ev.key === 'Escape') setPlanoDraft(null) }}
+                              />
+                            ) : (p.sponsor ?? '—')}
+                          </td>
+                          <td>
+                            {editing ? (
+                              <span style={{ whiteSpace: 'nowrap' }}>
+                                <button className="adm-icon-btn" title="Guardar"  onClick={savePlano}>✓</button>
+                                <button className="adm-icon-btn" title="Cancelar" onClick={() => setPlanoDraft(null)}>✕</button>
+                              </span>
+                            ) : (
+                              <span style={{ whiteSpace: 'nowrap' }}>
+                                <button className="adm-icon-btn" title="Editar"
+                                  onClick={() => setPlanoDraft({ id: p.id, code: p.code, name: p.name, owner: p.owner ?? '', sponsor: p.sponsor ?? '' })}>✎</button>
+                                <button className="adm-icon-btn" title="Apagar" style={{ color: 'var(--red)' }}
+                                  onClick={() => deletePlano(p.id)}>🗑</button>
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {planoDraft !== null && planoDraft.id === null && (
+                      <tr className="editing">
+                        <td style={{ width: 60 }}>
+                          <input className="adm-row-input" autoFocus placeholder="Cód."
+                            value={planoDraft.code}
+                            onChange={ev => setPlanoDraft(d => d ? { ...d, code: ev.target.value } : d)}
+                            onKeyDown={ev => { if (ev.key === 'Enter') savePlano(); if (ev.key === 'Escape') setPlanoDraft(null) }}
+                          />
+                        </td>
+                        <td>
+                          <input className="adm-row-input" placeholder="Nome"
+                            value={planoDraft.name}
+                            onChange={ev => setPlanoDraft(d => d ? { ...d, name: ev.target.value } : d)}
+                            onKeyDown={ev => { if (ev.key === 'Enter') savePlano(); if (ev.key === 'Escape') setPlanoDraft(null) }}
+                          />
+                        </td>
+                        <td>
+                          <input className="adm-row-input" placeholder="Responsável"
+                            value={planoDraft.owner}
+                            onChange={ev => setPlanoDraft(d => d ? { ...d, owner: ev.target.value } : d)}
+                            onKeyDown={ev => { if (ev.key === 'Enter') savePlano(); if (ev.key === 'Escape') setPlanoDraft(null) }}
+                          />
+                        </td>
+                        <td>
+                          <input className="adm-row-input" placeholder="Patrocinador"
+                            value={planoDraft.sponsor}
+                            onChange={ev => setPlanoDraft(d => d ? { ...d, sponsor: ev.target.value } : d)}
+                            onKeyDown={ev => { if (ev.key === 'Enter') savePlano(); if (ev.key === 'Escape') setPlanoDraft(null) }}
+                          />
+                        </td>
+                        <td>
+                          <span style={{ whiteSpace: 'nowrap' }}>
+                            <button className="adm-icon-btn" title="Guardar"  onClick={savePlano}>✓</button>
+                            <button className="adm-icon-btn" title="Cancelar" onClick={() => setPlanoDraft(null)}>✕</button>
+                          </span>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+              <div className="adm-panel-footer">
+                <button
+                  className="adm-add-btn"
+                  disabled={planoDraft !== null}
+                  onClick={() => setPlanoDraft({ id: null, code: '', name: '', owner: '', sponsor: '' })}
+                >
+                  + Novo Plano
+                </button>
+              </div>
+            </div>
+          )}
         </Card>
 
       </div>
