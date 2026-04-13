@@ -937,9 +937,14 @@ function AdminUtilizadores() {
     if (!editId) return
     setSaving(true)
     try {
-      await supabase.from('profiles').update({ role: editRole }).eq('id', editId)
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: editRole })
+        .eq('id', editId)
+      if (error) { showToast(`Erro: ${error.message}`); return }
       setEditId(null)
       await loadProfiles()
+      showToast('Role actualizado')
     } finally {
       setSaving(false)
     }
