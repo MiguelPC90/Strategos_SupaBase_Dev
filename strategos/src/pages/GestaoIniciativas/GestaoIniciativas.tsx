@@ -330,15 +330,15 @@ function RowMenu({ actId, openId, canUp, canDown, onOpen, onEdit, onDuplicate, o
 // ── Main component ─────────────────────────────────────────────
 export default function GestaoIniciativas() {
   const { filters } = useFilters()
-  const programId = filters.programIds[0]
+  const [selProgId, setSelProgId] = useState<string | null>(null)
 
-  const { activities, loading, refetch } = useActivities({ program_id: programId })
   const { programs } = usePrograms()
+  const { activities, loading, refetch } = useActivities({ program_id: selProgId ?? undefined })
   const { people } = usePeople()
-  const { eixos: dbEixos } = useEixos(programId)
-  const { planos: dbPlanos } = usePlanos(programId)
+  const { eixos: dbEixos } = useEixos(selProgId ?? undefined)
+  const { planos: dbPlanos } = usePlanos(selProgId ?? undefined)
 
-  const program    = useMemo(() => programs.find(p => p.id === programId), [programs, programId])
+  const program    = useMemo(() => programs.find(p => p.id === selProgId), [programs, selProgId])
   const peopleNames = useMemo(() => people.filter(p => p.active !== false).map(p => p.name), [people])
 
   // Eixo and plano names from DB tables (Panel dropdowns)
@@ -387,6 +387,15 @@ export default function GestaoIniciativas() {
     const t = setTimeout(() => setToast(''), 2000)
     return () => clearTimeout(t)
   }, [toast])
+
+  // Initialize selProgId from global filter or first available program
+  useEffect(() => {
+    if (programs.length === 0) return
+    setSelProgId(prev => {
+      if (prev && programs.some(p => p.id === prev)) return prev
+      return filters.programIds[0] ?? programs[0].id
+    })
+  }, [programs, filters.programIds])
 
   // ── Collapse ─────────────────────────────────────────────────
   const toggle = useCallback((key: string) => {
@@ -472,7 +481,7 @@ export default function GestaoIniciativas() {
       rs: panelForm.rs || null, rf: panelForm.rf || null, finish: panelForm.finish || null,
       pct, status: panelForm.status,
       owner: panelForm.owner, sponsor: panelForm.sponsor,
-      notes: panelForm.notes || null, program_id: programId ?? null,
+      notes: panelForm.notes || null, program_id: selProgId ?? null,
     }
     let errMsg = ''
     if (panelForm.id) {
@@ -488,7 +497,7 @@ export default function GestaoIniciativas() {
     setPanelSaving(false)
     if (errMsg) { setPanelErr(errMsg); return }
     setPanelForm(null); refetch()
-  }, [panelForm, programId, activities.length, refetch])
+  }, [panelForm, selProgId, activities.length, refetch])
 
   const handlePanelDelete = useCallback(async () => {
     const id = panelForm?.id
@@ -694,8 +703,21 @@ export default function GestaoIniciativas() {
   return (
     <div className="gi-page">
       <div className="gi-controls-bar">
-        <button className="gi-btn gi-btn-primary" onClick={openNew} disabled={!programId}
-          title={!programId ? 'Selecciona um programa primeiro' : undefined}>
+        {programs.length > 1 && (
+          <>
+            <label className="gi-prog-label">Programa</label>
+            <select
+              className="gi-prog-select"
+              value={selProgId ?? ''}
+              onChange={e => setSelProgId(e.target.value || null)}
+            >
+              {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <div className="gi-sep" />
+          </>
+        )}
+        <button className="gi-btn gi-btn-primary" onClick={openNew} disabled={!selProgId}
+          title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
           Nova Actividade
         </button>
         <div className="gi-sep" />
