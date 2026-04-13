@@ -87,7 +87,6 @@ function buildTree(acts: Activity[]): N1Group[] {
 interface PanelForm {
   id: string | null; name: string; level: string
   n0: string; n1: string; n2: string; n3: string; n4: string; n5: string
-  parentId: string       // '' = no parent (level 3 assumed)
   bs: string; bf: string; rs: string; rf: string
   pct: string; owner: string; sponsor: string; notes: string
 }
@@ -96,7 +95,6 @@ function toForm(a: Activity): PanelForm {
   return {
     id: a.id, name: a.name, level: String(a.level),
     n0: a.n0, n1: a.n1, n2: a.n2, n3: a.n3, n4: a.n4, n5: a.n5,
-    parentId: '',
     bs: a.bs ?? '', bf: a.bf ?? '', rs: a.rs ?? '', rf: a.rf ?? '',
     pct: String(a.pct), owner: a.owner, sponsor: a.sponsor, notes: a.notes ?? '',
   }
@@ -106,7 +104,6 @@ function blankForm(n0: string, ctx?: Partial<PanelForm>): PanelForm {
   return {
     id: null, name: '', level: '3', n0,
     n1: '', n2: '', n3: '', n4: '', n5: '',
-    parentId: '',
     bs: '', bf: '', rs: '', rf: '',
     pct: '0', owner: '', sponsor: '', notes: '',
     ...ctx,
@@ -135,47 +132,32 @@ function Panel({ form, eixos, planos, activities, peopleNames, onChange, onSave,
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       onChange({ ...form, [k]: e.target.value })
 
-  // Auto-sync the appropriate Nx from name based on current level
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const name = e.target.value
-    const level = Number(form.level)
-    const updated: PanelForm = { ...form, name }
-    if (level === 3)      { updated.n3 = name }
-    else if (level === 4) { updated.n4 = name }
-    else if (level >= 5)  { updated.n5 = name }
+  const level = Number(form.level) || 3
+
+  // Level change → clear irrelevant context fields
+  const handleLevelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLevel = Number(e.target.value)
+    const updated: PanelForm = { ...form, level: e.target.value }
+    if (newLevel <= 3)       { updated.n3 = ''; updated.n4 = ''; updated.n5 = '' }
+    else if (newLevel === 4) { updated.n4 = ''; updated.n5 = '' }
+    else if (newLevel === 5) { updated.n5 = '' }
     onChange(updated)
   }
 
-  // N1 change → clear N2 and parent
+  // N1 change → cascade clear
   const handleN1Change = (e: React.ChangeEvent<HTMLSelectElement>) =>
-    onChange({ ...form, n1: e.target.value, n2: '', parentId: '', n3: '', n4: '', n5: '', level: '3' })
+    onChange({ ...form, n1: e.target.value, n2: '', n3: '', n4: '', n5: '' })
 
-  // N2 change → clear parent
+  // N2 change → cascade clear
   const handleN2Change = (e: React.ChangeEvent<HTMLSelectElement>) =>
-    onChange({ ...form, n2: e.target.value, parentId: '', n3: '', n4: '', n5: '', level: '3' })
+    onChange({ ...form, n2: e.target.value, n3: '', n4: '', n5: '' })
 
-  // Parent change → derive level and inherit Nx hierarchy
-  const handleParentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const parentId = e.target.value
-    if (!parentId) {
-      onChange({ ...form, parentId: '', level: '3', n3: form.name, n4: '', n5: '' })
-      return
-    }
-    const parent = activities.find(a => a.id === parentId)
-    if (!parent) return
-    const level = Math.min(parent.level + 1, 6)
-    const updated: PanelForm = { ...form, parentId, level: String(level),
-      n1: parent.n1, n2: parent.n2, n3: parent.n3, n4: parent.n4, n5: parent.n5 }
-    if (level === 3)      { updated.n3 = form.name; updated.n4 = ''; updated.n5 = '' }
-    else if (level === 4) { updated.n4 = form.name; updated.n5 = '' }
-    else                  { updated.n5 = form.name }
-    onChange(updated)
-  }
-
-  const parentCandidates = activities.filter(a =>
-    a.n2 === form.n2 && a.id !== form.id && a.level >= 3 && a.level <= 5
+  // Cascading candidates — filtered per level
+  const macros   = activities.filter(a => a.n2 === form.n2 && a.level === 3)
+  const actsCand = activities.filter(a => a.n2 === form.n2 && a.level === 4 && a.n3 === form.n3)
+  const tasks    = activities.filter(a =>
+    a.n2 === form.n2 && a.level === 5 && a.n3 === form.n3 && a.n4 === form.n4
   )
-  const inferredLevel = Number(form.level) || 3
   const listId = 'gi-people-list'
 
   return (
@@ -191,27 +173,39 @@ function Panel({ form, eixos, planos, activities, peopleNames, onChange, onSave,
         </div>
         <div className="gi-panel-body">
 
-          {/* ── Secção 1 — Informação ─────────────────────────── */}
+          {/* 1. Nome */}
           <div className="gi-field">
             <span className="gi-field-label">Nome *</span>
             <input
               className="gi-field-input"
               value={form.name}
-              onChange={handleNameChange}
+              onChange={e => onChange({ ...form, name: e.target.value })}
               placeholder="Designação da actividade"
             />
           </div>
 
+          {/* 2. Nível */}
+          <div className="gi-field">
+            <span className="gi-field-label">Nível</span>
+            <select className="gi-level-select" value={form.level} onChange={handleLevelChange}>
+              <option value="3">Macroactividade</option>
+              <option value="4">Actividade</option>
+              <option value="5">Tarefa</option>
+              <option value="6">Sub-tarefa</option>
+            </select>
+          </div>
+
+          {/* 3. Eixo + Plano de Acção */}
           <div className="gi-field-row">
             <div className="gi-field">
-              <span className="gi-field-label">N1 — Eixo</span>
+              <span className="gi-field-label">Eixo</span>
               <select className="gi-field-select" value={form.n1} onChange={handleN1Change}>
                 <option value="">— seleccionar —</option>
                 {eixos.map(e => <option key={e} value={e}>{e}</option>)}
               </select>
             </div>
             <div className="gi-field">
-              <span className="gi-field-label">N2 — Plano</span>
+              <span className="gi-field-label">Plano de Acção</span>
               <select className="gi-field-select" value={form.n2} onChange={handleN2Change}>
                 <option value="">— seleccionar —</option>
                 {planos.map(p => <option key={p} value={p}>{p}</option>)}
@@ -219,18 +213,58 @@ function Panel({ form, eixos, planos, activities, peopleNames, onChange, onSave,
             </div>
           </div>
 
-          <div className="gi-field">
-            <span className="gi-field-label">Actividade pai</span>
-            <select className="gi-field-select" value={form.parentId} onChange={handleParentChange}>
-              <option value="">— sem pai (nível {inferredLevel}) —</option>
-              {parentCandidates.map(a => (
-                <option key={a.id} value={a.id}>
-                  {'· '.repeat(a.level - 2)}{a.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* 4. Macroactividade (level >= 4) */}
+          {level >= 4 && (
+            <div className="gi-context-section">
+              <div className="gi-field">
+                <span className="gi-context-label">Macroactividade</span>
+                <select
+                  className="gi-field-select"
+                  value={form.n3}
+                  onChange={e => onChange({ ...form, n3: e.target.value, n4: '', n5: '' })}
+                >
+                  <option value="">— seleccionar —</option>
+                  {macros.map(a => <option key={a.id} value={a.n3}>{a.name}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
 
+          {/* 5. Actividade (level >= 5) */}
+          {level >= 5 && (
+            <div className="gi-context-section">
+              <div className="gi-field">
+                <span className="gi-context-label">Actividade</span>
+                <select
+                  className="gi-field-select"
+                  value={form.n4}
+                  onChange={e => onChange({ ...form, n4: e.target.value, n5: '' })}
+                >
+                  <option value="">— seleccionar —</option>
+                  {actsCand.map(a => <option key={a.id} value={a.n4}>{a.name}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* 6. Tarefa (level >= 6) */}
+          {level >= 6 && (
+            <div className="gi-context-section">
+              <div className="gi-field">
+                <span className="gi-context-label">Tarefa</span>
+                <select
+                  className="gi-field-select"
+                  value={form.n5}
+                  onChange={e => onChange({ ...form, n5: e.target.value })}
+                >
+                  <option value="">— seleccionar —</option>
+                  {tasks.map(a => <option key={a.id} value={a.n5}>{a.name}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* 7. Responsável + Sponsor */}
           <div className="gi-field-row">
             <div className="gi-field">
               <span className="gi-field-label">Responsável</span>
@@ -242,7 +276,7 @@ function Panel({ form, eixos, planos, activities, peopleNames, onChange, onSave,
             </div>
           </div>
 
-          {/* ── Secção 2 — Datas e Progresso (colapsável) ──────── */}
+          {/* 8. Datas e Progresso (colapsável) */}
           <button className="gi-section-toggle" onClick={() => setDatesOpen(o => !o)}>
             <span>Datas e Progresso</span>
             <span>{datesOpen ? '▲' : '▼'}</span>
@@ -502,8 +536,12 @@ export default function GestaoIniciativas() {
     if (sel) {
       const level = Math.min(sel.level + 1, 6)
       setPanelForm(blankForm(sel.n0, {
-        parentId: sel.id, level: String(level),
-        n1: sel.n1, n2: sel.n2, n3: sel.n3, n4: sel.n4, n5: sel.n5,
+        level: String(level),
+        n1: sel.n1, n2: sel.n2,
+        // Inherit hierarchy context from the selected parent activity
+        n3: sel.level >= 3 ? sel.n3 : '',
+        n4: sel.level >= 4 ? sel.n4 : '',
+        n5: sel.level >= 5 ? sel.n5 : '',
         owner: sel.owner, sponsor: sel.sponsor,
       }))
     } else {
@@ -518,12 +556,21 @@ export default function GestaoIniciativas() {
     if (!panelForm) return
     if (!panelForm.name.trim()) { setPanelErr('Nome obrigatório.'); return }
     setPanelSaving(true); setPanelErr('')
-    const pct = Math.min(100, Math.max(0, Number(panelForm.pct) || 0))
+    const pct    = Math.min(100, Math.max(0, Number(panelForm.pct) || 0))
     const status = pct >= 100 ? 'Concluída' : 'Em dia'
+    const level  = Number(panelForm.level) || 3
+    const name   = panelForm.name.trim()
+    // Derive n3/n4/n5: the activity's own name goes into the slot for its level;
+    // higher-level slots hold the context (parent names) from the cascading selects.
+    let n3 = '', n4 = '', n5 = ''
+    if (level === 3)      { n3 = name }
+    else if (level === 4) { n3 = panelForm.n3; n4 = name }
+    else if (level === 5) { n3 = panelForm.n3; n4 = panelForm.n4; n5 = name }
+    else                  { n3 = panelForm.n3; n4 = panelForm.n4; n5 = panelForm.n5 }
     const payload = {
-      name: panelForm.name.trim(), level: Number(panelForm.level) || 3,
+      name, level,
       n0: panelForm.n0, n1: panelForm.n1, n2: panelForm.n2,
-      n3: panelForm.n3, n4: panelForm.n4, n5: panelForm.n5,
+      n3, n4, n5,
       bs: panelForm.bs || null, bf: panelForm.bf || null,
       rs: panelForm.rs || null, rf: panelForm.rf || null,
       pct, status,

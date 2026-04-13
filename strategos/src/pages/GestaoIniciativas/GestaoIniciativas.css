@@ -377,6 +377,37 @@
     margin-top: 2px;
   }
 
+  /* ── Level + context selectors ─────────────────────────────── */
+  .gi-level-select {
+    width: 100%;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--navy);
+    background: var(--bg);
+    font-family: inherit;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+  .gi-level-select:focus { outline: none; border-color: var(--navy); }
+
+  .gi-context-section {
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .gi-context-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
   /* ── Section toggle ─────────────────────────────────────────── */
   .gi-section-toggle {
     width: 100%;
