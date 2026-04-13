@@ -301,7 +301,7 @@ export default function Layout() {
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             </svg>
           </span>
-          <span className="topbar-title">Strategos</span>
+          <span className="topbar-title">Stratgos</span>
         </div>
 
         <div className="topbar-spacer" />

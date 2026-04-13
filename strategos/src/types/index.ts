@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// Strategos — Shared TypeScript Types
+// Stratgos — Shared TypeScript Types
 // Mirrors the Supabase PostgreSQL schema exactly.
 // ─────────────────────────────────────────────────────────────
 

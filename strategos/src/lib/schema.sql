@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────────
--- Strategos — User Profiles
+-- Stratgos — User Profiles
 -- Run this in the Supabase SQL editor or via supabase db push
 -- ─────────────────────────────────────────────────────────────
 

@@ -59,7 +59,7 @@ export default function Login() {
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
           </svg>
         </span>
-        <span className="login-brand-text">Strategos</span>
+        <span className="login-brand-text">Stratgos</span>
       </header>
 
       {/* ── Centered card ── */}

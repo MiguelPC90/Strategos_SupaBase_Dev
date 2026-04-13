@@ -1,8 +1,8 @@
-# CLAUDE.md — Strategos
+# CLAUDE.md — Stratgos
 
 ## Project Overview
 
-Strategos is a PMO (Project Management Office) dashboard for organizations managing strategic programs and projects. It provides executive summaries, activity tracking, Gantt charts, financial execution monitoring, resource management, and risk management — all in a single web application.
+Stratgos is a PMO (Project Management Office) dashboard for organizations managing strategic programs and projects. It provides executive summaries, activity tracking, Gantt charts, financial execution monitoring, resource management, and risk management — all in a single web application.
 
 ## Tech Stack
 
@@ -186,7 +186,7 @@ If a new UI pattern appears in 2+ pages, extract it as a reusable component.
 
 ### Topbar
 
-- Navy background, brand on left (lightning bolt SVG + "Strategos" text)
+- Navy background, brand on left (lightning bolt SVG + "Stratgos" text)
 - Right side: filter toggle (icon-only, class `topbar-icon-btn`), profile avatar button
 - No "Importar Excel" button
 
