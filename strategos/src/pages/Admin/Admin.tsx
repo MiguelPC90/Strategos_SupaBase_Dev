@@ -5,7 +5,7 @@ import Badge from '../../components/Badge/Badge'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { usePrograms } from '../../hooks/usePrograms'
-import type { Program, Eixo, Plano, Profile, Person, UserRole } from '../../types/index'
+import type { Program, Eixo, Plano, Profile, Person, Snapshot, UserRole } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -2050,6 +2050,263 @@ function AdminRisco() {
   )
 }
 
+// ── Section 7: Histórico ──────────────────────────────────────
+type HistoricoTab = 'snapshots' | 'registo'
+
+interface ChangeLogRow {
+  id: string
+  user_id: string | null
+  table_name: string
+  action: string
+  record_id: string | null
+  created_at: string
+}
+
+function fmtDate(iso: string) {
+  const d = new Date(iso)
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+}
+
+function fmtDateTime(iso: string) {
+  const d = new Date(iso)
+  return `${fmtDate(iso)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+// ── Tab: Snapshots ─────────────────────────────────────────────
+function SnapshotsTab() {
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([])
+  const [loading,   setLoading]   = useState(true)
+  const [toast,     setToast]     = useState('')
+
+  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2500) }
+
+  async function loadSnapshots() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('snapshots')
+      .select('id, label, snap_date, kpi, by_n0, by_n1, created_by')
+      .order('snap_date', { ascending: false })
+      .limit(90)
+    setSnapshots((data ?? []) as Snapshot[])
+    setLoading(false)
+  }
+
+  useEffect(() => { loadSnapshots() }, [])
+
+  async function saveNow() {
+    try {
+      await supabase.rpc('daily_snapshot')
+      showToast('Snapshot guardado!')
+      await loadSnapshots()
+    } catch {
+      showToast('Erro ao guardar snapshot')
+    }
+  }
+
+  async function deleteSnapshot(id: string) {
+    if (!window.confirm('Eliminar este snapshot?')) return
+    await supabase.from('snapshots').delete().eq('id', id)
+    setSnapshots(prev => prev.filter(s => s.id !== id))
+  }
+
+  const mostRecentId = snapshots[0]?.id ?? null
+
+  return (
+    <>
+      <div className="adm-snap-header">
+        <span className="adm-snap-info">Snapshots automáticos — guardados diariamente às 23:59</span>
+        <button className="adm-outline-btn" onClick={saveNow}>Guardar snapshot agora</button>
+      </div>
+
+      {loading ? (
+        <p className="adm-help">A carregar…</p>
+      ) : snapshots.length === 0 ? (
+        <p className="adm-empty-panel" style={{ padding: '24px 0' }}>
+          Ainda não existem snapshots. O primeiro será criado automaticamente às 23:59.
+        </p>
+      ) : (
+        <div style={{ margin: '0 -16px -16px' }}>
+          <table className="adm-panel-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th style={{ textAlign: 'right' }}>Actividades</th>
+                <th style={{ textAlign: 'right' }}>Em dia</th>
+                <th style={{ textAlign: 'right' }}>Em atraso</th>
+                <th style={{ textAlign: 'right' }}>Concluídas</th>
+                <th style={{ width: 50 }}>Acções</th>
+              </tr>
+            </thead>
+            <tbody>
+              {snapshots.map(s => {
+                const isMostRecent = s.id === mostRecentId
+                return (
+                  <tr key={s.id}>
+                    <td style={{ fontWeight: 500 }}>{fmtDate(s.snap_date)}</td>
+                    <td style={{ textAlign: 'right' }}>{s.kpi?.total ?? '—'}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--green)' }}>{s.kpi?.em_dia ?? '—'}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--red)' }}>{s.kpi?.em_atraso ?? '—'}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--blue)' }}>{s.kpi?.concluidas ?? '—'}</td>
+                    <td>
+                      <button
+                        className="adm-icon-btn"
+                        title={isMostRecent ? 'Não é possível eliminar o snapshot mais recente' : 'Eliminar'}
+                        disabled={isMostRecent}
+                        style={{ color: isMostRecent ? undefined : 'var(--red)' }}
+                        onClick={() => deleteSnapshot(s.id)}
+                      >🗑</button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {toast && <div className="adm-toast">{toast}</div>}
+    </>
+  )
+}
+
+// ── Tab: Registo de Alterações ─────────────────────────────────
+const LOG_TABLES = [
+  'activities', 'planos', 'eixos', 'programs', 'risks',
+  'fin_budget_lines', 'fin_contracts', 'fin_invoices',
+  'fte_resources', 'pds_entries',
+]
+
+function RegistoTab() {
+  const [rows,       setRows]       = useState<ChangeLogRow[]>([])
+  const [profiles,   setProfiles]   = useState<Profile[]>([])
+  const [loading,    setLoading]    = useState(true)
+  const [tableFilter, setTableFilter] = useState('')
+  const [userFilter,  setUserFilter]  = useState('')
+  const [logError,   setLogError]   = useState(false)
+
+  // Load profiles once
+  useEffect(() => {
+    supabase
+      .from('profiles')
+      .select('id, email, full_name, role, avatar_url, created_at, updated_at')
+      .then(({ data }) => { setProfiles((data ?? []) as Profile[]) })
+  }, [])
+
+  // Reload log whenever filters change
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setLogError(false)
+    let q = supabase
+      .from('change_log')
+      .select('id, user_id, table_name, action, record_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    if (tableFilter) q = q.eq('table_name', tableFilter)
+    if (userFilter)  q = q.eq('user_id', userFilter)
+    q.then(({ data, error }) => {
+      if (cancelled) return
+      if (error) { setLogError(true); setLoading(false); return }
+      setRows((data ?? []) as ChangeLogRow[])
+      setLoading(false)
+    }).catch(() => {
+      if (!cancelled) { setLogError(true); setLoading(false) }
+    })
+    return () => { cancelled = true }
+  }, [tableFilter, userFilter])
+
+  const profileMap = Object.fromEntries(profiles.map(p => [p.id, p.full_name || p.email]))
+
+  function actionBadge(action: string) {
+    if (action === 'INSERT') return <Badge variant="green">INSERT</Badge>
+    if (action === 'DELETE') return <Badge variant="red">DELETE</Badge>
+    return <Badge variant="blue">UPDATE</Badge>
+  }
+
+  function shortId(id: string | null) {
+    if (!id) return '—'
+    // UUID: 32 hex + 4 dashes = 36 chars; show first 8
+    return id.length > 8 ? id.slice(0, 8) + '…' : id
+  }
+
+  if (logError) {
+    return <p className="adm-help">O registo de alterações ainda não está configurado.</p>
+  }
+
+  return (
+    <>
+      <div className="adm-filter-row">
+        <span>Tabela:</span>
+        <select className="adm-select" value={tableFilter}
+          onChange={e => setTableFilter(e.target.value)}>
+          <option value="">Todas</option>
+          {LOG_TABLES.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <span>Utilizador:</span>
+        <select className="adm-select" value={userFilter}
+          onChange={e => setUserFilter(e.target.value)}>
+          <option value="">Todos</option>
+          {profiles.map(p => (
+            <option key={p.id} value={p.id}>{p.full_name || p.email}</option>
+          ))}
+        </select>
+      </div>
+
+      {loading ? (
+        <p className="adm-help">A carregar…</p>
+      ) : rows.length === 0 ? (
+        <p className="adm-empty-panel" style={{ padding: '24px 0' }}>Sem registos encontrados.</p>
+      ) : (
+        <div style={{ margin: '0 -16px -16px' }}>
+          <table className="adm-panel-table">
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Utilizador</th>
+                <th>Tabela</th>
+                <th>Acção</th>
+                <th>Registo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.id}>
+                  <td style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{fmtDateTime(r.created_at)}</td>
+                  <td style={{ fontSize: 12, color: 'var(--text2)' }}>
+                    {r.user_id ? (profileMap[r.user_id] ?? r.user_id.slice(0, 8)) : '—'}
+                  </td>
+                  <td style={{ fontSize: 12 }}>{r.table_name}</td>
+                  <td>{actionBadge(r.action)}</td>
+                  <td style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'monospace' }}>
+                    {shortId(r.record_id)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  )
+}
+
+function AdminHistorico() {
+  const [tab, setTab] = useState<HistoricoTab>('snapshots')
+
+  return (
+    <Card title="Histórico e Auditoria">
+      <div className="adm-tabs">
+        <button className={`adm-tab${tab === 'snapshots' ? ' active' : ''}`}
+          onClick={() => setTab('snapshots')}>Snapshots</button>
+        <button className={`adm-tab${tab === 'registo' ? ' active' : ''}`}
+          onClick={() => setTab('registo')}>Registo de Alterações</button>
+      </div>
+      {tab === 'snapshots' && <SnapshotsTab />}
+      {tab === 'registo'   && <RegistoTab />}
+    </Card>
+  )
+}
+
 // ── Main Admin component ───────────────────────────────────────
 export default function Admin() {
   const [active, setActive] = useState<SectionKey>('geral')
@@ -2079,7 +2336,8 @@ export default function Admin() {
          active === 'utilizadores'  ? <AdminUtilizadores />  :
          active === 'recursos'      ? <AdminRecursos />      :
          active === 'financeiro'    ? <AdminFinanceiro />    :
-         active === 'risco'         ? <AdminRisco />         : (
+         active === 'risco'         ? <AdminRisco />         :
+         active === 'historico'     ? <AdminHistorico />     : (
           <Card title={section.label}>
             <p className="adm-section-desc">{section.desc}</p>
             <div className="page-placeholder adm-placeholder">
