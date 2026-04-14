@@ -261,9 +261,10 @@ interface ContractPanelProps {
   onClose: () => void
   panelErr: string | null
   currencies: CurrencyOption[]
+  categories: CategoryOption[]
 }
 
-function ContractPanel({ form, setForm, onConfirm, onClose, panelErr, currencies }: ContractPanelProps) {
+function ContractPanel({ form, setForm, onConfirm, onClose, panelErr, currencies, categories }: ContractPanelProps) {
   const set = (patch: Partial<ContractForm>) => setForm({ ...form, ...patch })
   return (
     <>
@@ -281,8 +282,13 @@ function ContractPanel({ form, setForm, onConfirm, onClose, panelErr, currencies
           </div>
           <div className="gf-field">
             <label className="gf-field-label">Categoria</label>
-            <input className="gf-field-input" value={form.category}
-              onChange={e => set({ category: e.target.value })} placeholder="Ex: Consultoria" />
+            <select className="gf-field-select" value={form.category}
+              onChange={e => set({ category: e.target.value })}>
+              <option value="">— categoria —</option>
+              {categories.map(cat => (
+                <option key={cat.name} value={cat.name}>{cat.name}</option>
+              ))}
+            </select>
           </div>
           <div className="gf-field-row">
             <div className="gf-field">
@@ -340,9 +346,10 @@ interface ContractsTabProps {
   onEdit: (c: FinContract) => void
   onDelete: (id: string) => void
   onNew: () => void
+  currencies: CurrencyOption[]
 }
 
-function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew }: ContractsTabProps) {
+function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew, currencies }: ContractsTabProps) {
   const invoicedFor = useCallback((appContractId: string) =>
     invoices
       .filter(i => i.app_contract_id === appContractId)
@@ -358,9 +365,11 @@ function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew }: Contract
         <div className="gf-empty">Sem contratos. Clique em + Novo Contrato para adicionar.</div>
       ) : (
         contracts.map(c => {
-          const invoiced = invoicedFor(c.app_id)
+          const sym = currencies.find(cur => cur.code === c.currency)?.symbol ?? '€'
+          const invoicedEur = invoicedFor(c.app_id)
           const totalEur = toEur(c.total_amount, c.exchange_rate_ref)
-          const pct = totalEur > 0 ? Math.round((invoiced / totalEur) * 100) : 0
+          const nativeInvoiced = c.exchange_rate_ref ? invoicedEur / c.exchange_rate_ref : invoicedEur
+          const pct = totalEur > 0 ? Math.round((invoicedEur / totalEur) * 100) : 0
           return (
             <div key={c.id} className="gf-contract-card">
               <div className="gf-contract-header">
@@ -377,7 +386,7 @@ function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew }: Contract
                 <div className="gf-contract-meta-item">
                   <span className="gf-meta-label">Valor Total</span>
                   <span className="gf-meta-value" style={{ color: 'var(--navy)', fontWeight: 700 }}>
-                    {fmtEur(totalEur)}{c.currency !== 'EUR' && ` (${c.currency})`}
+                    {fmtEur(c.total_amount, sym)}
                   </span>
                 </div>
                 {c.award_date && (
@@ -402,7 +411,7 @@ function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew }: Contract
               <div className="gf-contract-progress">
                 <div className="gf-contract-progress-label">
                   <span>Facturado</span>
-                  <span>{fmtEur(invoiced)} / {fmtEur(totalEur)}</span>
+                  <span>{fmtEur(nativeInvoiced, sym)} / {fmtEur(c.total_amount, sym)}</span>
                 </div>
                 <ProgressBar value={pct} color={pct > 100 ? 'red' : 'blue'} showLabel />
               </div>
@@ -1082,6 +1091,7 @@ export default function GestaoFinanceira() {
               onEdit={openEditContract}
               onDelete={deleteContract}
               onNew={openNewContract}
+              currencies={currencies}
             />
           )}
           {tab === 'facturas' && (
@@ -1105,6 +1115,7 @@ export default function GestaoFinanceira() {
           onClose={() => setContractPanel(null)}
           panelErr={panelErr}
           currencies={currencies}
+          categories={categories}
         />
       )}
     </div>
