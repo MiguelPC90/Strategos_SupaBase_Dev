@@ -204,7 +204,8 @@ export interface FteResource {
 // ── Risks ─────────────────────────────────────────────────────
 export interface Risk {
   id: string
-  pds_id: string
+  pds_id: string | null
+  plano_id: string | null
   program_id: string | null
   description: string
   impact: number

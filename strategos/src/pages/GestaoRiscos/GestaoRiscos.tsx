@@ -274,10 +274,10 @@ export default function GestaoRiscos() {
     [planOptions, selectedKey],
   )
 
-  // Filter risks for selected plan via pds_id (= plan UUID)
+  // Filter risks for selected plan via plano_id
   const planRisks = useMemo<Risk[]>(() => {
     if (!selectedPlan) return []
-    return risks.filter(r => r.pds_id === selectedPlan.key)
+    return risks.filter(r => r.plano_id === selectedPlan.key)
   }, [risks, selectedPlan])
 
   // ── Menu state ───────────────────────────────────────────────
@@ -358,7 +358,7 @@ export default function GestaoRiscos() {
         .from('risks')
         .insert({
           ...payload,
-          pds_id:     selectedPlan.key,
+          plano_id:   selectedPlan.key,
           program_id: selectedPlan.program_id,
           sort_order: planRisks.length,
         })
