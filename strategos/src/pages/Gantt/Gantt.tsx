@@ -362,58 +362,8 @@ export default function Gantt() {
       if (n2col) continue
 
       for (const n3g of n2g.n3groups) {
-        // Exclude the N3 representative row (level === 3) from leaf rendering
-        const n3ChildLeaves = n3g.acts.filter(a => a.level !== 3)
-        const n3HasChildren = n3g.n3 && n3ChildLeaves.length > 0
-
-        if (n3HasChildren) {
-          const n3key = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
-          const n3col = collapsed.has(n3key)
-          const n3st  = groupStatus(n3ChildLeaves)
-          const n3dr  = groupDateRange(n3ChildLeaves)
-
-          rows.push(
-            <tr key={n3key} className="gantt-row-n3">
-              <td className="gantt-sticky">
-                <div className="gantt-sticky-cell">
-                  <div className="gantt-sticky-name">
-                    <div className="gantt-name-cell" style={{ paddingLeft: 36 }}>
-                      <button className="gantt-toggle" onClick={() => toggle(n3key)}>{n3col ? '▶' : '▼'}</button>
-                      <span className="gantt-name-n3" title={n3g.n3!}>{n3g.n3}</span>
-                    </div>
-                  </div>
-                  <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n3st]}>{STATUS_LABEL[n3st]}</Badge></div>
-                  <div className="gantt-sticky-exec">{Math.round(rollupPct(n3ChildLeaves.filter(a => a.level === 4)))}%</div>
-                </div>
-              </td>
-              {makeTimeline(n3dr.bs, n3dr.bf, n3dr.rs, n3dr.rf, n3st, null)}
-              <td className="gantt-filler-td" />
-            </tr>
-          )
-          if (n3col) continue
-
-          for (const a of n3ChildLeaves) {
-            const ast = actStatus(a)
-            rows.push(
-              <tr key={a.id} className="gantt-row-n4">
-                <td className="gantt-sticky">
-                  <div className="gantt-sticky-cell">
-                    <div className="gantt-sticky-name">
-                      <div className="gantt-name-cell" style={{ paddingLeft: 52 }}>
-                        <span className="gantt-name-n4" title={a.name}>{a.name}</span>
-                      </div>
-                    </div>
-                    <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge></div>
-                    <div className="gantt-sticky-exec">{a.pct}%</div>
-                  </div>
-                </td>
-                {makeTimeline(a.bs, a.bf, a.rs, a.rf, ast, a)}
-                <td className="gantt-filler-td" />
-              </tr>
-            )
-          }
-        } else {
-          // No N3 children (or no N3 name): render all acts as leaf rows
+        // ── No N3 name: render all acts directly as leaf rows ──
+        if (!n3g.n3) {
           for (const a of n3g.acts) {
             const ast = actStatus(a)
             rows.push(
@@ -421,7 +371,7 @@ export default function Gantt() {
                 <td className="gantt-sticky">
                   <div className="gantt-sticky-cell">
                     <div className="gantt-sticky-name">
-                      <div className="gantt-name-cell" style={{ paddingLeft: n3g.n3 ? 52 : 36 }}>
+                      <div className="gantt-name-cell" style={{ paddingLeft: 36 }}>
                         <span className="gantt-name-n4" title={a.name}>{a.name}</span>
                       </div>
                     </div>
@@ -434,6 +384,86 @@ export default function Gantt() {
               </tr>
             )
           }
+          continue
+        }
+
+        // ── N3 has a name: exclude the level-3 representative from children ──
+        const n3ChildLeaves = n3g.acts.filter(a => a.level !== 3)
+        const n3HasChildren = n3ChildLeaves.length > 0
+
+        if (!n3HasChildren) {
+          // N3 has no children — render only the level-3 representative as a single leaf row
+          const rep = n3g.acts.find(a => a.level === 3)
+          if (!rep) continue
+          const ast = actStatus(rep)
+          rows.push(
+            <tr key={rep.id} className="gantt-row-n4">
+              <td className="gantt-sticky">
+                <div className="gantt-sticky-cell">
+                  <div className="gantt-sticky-name">
+                    <div className="gantt-name-cell" style={{ paddingLeft: 36 }}>
+                      <span className="gantt-name-n3" title={rep.name}>{rep.name}</span>
+                    </div>
+                  </div>
+                  <div className="gantt-sticky-status">
+                    <Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge>
+                  </div>
+                  <div className="gantt-sticky-exec">{rep.pct}%</div>
+                </div>
+              </td>
+              {makeTimeline(rep.bs, rep.bf, rep.rs, rep.rf, ast, rep)}
+              <td className="gantt-filler-td" />
+            </tr>
+          )
+          continue
+        }
+
+        // ── Has real children: render collapsible N3 header + children only ──
+        const n3key = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
+        const n3col = collapsed.has(n3key)
+        const n3st  = groupStatus(n3ChildLeaves)
+        const n3dr  = groupDateRange(n3ChildLeaves)
+
+        rows.push(
+          <tr key={n3key} className="gantt-row-n3">
+            <td className="gantt-sticky">
+              <div className="gantt-sticky-cell">
+                <div className="gantt-sticky-name">
+                  <div className="gantt-name-cell" style={{ paddingLeft: 36 }}>
+                    <button className="gantt-toggle" onClick={() => toggle(n3key)}>{n3col ? '▶' : '▼'}</button>
+                    <span className="gantt-name-n3" title={n3g.n3}>{n3g.n3}</span>
+                  </div>
+                </div>
+                <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n3st]}>{STATUS_LABEL[n3st]}</Badge></div>
+                <div className="gantt-sticky-exec">{Math.round(rollupPct(n3ChildLeaves.filter(a => a.level === 4)))}%</div>
+              </div>
+            </td>
+            {makeTimeline(n3dr.bs, n3dr.bf, n3dr.rs, n3dr.rf, n3st, null)}
+            <td className="gantt-filler-td" />
+          </tr>
+        )
+        if (n3col) continue
+
+        // Render only the real children — the N3 representative is excluded to avoid duplicates
+        for (const a of n3ChildLeaves) {
+          const ast = actStatus(a)
+          rows.push(
+            <tr key={a.id} className="gantt-row-n4">
+              <td className="gantt-sticky">
+                <div className="gantt-sticky-cell">
+                  <div className="gantt-sticky-name">
+                    <div className="gantt-name-cell" style={{ paddingLeft: 52 }}>
+                      <span className="gantt-name-n4" title={a.name}>{a.name}</span>
+                    </div>
+                  </div>
+                  <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge></div>
+                  <div className="gantt-sticky-exec">{a.pct}%</div>
+                </div>
+              </td>
+              {makeTimeline(a.bs, a.bf, a.rs, a.rf, ast, a)}
+              <td className="gantt-filler-td" />
+            </tr>
+          )
         }
       }
     }
