@@ -1470,10 +1470,10 @@ function AdminRecursos() {
 // ── Section 5: Financeiro ─────────────────────────────────────
 type FinTab = 'moedas' | 'categorias' | 'anos'
 
-interface Currency     { id: string; code: string; name: string; is_default: boolean }
+interface Currency     { id: string; code: string; name: string; symbol: string; is_default: boolean }
 interface CostCategory { id: string; name: string; is_capex: boolean }
 interface ManagementYear { id: string; program_id: string; year: number }
-interface DraftCurrency  { id: string | null; code: string; name: string }
+interface DraftCurrency  { id: string | null; code: string; name: string; symbol: string }
 interface DraftCategory  { id: string | null; name: string; is_capex: boolean; programIds: string[] }
 
 // ── Tab: Moedas ────────────────────────────────────────────────
@@ -1489,17 +1489,17 @@ function MoedasTab() {
     setLoading(true)
     const { data } = await supabase
       .from('currencies')
-      .select('id, code, name, is_default')
+      .select('id, code, name, symbol, is_default')
       .order('code')
     const rows = (data ?? []) as Currency[]
     if (rows.length === 0) {
       await supabase.from('currencies').insert([
-        { code: 'EUR', name: 'Euro',              is_default: true  },
-        { code: 'USD', name: 'Dólar Americano',   is_default: false },
-        { code: 'AKZ', name: 'Kwanza Angolano',   is_default: false },
+        { code: 'EUR', name: 'Euro',              symbol: '€',  is_default: true  },
+        { code: 'USD', name: 'Dólar Americano',   symbol: '$',  is_default: false },
+        { code: 'AKZ', name: 'Kwanza Angolano',   symbol: 'Kz', is_default: false },
       ])
       const { data: seeded } = await supabase
-        .from('currencies').select('id, code, name, is_default').order('code')
+        .from('currencies').select('id, code, name, symbol, is_default').order('code')
       setCurrencies((seeded ?? []) as Currency[])
     } else {
       setCurrencies(rows)
@@ -1519,7 +1519,11 @@ function MoedasTab() {
 
   async function saveCurrency() {
     if (!draft || !draft.code.trim() || !draft.name.trim()) return
-    const payload = { code: draft.code.trim().toUpperCase().slice(0, 3), name: draft.name.trim() }
+    const payload = {
+      code:   draft.code.trim().toUpperCase().slice(0, 3),
+      name:   draft.name.trim(),
+      symbol: draft.symbol.trim().slice(0, 4),
+    }
     if (draft.id) {
       await supabase.from('currencies').update(payload).eq('id', draft.id)
     } else {
@@ -1547,6 +1551,7 @@ function MoedasTab() {
               <tr>
                 <th style={{ width: 60 }}>Código</th>
                 <th>Nome</th>
+                <th style={{ width: 64 }}>Símbolo</th>
                 <th style={{ width: 70, textAlign: 'center' }}>Default</th>
                 <th style={{ width: 72 }}>Acções</th>
               </tr>
@@ -1572,6 +1577,14 @@ function MoedasTab() {
                           onKeyDown={ev => { if (ev.key === 'Enter') saveCurrency(); if (ev.key === 'Escape') setDraft(null) }} />
                       ) : c.name}
                     </td>
+                    <td>
+                      {editing ? (
+                        <input className="adm-row-input" maxLength={4} placeholder="€"
+                          value={draft!.symbol}
+                          onChange={ev => setDraft(d => d ? { ...d, symbol: ev.target.value } : d)}
+                          onKeyDown={ev => { if (ev.key === 'Enter') saveCurrency(); if (ev.key === 'Escape') setDraft(null) }} />
+                      ) : c.symbol}
+                    </td>
                     <td style={{ textAlign: 'center' }}>
                       <input type="radio" className="adm-radio"
                         checked={c.is_default} onChange={() => setDefault(c.id)} />
@@ -1585,7 +1598,7 @@ function MoedasTab() {
                       ) : (
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Editar"
-                            onClick={() => setDraft({ id: c.id, code: c.code, name: c.name })}>✎</button>
+                            onClick={() => setDraft({ id: c.id, code: c.code, name: c.name, symbol: c.symbol || '' })}>✎</button>
                           <button className="adm-icon-btn" title="Apagar" style={{ color: 'var(--red)' }}
                             onClick={() => deleteCurrency(c)}>🗑</button>
                         </span>
@@ -1609,6 +1622,12 @@ function MoedasTab() {
                       onChange={ev => setDraft(d => d ? { ...d, name: ev.target.value } : d)}
                       onKeyDown={ev => { if (ev.key === 'Enter') saveCurrency(); if (ev.key === 'Escape') setDraft(null) }} />
                   </td>
+                  <td>
+                    <input className="adm-row-input" maxLength={4} placeholder="€"
+                      value={draft.symbol}
+                      onChange={ev => setDraft(d => d ? { ...d, symbol: ev.target.value } : d)}
+                      onKeyDown={ev => { if (ev.key === 'Enter') saveCurrency(); if (ev.key === 'Escape') setDraft(null) }} />
+                  </td>
                   <td />
                   <td>
                     <span style={{ whiteSpace: 'nowrap' }}>
@@ -1622,7 +1641,7 @@ function MoedasTab() {
           </table>
           <div className="adm-panel-footer">
             <button className="adm-add-btn" disabled={draft !== null}
-              onClick={() => setDraft({ id: null, code: '', name: '' })}>
+              onClick={() => setDraft({ id: null, code: '', name: '', symbol: '' })}>
               + Nova Moeda
             </button>
           </div>

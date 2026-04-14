@@ -39,6 +39,9 @@ interface ContractForm {
 }
 
 // ── Constants ──────────────────────────────────────────────────────
+interface CurrencyOption { code: string; symbol: string }
+interface CategoryOption { name: string; is_capex: boolean }
+
 const EMPTY_DRAFT: DraftState = { budget: [], contracts: [], invoices: [] }
 
 const BLANK_CONTRACT: ContractForm = {
@@ -46,8 +49,12 @@ const BLANK_CONTRACT: ContractForm = {
   currency: 'EUR', exchange_rate_ref: '', award_date: '', description: '',
 }
 
-const CURRENCY_FALLBACK = ['EUR', 'USD', 'GBP', 'CHF', 'AOA', 'MZN']
-const DOC_TYPES  = ['Factura', 'Recibo', 'Nota de Crédito', 'Pró-forma', 'Outro']
+const CURRENCY_FALLBACK: CurrencyOption[] = [
+  { code: 'EUR', symbol: '€' }, { code: 'USD', symbol: '$' },
+  { code: 'GBP', symbol: '£' }, { code: 'CHF', symbol: 'CHF' },
+  { code: 'AOA', symbol: 'Kz' }, { code: 'MZN', symbol: 'MT' },
+]
+const DOC_TYPES    = ['Factura', 'Recibo', 'Nota de Crédito', 'Pró-forma', 'Outro']
 const INV_STATUSES = ['Pendente', 'Aprovado', 'Paga', 'Anulada']
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -57,8 +64,8 @@ function newId(): string { return 'new_' + (++_seq) + '_' + Math.random().toStri
 function newAppId(): string { return 'gf_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5) }
 function isNew(id: string): boolean { return id.startsWith('new_') }
 function toEur(amount: number, rate: number | null): number { return amount * (rate ?? 1) }
-function fmtEur(n: number): string {
-  return new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 0 }).format(Math.round(n)) + ' €'
+function fmtEur(n: number, symbol = '€'): string {
+  return new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 0 }).format(Math.round(n)) + ' ' + symbol
 }
 function lineTotal(b: FinBudgetLine): number {
   return Object.values(b.values).reduce((s, v) => s + v, 0)
@@ -69,10 +76,10 @@ interface BudgetTabProps {
   lines: FinBudgetLine[]
   setLines: (lines: FinBudgetLine[]) => void
   onDelete: (id: string) => void
-  /** Category names configured in Admin → Financeiro for this program */
-  categories: string[]
-  /** Currency codes from the currencies table */
-  currencies: string[]
+  /** Categories (with is_capex) configured in Admin → Financeiro for this program */
+  categories: CategoryOption[]
+  /** Currencies (with symbol) from the currencies table */
+  currencies: CurrencyOption[]
   /** Default currency code (is_default = true) */
   defaultCurrency: string
   /** Management years configured in Admin → Financeiro for this program */
@@ -80,14 +87,18 @@ interface BudgetTabProps {
 }
 
 function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultCurrency, managementYears }: BudgetTabProps) {
-  const [newYear, setNewYear] = useState(String(new Date().getFullYear() + 1))
-
   // Seed from management_years; merge with any year keys already on lines
   const years = useMemo(() => {
     const ks = new Set<string>(managementYears)
     lines.forEach(b => Object.keys(b.values).forEach(k => ks.add(k)))
     return Array.from(ks).sort()
   }, [lines, managementYears])
+
+  // code → symbol lookup for the Total column
+  const currSymbolMap = useMemo(
+    () => new Map(currencies.map(c => [c.code, c.symbol || '€'])),
+    [currencies],
+  )
 
   const updateLine = (id: string, patch: Partial<FinBudgetLine>) =>
     setLines(lines.map(b => b.id === id ? { ...b, ...patch } : b))
@@ -97,12 +108,7 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
     setLines(lines.map(b => b.id === id ? { ...b, values: { ...b.values, [year]: num } } : b))
   }
 
-  const addYear = () => {
-    const y = newYear.trim()
-    if (!y || years.includes(y)) return
-    setLines(lines.map(b => ({ ...b, values: { ...b.values, [y]: 0 } })))
-  }
-
+  // Keep removeYear so users can hide a column; adding new years is done in Admin
   const removeYear = (y: string) =>
     setLines(lines.map(b => {
       const v = { ...b.values }
@@ -126,15 +132,6 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
     <div className="gf-budget-wrap">
       <div className="gf-budget-toolbar">
         <span className="gf-budget-toolbar-title">Rubricas Orçamentais</span>
-        <input
-          type="number"
-          className="gf-cell-input"
-          value={newYear}
-          onChange={e => setNewYear(e.target.value)}
-          style={{ width: 72, padding: '3px 6px', fontSize: 12 }}
-          placeholder="Ano"
-        />
-        <button className="gf-btn" onClick={addYear} style={{ fontSize: 12 }}>+ Ano</button>
         <button className="gf-btn gf-btn-primary" onClick={addRow}>+ Rubrica</button>
       </div>
 
@@ -171,11 +168,15 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
                 </td>
                 <td>
                   <select className="gf-cell-select" value={b.category}
-                    onChange={e => updateLine(b.id, { category: e.target.value })}>
+                    onChange={e => {
+                      const name = e.target.value
+                      const cat = categories.find(c => c.name === name)
+                      updateLine(b.id, { category: name, ...(cat ? { capex: cat.is_capex } : {}) })
+                    }}>
                     <option value="">— categoria —</option>
-                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                     {/* Keep current value selectable if it was set before categories loaded */}
-                    {b.category && !categories.includes(b.category) && (
+                    {b.category && !categories.some(c => c.name === b.category) && (
                       <option value={b.category}>{b.category}</option>
                     )}
                   </select>
@@ -191,7 +192,7 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
                 <td className="gf-td-c">
                   <select className="gf-cell-select" value={b.currency}
                     onChange={e => updateLine(b.id, { currency: e.target.value })}>
-                    {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+                    {currencies.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
                   </select>
                 </td>
                 {years.map(y => (
@@ -201,7 +202,7 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
                       onChange={e => setYearValue(b.id, y, e.target.value)} />
                   </td>
                 ))}
-                <td className="gf-td-total">{fmtEur(lineTotal(b))}</td>
+                <td className="gf-td-total">{fmtEur(lineTotal(b), currSymbolMap.get(b.currency) ?? '€')}</td>
                 <td>
                   <input className="gf-cell-input" value={b.note ?? ''} placeholder="Nota"
                     onChange={e => updateLine(b.id, { note: e.target.value || null })} />
@@ -230,7 +231,7 @@ interface ContractPanelProps {
   onConfirm: () => void
   onClose: () => void
   panelErr: string | null
-  currencies: string[]
+  currencies: CurrencyOption[]
 }
 
 function ContractPanel({ form, setForm, onConfirm, onClose, panelErr, currencies }: ContractPanelProps) {
@@ -264,7 +265,7 @@ function ContractPanel({ form, setForm, onConfirm, onClose, panelErr, currencies
               <label className="gf-field-label">Moeda</label>
               <select className="gf-field-select" value={form.currency}
                 onChange={e => set({ currency: e.target.value })}>
-                {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+                {currencies.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
               </select>
             </div>
           </div>
@@ -376,7 +377,7 @@ interface InvoicesTabProps {
   invoices: FinInvoice[]
   setInvoices: (invoices: FinInvoice[]) => void
   onDelete: (id: string) => void
-  currencies: string[]
+  currencies: CurrencyOption[]
   defaultCurrency: string
 }
 
@@ -474,7 +475,7 @@ function InvoicesTab({ invoices, setInvoices, onDelete, currencies, defaultCurre
                     <td className="gf-td-c">
                       <select className="gf-cell-select" value={inv.currency}
                         onChange={e => updateInv(inv.id, { currency: e.target.value })}>
-                        {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+                        {currencies.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
                       </select>
                     </td>
                     <td>
@@ -527,19 +528,19 @@ export default function GestaoFinanceira() {
   const programId = selProgId || undefined
 
   // ── Admin config: categories, currencies, management years ───
-  const [categories,      setCategories]      = useState<string[]>([])
-  const [currencies,      setCurrencies]      = useState<string[]>(CURRENCY_FALLBACK)
+  const [categories,      setCategories]      = useState<CategoryOption[]>([])
+  const [currencies,      setCurrencies]      = useState<CurrencyOption[]>(CURRENCY_FALLBACK)
   const [defaultCurrency, setDefaultCurrency] = useState('EUR')
   const [managementYears, setManagementYears] = useState<string[]>([])
 
   // Currencies are global — fetch once on mount
   useEffect(() => {
     let cancelled = false
-    supabase.from('currencies').select('code, is_default').order('code')
+    supabase.from('currencies').select('code, is_default, symbol').order('code')
       .then(({ data }) => {
         if (cancelled || !data || data.length === 0) return
-        const rows = data as { code: string; is_default: boolean }[]
-        setCurrencies(rows.map(r => r.code))
+        const rows = data as { code: string; is_default: boolean; symbol: string }[]
+        setCurrencies(rows.map(r => ({ code: r.code, symbol: r.symbol || '€' })))
         const def = rows.find(r => r.is_default)
         if (def) setDefaultCurrency(def.code)
       })
@@ -565,10 +566,10 @@ export default function GestaoFinanceira() {
           const ids = (links as { category_id: string }[]).map(l => l.category_id)
           const { data: cats } = await supabase
             .from('cost_categories')
-            .select('name')
+            .select('name, is_capex')
             .in('id', ids)
             .order('name')
-          return (cats ?? []).map((c: { name: string }) => c.name)
+          return (cats ?? []).map((c: { name: string; is_capex: boolean }) => ({ name: c.name, is_capex: c.is_capex }))
         }),
       // Step 2: get management years for this program
       supabase.from('management_years')
