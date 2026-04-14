@@ -39,6 +39,13 @@
   }
   .pds-selector-select:focus { outline: none; border-color: var(--navy); }
 
+  .pds-selector-sep {
+    width: 1px;
+    height: 18px;
+    background: var(--border2);
+    flex-shrink: 0;
+  }
+
   /* ── Empty / loading placeholder ────────────────────────────── */
   .pds-placeholder {
     text-align: center;

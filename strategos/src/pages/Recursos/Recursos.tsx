@@ -1,14 +1,14 @@
 import './Recursos.css'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import Badge from '../../components/Badge/Badge'
 import { useResources } from '../../hooks/useResources'
-import { usePdsEntries } from '../../hooks/usePdsEntries'
-import { useEixos } from '../../hooks/useEixos'
+import { usePlanos } from '../../hooks/usePlanos'
+import { usePrograms } from '../../hooks/usePrograms'
 import { usePeople } from '../../hooks/usePeople'
 import { useFilters } from '../../context/FilterContext'
-import type { FteResource, PdsEntry, Person } from '../../types/index'
+import type { FteResource, Person } from '../../types/index'
 
 const WORKING_DAYS = 22
 
@@ -57,36 +57,26 @@ function typeVar(type: string | null): 'blue' | 'grey' {
   return (type === 'externo' || type === 'external') ? 'blue' : 'grey'
 }
 
-function planLabel(entry: PdsEntry | undefined): string {
-  if (!entry) return 'Plano desconhecido'
-  return [entry.n0, entry.plan_name || entry.n1].filter(Boolean).join(' › ')
-}
-
-function planKey(entry: PdsEntry | undefined): string {
-  return entry ? `${entry.n0}|${entry.n1}` : '__unknown__'
-}
-
 // ── Plan view ──────────────────────────────────────────────────
 interface PlanViewProps {
   resources: FteResource[]
-  entryMap: Map<string, PdsEntry>
+  planoNames: Map<string, string>
   expanded: Set<string>
   onToggle: (key: string) => void
 }
 
-function PlanView({ resources, entryMap, expanded, onToggle }: PlanViewProps) {
+function PlanView({ resources, planoNames, expanded, onToggle }: PlanViewProps) {
   const groups = useMemo(() => {
     const map = new Map<string, { label: string; items: FteResource[] }>()
     for (const r of resources) {
-      const entry = entryMap.get(r.pds_id)
-      const k     = planKey(entry)
-      const lbl   = planLabel(entry)
-      const grp   = map.get(k) ?? { label: lbl, items: [] }
+      const k   = r.pds_id || '__unknown__'
+      const lbl = planoNames.get(r.pds_id) ?? 'Plano desconhecido'
+      const grp = map.get(k) ?? { label: lbl, items: [] }
       grp.items.push(r)
       map.set(k, grp)
     }
     return Array.from(map.entries()).map(([k, g]) => ({ key: k, ...g }))
-  }, [resources, entryMap])
+  }, [resources, planoNames])
 
   if (groups.length === 0) return <p className="res-empty">Nenhum recurso alocado.</p>
 
@@ -246,27 +236,26 @@ function ResourceHeatmap({ resources, months, onSelect }: HeatmapProps) {
 interface ResourcePanelProps {
   name: string
   resources: FteResource[]
-  entryMap: Map<string, PdsEntry>
+  planoNames: Map<string, string>
   person: Person | undefined
   onClose: () => void
 }
 
-function ResourcePanel({ name, resources, entryMap, person, onClose }: ResourcePanelProps) {
+function ResourcePanel({ name, resources, planoNames, person, onClose }: ResourcePanelProps) {
   const myResources = useMemo(() => resources.filter(r => r.name === name), [resources, name])
   const first       = myResources[0]
 
   const planGroups = useMemo(() => {
     const map = new Map<string, { label: string; items: FteResource[] }>()
     for (const r of myResources) {
-      const entry = entryMap.get(r.pds_id)
-      const k     = planKey(entry)
-      const lbl   = planLabel(entry)
-      const grp   = map.get(k) ?? { label: lbl, items: [] }
+      const k   = r.pds_id || '__unknown__'
+      const lbl = planoNames.get(r.pds_id) ?? 'Plano desconhecido'
+      const grp = map.get(k) ?? { label: lbl, items: [] }
       grp.items.push(r)
       map.set(k, grp)
     }
     return Array.from(map.values())
-  }, [myResources, entryMap])
+  }, [myResources, planoNames])
 
   return (
     <>
@@ -313,55 +302,52 @@ function ResourcePanel({ name, resources, entryMap, person, onClose }: ResourceP
 type ViewMode = 'plano' | 'recurso'
 
 export default function Recursos() {
-  const { filters } = useFilters()
-  const programId   = filters.programIds[0]
+  const { filters }  = useFilters()
+  const { programs } = usePrograms()
 
-  const { resources, loading } = useResources(programId)
-  const { entries }            = usePdsEntries(programId)
-  const { eixos }              = useEixos(programId)
-  const { people }             = usePeople()
-
-  const [view,          setView]          = useState<ViewMode>('plano')
-  const [planKey_,      setPlanKey_]      = useState('')
-  const [expandedPlans, setExpandedPlans] = useState(new Set<string>())
-  const [selectedRes,   setSelectedRes]   = useState<string | null>(null)
+  const [selProgId,      setSelProgId]      = useState<string | null>(null)
+  const [view,           setView]           = useState<ViewMode>('plano')
+  const [planKey_,       setPlanKey_]       = useState('')
+  const [expandedPlans,  setExpandedPlans]  = useState(new Set<string>())
+  const [selectedRes,    setSelectedRes]    = useState<string | null>(null)
 
   const [periodStart, setPeriodStart] = useState(() => `${new Date().getFullYear()}-01`)
   const [periodEnd,   setPeriodEnd]   = useState(() => `${new Date().getFullYear()}-12`)
 
-  // ── PDS entry map ─────────────────────────────────────────────
-  const entryMap = useMemo(() => {
-    const m = new Map<string, PdsEntry>()
-    for (const e of entries) m.set(e.id, e)
-    return m
-  }, [entries])
+  // Initialize selProgId from global filter or first program
+  useEffect(() => {
+    if (programs.length === 0) return
+    setSelProgId(prev => {
+      if (prev && programs.some(p => p.id === prev)) return prev
+      return filters.programIds[0] ?? programs[0].id
+    })
+  }, [programs, filters.programIds])
 
-  // ── Plan selector options from eixos table ────────────────────
+  // Reset plan when program changes
+  useEffect(() => { setPlanKey_('') }, [selProgId])
+
+  const programId = selProgId ?? undefined
+
+  const { resources, loading } = useResources(programId)
+  const { planos }             = usePlanos(programId)
+  const { people }             = usePeople()
+
+  // ── Plano name map (plano.id → plano.name) ────────────────────
+  const planoNames = useMemo(
+    () => new Map(planos.map(p => [p.id, p.name])),
+    [planos]
+  )
+
+  // ── Plan selector options from planos table ───────────────────
   const planOptions = useMemo(() =>
-    eixos.map(eixo => ({ key: eixo.id, label: eixo.name })),
-    [eixos]
+    planos.map(p => ({ key: p.id, label: p.name })),
+    [planos]
   )
 
-  // ── Selected eixo ─────────────────────────────────────────────
-  const selectedEixo = useMemo(
-    () => eixos.find(e => e.id === planKey_) ?? null,
-    [eixos, planKey_]
-  )
-
-  // ── Entry IDs for selected eixo (null = all) ──────────────────
-  const planIds = useMemo<Set<string> | null>(() => {
-    if (!selectedEixo) return null
-    return new Set(
-      entries
-        .filter(e => e.n1 === selectedEixo.name)
-        .map(e => e.id)
-    )
-  }, [entries, selectedEixo])
-
-  // ── Scoped resources ──────────────────────────────────────────
+  // ── Scoped resources (all, or filtered to selected plano) ─────
   const scoped = useMemo(
-    () => planIds ? resources.filter(r => planIds.has(r.pds_id)) : resources,
-    [resources, planIds]
+    () => planKey_ ? resources.filter(r => r.pds_id === planKey_) : resources,
+    [resources, planKey_]
   )
 
   // ── Months for heatmap ────────────────────────────────────────
@@ -414,8 +400,21 @@ export default function Recursos() {
   return (
     <div className="res-page">
 
-      {/* Controls bar: plan selector + period */}
+      {/* Controls bar: program selector + plan selector + period */}
       <div className="res-controls-bar">
+        {programs.length > 1 && (
+          <>
+            <span className="res-selector-label">Programa</span>
+            <select
+              className="res-selector-select res-plan-select"
+              value={selProgId ?? ''}
+              onChange={e => setSelProgId(e.target.value || null)}
+            >
+              {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <div className="res-controls-sep" />
+          </>
+        )}
         <span className="res-selector-label">Plano</span>
         <select
           className="res-selector-select res-plan-select"
@@ -489,7 +488,7 @@ export default function Recursos() {
             {view === 'plano' ? (
               <PlanView
                 resources={scoped}
-                entryMap={entryMap}
+                planoNames={planoNames}
                 expanded={expandedPlans}
                 onToggle={togglePlan}
               />
@@ -509,7 +508,7 @@ export default function Recursos() {
         <ResourcePanel
           name={selectedRes}
           resources={resources}
-          entryMap={entryMap}
+          planoNames={planoNames}
           person={selectedPerson}
           onClose={() => setSelectedRes(null)}
         />

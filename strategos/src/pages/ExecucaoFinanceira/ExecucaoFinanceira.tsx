@@ -1,5 +1,5 @@
 import './ExecucaoFinanceira.css'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -8,8 +8,8 @@ import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import Badge from '../../components/Badge/Badge'
 import { useFinancials } from '../../hooks/useFinancials'
-import { usePdsEntries } from '../../hooks/usePdsEntries'
-import { useEixos } from '../../hooks/useEixos'
+import { usePlanos } from '../../hooks/usePlanos'
+import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -112,51 +112,49 @@ function contractEstado(pct: number): { label: string; variant: 'grey' | 'amber'
 type CapexFilter = 'all' | 'capex' | 'opex'
 
 export default function ExecucaoFinanceira() {
-  const { filters } = useFilters()
-  const programId   = filters.programIds[0]
+  const { filters }  = useFilters()
+  const { programs } = usePrograms()
 
-  const { budgetLines, contracts, invoices, loading } = useFinancials(programId)
-  const { entries }                                   = usePdsEntries(programId)
-  const { eixos }                                     = useEixos(programId)
-
+  const [selProgId,   setSelProgId]   = useState<string | null>(null)
   const [planKey,     setPlanKey]     = useState('')
   const [capexFilter, setCapexFilter] = useState<CapexFilter>('all')
   const [yearFilter,  setYearFilter]  = useState('')
 
-  // ── Plan selector options from eixos table ───────────────────
+  // Initialize selProgId from global filter or first program
+  useEffect(() => {
+    if (programs.length === 0) return
+    setSelProgId(prev => {
+      if (prev && programs.some(p => p.id === prev)) return prev
+      return filters.programIds[0] ?? programs[0].id
+    })
+  }, [programs, filters.programIds])
+
+  // Reset plan when program changes
+  useEffect(() => { setPlanKey('') }, [selProgId])
+
+  const programId = selProgId ?? undefined
+
+  const { budgetLines, contracts, invoices, loading } = useFinancials(programId)
+  const { planos }                                    = usePlanos(programId)
+
+  // ── Plan selector options from planos table ──────────────────
   const planOptions = useMemo(() =>
-    eixos.map(eixo => ({ key: eixo.id, label: eixo.name })),
-    [eixos]
+    planos.map(p => ({ key: p.id, label: p.name })),
+    [planos]
   )
-
-  // ── Selected eixo ─────────────────────────────────────────────
-  const selectedEixo = useMemo(
-    () => eixos.find(e => e.id === planKey) ?? null,
-    [eixos, planKey]
-  )
-
-  // ── Entry IDs for selected eixo (null = all) ─────────────────
-  const planIds = useMemo<Set<string> | null>(() => {
-    if (!selectedEixo) return null
-    return new Set(
-      entries
-        .filter(e => e.n1 === selectedEixo.name)
-        .map(e => e.id)
-    )
-  }, [entries, selectedEixo])
 
   // ── Step 1: plan-filtered data ───────────────────────────────
   const planLines = useMemo(
-    () => planIds ? budgetLines.filter(l => planIds.has(l.pds_id)) : budgetLines,
-    [budgetLines, planIds]
+    () => planKey ? budgetLines.filter(l => l.plano_id === planKey) : budgetLines,
+    [budgetLines, planKey]
   )
   const planCtrs = useMemo(
-    () => planIds ? contracts.filter(c => planIds.has(c.pds_id)) : contracts,
-    [contracts, planIds]
+    () => planKey ? contracts.filter(c => c.plano_id === planKey) : contracts,
+    [contracts, planKey]
   )
   const planInvs = useMemo(
-    () => planIds ? invoices.filter(i => planIds.has(i.pds_id)) : invoices,
-    [invoices, planIds]
+    () => planKey ? invoices.filter(i => i.plano_id === planKey) : invoices,
+    [invoices, planKey]
   )
 
   // ── Step 2: CAPEX/OPEX filter ────────────────────────────────
@@ -259,6 +257,21 @@ export default function ExecucaoFinanceira() {
 
       {/* ── Controls bar ─────────────────────────────────────── */}
       <div className="ef-selector-bar">
+        {programs.length > 1 && (
+          <>
+            <span className="ef-selector-label">Programa</span>
+            <select
+              className="ef-selector-select"
+              value={selProgId ?? ''}
+              onChange={e => setSelProgId(e.target.value || null)}
+            >
+              {programs.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            <div className="ef-selector-sep" />
+          </>
+        )}
         <span className="ef-selector-label">Plano</span>
         <select
           className="ef-selector-select"

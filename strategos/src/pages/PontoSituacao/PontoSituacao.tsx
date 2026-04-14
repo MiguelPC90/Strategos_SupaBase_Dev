@@ -1,9 +1,10 @@
 import './PontoSituacao.css'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import { usePdsEntries } from '../../hooks/usePdsEntries'
-import { useEixos } from '../../hooks/useEixos'
+import { usePlanos } from '../../hooks/usePlanos'
+import { usePrograms } from '../../hooks/usePrograms'
 import { useRisks } from '../../hooks/useRisks'
 import { useFilters } from '../../context/FilterContext'
 import type { PdsItem } from '../../types/index'
@@ -67,46 +68,61 @@ function estadoVariant(status: string): RiskBadge {
 // ── Main page ──────────────────────────────────────────────────
 export default function PontoSituacao() {
   const { filters }  = useFilters()
-  const programId    = filters.programIds[0] as string | undefined
-  const { entries, loading } = usePdsEntries(programId)
-  const { eixos } = useEixos(programId)
+  const { programs } = usePrograms()
 
+  const [selProgId,   setSelProgId]   = useState<string | null>(null)
   const [selectedKey, setSelectedKey] = useState('')
-  const [entryIdx, setEntryIdx]       = useState(0)
+  const [entryIdx,    setEntryIdx]    = useState(0)
 
-  const { risks } = useRisks(programId)
+  // Initialize selProgId from global filter or first program
+  useEffect(() => {
+    if (programs.length === 0) return
+    setSelProgId(prev => {
+      if (prev && programs.some(p => p.id === prev)) return prev
+      return filters.programIds[0] ?? programs[0].id
+    })
+  }, [programs, filters.programIds])
 
-  // Plan options from eixos table
+  // Reset plan when program changes
+  useEffect(() => {
+    setSelectedKey('')
+    setEntryIdx(0)
+  }, [selProgId])
+
+  const programId = selProgId ?? undefined
+
+  const { entries, loading } = usePdsEntries(programId)
+  const { planos }           = usePlanos(programId)
+  const { risks }            = useRisks(programId)
+
+  // Plan selector options from planos table
   const planOptions = useMemo(() =>
-    eixos.map(eixo => ({ key: eixo.id, label: eixo.name })),
-    [eixos]
+    planos.map(p => ({ key: p.id, label: p.name })),
+    [planos]
   )
 
-  // Selected eixo
-  const selectedEixo = useMemo(
-    () => eixos.find(e => e.id === selectedKey) ?? null,
-    [eixos, selectedKey]
+  // Selected plano object
+  const selectedPlano = useMemo(
+    () => planos.find(p => p.id === selectedKey) ?? null,
+    [planos, selectedKey]
   )
 
-  // Entries for the selected eixo, sorted newest first
+  // Entries for the selected plano (matched by plan_name + eixo name)
   const planEntries = useMemo(() => {
-    if (!selectedEixo) return []
+    if (!selectedPlano) return []
     return entries
-      .filter(e => e.n1 === selectedEixo.name)
+      .filter(e =>
+        e.plan_name === selectedPlano.name &&
+        (!selectedPlano.eixo || e.n1 === selectedPlano.eixo.name)
+      )
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-  }, [entries, selectedKey])
+  }, [entries, selectedPlano])
 
-  // Risks linked to any pds_entry sharing id0+id2 with the selected plan
+  // Risks linked to the selected plano via plano_id
   const planRisks = useMemo(() => {
-    if (!planEntries.length) return []
-    const { id0, id2 } = planEntries[0]
-    const matchIds = new Set(
-      entries
-        .filter(e => e.id0 === id0 && e.id2 === id2)
-        .map(e => e.id)
-    )
-    return risks.filter(r => matchIds.has(r.pds_id))
-  }, [risks, planEntries, entries])
+    if (!selectedKey) return []
+    return risks.filter(r => r.plano_id === selectedKey)
+  }, [risks, selectedKey])
 
   function handlePlanChange(key: string) {
     setSelectedKey(key)
@@ -122,6 +138,21 @@ export default function PontoSituacao() {
 
       {/* Plan selector */}
       <div className="pds-selector-bar">
+        {programs.length > 1 && (
+          <>
+            <span className="pds-selector-label">Programa</span>
+            <select
+              className="pds-selector-select"
+              value={selProgId ?? ''}
+              onChange={e => setSelProgId(e.target.value || null)}
+            >
+              {programs.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            <span className="pds-selector-sep" />
+          </>
+        )}
         <span className="pds-selector-label">Plano</span>
         <select
           className="pds-selector-select"
