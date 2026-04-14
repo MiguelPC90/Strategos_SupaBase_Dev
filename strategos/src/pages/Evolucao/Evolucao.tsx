@@ -8,6 +8,7 @@ import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import { useSnapshots } from '../../hooks/useSnapshots'
 import { usePrograms } from '../../hooks/usePrograms'
+import { useEixos } from '../../hooks/useEixos'
 import type { Snapshot, SnapshotKpi } from '../../types/index'
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -103,6 +104,13 @@ export default function Evolucao() {
 
   const { programs }                  = usePrograms()
   const { snapshots, loading, error } = useSnapshots(programId || undefined)
+  const { eixos }                     = useEixos(programId || undefined)
+
+  // UUID → name map: resolves eixo UUIDs used as by_n1 keys since migration 007
+  const eixoNameById = useMemo(
+    () => new Map(eixos.map(e => [e.id, e.name])),
+    [eixos],
+  )
 
   // ── filter by date range ──────────────────────────────────────
   const filtered = useMemo(
@@ -178,7 +186,7 @@ export default function Evolucao() {
       groups.push({
         title: 'Por Eixo',
         rows: eixoKeys.map(k => ({
-          label:       `${k} — Grau de execução (%)`,
+          label:       `${eixoNameById.get(k) ?? k} — Grau de execução (%)`,
           ref:         firstSnap.by_n1[k]?.exec_media ?? 0,
           actual:      lastSnap.by_n1[k]?.exec_media  ?? 0,
           invertColor: false,
