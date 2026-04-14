@@ -71,6 +71,12 @@
     padding: 8px;
   }
 
+  /* ── Chart view toggle (card header) ────────────────────── */
+  .dash-chart-toggle {
+    display: flex;
+    gap: 4px;
+  }
+
   /* ── Programme group header rows ────────────────────────── */
   .dash-prog-hdr td {
     background: rgba(0, 46, 94, 0.07);

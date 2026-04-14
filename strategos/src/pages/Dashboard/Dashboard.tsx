@@ -1,5 +1,5 @@
 import './Dashboard.css'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
@@ -114,6 +114,54 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Map<string, T[]> {
   return map
 }
 
+// ── Bar chart types & helpers ──────────────────────────────────
+interface BarEntry {
+  name: string
+  concluidas: number
+  em_dia: number
+  em_atraso: number
+  isSeparator?: boolean
+  program?: string
+}
+
+function barCounts(acts: Activity[]): { concluidas: number; em_dia: number; em_atraso: number } {
+  let concluidas = 0, em_dia = 0, em_atraso = 0
+  for (const a of acts) {
+    const cls = classify(a)
+    if (cls === 'concluida') concluidas++
+    else if (cls === 'em_dia') em_dia++
+    else em_atraso++
+  }
+  return { concluidas, em_dia, em_atraso }
+}
+
+interface AxisTickProps {
+  x?: number
+  y?: number
+  payload?: { value: string }
+  index?: number
+  [key: string]: unknown
+}
+
+interface ChartTooltipItem {
+  name: string
+  value: number
+  fill: string
+  payload: BarEntry
+}
+
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: ChartTooltipItem[]; label?: string }) {
+  if (!active || !payload?.length || payload[0]?.payload?.isSeparator) return null
+  return (
+    <div style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6, padding: '6px 10px', fontSize: 12 }}>
+      <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+      {payload.map(p => (
+        <div key={p.name} style={{ color: p.fill }}>{p.name}: {p.value}</div>
+      ))}
+    </div>
+  )
+}
+
 function buildRow(nome: string, m: Metrics, isParent: boolean): Record<string, unknown> {
   const concGeral = safeDiv(m.concluidas, m.total) * 100
   const concData  = safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100
@@ -183,6 +231,7 @@ const DETAIL_COLS: Column[] = [
 // ── Component ─────────────────────────────────────────────────
 export default function Dashboard() {
   const [tableChip, setTableChip] = useState<'programa' | 'eixo' | 'plano'>('eixo')
+  const [chartChip, setChartChip] = useState<'eixo' | 'programa'>('eixo')
   const [evoMetric, setEvoMetric] = useState<EvoMetric>('grau_exec')
 
   const navigate = useNavigate()
@@ -259,19 +308,84 @@ export default function Dashboard() {
   )
 
   // ── Bar chart data ───────────────────────────────────────────
-  const barData = useMemo(() => {
-    const groups = groupBy(leaves, a => a.n1 || '(sem eixo)')
-    return Array.from(groups.entries()).map(([n1, acts]) => {
-      let concluidas = 0, em_dia = 0, em_atraso = 0
-      for (const a of acts) {
-        const cls = classify(a)
-        if (cls === 'concluida') concluidas++
-        else if (cls === 'em_dia') em_dia++
-        else em_atraso++
+  const chartDataRef = useRef<BarEntry[]>([])
+
+  const chartDataEixo = useMemo((): BarEntry[] => {
+    if (programs.length === 0) {
+      // Programs not yet loaded — flat group by n1
+      return Array.from(groupBy(leaves, a => a.n1 || '(sem eixo)').entries())
+        .map(([n1, acts]) => ({ name: n1, ...barCounts(acts) }))
+    }
+    const sortedProgs = programs.slice().sort((a, b) => a.sort_order - b.sort_order)
+    const progsWithData = sortedProgs.filter(p => leaves.some(a => a.program_id === p.id))
+    const useSep = progsWithData.length > 1
+    const result: BarEntry[] = []
+    let sepIdx = 0
+    for (const prog of sortedProgs) {
+      const progLeaves = leaves.filter(a => a.program_id === prog.id)
+      if (progLeaves.length === 0) continue
+      if (useSep) {
+        result.push({ name: `__sep__${sepIdx++}`, concluidas: 0, em_dia: 0, em_atraso: 0, isSeparator: true, program: prog.name })
       }
-      return { n1, concluidas, em_dia, em_atraso }
-    })
-  }, [leaves])
+      const progEixos = allEixos
+        .filter(e => e.program_id === prog.id)
+        .sort((a, b) => a.sort_order - b.sort_order)
+      const byEixo = groupBy(progLeaves, a => a.n1 || '(sem eixo)')
+      if (progEixos.length > 0) {
+        const seen = new Set<string>()
+        for (const e of progEixos) {
+          const acts = byEixo.get(e.name)
+          if (!acts) continue
+          seen.add(e.name)
+          result.push({ name: e.name, ...barCounts(acts) })
+        }
+        for (const [n1, acts] of byEixo) {
+          if (!seen.has(n1)) result.push({ name: n1, ...barCounts(acts) })
+        }
+      } else {
+        for (const [n1, acts] of byEixo) {
+          result.push({ name: n1, ...barCounts(acts) })
+        }
+      }
+    }
+    return result
+  }, [leaves, programs, allEixos])
+
+  const chartDataProg = useMemo((): BarEntry[] =>
+    programs
+      .slice()
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map(prog => {
+        const progLeaves = leaves.filter(a => a.program_id === prog.id)
+        if (progLeaves.length === 0) return null
+        return { name: prog.name, ...barCounts(progLeaves) }
+      })
+      .filter((e): e is BarEntry => e !== null),
+  [leaves, programs])
+
+  // Set ref synchronously so EixoAxisTick reads current data during render
+  chartDataRef.current = chartDataEixo
+
+  const EixoAxisTick = useCallback((props: AxisTickProps): React.ReactElement | null => {
+    const { x, y, index } = props
+    if (x === undefined || y === undefined || index === undefined) return null
+    const entry = chartDataRef.current[index]
+    if (!entry) return null
+    if (entry.isSeparator) {
+      return (
+        <text x={x} y={(y ?? 0) + 12} textAnchor="middle" fontSize={11} fontWeight={600} fill="#002E5E">
+          {entry.program ?? ''}
+        </text>
+      )
+    }
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text x={0} y={0} dy={10} transform="rotate(-35)" textAnchor="end" fontSize={11} fill="#5c5c58">
+          {entry.name}
+        </text>
+      </g>
+    )
+  }, [])
 
   // ── Pie chart data ───────────────────────────────────────────
   const pieData = useMemo(() => [
@@ -470,46 +584,63 @@ export default function Dashboard() {
       {/* ── Row 2: Charts ─────────────────────────────────────── */}
       <div className="dashboard-charts-grid">
 
-        <Card title="Actividades por Eixo — Estado">
-          {barData.length === 0 ? (
-            <div className="page-placeholder" style={{ minHeight: 220 }}>
-              <p>Sem dados carregados</p>
+        <Card
+          title={chartChip === 'eixo' ? 'Actividades por Eixo — Estado' : 'Actividades por Programa — Estado'}
+          actions={
+            <div className="dash-chart-toggle">
+              <button className={`chip${chartChip === 'eixo' ? ' active' : ''}`} onClick={() => setChartChip('eixo')}>Eixo</button>
+              <button className={`chip${chartChip === 'programa' ? ' active' : ''}`} onClick={() => setChartChip('programa')}>Programa</button>
             </div>
+          }
+        >
+          {chartChip === 'eixo' ? (
+            chartDataEixo.filter(e => !e.isSeparator).length === 0 ? (
+              <div className="page-placeholder" style={{ minHeight: 220 }}><p>Sem dados carregados</p></div>
+            ) : (
+              <div className="dash-chart-container">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartDataEixo} margin={{ top: 4, right: 8, left: -16, bottom: 56 }}>
+                    <XAxis dataKey="name" tick={EixoAxisTick as (props: unknown) => React.ReactElement | null} interval={0} />
+                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip content={ChartTooltip as (props: unknown) => React.ReactElement | null} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS}>
+                      <LabelList dataKey="concluidas" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                    </Bar>
+                    <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA}>
+                      <LabelList dataKey="em_dia" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                    </Bar>
+                    <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO} radius={[3, 3, 0, 0]}>
+                      <LabelList dataKey="em_atraso" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )
           ) : (
-            <div className="dash-chart-container">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={barData}
-                  margin={{ top: 4, right: 8, left: -16, bottom: 48 }}
-                >
-                  <XAxis
-                    dataKey="n1"
-                    tick={{ fontSize: 11 }}
-                    angle={-35}
-                    textAnchor="end"
-                    interval={0}
-                  />
-                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS}>
-                    <LabelList dataKey="concluidas" position="inside"
-                      style={{ fontSize: 10, fill: 'white', fontWeight: 600 }}
-                      formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
-                  </Bar>
-                  <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA}>
-                    <LabelList dataKey="em_dia" position="inside"
-                      style={{ fontSize: 10, fill: 'white', fontWeight: 600 }}
-                      formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
-                  </Bar>
-                  <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO} radius={[3, 3, 0, 0]}>
-                    <LabelList dataKey="em_atraso" position="inside"
-                      style={{ fontSize: 10, fill: 'white', fontWeight: 600 }}
-                      formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            chartDataProg.length === 0 ? (
+              <div className="page-placeholder" style={{ minHeight: 220 }}><p>Sem dados carregados</p></div>
+            ) : (
+              <div className="dash-chart-container">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartDataProg} margin={{ top: 4, right: 8, left: -16, bottom: 48 }}>
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} />
+                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip content={ChartTooltip as (props: unknown) => React.ReactElement | null} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS}>
+                      <LabelList dataKey="concluidas" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                    </Bar>
+                    <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA}>
+                      <LabelList dataKey="em_dia" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                    </Bar>
+                    <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO} radius={[3, 3, 0, 0]}>
+                      <LabelList dataKey="em_atraso" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )
           )}
         </Card>
 
