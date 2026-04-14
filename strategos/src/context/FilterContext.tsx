@@ -85,12 +85,21 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     const { programIds, n1Values, n2Values, owners, sponsors, statuses } = filters
     const today = new Date().toISOString().slice(0, 10)
 
+    // Owner/sponsor live on the planos table, not on activities.
+    // Build a Set of matching plano UUIDs so we can match via a.plano_id.
+    const ownerPlanoIds = owners.length
+      ? new Set(planos.filter(p => p.owner && owners.includes(p.owner)).map(p => p.id))
+      : null
+    const sponsorPlanoIds = sponsors.length
+      ? new Set(planos.filter(p => p.sponsor && sponsors.includes(p.sponsor)).map(p => p.id))
+      : null
+
     return activities.filter(a => {
-      if (programIds.length  && !programIds.includes(a.program_id ?? ''))  return false
-      if (n1Values.length    && !n1Values.includes(a.n1))                  return false
-      if (n2Values.length    && !n2Values.includes(a.n2))                  return false
-      if (owners.length      && !owners.includes(a.owner))                 return false
-      if (sponsors.length    && !sponsors.includes(a.sponsor))             return false
+      if (programIds.length && !programIds.includes(a.program_id ?? ''))           return false
+      if (n1Values.length   && !n1Values.includes(a.n1))                           return false
+      if (n2Values.length   && !n2Values.includes(a.n2))                           return false
+      if (ownerPlanoIds   && !ownerPlanoIds.has(a.plano_id ?? ''))                 return false
+      if (sponsorPlanoIds && !sponsorPlanoIds.has(a.plano_id ?? ''))               return false
 
       // Status filter: only applied to leaf activities (level >= 4)
       // Parent activities are always included to preserve tree structure
@@ -100,7 +109,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
 
       return true
     })
-  }, [filters])
+  }, [filters, planos])
 
   return (
     <FilterContext.Provider value={{ filters, setFilter, resetFilters, getFilteredActivities, ownerOptions, sponsorOptions }}>
