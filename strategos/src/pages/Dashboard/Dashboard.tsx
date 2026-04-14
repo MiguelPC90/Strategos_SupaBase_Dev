@@ -11,6 +11,8 @@ import KpiCard from '../../components/KpiCard/KpiCard'
 import Table, { type Column } from '../../components/Table/Table'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
+import { useEixos } from '../../hooks/useEixos'
+import { usePlanos } from '../../hooks/usePlanos'
 import { useSnapshots } from '../../hooks/useSnapshots'
 import { useFilters } from '../../context/FilterContext'
 import type { Activity } from '../../types/index'
@@ -139,14 +141,20 @@ const DETAIL_COLS: Column[] = [
     label: 'Designação',
     sortable: false,
     minWidth: '250px',
-    render: (_v, row) => (
-      <span style={{
-        fontWeight: Boolean(row._isTotals) || Boolean(row._isParent) ? 700 : 400,
-        color: Boolean(row._isTotals) ? 'var(--navy)' : undefined,
-      }}>
-        {String(row.nome ?? '')}
-      </span>
-    ),
+    render: (_v, row) => {
+      const indent = Number(row._indent ?? 0)
+      const isStrong = Boolean(row._isTotals) || Boolean(row._isParent) || Boolean(row._isProgHeader)
+      const isNavy   = Boolean(row._isTotals) || Boolean(row._isProgHeader)
+      return (
+        <span style={{
+          fontWeight: isStrong ? 700 : 400,
+          color: isNavy ? 'var(--navy)' : undefined,
+          paddingLeft: indent > 0 ? `${indent * 16}px` : undefined,
+        }}>
+          {String(row.nome ?? '')}
+        </span>
+      )
+    },
   },
   { key: 'total',      label: 'Total',         sortable: true, width: '70px'  },
   { key: 'concluidas', label: 'Concluídas',    sortable: true, width: '90px'  },
@@ -174,13 +182,15 @@ const DETAIL_COLS: Column[] = [
 
 // ── Component ─────────────────────────────────────────────────
 export default function Dashboard() {
-  const [chip, setChip]           = useState<'eixo' | 'eixo-plano'>('eixo')
+  const [tableChip, setTableChip] = useState<'programa' | 'eixo' | 'plano'>('eixo')
   const [evoMetric, setEvoMetric] = useState<EvoMetric>('grau_exec')
 
   const navigate = useNavigate()
   const { filters, setFilter, getFilteredActivities } = useFilters()
   const { activities, loading }            = useActivities({ cutoffDate: filters.cutoffDate })
   const { programs }                       = usePrograms()
+  const { eixos: allEixos }                = useEixos()
+  const { planos: allPlanos }              = usePlanos()
   const snapshotProgramId                  = filters.programIds[0]
   const { snapshots }                      = useSnapshots(snapshotProgramId)
 
@@ -293,25 +303,81 @@ export default function Dashboard() {
 
   // ── Detail table rows ────────────────────────────────────────
   const tableRows = useMemo((): Record<string, unknown>[] => {
-    if (chip === 'eixo') {
-      const groups = groupBy(leaves, a => a.n1 || '(sem eixo)')
-      return Array.from(groups.entries()).map(([n1, acts]) => ({
-        ...buildRow(n1, calcMetrics(acts), false),
-        _n1: n1,
-      }))
+    const sortedProgs = programs.slice().sort((a, b) => a.sort_order - b.sort_order)
+
+    // ── Programa ──────────────────────────────────────────────
+    if (tableChip === 'programa') {
+      return sortedProgs
+        .map(prog => {
+          const progLeaves = leaves.filter(a => a.program_id === prog.id)
+          if (progLeaves.length === 0) return null
+          return { ...buildRow(prog.name, calcMetrics(progLeaves), false), _prog_id: prog.id }
+        })
+        .filter((r): r is Record<string, unknown> => r !== null)
     }
-    // Eixo + Plano: parent row per eixo, child rows per plano
-    const byEixo = groupBy(leaves, a => a.n1 || '(sem eixo)')
+
     const rows: Record<string, unknown>[] = []
-    for (const [eixo, eixoActs] of byEixo) {
-      rows.push({ ...buildRow(eixo, calcMetrics(eixoActs), true), _n1: eixo })
-      const byPlano = groupBy(eixoActs, a => a.n2 || '(sem plano)')
-      for (const [plano, planoActs] of byPlano) {
-        rows.push({ ...buildRow(`↳ ${plano}`, calcMetrics(planoActs), false), _n1: eixo, _n2: plano })
+
+    // Helper: build ordered (eixoName, eixoLeaves) pairs for a set of leaves
+    function orderedEixoEntries(progLeaves: Activity[], progId: string): Array<{ name: string; leaves: Activity[] }> {
+      const byEixo = groupBy(progLeaves, a => a.n1 || '(sem eixo)')
+      const progEixos = allEixos
+        .filter(e => e.program_id === progId)
+        .sort((a, b) => a.sort_order - b.sort_order)
+      const result: Array<{ name: string; leaves: Activity[] }> = []
+      const seen = new Set<string>()
+      for (const e of progEixos) {
+        const acts = byEixo.get(e.name)
+        if (!acts) continue
+        seen.add(e.name)
+        result.push({ name: e.name, leaves: acts })
+      }
+      for (const [n1, acts] of byEixo) {
+        if (seen.has(n1)) continue
+        result.push({ name: n1, leaves: acts })
+      }
+      return result
+    }
+
+    // ── Eixo ──────────────────────────────────────────────────
+    if (tableChip === 'eixo') {
+      for (const prog of sortedProgs) {
+        const progLeaves = leaves.filter(a => a.program_id === prog.id)
+        if (progLeaves.length === 0) continue
+        rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves), false), _prog_id: prog.id, _isProgHeader: true })
+        for (const { name, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
+          rows.push({ ...buildRow(name, calcMetrics(eixoLeaves), false), _n1: name, _prog_id: prog.id })
+        }
+      }
+      return rows
+    }
+
+    // ── Plano de Acção ────────────────────────────────────────
+    for (const prog of sortedProgs) {
+      const progLeaves = leaves.filter(a => a.program_id === prog.id)
+      if (progLeaves.length === 0) continue
+      rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves), false), _prog_id: prog.id, _isProgHeader: true })
+      for (const { name: eixoName, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
+        rows.push({ ...buildRow(eixoName, calcMetrics(eixoLeaves), true), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
+        const byPlano = groupBy(eixoLeaves, a => a.n2 || '(sem plano)')
+        const eixoPlanos = allPlanos
+          .filter(p => p.program_id === prog.id && p.eixo?.name === eixoName)
+          .sort((a, b) => a.sort_order - b.sort_order)
+        const seen = new Set<string>()
+        for (const plano of eixoPlanos) {
+          const acts = byPlano.get(plano.name)
+          if (!acts) continue
+          seen.add(plano.name)
+          rows.push({ ...buildRow(plano.name, calcMetrics(acts), false), _n1: eixoName, _n2: plano.name, _indent: 2 })
+        }
+        for (const [n2, acts] of byPlano) {
+          if (seen.has(n2)) continue
+          rows.push({ ...buildRow(n2, calcMetrics(acts), false), _n1: eixoName, _n2: n2, _indent: 2 })
+        }
       }
     }
     return rows
-  }, [chip, leaves])
+  }, [tableChip, leaves, programs, allEixos, allPlanos])
 
   // ── Last snapshot date for Evolution card ────────────────────
   const lastSnapDate = useMemo(() => {
@@ -337,14 +403,19 @@ export default function Dashboard() {
     cd_obj:     '100%',
   }), [m])
 
-  // ── Row click → navigate to Actividades with n1/n2 filter ───
+  // ── Row click → navigate to Actividades with appropriate filter ─
   function handleRowClick(row: Record<string, unknown>) {
     if (row._isTotals) return
-    const n1 = row._n1 as string | undefined
-    const n2 = row._n2 as string | undefined
-    setFilter('n1Values', n1 ? [n1] : [])
-    // setFilter('n1Values') cascades n2Values=[] — then set n2 if present
-    if (n2) setFilter('n2Values', [n2])
+    const progId = row._prog_id as string | undefined
+    const n1     = row._n1 as string | undefined
+    const n2     = row._n2 as string | undefined
+    if (row._isProgHeader || (!n1 && progId)) {
+      // Program header rows and Programa-view rows
+      if (progId) setFilter('programIds', [progId])
+    } else {
+      setFilter('n1Values', n1 ? [n1] : [])
+      if (n2) setFilter('n2Values', [n2])
+    }
     navigate('/actividades')
   }
 
@@ -566,22 +637,40 @@ export default function Dashboard() {
       </div>
 
       {/* ── Row 4: Detail table ───────────────────────────────── */}
-      <Card title="Detalhe por Eixo e Plano de Acção">
+      <Card title={
+        tableChip === 'programa' ? 'Detalhe por Programa'
+        : tableChip === 'eixo'   ? 'Detalhe por Eixo'
+        :                          'Detalhe por Plano de Acção'
+      }>
         <div className="toggle-chips">
           <button
-            className={`chip${chip === 'eixo' ? ' active' : ''}`}
-            onClick={() => setChip('eixo')}
+            className={`chip${tableChip === 'programa' ? ' active' : ''}`}
+            onClick={() => setTableChip('programa')}
+          >
+            Programa
+          </button>
+          <button
+            className={`chip${tableChip === 'eixo' ? ' active' : ''}`}
+            onClick={() => setTableChip('eixo')}
           >
             Eixo
           </button>
           <button
-            className={`chip${chip === 'eixo-plano' ? ' active' : ''}`}
-            onClick={() => setChip('eixo-plano')}
+            className={`chip${tableChip === 'plano' ? ' active' : ''}`}
+            onClick={() => setTableChip('plano')}
           >
-            Eixo + Plano
+            Plano de Acção
           </button>
         </div>
-        <Table columns={DETAIL_COLS} rows={tableRows} emptyMessage="Sem dados carregados" layout="fixed" footerRow={totalsRow} onRowClick={handleRowClick} />
+        <Table
+          columns={DETAIL_COLS}
+          rows={tableRows}
+          emptyMessage="Sem dados carregados"
+          layout="fixed"
+          footerRow={totalsRow}
+          onRowClick={handleRowClick}
+          rowClassName={row => row._isProgHeader ? 'dash-prog-hdr' : undefined}
+        />
       </Card>
     </>
   )

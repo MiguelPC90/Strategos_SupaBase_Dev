@@ -24,9 +24,11 @@ interface TableProps {
   footerRow?: Record<string, unknown>
   /** Called when a data row is clicked. Footer row is never clickable. */
   onRowClick?: (row: Record<string, unknown>) => void
+  /** Optional extra CSS class(es) applied per data row. */
+  rowClassName?: (row: Record<string, unknown>) => string | undefined
 }
 
-export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dados', layout = 'auto', footerRow, onRowClick }: TableProps) {
+export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dados', layout = 'auto', footerRow, onRowClick, rowClassName }: TableProps) {
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
@@ -91,7 +93,10 @@ export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dad
             sorted.map((row, i) => (
               <tr
                 key={String(row['id'] ?? i)}
-                className={onRowClick ? 'tbl-row-clickable' : undefined}
+                className={[
+                  onRowClick ? 'tbl-row-clickable' : '',
+                  rowClassName?.(row) ?? '',
+                ].filter(Boolean).join(' ') || undefined}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
               >
                 {columns.map((col, idx) => (

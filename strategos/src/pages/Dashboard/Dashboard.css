@@ -71,6 +71,11 @@
     padding: 8px;
   }
 
+  /* ── Programme group header rows ────────────────────────── */
+  .dash-prog-hdr td {
+    background: rgba(0, 46, 94, 0.07);
+  }
+
   /* ── Toggle chips ────────────────────────────────────────── */
   .toggle-chips {
     display: flex;
