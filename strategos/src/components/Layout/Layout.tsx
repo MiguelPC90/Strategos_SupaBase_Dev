@@ -7,6 +7,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useRole } from '../../hooks/useRole'
 import { useFilters } from '../../context/FilterContext'
 import { usePrograms } from '../../hooks/usePrograms'
+import { supabase } from '../../lib/supabase'
 
 interface NavItemConfig {
   to: string
@@ -245,6 +246,29 @@ export default function Layout() {
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
 
+  const [clientTitle,    setClientTitle]    = useState('')
+  const [clientLogoUrl,  setClientLogoUrl]  = useState('')
+  const [clientSubtitle, setClientSubtitle] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .from('app_config')
+      .select('config_key,data')
+      .in('config_key', ['client_title', 'client_logo_url', 'client_subtitle'])
+      .then(({ data }) => {
+        if (cancelled || !data) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const map: Record<string, string> = {}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        for (const row of data as any[]) map[row.config_key] = row.data ?? ''
+        setClientTitle(map['client_title']     ?? '')
+        setClientLogoUrl(map['client_logo_url']  ?? '')
+        setClientSubtitle(map['client_subtitle'] ?? '')
+      })
+    return () => { cancelled = true }
+  }, [])
+
   useEffect(() => {
     function handle(e: MouseEvent) {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
@@ -296,12 +320,19 @@ export default function Layout() {
       {/* ── Topbar ── */}
       <header className="topbar">
         <div className="topbar-brand">
-          <span className="topbar-brand-icon">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
-          </span>
-          <span className="topbar-title">Stratgos</span>
+          {clientLogoUrl ? (
+            <img src={clientLogoUrl} alt="logo" style={{ height: 32 }} />
+          ) : (
+            <span className="topbar-brand-icon">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+            </span>
+          )}
+          <div className="topbar-brand-text">
+            <span className="topbar-title">{clientTitle || 'Stratgos'}</span>
+            {clientSubtitle && <span className="topbar-subtitle">{clientSubtitle}</span>}
+          </div>
         </div>
 
         <div className="topbar-spacer" />
@@ -377,6 +408,7 @@ export default function Layout() {
         <div className="page-body">
           <Outlet />
         </div>
+        <footer className="app-footer">Powered by Strategos</footer>
       </main>
     </>
   )

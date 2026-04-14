@@ -156,12 +156,24 @@
     justify-content: center;
     flex-shrink: 0;
   }
+  .topbar-brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
   .topbar-title {
     font-size: 15px;
     font-weight: 700;
     color: #fff;
     letter-spacing: 0.01em;
     white-space: nowrap;
+    line-height: 1.2;
+  }
+  .topbar-subtitle {
+    font-size: 10px;
+    color: rgba(255,255,255,0.55);
+    white-space: nowrap;
+    line-height: 1;
   }
 
   .topbar-spacer { flex: 1; }
@@ -352,9 +364,21 @@
     margin-left: var(--sidebar-w-col);
     padding-top: var(--topbar-h);
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
 
   .page-body {
     padding: 20px 24px;
+    flex: 1;
+  }
+
+  .app-footer {
+    padding: 12px 24px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text3);
+    border-top: 1px solid var(--border);
+    margin-top: auto;
   }
 }
