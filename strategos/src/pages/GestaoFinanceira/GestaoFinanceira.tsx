@@ -1,5 +1,5 @@
 import './GestaoFinanceira.css'
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -35,6 +35,7 @@ interface ContractForm {
   currency: string
   exchange_rate_ref: string
   award_date: string
+  end_date: string
   description: string
 }
 
@@ -46,7 +47,7 @@ const EMPTY_DRAFT: DraftState = { budget: [], contracts: [], invoices: [] }
 
 const BLANK_CONTRACT: ContractForm = {
   id: null, supplier: '', category: '', total_amount: '',
-  currency: 'EUR', exchange_rate_ref: '', award_date: '', description: '',
+  currency: 'EUR', exchange_rate_ref: '', award_date: '', end_date: '', description: '',
 }
 
 const CURRENCY_FALLBACK: CurrencyOption[] = [
@@ -69,6 +70,11 @@ function fmtEur(n: number, symbol = '€'): string {
 }
 function lineTotal(b: FinBudgetLine): number {
   return Object.values(b.values).reduce((s, v) => s + v, 0)
+}
+function fmtDate(d: string | null): string {
+  if (!d) return ''
+  const [y, m, day] = d.split('-')
+  return `${day}/${m}/${y}`
 }
 
 // ── BudgetTab ──────────────────────────────────────────────────────
@@ -304,6 +310,13 @@ function ContractPanel({ form, setForm, onConfirm, onClose, panelErr, currencies
                 onChange={e => set({ award_date: e.target.value })} />
             </div>
           </div>
+          <div className="gf-field-row">
+            <div className="gf-field">
+              <label className="gf-field-label">Data de Fim</label>
+              <input className="gf-field-input" type="date" value={form.end_date}
+                onChange={e => set({ end_date: e.target.value })} />
+            </div>
+          </div>
           <div className="gf-field">
             <label className="gf-field-label">Descrição</label>
             <textarea className="gf-field-textarea" value={form.description}
@@ -370,7 +383,13 @@ function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew }: Contract
                 {c.award_date && (
                   <div className="gf-contract-meta-item">
                     <span className="gf-meta-label">Adjudicação</span>
-                    <span className="gf-meta-value">{c.award_date}</span>
+                    <span className="gf-meta-value">{fmtDate(c.award_date)}</span>
+                  </div>
+                )}
+                {c.end_date && (
+                  <div className="gf-contract-meta-item">
+                    <span className="gf-meta-label">Fim</span>
+                    <span className="gf-meta-value">{fmtDate(c.end_date)}</span>
                   </div>
                 )}
                 {c.description && (
@@ -395,6 +414,66 @@ function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew }: Contract
   )
 }
 
+// ── InvoiceContractCell ────────────────────────────────────────────
+interface InvoiceContractCellProps {
+  inv: FinInvoice
+  contracts: FinContract[]
+  onUpdate: (patch: Partial<FinInvoice>) => void
+}
+
+function InvoiceContractCell({ inv, contracts, onUpdate }: InvoiceContractCellProps) {
+  const linkedContract = useMemo(
+    () => contracts.find(c => c.app_id === inv.app_contract_id),
+    [contracts, inv.app_contract_id],
+  )
+
+  const [supplierFilter, setSupplierFilter] = useState(linkedContract?.supplier ?? '')
+
+  // Sync supplier filter when app_contract_id is set externally (e.g. duplicate row)
+  const prevContractId = useRef(inv.app_contract_id)
+  useEffect(() => {
+    if (inv.app_contract_id === prevContractId.current) return
+    prevContractId.current = inv.app_contract_id
+    setSupplierFilter(linkedContract?.supplier ?? '')
+  }, [inv.app_contract_id, linkedContract])
+
+  const suppliers = useMemo(() => {
+    const seen = new Set(contracts.map(c => c.supplier).filter(Boolean))
+    return Array.from(seen).sort()
+  }, [contracts])
+
+  const filteredContracts = useMemo(
+    () => supplierFilter ? contracts.filter(c => c.supplier === supplierFilter) : contracts,
+    [contracts, supplierFilter],
+  )
+
+  return (
+    <td style={{ minWidth: 190, verticalAlign: 'middle' }}>
+      <select className="gf-cell-select" value={supplierFilter}
+        onChange={e => {
+          setSupplierFilter(e.target.value)
+          onUpdate({ app_contract_id: '' })
+        }}>
+        <option value="">— fornecedor —</option>
+        {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
+      </select>
+      {supplierFilter && (
+        <select className="gf-cell-select" style={{ marginTop: 2 }}
+          value={inv.app_contract_id}
+          onChange={e => {
+            const c = contracts.find(x => x.app_id === e.target.value)
+            onUpdate({ app_contract_id: e.target.value, ...(c ? { supplier: c.supplier } : {}) })
+          }}>
+          <option value="">— contrato —</option>
+          {filteredContracts.map(c => (
+            <option key={c.app_id} value={c.app_id}>{c.description || c.supplier}</option>
+          ))}
+        </select>
+      )}
+    </td>
+  )
+}
+
 // ── InvoicesTab ────────────────────────────────────────────────────
 interface InvoicesTabProps {
   invoices: FinInvoice[]
@@ -402,9 +481,10 @@ interface InvoicesTabProps {
   onDelete: (id: string) => void
   currencies: CurrencyOption[]
   defaultCurrency: string
+  contracts: FinContract[]
 }
 
-function InvoicesTab({ invoices, setInvoices, onDelete, currencies, defaultCurrency }: InvoicesTabProps) {
+function InvoicesTab({ invoices, setInvoices, onDelete, currencies, defaultCurrency, contracts }: InvoicesTabProps) {
   const [statusFilter, setStatusFilter] = useState('Todos')
 
   const visible = useMemo(() =>
@@ -458,7 +538,8 @@ function InvoicesTab({ invoices, setInvoices, onDelete, currencies, defaultCurre
               <tr>
                 <th style={{ width: 28 }} />
                 <th style={{ width: 90 }}>Referência</th>
-                <th style={{ width: 140 }}>Fornecedor</th>
+                <th style={{ width: 190 }}>Contrato</th>
+                <th style={{ width: 130 }}>Fornecedor</th>
                 <th style={{ width: 86 }}>Tipo Doc.</th>
                 <th className="gf-th-r" style={{ width: 100 }}>Montante</th>
                 <th className="gf-th-c" style={{ width: 58 }}>Moeda</th>
@@ -481,6 +562,11 @@ function InvoicesTab({ invoices, setInvoices, onDelete, currencies, defaultCurre
                       <input className="gf-cell-input" value={inv.ref}
                         onChange={e => updateInv(inv.id, { ref: e.target.value })} placeholder="Ref" />
                     </td>
+                    <InvoiceContractCell
+                      inv={inv}
+                      contracts={contracts}
+                      onUpdate={patch => updateInv(inv.id, patch)}
+                    />
                     <td>
                       <input className="gf-cell-input" value={inv.supplier}
                         onChange={e => updateInv(inv.id, { supplier: e.target.value })} placeholder="Fornecedor" />
@@ -704,7 +790,7 @@ export default function GestaoFinanceira() {
       id: c.id, supplier: c.supplier, category: c.category,
       total_amount: String(c.total_amount), currency: c.currency,
       exchange_rate_ref: c.exchange_rate_ref != null ? String(c.exchange_rate_ref) : '',
-      award_date: c.award_date ?? '', description: c.description ?? '',
+      award_date: c.award_date ?? '', end_date: c.end_date ?? '', description: c.description ?? '',
     })
   }, [])
 
@@ -730,6 +816,7 @@ export default function GestaoFinanceira() {
           currency:          contractPanel.currency,
           exchange_rate_ref: exRate,
           award_date:        contractPanel.award_date || null,
+          end_date:          contractPanel.end_date || null,
           description:       contractPanel.description || null,
         } : c),
       }))
@@ -744,6 +831,7 @@ export default function GestaoFinanceira() {
           currency:          contractPanel.currency,
           exchange_rate_ref: exRate,
           award_date:        contractPanel.award_date || null,
+          end_date:          contractPanel.end_date || null,
           description:       contractPanel.description || null,
           sort_order:        d.contracts.length,
         }],
@@ -815,7 +903,7 @@ export default function GestaoFinanceira() {
           existContracts.map(c => ({ id: c.id, plano_id: pdsId, app_id: c.app_id, program_id: progId,
             supplier: c.supplier, category: c.category, currency: c.currency,
             exchange_rate_ref: c.exchange_rate_ref, total_amount: c.total_amount,
-            award_date: c.award_date, description: c.description, sort_order: c.sort_order })),
+            award_date: c.award_date, end_date: c.end_date, description: c.description, sort_order: c.sort_order })),
           { onConflict: 'id' }).then(r => { if (r.error) throw r.error }))
 
       if (existInvoices.length)
@@ -850,7 +938,7 @@ export default function GestaoFinanceira() {
           newContracts.map((c, idx) => ({ plano_id: pdsId, app_id: c.app_id, program_id: progId,
             supplier: c.supplier, category: c.category, currency: c.currency,
             exchange_rate_ref: c.exchange_rate_ref, total_amount: c.total_amount,
-            award_date: c.award_date, description: c.description,
+            award_date: c.award_date, end_date: c.end_date, description: c.description,
             sort_order: existContracts.length + idx }))).select()
           .then(r => { if (r.error) throw r.error; insertedContracts = (r.data ?? []) as FinContract[] }))
 
@@ -1003,6 +1091,7 @@ export default function GestaoFinanceira() {
               onDelete={deleteInvoice}
               currencies={currencies}
               defaultCurrency={defaultCurrency}
+              contracts={draft.contracts}
             />
           )}
         </>

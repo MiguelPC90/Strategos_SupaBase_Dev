@@ -156,6 +156,7 @@ export interface FinContract {
   exchange_rate_ref: number | null
   total_amount: number
   award_date: string | null
+  end_date: string | null
   description: string | null
   sort_order: number
 }
