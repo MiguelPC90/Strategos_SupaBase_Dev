@@ -193,12 +193,9 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
                   </select>
                 </td>
                 <td className="gf-td-c">
-                  <select className="gf-cell-select"
-                    value={b.capex ? 'CAPEX' : 'OPEX'}
-                    onChange={e => updateLine(b.id, { capex: e.target.value === 'CAPEX' })}>
-                    <option value="CAPEX">CAPEX</option>
-                    <option value="OPEX">OPEX</option>
-                  </select>
+                  {b.category
+                    ? <Badge variant={b.capex ? 'navy' : 'grey'}>{b.capex ? 'CAPEX' : 'OPEX'}</Badge>
+                    : <span style={{ color: 'var(--text3)', fontSize: 13 }}>—</span>}
                 </td>
                 <td className="gf-td-c">
                   <select className="gf-cell-select" value={b.currency}
