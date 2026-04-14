@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
+import { usePrograms } from '../../hooks/usePrograms'
 import { useResources } from '../../hooks/useResources'
 import { usePeople } from '../../hooks/usePeople'
 import { useFinancials } from '../../hooks/useFinancials'
@@ -331,7 +332,7 @@ function ImportPanel({ planOptions, currentPlanKey, allResources, onImport, onCl
 
   const sourceResources = useMemo(
     () => sourcePlan
-      ? allResources.filter(r => r.pds_id === sourcePlan.id2)
+      ? allResources.filter(r => r.pds_id === sourcePlan.key)
       : [],
     [allResources, sourcePlan])
 
@@ -423,7 +424,17 @@ function ImportPanel({ planOptions, currentPlanKey, allResources, onImport, onCl
 // ── Main component ─────────────────────────────────────────────────
 export default function GestaoRecursos() {
   const { filters }  = useFilters()
-  const programId    = filters.programIds[0] as string | undefined
+  const { programs } = usePrograms()
+  const [selProgId, setSelProgId] = useState<string>('')
+
+  // Initialise from global filter or first available program (once)
+  useEffect(() => {
+    if (selProgId) return
+    const init = filters.programIds[0] ?? programs[0]?.id
+    if (init) setSelProgId(init)
+  }, [programs]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const programId = selProgId || undefined
   const { planos, loading: planosLoading } = usePlanos(programId)
   const { resources: dbResources, loading: resLoading, refetch } = useResources(programId)
   const loading = resLoading || planosLoading
@@ -483,13 +494,13 @@ export default function GestaoRecursos() {
 
   useEffect(() => {
     if (loading) return
-    const pdsId = selectedPlan?.id2
+    const pdsId = selectedPlan?.key
     const planResources = dbResources.filter(r => r.pds_id === pdsId)
     setDraft(planResources)
     setCommitted(planResources)
     setDeleted(new Set())
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPlan?.id2, loading, dbResources])
+  }, [selectedPlan?.key, loading, dbResources])
 
   const isDirty = useMemo(() =>
     JSON.stringify(draft) !== JSON.stringify(committed) || deleted.size > 0,
@@ -504,7 +515,7 @@ export default function GestaoRecursos() {
     if (!selectedPlan) return
     const id = newId()
     setDraft(d => [...d, {
-      id, pds_id: selectedPlan.id2, app_id: newAppId(), program_id: selectedPlan.program_id,
+      id, pds_id: selectedPlan.key, app_id: newAppId(), program_id: selectedPlan.program_id,
       name: '', org_unit: null, role: null, type: 'Interno', daily_cost: null,
       id2: selectedPlan.id2, start_date: null, end_date: null,
       allocation_pct: 100, contract_id: null, status: 'Activo', sort_order: null,
@@ -531,13 +542,13 @@ export default function GestaoRecursos() {
     if (!selectedPlan) return
     setDraft(d => [
       ...d,
-      ...imported.map(r => ({ ...r, pds_id: selectedPlan.id2, program_id: selectedPlan.program_id, id2: selectedPlan.id2 })),
+      ...imported.map(r => ({ ...r, pds_id: selectedPlan.key, program_id: selectedPlan.program_id, id2: selectedPlan.id2 })),
     ])
   }, [selectedPlan])
 
   // ── Contracts for selected plan ───────────────────────────────
   const planContracts = useMemo<FinContract[]>(() =>
-    selectedPlan ? dbContracts.filter(c => c.pds_id === selectedPlan.id2) : [],
+    selectedPlan ? dbContracts.filter(c => c.pds_id === selectedPlan.key) : [],
     [dbContracts, selectedPlan])
 
   // ── KPIs ─────────────────────────────────────────────────────
@@ -569,7 +580,7 @@ export default function GestaoRecursos() {
     setSaveErr(null)
     setConflicts([])
 
-    const pdsId  = selectedPlan.id2
+    const pdsId  = selectedPlan.key
     const progId = selectedPlan.program_id
 
     try {
@@ -655,6 +666,18 @@ export default function GestaoRecursos() {
     <div className="gres-page">
       {/* Controls bar */}
       <div className="gres-controls-bar">
+        {programs.length > 1 && (
+          <>
+            <label className="gres-label">Programa:</label>
+            <select
+              className="gres-plan-select"
+              value={selProgId}
+              onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
+            >
+              {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </>
+        )}
         <label className="gres-label">Plano:</label>
         <select
           className="gres-plan-select"

@@ -5,6 +5,7 @@ import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import { useRisks } from '../../hooks/useRisks'
 import { usePlanos } from '../../hooks/usePlanos'
+import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import type { Risk } from '../../types/index'
@@ -259,7 +260,17 @@ function RowMenu({ riskId, openId, onOpen, onEdit, onDuplicate, onDelete }: RowM
 // ── Main component ─────────────────────────────────────────────
 export default function GestaoRiscos() {
   const { filters }  = useFilters()
-  const programId    = filters.programIds[0] as string | undefined
+  const { programs } = usePrograms()
+  const [selProgId, setSelProgId] = useState<string>('')
+
+  // Initialise from global filter or first available program (once)
+  useEffect(() => {
+    if (selProgId) return
+    const init = filters.programIds[0] ?? programs[0]?.id
+    if (init) setSelProgId(init)
+  }, [programs]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const programId = selProgId || undefined
 
   const { planos, loading: planosLoading } = usePlanos(programId)
   const { risks, loading: risksLoading, refetch } = useRisks(programId)
@@ -301,10 +312,10 @@ export default function GestaoRiscos() {
     [planOptions, selectedKey],
   )
 
-  // Filter risks for selected plan via pds_id (= plan's id2)
+  // Filter risks for selected plan via pds_id (= plan UUID)
   const planRisks = useMemo<Risk[]>(() => {
     if (!selectedPlan) return []
-    return risks.filter(r => r.pds_id === selectedPlan.id2)
+    return risks.filter(r => r.pds_id === selectedPlan.key)
   }, [risks, selectedPlan])
 
   // ── Menu state ───────────────────────────────────────────────
@@ -385,7 +396,7 @@ export default function GestaoRiscos() {
         .from('risks')
         .insert({
           ...payload,
-          pds_id:     selectedPlan.id2,
+          pds_id:     selectedPlan.key,
           program_id: selectedPlan.program_id,
           sort_order: planRisks.length,
         })
@@ -433,6 +444,18 @@ export default function GestaoRiscos() {
     <div className="gr-page">
       {/* Controls bar */}
       <div className="gr-controls-bar">
+        {programs.length > 1 && (
+          <>
+            <label className="gr-label">Programa:</label>
+            <select
+              className="gr-plan-select"
+              value={selProgId}
+              onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
+            >
+              {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </>
+        )}
         <label className="gr-label">Plano de Acção:</label>
         <select
           className="gr-plan-select"

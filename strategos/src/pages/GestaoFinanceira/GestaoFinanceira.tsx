@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
+import { usePrograms } from '../../hooks/usePrograms'
 import { useFinancials } from '../../hooks/useFinancials'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import ProgressBar from '../../components/ProgressBar/ProgressBar'
@@ -494,7 +495,17 @@ function InvoicesTab({ invoices, setInvoices, onDelete }: InvoicesTabProps) {
 // ── Main component ─────────────────────────────────────────────────
 export default function GestaoFinanceira() {
   const { filters }  = useFilters()
-  const programId    = filters.programIds[0] as string | undefined
+  const { programs } = usePrograms()
+  const [selProgId, setSelProgId] = useState<string>('')
+
+  // Initialise from global filter or first available program (once)
+  useEffect(() => {
+    if (selProgId) return
+    const init = filters.programIds[0] ?? programs[0]?.id
+    if (init) setSelProgId(init)
+  }, [programs]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const programId = selProgId || undefined
   const { planos, loading: planosLoading } = usePlanos(programId)
   const { budgetLines, contracts: dbContracts, invoices: dbInvoices, loading: finLoading } = useFinancials(programId)
   const loading = finLoading || planosLoading
@@ -531,7 +542,7 @@ export default function GestaoFinanceira() {
 
   useEffect(() => {
     if (loading) return
-    const pdsId = selectedPlan?.id2
+    const pdsId = selectedPlan?.key
     const state: DraftState = {
       budget:    budgetLines.filter(b => b.pds_id === pdsId),
       contracts: dbContracts.filter(c => c.pds_id === pdsId),
@@ -544,7 +555,7 @@ export default function GestaoFinanceira() {
     setDeletedInvoices(new Set())
   // Re-run only when plan or loaded data changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPlan?.id2, loading, budgetLines, dbContracts, dbInvoices])
+  }, [selectedPlan?.key, loading, budgetLines, dbContracts, dbInvoices])
 
   const isDirty = useMemo(() =>
     JSON.stringify(draft) !== JSON.stringify(committed) ||
@@ -596,7 +607,7 @@ export default function GestaoFinanceira() {
     const totalAmt = parseFloat(contractPanel.total_amount)
     if (isNaN(totalAmt) || totalAmt < 0) { setPanelErr('Valor inválido.'); return }
     const exRate = contractPanel.exchange_rate_ref !== '' ? parseFloat(contractPanel.exchange_rate_ref) : null
-    const pdsId  = selectedPlan.id2
+    const pdsId  = selectedPlan.key
     const progId = selectedPlan.program_id
     const appId  = newAppId()
 
@@ -658,7 +669,7 @@ export default function GestaoFinanceira() {
     setSaving(true)
     setSaveErr(null)
 
-    const pdsId  = selectedPlan.id2
+    const pdsId  = selectedPlan.key
     const progId = selectedPlan.program_id
 
     try {
@@ -770,6 +781,18 @@ export default function GestaoFinanceira() {
     <div className="gf-page">
       {/* Controls bar */}
       <div className="gf-controls-bar">
+        {programs.length > 1 && (
+          <>
+            <label className="gf-label">Programa:</label>
+            <select
+              className="gf-plan-select"
+              value={selProgId}
+              onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
+            >
+              {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </>
+        )}
         <label className="gf-label">Plano de Acção:</label>
         <select
           className="gf-plan-select"

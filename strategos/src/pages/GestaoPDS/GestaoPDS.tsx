@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
+import { usePrograms } from '../../hooks/usePrograms'
 import { usePdsEntries } from '../../hooks/usePdsEntries'
 import type { PdsItem } from '../../types/index'
 
@@ -207,7 +208,17 @@ function PdsSection({
 // ── Main component ─────────────────────────────────────────────
 export default function GestaoPDS() {
   const { filters }  = useFilters()
-  const programId    = filters.programIds[0] as string | undefined
+  const { programs } = usePrograms()
+  const [selProgId, setSelProgId] = useState<string>('')
+
+  // Initialise from global filter or first available program (once)
+  useEffect(() => {
+    if (selProgId) return
+    const init = filters.programIds[0] ?? programs[0]?.id
+    if (init) setSelProgId(init)
+  }, [programs]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const programId = selProgId || undefined
   const { planos, loading: planosLoading } = usePlanos(programId)
   const { entries, loading: entriesLoading } = usePdsEntries(programId)
   const loading = entriesLoading || planosLoading
@@ -419,6 +430,18 @@ export default function GestaoPDS() {
     <div className="pds-page">
       {/* Controls bar */}
       <div className="pds-controls-bar">
+        {programs.length > 1 && (
+          <>
+            <label className="pds-label">Programa:</label>
+            <select
+              className="pds-plan-select"
+              value={selProgId}
+              onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
+            >
+              {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </>
+        )}
         <label className="pds-label">Plano de Acção:</label>
         <select
           className="pds-plan-select"
