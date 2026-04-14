@@ -46,7 +46,7 @@ const BLANK_CONTRACT: ContractForm = {
   currency: 'EUR', exchange_rate_ref: '', award_date: '', description: '',
 }
 
-const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'AOA', 'MZN']
+const CURRENCY_FALLBACK = ['EUR', 'USD', 'GBP', 'CHF', 'AOA', 'MZN']
 const DOC_TYPES  = ['Factura', 'Recibo', 'Nota de Crédito', 'Pró-forma', 'Outro']
 const INV_STATUSES = ['Pendente', 'Aprovado', 'Paga', 'Anulada']
 const TODAY = new Date().toISOString().slice(0, 10)
@@ -69,16 +69,25 @@ interface BudgetTabProps {
   lines: FinBudgetLine[]
   setLines: (lines: FinBudgetLine[]) => void
   onDelete: (id: string) => void
+  /** Category names configured in Admin → Financeiro for this program */
+  categories: string[]
+  /** Currency codes from the currencies table */
+  currencies: string[]
+  /** Default currency code (is_default = true) */
+  defaultCurrency: string
+  /** Management years configured in Admin → Financeiro for this program */
+  managementYears: string[]
 }
 
-function BudgetTab({ lines, setLines, onDelete }: BudgetTabProps) {
+function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultCurrency, managementYears }: BudgetTabProps) {
   const [newYear, setNewYear] = useState(String(new Date().getFullYear() + 1))
 
+  // Seed from management_years; merge with any year keys already on lines
   const years = useMemo(() => {
-    const ks = new Set<string>()
+    const ks = new Set<string>(managementYears)
     lines.forEach(b => Object.keys(b.values).forEach(k => ks.add(k)))
     return Array.from(ks).sort()
-  }, [lines])
+  }, [lines, managementYears])
 
   const updateLine = (id: string, patch: Partial<FinBudgetLine>) =>
     setLines(lines.map(b => b.id === id ? { ...b, ...patch } : b))
@@ -106,7 +115,7 @@ function BudgetTab({ lines, setLines, onDelete }: BudgetTabProps) {
     years.forEach(y => { baseValues[y] = 0 })
     setLines([...lines, {
       id: newId(), pds_id: null, plano_id: null, app_id: newAppId(), program_id: null,
-      category: '', capex: false, currency: 'EUR',
+      category: '', capex: false, currency: defaultCurrency,
       values: baseValues, note: null, source_ref: null, sort_order: lines.length,
     }])
   }
@@ -161,8 +170,15 @@ function BudgetTab({ lines, setLines, onDelete }: BudgetTabProps) {
                   <button className="gf-icon-btn" onClick={() => onDelete(b.id)} title="Remover">✕</button>
                 </td>
                 <td>
-                  <input className="gf-cell-input" value={b.category} placeholder="Categoria"
-                    onChange={e => updateLine(b.id, { category: e.target.value })} />
+                  <select className="gf-cell-select" value={b.category}
+                    onChange={e => updateLine(b.id, { category: e.target.value })}>
+                    <option value="">— categoria —</option>
+                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    {/* Keep current value selectable if it was set before categories loaded */}
+                    {b.category && !categories.includes(b.category) && (
+                      <option value={b.category}>{b.category}</option>
+                    )}
+                  </select>
                 </td>
                 <td className="gf-td-c">
                   <select className="gf-cell-select"
@@ -175,7 +191,7 @@ function BudgetTab({ lines, setLines, onDelete }: BudgetTabProps) {
                 <td className="gf-td-c">
                   <select className="gf-cell-select" value={b.currency}
                     onChange={e => updateLine(b.id, { currency: e.target.value })}>
-                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </td>
                 {years.map(y => (
@@ -214,9 +230,10 @@ interface ContractPanelProps {
   onConfirm: () => void
   onClose: () => void
   panelErr: string | null
+  currencies: string[]
 }
 
-function ContractPanel({ form, setForm, onConfirm, onClose, panelErr }: ContractPanelProps) {
+function ContractPanel({ form, setForm, onConfirm, onClose, panelErr, currencies }: ContractPanelProps) {
   const set = (patch: Partial<ContractForm>) => setForm({ ...form, ...patch })
   return (
     <>
@@ -247,7 +264,7 @@ function ContractPanel({ form, setForm, onConfirm, onClose, panelErr }: Contract
               <label className="gf-field-label">Moeda</label>
               <select className="gf-field-select" value={form.currency}
                 onChange={e => set({ currency: e.target.value })}>
-                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                {currencies.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
           </div>
@@ -359,9 +376,11 @@ interface InvoicesTabProps {
   invoices: FinInvoice[]
   setInvoices: (invoices: FinInvoice[]) => void
   onDelete: (id: string) => void
+  currencies: string[]
+  defaultCurrency: string
 }
 
-function InvoicesTab({ invoices, setInvoices, onDelete }: InvoicesTabProps) {
+function InvoicesTab({ invoices, setInvoices, onDelete, currencies, defaultCurrency }: InvoicesTabProps) {
   const [statusFilter, setStatusFilter] = useState('Todos')
 
   const visible = useMemo(() =>
@@ -375,7 +394,7 @@ function InvoicesTab({ invoices, setInvoices, onDelete }: InvoicesTabProps) {
     setInvoices([...invoices, {
       id: newId(), pds_id: null, plano_id: null, contract_id: null, app_id: newAppId(), app_contract_id: '',
       program_id: null, ref: '', supplier: '', doc_type: 'Factura', description: null,
-      amount: 0, currency: 'EUR', exchange_rate: null,
+      amount: 0, currency: defaultCurrency, exchange_rate: null,
       issue_date: null, due_date: null, payment_date: null,
       status: 'Pendente', memo: null, sort_order: invoices.length,
     }])
@@ -455,7 +474,7 @@ function InvoicesTab({ invoices, setInvoices, onDelete }: InvoicesTabProps) {
                     <td className="gf-td-c">
                       <select className="gf-cell-select" value={inv.currency}
                         onChange={e => updateInv(inv.id, { currency: e.target.value })}>
-                        {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </td>
                     <td>
@@ -506,6 +525,67 @@ export default function GestaoFinanceira() {
   }, [programs]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const programId = selProgId || undefined
+
+  // ── Admin config: categories, currencies, management years ───
+  const [categories,      setCategories]      = useState<string[]>([])
+  const [currencies,      setCurrencies]      = useState<string[]>(CURRENCY_FALLBACK)
+  const [defaultCurrency, setDefaultCurrency] = useState('EUR')
+  const [managementYears, setManagementYears] = useState<string[]>([])
+
+  // Currencies are global — fetch once on mount
+  useEffect(() => {
+    let cancelled = false
+    supabase.from('currencies').select('code, is_default').order('code')
+      .then(({ data }) => {
+        if (cancelled || !data || data.length === 0) return
+        const rows = data as { code: string; is_default: boolean }[]
+        setCurrencies(rows.map(r => r.code))
+        const def = rows.find(r => r.is_default)
+        if (def) setDefaultCurrency(def.code)
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  // Categories and management years depend on the selected program
+  useEffect(() => {
+    if (!programId) {
+      setCategories([])
+      setManagementYears([])
+      return
+    }
+    let cancelled = false
+
+    Promise.all([
+      // Step 1: get category IDs linked to this program, then fetch names
+      supabase.from('cost_category_programs')
+        .select('category_id')
+        .eq('program_id', programId)
+        .then(async ({ data: links }) => {
+          if (!links || links.length === 0) return []
+          const ids = (links as { category_id: string }[]).map(l => l.category_id)
+          const { data: cats } = await supabase
+            .from('cost_categories')
+            .select('name')
+            .in('id', ids)
+            .order('name')
+          return (cats ?? []).map((c: { name: string }) => c.name)
+        }),
+      // Step 2: get management years for this program
+      supabase.from('management_years')
+        .select('year')
+        .eq('program_id', programId)
+        .order('year')
+        .then(({ data }) =>
+          (data ?? []).map((y: { year: number }) => String(y.year))
+        ),
+    ]).then(([cats, years]) => {
+      if (cancelled) return
+      setCategories(cats)
+      setManagementYears(years)
+    })
+
+    return () => { cancelled = true }
+  }, [programId])
   const { planos, loading: planosLoading } = usePlanos(programId)
   const { budgetLines, contracts: dbContracts, invoices: dbInvoices, loading: finLoading } = useFinancials(programId)
   const loading = finLoading || planosLoading
@@ -588,8 +668,8 @@ export default function GestaoFinanceira() {
 
   const openNewContract = useCallback(() => {
     setPanelErr(null)
-    setContractPanel({ ...BLANK_CONTRACT })
-  }, [])
+    setContractPanel({ ...BLANK_CONTRACT, currency: defaultCurrency })
+  }, [defaultCurrency])
 
   const openEditContract = useCallback((c: FinContract) => {
     setPanelErr(null)
@@ -864,7 +944,15 @@ export default function GestaoFinanceira() {
           </div>
 
           {tab === 'orcamento' && (
-            <BudgetTab lines={draft.budget} setLines={setBudget} onDelete={deleteBudget} />
+            <BudgetTab
+              lines={draft.budget}
+              setLines={setBudget}
+              onDelete={deleteBudget}
+              categories={categories}
+              currencies={currencies}
+              defaultCurrency={defaultCurrency}
+              managementYears={managementYears}
+            />
           )}
           {tab === 'contratos' && (
             <ContractsTab
@@ -880,6 +968,8 @@ export default function GestaoFinanceira() {
               invoices={draft.invoices}
               setInvoices={setInvoices}
               onDelete={deleteInvoice}
+              currencies={currencies}
+              defaultCurrency={defaultCurrency}
             />
           )}
         </>
@@ -892,6 +982,7 @@ export default function GestaoFinanceira() {
           onConfirm={confirmContract}
           onClose={() => setContractPanel(null)}
           panelErr={panelErr}
+          currencies={currencies}
         />
       )}
     </div>
