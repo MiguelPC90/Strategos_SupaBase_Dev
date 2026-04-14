@@ -268,6 +268,7 @@ export default function Gantt() {
     rs: string | null, rf: string | null,
     status: StatusCls,
     act: Activity | null,
+    showTodayLabel = false,
   ): JSX.Element {
     const handlers = act ? {
       onMouseEnter: (e: React.MouseEvent) => setTooltip({
@@ -290,10 +291,10 @@ export default function Gantt() {
         {periods.map((_, i) => i > 0 && (
           <div key={i} className="gantt-grid-line" style={{ left: `${(i / periods.length) * 100}%` }} />
         ))}
-        {/* Fix 6: Today marker with "Hoje" label */}
+        {/* Today marker — line on every row, label shown once on first row */}
         {todayPct >= 0 && todayPct <= 100 && (
           <div className="gantt-today-line" style={{ left: `${todayPct}%` }}>
-            <span className="gantt-today-label">Hoje</span>
+            {showTodayLabel && <span className="gantt-today-label">Hoje</span>}
           </div>
         )}
         {/* Bars */}
@@ -305,12 +306,14 @@ export default function Gantt() {
 
   // ── Build rows ─────────────────────────────────────────────────
   const rows: JSX.Element[] = []
+  let firstRow = true
 
   for (const n1g of tree) {
     const n1key = `n1:${n1g.n1}`
     const n1col = collapsed.has(n1key)
     const n1st  = groupStatus(n1g.allActs)
     const n1dr  = groupDateRange(n1g.allActs)
+    const showLabel = firstRow; firstRow = false
 
     rows.push(
       <tr key={n1key} className="gantt-row-n1">
@@ -326,7 +329,7 @@ export default function Gantt() {
             <div className="gantt-sticky-exec">{Math.round(rollupPct(n1g.allActs.filter(a => a.level === 4)))}%</div>
           </div>
         </td>
-        {makeTimeline(n1dr.bs, n1dr.bf, n1dr.rs, n1dr.rf, n1st, null)}
+        {makeTimeline(n1dr.bs, n1dr.bf, n1dr.rs, n1dr.rf, n1st, null, showLabel)}
         <td className="gantt-filler-td" />
       </tr>
     )

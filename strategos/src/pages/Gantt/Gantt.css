@@ -258,12 +258,12 @@
     pointer-events: none;
   }
 
-  /* Fix 6: Today marker — red dashed, "Hoje" label at top */
+  /* Today marker — amber line, single label on first row */
   .gantt-today-line {
     position: absolute;
     top: 0; bottom: 0;
     width: 0;
-    border-left: 2px dashed rgba(220,50,50,0.75);
+    border-left: 2px dashed #C8860A;
     pointer-events: none;
     z-index: 2;
   }
@@ -271,9 +271,9 @@
     position: absolute;
     top: 2px;
     left: 3px;
-    font-size: 8px;
-    font-weight: 700;
-    color: #DC3232;
+    font-size: 11px;
+    font-weight: 600;
+    color: #C8860A;
     white-space: nowrap;
     line-height: 1;
     letter-spacing: 0.02em;
