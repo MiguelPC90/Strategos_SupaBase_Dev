@@ -2,6 +2,7 @@ import './GestaoIniciativas.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Card from '../../components/Card/Card'
+import Modal from '../../components/Modal/Modal'
 import Badge from '../../components/Badge/Badge'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
@@ -118,14 +119,9 @@ interface PanelProps {
   activities: Activity[]
   peopleNames: string[]
   onChange: (f: PanelForm) => void
-  onSave: () => void
-  onDelete: () => void
-  onClose: () => void
-  saving: boolean
-  error: string
 }
 
-function Panel({ form, eixos, planos, activities, peopleNames, onChange, onSave, onDelete, onClose, saving, error }: PanelProps) {
+function Panel({ form, eixos, planos, activities, peopleNames, onChange }: PanelProps) {
   const [datesOpen, setDatesOpen] = useState(false)
 
   const set = (k: keyof PanelForm) =>
@@ -161,17 +157,11 @@ function Panel({ form, eixos, planos, activities, peopleNames, onChange, onSave,
   const listId = 'gi-people-list'
 
   return (
-    <>
-      <div className="gi-panel-overlay" onClick={onClose} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <datalist id={listId}>
         {peopleNames.map(n => <option key={n} value={n} />)}
       </datalist>
-      <div className="gi-panel">
-        <div className="gi-panel-header">
-          <span className="gi-panel-title">{form.id ? 'Editar Actividade' : 'Nova Actividade'}</span>
-          <button className="gi-btn" onClick={onClose}>✕</button>
-        </div>
-        <div className="gi-panel-body">
+      <>
 
           {/* 1. Nome */}
           <div className="gi-field">
@@ -326,21 +316,8 @@ function Panel({ form, eixos, planos, activities, peopleNames, onChange, onSave,
             </>
           )}
 
-        </div>
-        <div className="gi-panel-footer">
-          <button className="gi-btn gi-btn-primary" onClick={onSave} disabled={saving}>
-            {saving ? 'A guardar…' : 'Guardar'}
-          </button>
-          <button className="gi-btn" onClick={onClose}>Cancelar</button>
-          {form.id && (
-            <button className="gi-btn gi-btn-danger" onClick={onDelete} disabled={saving} style={{ marginLeft: 'auto' }}>
-              Eliminar
-            </button>
-          )}
-          {error && <span className="gi-panel-err">{error}</span>}
-        </div>
-      </div>
-    </>
+      </>
+    </div>
   )
 }
 
@@ -969,12 +946,32 @@ export default function GestaoIniciativas() {
       </Card>
 
       {panelForm && (
-        <Panel
-          form={panelForm} eixos={eixos} planos={planos} activities={activities}
-          peopleNames={peopleNames}
-          onChange={setPanelForm} onSave={handlePanelSave} onDelete={handlePanelDelete}
-          onClose={closePanel} saving={panelSaving} error={panelErr}
-        />
+        <Modal
+          isOpen={true}
+          onClose={closePanel}
+          title={panelForm.id ? 'Editar Actividade' : 'Nova Actividade'}
+          width={520}
+          footer={
+            <>
+              {panelForm.id && (
+                <button className="gi-btn gi-btn-danger" onClick={handlePanelDelete} disabled={panelSaving} style={{ marginRight: 'auto' }}>
+                  Eliminar
+                </button>
+              )}
+              <button className="gi-btn" onClick={closePanel}>Cancelar</button>
+              <button className="gi-btn gi-btn-save" onClick={handlePanelSave} disabled={panelSaving}>
+                {panelSaving ? 'A guardar…' : 'Guardar'}
+              </button>
+              {panelErr && <span style={{ fontSize: 12, color: 'var(--red)', width: '100%' }}>{panelErr}</span>}
+            </>
+          }
+        >
+          <Panel
+            form={panelForm} eixos={eixos} planos={planos} activities={activities}
+            peopleNames={peopleNames}
+            onChange={setPanelForm}
+          />
+        </Modal>
       )}
     </div>
   )
