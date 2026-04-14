@@ -129,7 +129,8 @@ export interface PdsEntry {
 // ── Financial — budget lines ───────────────────────────────────
 export interface FinBudgetLine {
   id: string
-  pds_id: string
+  pds_id: string | null
+  plano_id: string | null
   app_id: string
   program_id: string | null
   category: string
@@ -145,7 +146,8 @@ export interface FinBudgetLine {
 // ── Financial — contracts ─────────────────────────────────────
 export interface FinContract {
   id: string
-  pds_id: string
+  pds_id: string | null
+  plano_id: string | null
   app_id: string
   program_id: string | null
   supplier: string
@@ -161,7 +163,8 @@ export interface FinContract {
 // ── Financial — invoices ──────────────────────────────────────
 export interface FinInvoice {
   id: string
-  pds_id: string
+  pds_id: string | null
+  plano_id: string | null
   contract_id: string | null
   app_id: string
   app_contract_id: string

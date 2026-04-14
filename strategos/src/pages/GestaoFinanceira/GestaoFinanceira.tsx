@@ -105,7 +105,7 @@ function BudgetTab({ lines, setLines, onDelete }: BudgetTabProps) {
     const baseValues: Record<string, number> = {}
     years.forEach(y => { baseValues[y] = 0 })
     setLines([...lines, {
-      id: newId(), pds_id: '', app_id: newAppId(), program_id: null,
+      id: newId(), pds_id: null, plano_id: null, app_id: newAppId(), program_id: null,
       category: '', capex: false, currency: 'EUR',
       values: baseValues, note: null, source_ref: null, sort_order: lines.length,
     }])
@@ -373,7 +373,7 @@ function InvoicesTab({ invoices, setInvoices, onDelete }: InvoicesTabProps) {
 
   const addRow = () =>
     setInvoices([...invoices, {
-      id: newId(), pds_id: '', contract_id: null, app_id: newAppId(), app_contract_id: '',
+      id: newId(), pds_id: null, plano_id: null, contract_id: null, app_id: newAppId(), app_contract_id: '',
       program_id: null, ref: '', supplier: '', doc_type: 'Factura', description: null,
       amount: 0, currency: 'EUR', exchange_rate: null,
       issue_date: null, due_date: null, payment_date: null,
@@ -544,9 +544,9 @@ export default function GestaoFinanceira() {
     if (loading) return
     const pdsId = selectedPlan?.key
     const state: DraftState = {
-      budget:    budgetLines.filter(b => b.pds_id === pdsId),
-      contracts: dbContracts.filter(c => c.pds_id === pdsId),
-      invoices:  dbInvoices.filter(i => i.pds_id === pdsId),
+      budget:    budgetLines.filter(b => b.plano_id === pdsId),
+      contracts: dbContracts.filter(c => c.plano_id === pdsId),
+      invoices:  dbInvoices.filter(i => i.plano_id === pdsId),
     }
     setDraft(state)
     setCommitted(state)
@@ -630,7 +630,7 @@ export default function GestaoFinanceira() {
       setDraft(d => ({
         ...d,
         contracts: [...d.contracts, {
-          id: newId(), pds_id: pdsId, app_id: appId, program_id: progId,
+          id: newId(), pds_id: null, plano_id: pdsId, app_id: appId, program_id: progId,
           supplier:          contractPanel.supplier.trim(),
           category:          contractPanel.category,
           total_amount:      totalAmt,
@@ -692,14 +692,14 @@ export default function GestaoFinanceira() {
       // Upsert existing
       if (existBudget.length)
         ops.push(supabase.from('fin_budget_lines').upsert(
-          existBudget.map(b => ({ id: b.id, pds_id: pdsId, app_id: b.app_id, program_id: progId,
+          existBudget.map(b => ({ id: b.id, plano_id: pdsId, app_id: b.app_id, program_id: progId,
             category: b.category, capex: b.capex, currency: b.currency,
             values: b.values, note: b.note, source_ref: b.source_ref, sort_order: b.sort_order })),
           { onConflict: 'id' }).then(r => { if (r.error) throw r.error }))
 
       if (existContracts.length)
         ops.push(supabase.from('fin_contracts').upsert(
-          existContracts.map(c => ({ id: c.id, pds_id: pdsId, app_id: c.app_id, program_id: progId,
+          existContracts.map(c => ({ id: c.id, plano_id: pdsId, app_id: c.app_id, program_id: progId,
             supplier: c.supplier, category: c.category, currency: c.currency,
             exchange_rate_ref: c.exchange_rate_ref, total_amount: c.total_amount,
             award_date: c.award_date, description: c.description, sort_order: c.sort_order })),
@@ -707,7 +707,7 @@ export default function GestaoFinanceira() {
 
       if (existInvoices.length)
         ops.push(supabase.from('fin_invoices').upsert(
-          existInvoices.map(i => ({ id: i.id, pds_id: pdsId, contract_id: i.contract_id,
+          existInvoices.map(i => ({ id: i.id, plano_id: pdsId, contract_id: i.contract_id,
             app_id: i.app_id, app_contract_id: i.app_contract_id, program_id: progId,
             ref: i.ref, supplier: i.supplier, doc_type: i.doc_type, description: i.description,
             amount: i.amount, currency: i.currency, exchange_rate: i.exchange_rate,
@@ -726,7 +726,7 @@ export default function GestaoFinanceira() {
       // Inserts (need back real IDs)
       if (newBudget.length)
         ops.push(supabase.from('fin_budget_lines').insert(
-          newBudget.map((b, idx) => ({ pds_id: pdsId, app_id: b.app_id, program_id: progId,
+          newBudget.map((b, idx) => ({ plano_id: pdsId, app_id: b.app_id, program_id: progId,
             category: b.category, capex: b.capex, currency: b.currency,
             values: b.values, note: b.note, source_ref: b.source_ref,
             sort_order: existBudget.length + idx }))).select()
@@ -734,7 +734,7 @@ export default function GestaoFinanceira() {
 
       if (newContracts.length)
         ops.push(supabase.from('fin_contracts').insert(
-          newContracts.map((c, idx) => ({ pds_id: pdsId, app_id: c.app_id, program_id: progId,
+          newContracts.map((c, idx) => ({ plano_id: pdsId, app_id: c.app_id, program_id: progId,
             supplier: c.supplier, category: c.category, currency: c.currency,
             exchange_rate_ref: c.exchange_rate_ref, total_amount: c.total_amount,
             award_date: c.award_date, description: c.description,
@@ -743,7 +743,7 @@ export default function GestaoFinanceira() {
 
       if (newInvoices.length)
         ops.push(supabase.from('fin_invoices').insert(
-          newInvoices.map((i, idx) => ({ pds_id: pdsId, contract_id: i.contract_id,
+          newInvoices.map((i, idx) => ({ plano_id: pdsId, contract_id: i.contract_id,
             app_id: i.app_id, app_contract_id: i.app_contract_id, program_id: progId,
             ref: i.ref, supplier: i.supplier, doc_type: i.doc_type, description: i.description,
             amount: i.amount, currency: i.currency, exchange_rate: i.exchange_rate,
@@ -751,7 +751,15 @@ export default function GestaoFinanceira() {
             status: i.status, memo: i.memo, sort_order: existInvoices.length + idx }))).select()
           .then(r => { if (r.error) throw r.error; insertedInvoices = (r.data ?? []) as FinInvoice[] }))
 
+      console.log('[GestaoFinanceira] save payload:', {
+        plano_id: pdsId, program_id: progId,
+        existBudget: existBudget.length, newBudget: newBudget.length,
+        existContracts: existContracts.length, newContracts: newContracts.length,
+        existInvoices: existInvoices.length, newInvoices: newInvoices.length,
+        delBudget: delBudgetArr.length, delContracts: delContractsArr.length, delInvoices: delInvoicesArr.length,
+      })
       await Promise.all(ops)
+      console.log('[GestaoFinanceira] save result: success')
 
       // Patch draft with server IDs
       const finalBudget    = [...existBudget, ...newBudget.map((b, i) => insertedBudget[i] ?? b)]
