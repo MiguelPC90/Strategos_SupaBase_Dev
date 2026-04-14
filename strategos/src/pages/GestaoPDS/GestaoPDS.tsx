@@ -248,12 +248,13 @@ export default function GestaoPDS() {
   // Reset plan selection when program changes
   useEffect(() => { setSelectedKey('') }, [programId])
 
-  // Auto-select first plan once options load
+  // Auto-select first plan once options load (or when program changes)
   useEffect(() => {
-    if (!selectedKey && planOptions.length > 0) {
-      setSelectedKey(planOptions[0].key)
-    }
-  }, [planOptions, selectedKey])
+    if (planOptions.length === 0) return
+    if (planOptions.some(p => p.key === selectedKey)) return
+    setSelectedKey(planOptions[0].key)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planOptions])
 
   const selectedPlan = useMemo(
     () => planOptions.find(p => p.key === selectedKey) ?? null,
