@@ -6,6 +6,9 @@ import KpiCard from '../../components/KpiCard/KpiCard'
 import { useActivities } from '../../hooks/useActivities'
 import { useFilters } from '../../context/FilterContext'
 import type { Activity } from '../../types/index'
+import { leafPctPrev, leafStatus } from '../../lib/rollup'
+
+const TODAY = new Date().toISOString().slice(0, 10)
 
 type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
 
@@ -13,9 +16,10 @@ type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
 type StatusCls = 'concluida' | 'em_dia' | 'em_atraso'
 
 function actStatus(a: Activity): StatusCls {
-  if (a.pct >= 100 || a.status === 'Concluído') return 'concluida'
-  if (a.status === 'Em dia') return 'em_dia'
-  return 'em_atraso'
+  const s = leafStatus(a, TODAY)
+  if (s === 'Concluída') return 'concluida'
+  if (s === 'Em atraso') return 'em_atraso'
+  return 'em_dia'
 }
 
 function groupStatus(concluidas: number, total: number, em_atraso: number): StatusCls {
@@ -56,7 +60,7 @@ function computeStats(acts: Activity[]): Stats {
     else if (s === 'em_dia') em_dia++
     else em_atraso++
     sumPct  += a.pct
-    sumPrev += a.pct_prev
+    sumPrev += leafPctPrev(a, TODAY)
     const end = a.rf ?? a.bf
     if (end && (!latest_end || end > latest_end)) latest_end = end
   }
@@ -157,7 +161,7 @@ export default function Actividades() {
 
   const filtered = useMemo(() => getFilteredActivities(activities), [activities, getFilteredActivities])
   const tree     = useMemo(() => buildTree(filtered), [filtered])
-  const summary  = useMemo(() => computeStats(filtered), [filtered])
+  const summary  = useMemo(() => computeStats(filtered.filter(a => a.level === 4)), [filtered])
 
   // Collapse state: Set of node keys that are collapsed
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -192,7 +196,7 @@ export default function Actividades() {
   for (const n1g of tree) {
     const n1key   = `n1:${n1g.n1}`
     const n1col   = collapsed.has(n1key)
-    const n1stats = computeStats(n1g.allActs)
+    const n1stats = computeStats(n1g.allActs.filter(a => a.level === 4))
     const n1st    = groupStatus(n1stats.concluidas, n1stats.total, n1stats.em_atraso)
 
     rows.push(
@@ -219,7 +223,7 @@ export default function Actividades() {
     for (const n2g of n1g.n2groups) {
       const n2key   = `n2:${n1g.n1}:${n2g.n2}`
       const n2col   = collapsed.has(n2key)
-      const n2stats = computeStats(n2g.allActs)
+      const n2stats = computeStats(n2g.allActs.filter(a => a.level === 4))
       const n2st    = groupStatus(n2stats.concluidas, n2stats.total, n2stats.em_atraso)
 
       rows.push(
@@ -299,7 +303,7 @@ export default function Actividades() {
         // Has real children — render N3 header row
         const n3key   = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
         const n3col   = collapsed.has(n3key)
-        const n3stats = computeStats(n3g.acts)
+        const n3stats = computeStats(n3g.acts.filter(a => a.level === 4))
         const n3st    = groupStatus(n3stats.concluidas, n3stats.total, n3stats.em_atraso)
 
         rows.push(

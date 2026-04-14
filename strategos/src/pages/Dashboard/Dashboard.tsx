@@ -14,6 +14,9 @@ import { usePrograms } from '../../hooks/usePrograms'
 import { useSnapshots } from '../../hooks/useSnapshots'
 import { useFilters } from '../../context/FilterContext'
 import type { Activity } from '../../types/index'
+import { leafPctPrev, leafStatus } from '../../lib/rollup'
+
+const TODAY = new Date().toISOString().slice(0, 10)
 
 // ── Chart colours ─────────────────────────────────────────────
 const CLR_CONCLUIDAS = '#95BB42'
@@ -54,9 +57,10 @@ interface Metrics {
 }
 
 function classify(a: Activity): 'concluida' | 'em_dia' | 'em_atraso' {
-  if (a.pct >= 100) return 'concluida'
-  if (a.status === 'Em dia') return 'em_dia'
-  return 'em_atraso'
+  const s = leafStatus(a, TODAY)
+  if (s === 'Concluída') return 'concluida'
+  if (s === 'Em atraso') return 'em_atraso'
+  return 'em_dia'
 }
 
 function calcMetrics(acts: Activity[]): Metrics {
@@ -71,7 +75,7 @@ function calcMetrics(acts: Activity[]): Metrics {
     else if (cls === 'em_dia') em_dia++
     else em_atraso++
     sumPct  += a.pct
-    sumPrev += a.pct_prev
+    sumPrev += leafPctPrev(a, TODAY)
   }
   return {
     total, concluidas, em_dia, em_atraso,

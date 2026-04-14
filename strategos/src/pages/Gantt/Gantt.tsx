@@ -4,8 +4,10 @@ import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import { useActivities } from '../../hooks/useActivities'
 import { useFilters } from '../../context/FilterContext'
-import { rollupPct, rollupStatus } from '../../lib/rollup'
+import { rollupPct, rollupStatus, leafStatus } from '../../lib/rollup'
 import type { Activity } from '../../types/index'
+
+const TODAY = new Date().toISOString().slice(0, 10)
 
 // ── Types ──────────────────────────────────────────────────────
 type StatusCls    = 'concluida' | 'em_dia' | 'em_atraso'
@@ -21,13 +23,15 @@ const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set'
 
 // ── Status helpers ─────────────────────────────────────────────
 function actStatus(a: Activity): StatusCls {
-  if (a.pct >= 100 || a.status === 'Concluído') return 'concluida'
-  if (a.status === 'Em dia') return 'em_dia'
-  return 'em_atraso'
+  const s = leafStatus(a, TODAY)
+  if (s === 'Concluída') return 'concluida'
+  if (s === 'Em atraso') return 'em_atraso'
+  return 'em_dia'
 }
 
 function groupStatus(acts: Activity[]): StatusCls {
-  const s = rollupStatus(acts)
+  const leaves = acts.filter(a => a.level === 4)
+  const s = rollupStatus(leaves, TODAY)
   if (s === 'Concluída') return 'concluida'
   if (s === 'Em atraso') return 'em_atraso'
   return 'em_dia'
@@ -319,7 +323,7 @@ export default function Gantt() {
               </div>
             </div>
             <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n1st]}>{STATUS_LABEL[n1st]}</Badge></div>
-            <div className="gantt-sticky-exec">{Math.round(rollupPct(n1g.allActs))}%</div>
+            <div className="gantt-sticky-exec">{Math.round(rollupPct(n1g.allActs.filter(a => a.level === 4)))}%</div>
           </div>
         </td>
         {makeTimeline(n1dr.bs, n1dr.bf, n1dr.rs, n1dr.rf, n1st, null)}
@@ -345,7 +349,7 @@ export default function Gantt() {
                 </div>
               </div>
               <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n2st]}>{STATUS_LABEL[n2st]}</Badge></div>
-              <div className="gantt-sticky-exec">{Math.round(rollupPct(n2g.allActs))}%</div>
+              <div className="gantt-sticky-exec">{Math.round(rollupPct(n2g.allActs.filter(a => a.level === 4)))}%</div>
             </div>
           </td>
           {makeTimeline(n2dr.bs, n2dr.bf, n2dr.rs, n2dr.rf, n2st, null)}
@@ -372,7 +376,7 @@ export default function Gantt() {
                     </div>
                   </div>
                   <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n3st]}>{STATUS_LABEL[n3st]}</Badge></div>
-                  <div className="gantt-sticky-exec">{Math.round(rollupPct(n3g.acts))}%</div>
+                  <div className="gantt-sticky-exec">{Math.round(rollupPct(n3g.acts.filter(a => a.level === 4)))}%</div>
                 </div>
               </td>
               {makeTimeline(n3dr.bs, n3dr.bf, n3dr.rs, n3dr.rf, n3st, null)}

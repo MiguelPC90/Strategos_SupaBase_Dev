@@ -10,7 +10,7 @@ import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
-import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange } from '../../lib/rollup'
+import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange, leafPctPrev, leafStatus } from '../../lib/rollup'
 import type { Activity } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
@@ -642,7 +642,8 @@ export default function GestaoIniciativas() {
     return sorted.map((a, idx) => {
       const aEnd   = a.rf ?? a.bf ?? a.finish
       const pctVal = dirty.get(a.id)?.pct ?? a.pct
-      const aPrev  = rollupPctPrev([a], TODAY)
+      const aPrev    = leafPctPrev(a, TODAY)
+      const aStatus  = leafStatus(a, TODAY)
       const isSelected = selectedId === a.id
       return (
         <tr
@@ -670,7 +671,7 @@ export default function GestaoIniciativas() {
           </td>
           <td className="gi-td-r" style={{ fontSize: 12 }}>{Math.round(aPrev)}%</td>
           <td className="gi-td-c">
-            <Badge variant={statusBadge(a.status)}>{statusLabel(a.status)}</Badge>
+            <Badge variant={statusBadge(aStatus)}>{statusLabel(aStatus)}</Badge>
           </td>
           <td onClick={e => e.stopPropagation()}>
             <RowMenu
@@ -693,8 +694,9 @@ export default function GestaoIniciativas() {
 
   for (const n1g of tree) {
     const n1col = collapsed.has(n1g.key)
-    const n1pct = rollupPct(n1g.all); const n1prev = rollupPctPrev(n1g.all, TODAY)
-    const n1st  = rollupStatus(n1g.all); const n1dr = rollupDateRange(n1g.all)
+    const n1leaves = n1g.all.filter(a => a.level === 4)
+    const n1pct = rollupPct(n1leaves); const n1prev = rollupPctPrev(n1leaves, TODAY)
+    const n1st  = rollupStatus(n1leaves, TODAY); const n1dr = rollupDateRange(n1leaves)
     rows.push(
       <tr key={n1g.key} className="gi-row-n1">
         <td>
@@ -712,8 +714,9 @@ export default function GestaoIniciativas() {
 
     for (const n2g of n1g.n2s) {
       const n2col = collapsed.has(n2g.key)
-      const n2pct = rollupPct(n2g.all); const n2prev = rollupPctPrev(n2g.all, TODAY)
-      const n2st  = rollupStatus(n2g.all); const n2dr = rollupDateRange(n2g.all)
+      const n2leaves = n2g.all.filter(a => a.level === 4)
+      const n2pct = rollupPct(n2leaves); const n2prev = rollupPctPrev(n2leaves, TODAY)
+      const n2st  = rollupStatus(n2leaves, TODAY); const n2dr = rollupDateRange(n2leaves)
       const n2Owner = dbPlanos.find(p => p.name === n2g.n2)?.owner || '—'
       rows.push(
         <tr key={n2g.key} className="gi-row-n2">
@@ -743,8 +746,9 @@ export default function GestaoIniciativas() {
           continue
         }
         const n3col = collapsed.has(n3g.key)
-        const n3pct = rollupPct(n3g.all); const n3prev = rollupPctPrev(n3g.all, TODAY)
-        const n3st  = rollupStatus(n3g.all); const n3dr = rollupDateRange(n3g.all)
+        const n3leaves = n3g.all.filter(a => a.level === 4)
+        const n3pct = rollupPct(n3leaves); const n3prev = rollupPctPrev(n3leaves, TODAY)
+        const n3st  = rollupStatus(n3leaves, TODAY); const n3dr = rollupDateRange(n3leaves)
         const n3Rep  = n3g.all.find(a => a.level === 3)
         const n3Sibs = n3Rep
           ? localActs.filter(a => a.level === 3 && a.n1 === n3Rep.n1 && a.n2 === n3Rep.n2)
@@ -797,8 +801,9 @@ export default function GestaoIniciativas() {
             continue
           }
           const n4col = collapsed.has(n4g.key)
-          const n4pct = rollupPct(n4g.all); const n4prev = rollupPctPrev(n4g.all, TODAY)
-          const n4st  = rollupStatus(n4g.all); const n4dr = rollupDateRange(n4g.all)
+          const n4leaves = n4g.all.filter(a => a.level === 4)
+          const n4pct = rollupPct(n4leaves); const n4prev = rollupPctPrev(n4leaves, TODAY)
+          const n4st  = rollupStatus(n4leaves, TODAY); const n4dr = rollupDateRange(n4leaves)
           const n4Rep  = n4g.all.find(a => a.level === 4)
           const n4Sibs = n4Rep
             ? localActs.filter(a => a.level === 4 && a.n1 === n4Rep.n1 && a.n2 === n4Rep.n2 && a.n3 === n4Rep.n3)
