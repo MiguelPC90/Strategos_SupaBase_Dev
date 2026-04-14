@@ -128,6 +128,13 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
 
   const total = useMemo(() => lines.reduce((s, b) => s + lineTotal(b), 0), [lines])
 
+  const yearTotals = useMemo(() => {
+    const t: Record<string, number> = {}
+    years.forEach(y => { t[y] = 0 })
+    lines.forEach(b => years.forEach(y => { t[y] = (t[y] ?? 0) + (b.values[y] ?? 0) }))
+    return t
+  }, [lines, years])
+
   // Symbol for the grand-total row: most-common currency among lines, or defaultCurrency
   const totalSymbol = useMemo(() => {
     if (lines.length === 0) return currSymbolMap.get(defaultCurrency) ?? '€'
@@ -221,7 +228,10 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
           <tfoot>
             <tr className="gf-total-row">
               <td />
-              <td colSpan={3 + years.length}>Total orçamentado</td>
+              <td colSpan={3}>Total orçamentado</td>
+              {years.map(y => (
+                <td key={y} className="gf-td-r">{fmtEur(yearTotals[y] ?? 0, totalSymbol)}</td>
+              ))}
               <td className="gf-td-r">{fmtEur(total, totalSymbol)}</td>
               <td />
             </tr>
