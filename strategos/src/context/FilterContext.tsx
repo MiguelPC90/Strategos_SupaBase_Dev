@@ -1,4 +1,6 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { usePlanos } from '../hooks/usePlanos'
+import { leafStatus } from '../lib/rollup'
 import type { Activity } from '../types/index'
 
 // ── State shape ───────────────────────────────────────────────
@@ -35,6 +37,8 @@ interface FilterContextValue {
   setFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void
   resetFilters: () => void
   getFilteredActivities: (activities: Activity[]) => Activity[]
+  ownerOptions: string[]
+  sponsorOptions: string[]
 }
 
 const FilterContext = createContext<FilterContextValue | null>(null)
@@ -42,6 +46,19 @@ const FilterContext = createContext<FilterContextValue | null>(null)
 // ── Provider ──────────────────────────────────────────────────
 export function FilterProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS)
+
+  // Fetch all planos (no program filter) to populate owner/sponsor options
+  const { planos } = usePlanos()
+
+  const ownerOptions = useMemo(
+    () => [...new Set(planos.map(p => p.owner).filter((v): v is string => Boolean(v)))].sort(),
+    [planos],
+  )
+
+  const sponsorOptions = useMemo(
+    () => [...new Set(planos.map(p => p.sponsor).filter((v): v is string => Boolean(v)))].sort(),
+    [planos],
+  )
 
   const setFilter = useCallback(<K extends keyof FilterState>(
     key: K,
@@ -65,7 +82,8 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const getFilteredActivities = useCallback((activities: Activity[]): Activity[] => {
-    const { programIds, n1Values, n2Values, owners, sponsors, statuses, cutoffDate } = filters
+    const { programIds, n1Values, n2Values, owners, sponsors, statuses } = filters
+    const today = new Date().toISOString().slice(0, 10)
 
     return activities.filter(a => {
       if (programIds.length  && !programIds.includes(a.program_id ?? ''))  return false
@@ -74,16 +92,10 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       if (owners.length      && !owners.includes(a.owner))                 return false
       if (sponsors.length    && !sponsors.includes(a.sponsor))             return false
 
-      if (statuses.length) {
-        // Recalculate status against cutoffDate before filtering
-        let effectiveStatus = a.status
-        if (cutoffDate && !a.rf && a.status !== 'concluida') {
-          const deadline = a.finish ?? a.bf
-          if (deadline && deadline < cutoffDate && a.pct < 100) {
-            effectiveStatus = 'atrasada'
-          }
-        }
-        if (!statuses.includes(effectiveStatus)) return false
+      // Status filter: only applied to leaf activities (level >= 4)
+      // Parent activities are always included to preserve tree structure
+      if (statuses.length && a.level >= 4) {
+        if (!statuses.includes(leafStatus(a, today))) return false
       }
 
       return true
@@ -91,7 +103,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   }, [filters])
 
   return (
-    <FilterContext.Provider value={{ filters, setFilter, resetFilters, getFilteredActivities }}>
+    <FilterContext.Provider value={{ filters, setFilter, resetFilters, getFilteredActivities, ownerOptions, sponsorOptions }}>
       {children}
     </FilterContext.Provider>
   )

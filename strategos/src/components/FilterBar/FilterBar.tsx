@@ -5,10 +5,10 @@ import { useFilters } from '../../context/FilterContext'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useActivities } from '../../hooks/useActivities'
 
-const STATUS_OPTIONS = ['Concluído', 'Em dia', 'Em atraso']
+const STATUS_OPTIONS = ['Concluída', 'Em dia', 'Em atraso']
 
 export default function FilterBar() {
-  const { filters, setFilter, resetFilters } = useFilters()
+  const { filters, setFilter, resetFilters, ownerOptions, sponsorOptions } = useFilters()
   const { programs } = usePrograms()
   const { activities } = useActivities()
 
@@ -27,7 +27,7 @@ export default function FilterBar() {
     [filters.programIds, programIdToName],
   )
 
-  // Activities restricted to selected programs (for cascading options)
+  // Activities restricted to selected programs (for cascading n1/n2 options)
   const actsForOptions = useMemo(() => {
     if (filters.programIds.length === 0) return activities
     return activities.filter(a => filters.programIds.includes(a.program_id ?? ''))
@@ -44,16 +44,6 @@ export default function FilterBar() {
       : actsForOptions
     return [...new Set(base.map(a => a.n2).filter(Boolean))].sort()
   }, [actsForOptions, filters.n1Values])
-
-  const ownerOptions = useMemo(
-    () => [...new Set(actsForOptions.map(a => a.owner).filter(Boolean))].sort(),
-    [actsForOptions],
-  )
-
-  const sponsorOptions = useMemo(
-    () => [...new Set(actsForOptions.map(a => a.sponsor).filter(Boolean))].sort(),
-    [actsForOptions],
-  )
 
   function handleProgramChange(names: string[]) {
     const ids = names
