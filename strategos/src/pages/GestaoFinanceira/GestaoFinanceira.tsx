@@ -128,6 +128,15 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
 
   const total = useMemo(() => lines.reduce((s, b) => s + lineTotal(b), 0), [lines])
 
+  // Symbol for the grand-total row: most-common currency among lines, or defaultCurrency
+  const totalSymbol = useMemo(() => {
+    if (lines.length === 0) return currSymbolMap.get(defaultCurrency) ?? '€'
+    const counts: Record<string, number> = {}
+    lines.forEach(b => { counts[b.currency] = (counts[b.currency] ?? 0) + 1 })
+    const topCode = Object.entries(counts).sort((a, z) => z[1] - a[1])[0]?.[0]
+    return currSymbolMap.get(topCode ?? defaultCurrency) ?? currSymbolMap.get(defaultCurrency) ?? '€'
+  }, [lines, currSymbolMap, defaultCurrency])
+
   return (
     <div className="gf-budget-wrap">
       <div className="gf-budget-toolbar">
@@ -171,7 +180,9 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
                     onChange={e => {
                       const name = e.target.value
                       const cat = categories.find(c => c.name === name)
-                      updateLine(b.id, { category: name, ...(cat ? { capex: cat.is_capex } : {}) })
+                      const patch: Partial<FinBudgetLine> = { category: name }
+                      if (cat != null) patch.capex = Boolean(cat.is_capex)
+                      updateLine(b.id, patch)
                     }}>
                     <option value="">— categoria —</option>
                     {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
@@ -214,7 +225,7 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
             <tr className="gf-total-row">
               <td />
               <td colSpan={3 + years.length}>Total orçamentado</td>
-              <td className="gf-td-r">{fmtEur(total)}</td>
+              <td className="gf-td-r">{fmtEur(total, totalSymbol)}</td>
               <td />
             </tr>
           </tfoot>
@@ -726,6 +737,12 @@ export default function GestaoFinanceira() {
     setContractPanel(null)
   }, [contractPanel, selectedPlan])
 
+  // Symbol for the default currency — used in KPI cards
+  const defaultSymbol = useMemo(
+    () => currencies.find(c => c.code === defaultCurrency)?.symbol ?? '€',
+    [currencies, defaultCurrency],
+  )
+
   // ── Tab ──────────────────────────────────────────────────────
   const [tab, setTab] = useState<Tab>('orcamento')
 
@@ -923,14 +940,14 @@ export default function GestaoFinanceira() {
         <>
           {/* KPI row */}
           <div className="gf-kpi-row">
-            <KpiCard label="Orçamento Total"  value={fmtEur(kpis.budgetTotal)}  color="navy" />
-            <KpiCard label="Adjudicado"        value={fmtEur(kpis.adjudicado)}  color="blue" />
-            <KpiCard label="Pago"              value={fmtEur(kpis.pago)}         color="green" />
-            <KpiCard label="Em Pagamento"      value={fmtEur(kpis.emPagamento)} color="amber" />
-            <KpiCard label="Por Facturar"      value={fmtEur(Math.max(0, kpis.porFacturar))} color="text" />
+            <KpiCard label="Orçamento Total"  value={fmtEur(kpis.budgetTotal,  defaultSymbol)} color="navy" />
+            <KpiCard label="Adjudicado"        value={fmtEur(kpis.adjudicado,  defaultSymbol)} color="blue" />
+            <KpiCard label="Pago"              value={fmtEur(kpis.pago,         defaultSymbol)} color="green" />
+            <KpiCard label="Em Pagamento"      value={fmtEur(kpis.emPagamento, defaultSymbol)} color="amber" />
+            <KpiCard label="Por Facturar"      value={fmtEur(Math.max(0, kpis.porFacturar), defaultSymbol)} color="text" />
             <KpiCard
               label="Desvio"
-              value={fmtEur(Math.abs(kpis.desvio))}
+              value={fmtEur(Math.abs(kpis.desvio), defaultSymbol)}
               subtitle={kpis.desvio > 0 ? 'acima do orçamento' : kpis.desvio < 0 ? 'dentro do orçamento' : ''}
               color={kpis.desvio > 0 ? 'red' : 'green'}
             />
