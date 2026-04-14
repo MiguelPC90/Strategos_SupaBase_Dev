@@ -201,7 +201,12 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
                 </td>
                 <td className="gf-td-c">
                   {b.category
-                    ? <Badge variant={b.capex ? 'navy' : 'grey'}>{b.capex ? 'CAPEX' : 'OPEX'}</Badge>
+                    ? <span style={{
+                        display: 'inline-block', padding: '3px 9px', borderRadius: 999,
+                        fontSize: 11, fontWeight: 500,
+                        background: b.capex ? '#EBF0FA' : '#FDF3E7',
+                        color: b.capex ? 'var(--blue)' : 'var(--amber)',
+                      }}>{b.capex ? 'CAPEX' : 'OPEX'}</span>
                     : <span style={{ color: 'var(--text3)', fontSize: 13 }}>—</span>}
                 </td>
                 <td className="gf-td-c">
