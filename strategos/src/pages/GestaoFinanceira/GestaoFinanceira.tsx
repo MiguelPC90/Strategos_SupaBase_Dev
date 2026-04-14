@@ -1,5 +1,5 @@
 import './GestaoFinanceira.css'
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -8,6 +8,7 @@ import { useFinancials } from '../../hooks/useFinancials'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import ProgressBar from '../../components/ProgressBar/ProgressBar'
 import Badge from '../../components/Badge/Badge'
+import Modal from '../../components/Modal/Modal'
 import type { FinBudgetLine, FinContract, FinInvoice } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -48,6 +49,21 @@ const EMPTY_DRAFT: DraftState = { budget: [], contracts: [], invoices: [] }
 const BLANK_CONTRACT: ContractForm = {
   id: null, supplier: '', category: '', total_amount: '',
   currency: 'EUR', exchange_rate_ref: '', award_date: '', end_date: '', description: '',
+}
+
+interface InvoiceForm {
+  id: string | null
+  ref: string
+  supplier: string
+  app_contract_id: string
+  doc_type: string
+  amount: string
+  currency: string
+  exchange_rate: string
+  issue_date: string
+  due_date: string
+  payment_date: string
+  status: string
 }
 
 const CURRENCY_FALLBACK: CurrencyOption[] = [
@@ -253,89 +269,71 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
   )
 }
 
-// ── ContractPanel ──────────────────────────────────────────────────
-interface ContractPanelProps {
+// ── ContractModalBody ──────────────────────────────────────────────
+function ContractModalBody({ form, setForm, currencies, categories }: {
   form: ContractForm
-  setForm: (form: ContractForm) => void
-  onConfirm: () => void
-  onClose: () => void
-  panelErr: string | null
+  setForm: (f: ContractForm) => void
   currencies: CurrencyOption[]
   categories: CategoryOption[]
-}
-
-function ContractPanel({ form, setForm, onConfirm, onClose, panelErr, currencies, categories }: ContractPanelProps) {
+}) {
   const set = (patch: Partial<ContractForm>) => setForm({ ...form, ...patch })
   return (
-    <>
-      <div className="gf-panel-overlay" onClick={onClose} />
-      <div className="gf-panel">
-        <div className="gf-panel-header">
-          <span className="gf-panel-title">{form.id ? 'Editar Contrato' : 'Novo Contrato'}</span>
-          <button className="gf-btn" onClick={onClose}>✕</button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="gf-field">
+        <label className="gf-field-label">Fornecedor *</label>
+        <input className="gf-field-input" value={form.supplier}
+          onChange={e => set({ supplier: e.target.value })} placeholder="Nome do fornecedor" />
+      </div>
+      <div className="gf-field">
+        <label className="gf-field-label">Categoria</label>
+        <select className="gf-field-select" value={form.category}
+          onChange={e => set({ category: e.target.value })}>
+          <option value="">— categoria —</option>
+          {categories.map(cat => (
+            <option key={cat.name} value={cat.name}>{cat.name}</option>
+          ))}
+        </select>
+      </div>
+      <div className="gf-field">
+        <label className="gf-field-label">Descrição</label>
+        <textarea className="gf-field-textarea" value={form.description}
+          onChange={e => set({ description: e.target.value })} placeholder="Objecto do contrato…" />
+      </div>
+      <div className="gf-field-row">
+        <div className="gf-field">
+          <label className="gf-field-label">Valor Total *</label>
+          <input className="gf-field-input" type="number" value={form.total_amount}
+            onChange={e => set({ total_amount: e.target.value })} placeholder="0" />
         </div>
-        <div className="gf-panel-body">
-          <div className="gf-field">
-            <label className="gf-field-label">Fornecedor *</label>
-            <input className="gf-field-input" value={form.supplier}
-              onChange={e => set({ supplier: e.target.value })} placeholder="Nome do fornecedor" />
-          </div>
-          <div className="gf-field">
-            <label className="gf-field-label">Categoria</label>
-            <select className="gf-field-select" value={form.category}
-              onChange={e => set({ category: e.target.value })}>
-              <option value="">— categoria —</option>
-              {categories.map(cat => (
-                <option key={cat.name} value={cat.name}>{cat.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="gf-field-row">
-            <div className="gf-field">
-              <label className="gf-field-label">Valor Total *</label>
-              <input className="gf-field-input" type="number" value={form.total_amount}
-                onChange={e => set({ total_amount: e.target.value })} placeholder="0" />
-            </div>
-            <div className="gf-field">
-              <label className="gf-field-label">Moeda</label>
-              <select className="gf-field-select" value={form.currency}
-                onChange={e => set({ currency: e.target.value })}>
-                {currencies.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="gf-field-row">
-            <div className="gf-field">
-              <label className="gf-field-label">Taxa p/ EUR</label>
-              <input className="gf-field-input" type="number" value={form.exchange_rate_ref}
-                onChange={e => set({ exchange_rate_ref: e.target.value })} placeholder="1.0" />
-            </div>
-            <div className="gf-field">
-              <label className="gf-field-label">Data Adjudicação</label>
-              <input className="gf-field-input" type="date" value={form.award_date}
-                onChange={e => set({ award_date: e.target.value })} />
-            </div>
-          </div>
-          <div className="gf-field-row">
-            <div className="gf-field">
-              <label className="gf-field-label">Data de Fim</label>
-              <input className="gf-field-input" type="date" value={form.end_date}
-                onChange={e => set({ end_date: e.target.value })} />
-            </div>
-          </div>
-          <div className="gf-field">
-            <label className="gf-field-label">Descrição</label>
-            <textarea className="gf-field-textarea" value={form.description}
-              onChange={e => set({ description: e.target.value })} placeholder="Objecto do contrato…" />
-          </div>
-        </div>
-        <div className="gf-panel-footer">
-          <button className="gf-btn gf-btn-save" onClick={onConfirm}>Confirmar</button>
-          <button className="gf-btn" onClick={onClose}>Cancelar</button>
-          {panelErr && <span className="gf-panel-err">{panelErr}</span>}
+        <div className="gf-field">
+          <label className="gf-field-label">Moeda</label>
+          <select className="gf-field-select" value={form.currency}
+            onChange={e => set({ currency: e.target.value })}>
+            {currencies.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+          </select>
         </div>
       </div>
-    </>
+      <div className="gf-field-row">
+        <div className="gf-field">
+          <label className="gf-field-label">Taxa Câmbio</label>
+          <input className="gf-field-input" type="number" value={form.exchange_rate_ref}
+            onChange={e => set({ exchange_rate_ref: e.target.value })} placeholder="1.0" />
+        </div>
+        <div className="gf-field">
+          <label className="gf-field-label">Data Adjudicação</label>
+          <input className="gf-field-input" type="date" value={form.award_date}
+            onChange={e => set({ award_date: e.target.value })} />
+        </div>
+      </div>
+      <div className="gf-field-row">
+        <div className="gf-field">
+          <label className="gf-field-label">Data Fim</label>
+          <input className="gf-field-input" type="date" value={form.end_date}
+            onChange={e => set({ end_date: e.target.value })} />
+        </div>
+        <div className="gf-field" />
+      </div>
+    </div>
   )
 }
 
@@ -423,100 +421,137 @@ function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew, currencies
   )
 }
 
-// ── InvoiceContractCell ────────────────────────────────────────────
-interface InvoiceContractCellProps {
-  inv: FinInvoice
+// ── InvoiceModalBody ───────────────────────────────────────────────
+function InvoiceModalBody({ form, setForm, contracts, currencies, supplierFilter, setSupplierFilter }: {
+  form: InvoiceForm
+  setForm: (f: InvoiceForm) => void
   contracts: FinContract[]
-  onUpdate: (patch: Partial<FinInvoice>) => void
-}
-
-function InvoiceContractCell({ inv, contracts, onUpdate }: InvoiceContractCellProps) {
-  const linkedContract = useMemo(
-    () => contracts.find(c => c.app_id === inv.app_contract_id),
-    [contracts, inv.app_contract_id],
-  )
-
-  const [supplierFilter, setSupplierFilter] = useState(linkedContract?.supplier ?? '')
-
-  // Sync supplier filter when app_contract_id is set externally (e.g. duplicate row)
-  const prevContractId = useRef(inv.app_contract_id)
-  useEffect(() => {
-    if (inv.app_contract_id === prevContractId.current) return
-    prevContractId.current = inv.app_contract_id
-    setSupplierFilter(linkedContract?.supplier ?? '')
-  }, [inv.app_contract_id, linkedContract])
+  currencies: CurrencyOption[]
+  supplierFilter: string
+  setSupplierFilter: (s: string) => void
+}) {
+  const set = (patch: Partial<InvoiceForm>) => setForm({ ...form, ...patch })
 
   const suppliers = useMemo(() => {
     const seen = new Set(contracts.map(c => c.supplier).filter(Boolean))
     return Array.from(seen).sort()
   }, [contracts])
 
-  const filteredContracts = useMemo(
-    () => supplierFilter ? contracts.filter(c => c.supplier === supplierFilter) : contracts,
-    [contracts, supplierFilter],
-  )
+  const filteredContracts = supplierFilter
+    ? contracts.filter(c => c.supplier === supplierFilter)
+    : contracts
 
   return (
-    <td style={{ minWidth: 190, verticalAlign: 'middle' }}>
-      <select className="gf-cell-select" value={supplierFilter}
-        onChange={e => {
-          setSupplierFilter(e.target.value)
-          onUpdate({ app_contract_id: '' })
-        }}>
-        <option value="">— fornecedor —</option>
-        {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
-      </select>
-      {supplierFilter && (
-        <select className="gf-cell-select" style={{ marginTop: 2 }}
-          value={inv.app_contract_id}
-          onChange={e => {
-            const c = contracts.find(x => x.app_id === e.target.value)
-            onUpdate({ app_contract_id: e.target.value, ...(c ? { supplier: c.supplier } : {}) })
-          }}>
-          <option value="">— contrato —</option>
-          {filteredContracts.map(c => (
-            <option key={c.app_id} value={c.app_id}>{c.description || c.supplier}</option>
-          ))}
-        </select>
-      )}
-    </td>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="gf-field-row">
+        <div className="gf-field">
+          <label className="gf-field-label">Fornecedor</label>
+          <select className="gf-field-select" value={supplierFilter}
+            onChange={e => {
+              setSupplierFilter(e.target.value)
+              set({ app_contract_id: '', supplier: e.target.value })
+            }}>
+            <option value="">— fornecedor —</option>
+            {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div className="gf-field">
+          <label className="gf-field-label">Contrato</label>
+          <select className="gf-field-select" value={form.app_contract_id}
+            onChange={e => {
+              const c = contracts.find(x => x.app_id === e.target.value)
+              set({ app_contract_id: e.target.value, ...(c ? { supplier: c.supplier } : {}) })
+            }}
+            disabled={!supplierFilter}>
+            <option value="">— contrato —</option>
+            {filteredContracts.map(c => (
+              <option key={c.app_id} value={c.app_id}>{c.description || c.supplier}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="gf-field-row">
+        <div className="gf-field">
+          <label className="gf-field-label">Referência</label>
+          <input className="gf-field-input" value={form.ref}
+            onChange={e => set({ ref: e.target.value })} placeholder="Nº da factura" />
+        </div>
+        <div className="gf-field">
+          <label className="gf-field-label">Tipo Doc.</label>
+          <select className="gf-field-select" value={form.doc_type}
+            onChange={e => set({ doc_type: e.target.value })}>
+            {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="gf-field-row">
+        <div className="gf-field">
+          <label className="gf-field-label">Montante *</label>
+          <input className="gf-field-input" type="number" value={form.amount}
+            onChange={e => set({ amount: e.target.value })} placeholder="0" />
+        </div>
+        <div className="gf-field">
+          <label className="gf-field-label">Moeda</label>
+          <select className="gf-field-select" value={form.currency}
+            onChange={e => set({ currency: e.target.value })}>
+            {currencies.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="gf-field-row">
+        <div className="gf-field">
+          <label className="gf-field-label">Data Emissão</label>
+          <input className="gf-field-input" type="date" value={form.issue_date}
+            onChange={e => set({ issue_date: e.target.value })} />
+        </div>
+        <div className="gf-field">
+          <label className="gf-field-label">Data Vencimento</label>
+          <input className="gf-field-input" type="date" value={form.due_date}
+            onChange={e => set({ due_date: e.target.value })} />
+        </div>
+      </div>
+      <div className="gf-field-row">
+        <div className="gf-field">
+          <label className="gf-field-label">Data Pagamento</label>
+          <input className="gf-field-input" type="date" value={form.payment_date}
+            onChange={e => set({ payment_date: e.target.value })} />
+        </div>
+        <div className="gf-field">
+          <label className="gf-field-label">Estado</label>
+          <select className="gf-field-select" value={form.status}
+            onChange={e => set({ status: e.target.value })}>
+            {INV_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+    </div>
   )
 }
 
 // ── InvoicesTab ────────────────────────────────────────────────────
 interface InvoicesTabProps {
   invoices: FinInvoice[]
-  setInvoices: (invoices: FinInvoice[]) => void
+  onNew: () => void
+  onEdit: (inv: FinInvoice) => void
   onDelete: (id: string) => void
-  currencies: CurrencyOption[]
-  defaultCurrency: string
+  onDuplicate: (id: string) => void
   contracts: FinContract[]
+  currencies: CurrencyOption[]
 }
 
-function InvoicesTab({ invoices, setInvoices, onDelete, currencies, defaultCurrency, contracts }: InvoicesTabProps) {
+const INV_STATUS_COLOR: Record<string, string> = {
+  'Pendente':  'var(--text2)',
+  'Aprovado':  'var(--blue)',
+  'Paga':      'var(--green)',
+  'Anulada':   'var(--text3)',
+}
+
+function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts, currencies }: InvoicesTabProps) {
   const [statusFilter, setStatusFilter] = useState('Todos')
 
   const visible = useMemo(() =>
     statusFilter === 'Todos' ? invoices : invoices.filter(i => i.status === statusFilter),
     [invoices, statusFilter])
-
-  const updateInv = (id: string, patch: Partial<FinInvoice>) =>
-    setInvoices(invoices.map(i => i.id === id ? { ...i, ...patch } : i))
-
-  const addRow = () =>
-    setInvoices([...invoices, {
-      id: newId(), pds_id: null, plano_id: null, contract_id: null, app_id: newAppId(), app_contract_id: '',
-      program_id: null, ref: '', supplier: '', doc_type: 'Factura', description: null,
-      amount: 0, currency: defaultCurrency, exchange_rate: null,
-      issue_date: null, due_date: null, payment_date: null,
-      status: 'Pendente', memo: null, sort_order: invoices.length,
-    }])
-
-  const duplicate = (id: string) => {
-    const src = invoices.find(i => i.id === id)
-    if (!src) return
-    setInvoices([...invoices, { ...src, id: newId(), app_id: newAppId(), ref: src.ref + ' (cópia)', sort_order: invoices.length }])
-  }
 
   const isOverdue = (inv: FinInvoice) =>
     !!inv.due_date && inv.due_date < TODAY && inv.status !== 'Paga' && inv.status !== 'Anulada'
@@ -533,7 +568,7 @@ function InvoicesTab({ invoices, setInvoices, onDelete, currencies, defaultCurre
           ))}
         </div>
         <div style={{ flex: 1 }} />
-        <button className="gf-btn gf-btn-primary" onClick={addRow}>+ Factura</button>
+        <button className="gf-btn gf-btn-primary" onClick={onNew}>+ Factura</button>
       </div>
 
       <div className="gf-invoices-table-wrap">
@@ -545,79 +580,46 @@ function InvoicesTab({ invoices, setInvoices, onDelete, currencies, defaultCurre
           <table className="gf-invoices-table">
             <thead>
               <tr>
-                <th style={{ width: 28 }} />
-                <th style={{ width: 90 }}>Referência</th>
-                <th style={{ width: 190 }}>Contrato</th>
-                <th style={{ width: 130 }}>Fornecedor</th>
+                <th style={{ width: 100 }}>Referência</th>
+                <th style={{ width: 140 }}>Fornecedor</th>
+                <th style={{ width: 160 }}>Contrato</th>
                 <th style={{ width: 86 }}>Tipo Doc.</th>
-                <th className="gf-th-r" style={{ width: 100 }}>Montante</th>
-                <th className="gf-th-c" style={{ width: 58 }}>Moeda</th>
-                <th style={{ width: 112 }}>Emissão</th>
-                <th style={{ width: 112 }}>Vencimento</th>
-                <th style={{ width: 112 }}>Pagamento</th>
-                <th style={{ width: 100 }}>Estado</th>
-                <th style={{ width: 30 }} />
+                <th className="gf-th-r" style={{ width: 120 }}>Montante</th>
+                <th style={{ width: 90 }}>Emissão</th>
+                <th style={{ width: 90 }}>Vencimento</th>
+                <th style={{ width: 90 }}>Pagamento</th>
+                <th style={{ width: 80 }}>Estado</th>
+                <th style={{ width: 72 }} />
               </tr>
             </thead>
             <tbody>
               {visible.map(inv => {
                 const overdue = isOverdue(inv)
+                const sym = currencies.find(c => c.code === inv.currency)?.symbol ?? '€'
+                const linked = contracts.find(c => c.app_id === inv.app_contract_id)
                 return (
                   <tr key={inv.id} className={`gf-inv-row${overdue ? ' gf-inv-row--overdue' : ''}`}>
+                    <td className="gf-td-wrap">{inv.ref || <span style={{ color: 'var(--text3)' }}>—</span>}</td>
+                    <td className="gf-td-wrap">{inv.supplier || <span style={{ color: 'var(--text3)' }}>—</span>}</td>
+                    <td className="gf-td-wrap" style={{ color: 'var(--text2)', fontSize: 12 }}>
+                      {linked ? (linked.description || linked.supplier) : <span style={{ color: 'var(--text3)' }}>—</span>}
+                    </td>
+                    <td style={{ fontSize: 12 }}>{inv.doc_type ?? '—'}</td>
+                    <td className="gf-td-r">{fmtEur(inv.amount, sym)}</td>
+                    <td style={{ fontSize: 12, color: 'var(--text2)' }}>{fmtDate(inv.issue_date)}</td>
+                    <td style={{ fontSize: 12, color: overdue ? 'var(--red)' : 'var(--text2)', fontWeight: overdue ? 700 : undefined }}>
+                      {fmtDate(inv.due_date)}
+                    </td>
+                    <td style={{ fontSize: 12, color: 'var(--text2)' }}>{fmtDate(inv.payment_date)}</td>
                     <td>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: INV_STATUS_COLOR[inv.status] ?? 'var(--text2)' }}>
+                        {inv.status}
+                      </span>
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <button className="gf-icon-btn" onClick={() => onEdit(inv)} title="Editar" style={{ fontSize: 14 }}>✎</button>
+                      <button className="gf-icon-btn" onClick={() => onDuplicate(inv.id)} title="Duplicar" style={{ color: 'var(--text2)', fontSize: 14 }}>⧉</button>
                       <button className="gf-icon-btn" onClick={() => onDelete(inv.id)} title="Remover">✕</button>
-                    </td>
-                    <td>
-                      <input className="gf-cell-input" value={inv.ref}
-                        onChange={e => updateInv(inv.id, { ref: e.target.value })} placeholder="Ref" />
-                    </td>
-                    <InvoiceContractCell
-                      inv={inv}
-                      contracts={contracts}
-                      onUpdate={patch => updateInv(inv.id, patch)}
-                    />
-                    <td>
-                      <input className="gf-cell-input" value={inv.supplier}
-                        onChange={e => updateInv(inv.id, { supplier: e.target.value })} placeholder="Fornecedor" />
-                    </td>
-                    <td>
-                      <select className="gf-cell-select" value={inv.doc_type ?? 'Factura'}
-                        onChange={e => updateInv(inv.id, { doc_type: e.target.value })}>
-                        {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </td>
-                    <td className="gf-td-r">
-                      <input className="gf-cell-input gf-cell-input--num" type="number" value={inv.amount}
-                        onChange={e => updateInv(inv.id, { amount: parseFloat(e.target.value) || 0 })} />
-                    </td>
-                    <td className="gf-td-c">
-                      <select className="gf-cell-select" value={inv.currency}
-                        onChange={e => updateInv(inv.id, { currency: e.target.value })}>
-                        {currencies.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-                      </select>
-                    </td>
-                    <td>
-                      <input className="gf-cell-input" type="date" value={inv.issue_date ?? ''}
-                        onChange={e => updateInv(inv.id, { issue_date: e.target.value || null })} />
-                    </td>
-                    <td>
-                      <input className="gf-cell-input" type="date" value={inv.due_date ?? ''}
-                        style={overdue ? { color: 'var(--red)', fontWeight: 700 } : {}}
-                        onChange={e => updateInv(inv.id, { due_date: e.target.value || null })} />
-                    </td>
-                    <td>
-                      <input className="gf-cell-input" type="date" value={inv.payment_date ?? ''}
-                        onChange={e => updateInv(inv.id, { payment_date: e.target.value || null })} />
-                    </td>
-                    <td>
-                      <select className="gf-cell-select" value={inv.status}
-                        onChange={e => updateInv(inv.id, { status: e.target.value })}>
-                        {INV_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </td>
-                    <td>
-                      <button className="gf-icon-btn" onClick={() => duplicate(inv.id)} title="Duplicar"
-                        style={{ color: 'var(--text2)', fontSize: 14 }}>⧉</button>
                     </td>
                   </tr>
                 )
@@ -848,6 +850,106 @@ export default function GestaoFinanceira() {
     }
     setContractPanel(null)
   }, [contractPanel, selectedPlan])
+
+  // ── Invoice modal ────────────────────────────────────────────
+  const [invoiceModal,          setInvoiceModal]          = useState<InvoiceForm | null>(null)
+  const [invModalErr,           setInvModalErr]           = useState<string | null>(null)
+  const [invModalSupplierFilter, setInvModalSupplierFilter] = useState('')
+
+  const openNewInvoice = useCallback(() => {
+    setInvModalErr(null)
+    setInvModalSupplierFilter('')
+    setInvoiceModal({
+      id: null, ref: '', supplier: '', app_contract_id: '',
+      doc_type: 'Factura', amount: '', currency: defaultCurrency, exchange_rate: '',
+      issue_date: '', due_date: '', payment_date: '', status: 'Pendente',
+    })
+  }, [defaultCurrency])
+
+  const openEditInvoice = useCallback((inv: FinInvoice) => {
+    setInvModalErr(null)
+    setInvModalSupplierFilter(inv.supplier ?? '')
+    setInvoiceModal({
+      id: inv.id, ref: inv.ref, supplier: inv.supplier,
+      app_contract_id: inv.app_contract_id,
+      doc_type: inv.doc_type ?? 'Factura',
+      amount: String(inv.amount),
+      currency: inv.currency,
+      exchange_rate: inv.exchange_rate != null ? String(inv.exchange_rate) : '',
+      issue_date: inv.issue_date ?? '', due_date: inv.due_date ?? '',
+      payment_date: inv.payment_date ?? '', status: inv.status,
+    })
+  }, [])
+
+  const confirmInvoice = useCallback(() => {
+    if (!invoiceModal || !selectedPlan) return
+    const amount = parseFloat(invoiceModal.amount)
+    if (isNaN(amount) || amount < 0) { setInvModalErr('Montante inválido.'); return }
+    const exRate = invoiceModal.exchange_rate !== '' ? parseFloat(invoiceModal.exchange_rate) : null
+    const pdsId  = selectedPlan.key
+    const progId = selectedPlan.program_id
+
+    if (invoiceModal.id) {
+      const iid = invoiceModal.id
+      setDraft(d => ({
+        ...d,
+        invoices: d.invoices.map(i => i.id === iid ? {
+          ...i,
+          ref:              invoiceModal.ref,
+          supplier:         invoiceModal.supplier,
+          app_contract_id:  invoiceModal.app_contract_id,
+          doc_type:         invoiceModal.doc_type,
+          amount,
+          currency:         invoiceModal.currency,
+          exchange_rate:    exRate,
+          issue_date:       invoiceModal.issue_date || null,
+          due_date:         invoiceModal.due_date || null,
+          payment_date:     invoiceModal.payment_date || null,
+          status:           invoiceModal.status,
+        } : i),
+      }))
+    } else {
+      setDraft(d => ({
+        ...d,
+        invoices: [...d.invoices, {
+          id: newId(), pds_id: null, plano_id: pdsId, contract_id: null,
+          app_id: newAppId(), app_contract_id: invoiceModal.app_contract_id,
+          program_id: progId,
+          ref:           invoiceModal.ref,
+          supplier:      invoiceModal.supplier,
+          doc_type:      invoiceModal.doc_type,
+          description:   null,
+          amount,
+          currency:      invoiceModal.currency,
+          exchange_rate: exRate,
+          issue_date:    invoiceModal.issue_date || null,
+          due_date:      invoiceModal.due_date || null,
+          payment_date:  invoiceModal.payment_date || null,
+          status:        invoiceModal.status,
+          memo:          null,
+          sort_order:    d.invoices.length,
+        }],
+      }))
+    }
+    setInvoiceModal(null)
+  }, [invoiceModal, selectedPlan])
+
+  const deleteInvoiceFromModal = useCallback(() => {
+    if (!invoiceModal?.id) return
+    deleteInvoice(invoiceModal.id)
+    setInvoiceModal(null)
+  }, [invoiceModal, deleteInvoice])
+
+  const duplicateInvoice = useCallback((id: string) => {
+    setDraft(d => {
+      const src = d.invoices.find(i => i.id === id)
+      if (!src) return d
+      return { ...d, invoices: [...d.invoices, {
+        ...src, id: newId(), app_id: newAppId(),
+        ref: src.ref + ' (cópia)', sort_order: d.invoices.length,
+      }] }
+    })
+  }, [])
 
   // Symbol for the default currency — used in KPI cards
   const defaultSymbol = useMemo(
@@ -1097,27 +1199,76 @@ export default function GestaoFinanceira() {
           {tab === 'facturas' && (
             <InvoicesTab
               invoices={draft.invoices}
-              setInvoices={setInvoices}
+              onNew={openNewInvoice}
+              onEdit={openEditInvoice}
               onDelete={deleteInvoice}
-              currencies={currencies}
-              defaultCurrency={defaultCurrency}
+              onDuplicate={duplicateInvoice}
               contracts={draft.contracts}
+              currencies={currencies}
             />
           )}
         </>
       )}
 
-      {contractPanel && (
-        <ContractPanel
-          form={contractPanel}
-          setForm={f => setContractPanel(f)}
-          onConfirm={confirmContract}
-          onClose={() => setContractPanel(null)}
-          panelErr={panelErr}
-          currencies={currencies}
-          categories={categories}
-        />
-      )}
+      <Modal
+        isOpen={!!contractPanel}
+        onClose={() => setContractPanel(null)}
+        title={contractPanel?.id ? 'Editar Contrato' : 'Novo Contrato'}
+        width={500}
+        footer={
+          <>
+            {contractPanel?.id && (
+              <button className="gf-btn gf-btn-danger" onClick={() => { deleteContract(contractPanel.id!); setContractPanel(null) }}
+                style={{ marginRight: 'auto' }}>
+                Eliminar
+              </button>
+            )}
+            <button className="gf-btn" onClick={() => setContractPanel(null)}>Cancelar</button>
+            <button className="gf-btn gf-btn-save" onClick={confirmContract}>Guardar</button>
+            {panelErr && <span className="gf-panel-err">{panelErr}</span>}
+          </>
+        }
+      >
+        {contractPanel && (
+          <ContractModalBody
+            form={contractPanel}
+            setForm={setContractPanel}
+            currencies={currencies}
+            categories={categories}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={!!invoiceModal}
+        onClose={() => setInvoiceModal(null)}
+        title={invoiceModal?.id ? 'Editar Factura' : 'Nova Factura'}
+        width={500}
+        footer={
+          <>
+            {invoiceModal?.id && (
+              <button className="gf-btn gf-btn-danger" onClick={deleteInvoiceFromModal}
+                style={{ marginRight: 'auto' }}>
+                Eliminar
+              </button>
+            )}
+            <button className="gf-btn" onClick={() => setInvoiceModal(null)}>Cancelar</button>
+            <button className="gf-btn gf-btn-save" onClick={confirmInvoice}>Guardar</button>
+            {invModalErr && <span className="gf-panel-err">{invModalErr}</span>}
+          </>
+        }
+      >
+        {invoiceModal && (
+          <InvoiceModalBody
+            form={invoiceModal}
+            setForm={setInvoiceModal}
+            contracts={draft.contracts}
+            currencies={currencies}
+            supplierFilter={invModalSupplierFilter}
+            setSupplierFilter={setInvModalSupplierFilter}
+          />
+        )}
+      </Modal>
     </div>
   )
 }
