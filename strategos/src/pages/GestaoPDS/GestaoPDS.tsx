@@ -1,5 +1,6 @@
 import './GestaoPDS.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import Modal from '../../components/Modal/Modal'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -63,7 +64,7 @@ interface PdsSectionProps {
   onBlur(): void
   onChangeItem(section: SectionKey, idx: number, patch: Partial<PdsItem>): void
   onRemove(section: SectionKey, idx: number): void
-  onAdd(section: SectionKey): void
+  onAdd(section: SectionKey, title: string): void
   onMove(section: SectionKey, idx: number, dir: 'up' | 'down'): void
 }
 
@@ -198,8 +199,8 @@ function PdsSection({
         ))}
       </div>
 
-      <button className="pds-add-btn" onClick={() => onAdd(sectionKey)}>
-        + Adicionar
+      <button className="pds-add-btn" onClick={() => onAdd(sectionKey, title)}>
+        + Novo Item
       </button>
     </div>
   )
@@ -314,6 +315,13 @@ export default function GestaoPDS() {
   const [activeCell, setActiveCell] = useState<ActiveCell | null>(null)
   const activeRef = useRef<HTMLTextAreaElement | null>(null)
 
+  // ── Add-item modal ───────────────────────────────────────────
+  interface AddModal { section: SectionKey; title: string }
+  const [addModal,      setAddModal]      = useState<AddModal | null>(null)
+  const [newItemText,   setNewItemText]   = useState('')
+  const [newItemDate,   setNewItemDate]   = useState('')
+  const [newItemStatus, setNewItemStatus] = useState('Pendente')
+
   // ── Save state ───────────────────────────────────────────────
   const [toast,   setToast]   = useState(false)
   const [saving,  setSaving]  = useState(false)
@@ -352,12 +360,23 @@ export default function GestaoPDS() {
     setActiveCell(null)
   }, [])
 
-  const handleAdd = useCallback((section: SectionKey) => {
-    setDraft(prev => ({
-      ...prev,
-      [section]: [...prev[section], { text: '' }],
-    }))
+  const handleAdd = useCallback((section: SectionKey, title: string) => {
+    setNewItemText('')
+    setNewItemDate('')
+    setNewItemStatus('Pendente')
+    setAddModal({ section, title })
   }, [])
+
+  const handleModalAdd = useCallback(() => {
+    if (!addModal) return
+    const withMeta = addModal.section === 'commitments' || addModal.section === 'nextSteps'
+    const item: PdsItem = {
+      text: newItemText,
+      ...(withMeta ? { date: newItemDate || undefined, status: newItemStatus } : {}),
+    }
+    setDraft(prev => ({ ...prev, [addModal.section]: [...prev[addModal.section], item] }))
+    setAddModal(null)
+  }, [addModal, newItemText, newItemDate, newItemStatus])
 
   const handleMove = useCallback(
     (section: SectionKey, idx: number, dir: 'up' | 'down') => {
@@ -518,6 +537,66 @@ export default function GestaoPDS() {
             withMeta={false}
           />
         </div>
+      )}
+
+      {addModal && (
+        <Modal
+          isOpen={true}
+          onClose={() => setAddModal(null)}
+          title={`Novo Item — ${addModal.title}`}
+          width={420}
+          footer={
+            <>
+              <button className="pds-btn" onClick={() => setAddModal(null)}>Cancelar</button>
+              <button className="pds-btn pds-btn-save" onClick={handleModalAdd}>Adicionar</button>
+            </>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.04em', color: 'var(--text2)', marginBottom: 4 }}>
+                Conteúdo
+              </div>
+              <textarea
+                style={{ width: '100%', border: '1px solid var(--border2)', borderRadius: 'var(--r)', padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' as const, minHeight: 80, boxSizing: 'border-box' as const }}
+                value={newItemText}
+                onChange={e => setNewItemText(e.target.value)}
+                placeholder="Descrição do item…"
+                rows={3}
+                autoFocus
+              />
+            </div>
+            {(addModal.section === 'commitments' || addModal.section === 'nextSteps') && (
+              <>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.04em', color: 'var(--text2)', marginBottom: 4 }}>
+                    Data
+                  </div>
+                  <input
+                    type="date"
+                    style={{ border: '1px solid var(--border2)', borderRadius: 'var(--r)', padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' as const }}
+                    value={newItemDate}
+                    onChange={e => setNewItemDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.04em', color: 'var(--text2)', marginBottom: 4 }}>
+                    Estado
+                  </div>
+                  <select
+                    style={{ border: '1px solid var(--border2)', borderRadius: 'var(--r)', padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' as const, background: 'var(--bg)' }}
+                    value={newItemStatus}
+                    onChange={e => setNewItemStatus(e.target.value)}
+                  >
+                    <option>Pendente</option>
+                    <option>Em curso</option>
+                    <option>Concluído</option>
+                  </select>
+                </div>
+              </>
+            )}
+          </div>
+        </Modal>
       )}
     </div>
   )

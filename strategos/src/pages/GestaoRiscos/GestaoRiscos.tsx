@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
+import Modal from '../../components/Modal/Modal'
 import { useRisks } from '../../hooks/useRisks'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
@@ -83,16 +84,11 @@ function toForm(r: Risk): RiskForm {
 
 // ── Panel ──────────────────────────────────────────────────────
 interface PanelProps {
-  form:      RiskForm
-  onChange:  (f: RiskForm) => void
-  onSave:    () => void
-  onDelete:  () => void
-  onClose:   () => void
-  saving:    boolean
-  error:     string
+  form:     RiskForm
+  onChange: (f: RiskForm) => void
 }
 
-function Panel({ form, onChange, onSave, onDelete, onClose, saving, error }: PanelProps) {
+function Panel({ form, onChange }: PanelProps) {
   const set =
     (k: keyof RiskForm) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -101,98 +97,64 @@ function Panel({ form, onChange, onSave, onDelete, onClose, saving, error }: Pan
   const grauVal = calcGrau(Number(form.impact), Number(form.probability))
 
   return (
-    <>
-      <div className="gr-panel-overlay" onClick={onClose} />
-      <div className="gr-panel">
-        <div className="gr-panel-header">
-          <span className="gr-panel-title">
-            {form.id ? 'Editar Risco' : 'Novo Risco'}
-          </span>
-          <button className="gr-btn" onClick={onClose}>✕</button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="gr-field">
+        <span className="gr-field-label">Descrição *</span>
+        <textarea
+          className="gr-field-textarea"
+          value={form.description}
+          onChange={set('description')}
+          rows={3}
+          placeholder="Descreva o risco…"
+        />
+      </div>
+
+      <div className="gr-field-row">
+        <div className="gr-field">
+          <span className="gr-field-label">Impacto *</span>
+          <select className="gr-field-select" value={form.impact} onChange={set('impact')}>
+            {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
         </div>
-
-        <div className="gr-panel-body">
-          <div className="gr-field">
-            <span className="gr-field-label">Descrição *</span>
-            <textarea
-              className="gr-field-textarea"
-              value={form.description}
-              onChange={set('description')}
-              rows={3}
-              placeholder="Descreva o risco…"
-            />
-          </div>
-
-          <div className="gr-field-row">
-            <div className="gr-field">
-              <span className="gr-field-label">Impacto *</span>
-              <select className="gr-field-select" value={form.impact} onChange={set('impact')}>
-                {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </div>
-            <div className="gr-field">
-              <span className="gr-field-label">Probabilidade *</span>
-              <select className="gr-field-select" value={form.probability} onChange={set('probability')}>
-                {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="gr-field">
-            <span className="gr-field-label">Grau de Risco</span>
-            <div className="gr-grau-display">
-              <span className="gr-grau-num">{grauVal}</span>
-              <span className={`gr-grau-badge ${grauCls(grauVal)}`}>
-                {grauLabel(grauVal)}
-              </span>
-            </div>
-          </div>
-
-          <div className="gr-field">
-            <span className="gr-field-label">Estado *</span>
-            <select className="gr-field-select" value={form.status} onChange={set('status')}>
-              <option>Aberto</option>
-              <option>Em mitigação</option>
-              <option>Mitigado</option>
-              <option>Fechado</option>
-            </select>
-          </div>
-
-          <div className="gr-field">
-            <span className="gr-field-label">Mitigação</span>
-            <textarea
-              className="gr-field-textarea"
-              value={form.mitigation}
-              onChange={set('mitigation')}
-              rows={3}
-              placeholder="Medidas de mitigação…"
-            />
-          </div>
-        </div>
-
-        <div className="gr-panel-footer">
-          <button
-            className="gr-btn gr-btn-primary"
-            onClick={onSave}
-            disabled={saving}
-          >
-            {saving ? 'A guardar…' : 'Guardar'}
-          </button>
-          <button className="gr-btn" onClick={onClose}>Cancelar</button>
-          {form.id && (
-            <button
-              className="gr-btn gr-btn-danger"
-              onClick={onDelete}
-              disabled={saving}
-              style={{ marginLeft: 'auto' }}
-            >
-              Eliminar
-            </button>
-          )}
-          {error && <span className="gr-panel-err">{error}</span>}
+        <div className="gr-field">
+          <span className="gr-field-label">Probabilidade *</span>
+          <select className="gr-field-select" value={form.probability} onChange={set('probability')}>
+            {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
         </div>
       </div>
-    </>
+
+      <div className="gr-field">
+        <span className="gr-field-label">Grau de Risco</span>
+        <div className="gr-grau-display">
+          <span className="gr-grau-num">{grauVal}</span>
+          <span className={`gr-grau-badge ${grauCls(grauVal)}`}>
+            {grauLabel(grauVal)}
+          </span>
+        </div>
+      </div>
+
+      <div className="gr-field">
+        <span className="gr-field-label">Estado *</span>
+        <select className="gr-field-select" value={form.status} onChange={set('status')}>
+          <option>Aberto</option>
+          <option>Em mitigação</option>
+          <option>Mitigado</option>
+          <option>Fechado</option>
+        </select>
+      </div>
+
+      <div className="gr-field">
+        <span className="gr-field-label">Mitigação</span>
+        <textarea
+          className="gr-field-textarea"
+          value={form.mitigation}
+          onChange={set('mitigation')}
+          rows={3}
+          placeholder="Medidas de mitigação…"
+        />
+      </div>
+    </div>
   )
 }
 
@@ -581,17 +543,29 @@ export default function GestaoRiscos() {
         )}
       </Card>
 
-      {/* Side panel */}
       {panelForm && (
-        <Panel
-          form={panelForm}
-          onChange={f => setPanelForm(f)}
-          onSave={handleSave}
-          onDelete={handlePanelDelete}
+        <Modal
+          isOpen={true}
           onClose={closePanel}
-          saving={panelSaving}
-          error={panelErr}
-        />
+          title={panelForm.id ? 'Editar Risco' : 'Novo Risco'}
+          width={440}
+          footer={
+            <>
+              {panelForm.id && (
+                <button className="gr-btn gr-btn-danger" onClick={handlePanelDelete} disabled={panelSaving} style={{ marginRight: 'auto' }}>
+                  Eliminar
+                </button>
+              )}
+              <button className="gr-btn" onClick={closePanel}>Cancelar</button>
+              <button className="gr-btn gr-btn-save" onClick={handleSave} disabled={panelSaving}>
+                {panelSaving ? 'A guardar…' : 'Guardar'}
+              </button>
+              {panelErr && <span style={{ fontSize: 12, color: 'var(--red)', width: '100%' }}>{panelErr}</span>}
+            </>
+          }
+        >
+          <Panel form={panelForm} onChange={f => setPanelForm(f)} />
+        </Modal>
       )}
     </div>
   )
