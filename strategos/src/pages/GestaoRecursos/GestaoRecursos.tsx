@@ -513,9 +513,8 @@ export default function GestaoRecursos() {
       .then(({ data }) => {
         if (!data) return
         for (const row of data) {
-          const vals = (row.data as Record<string, unknown>).values
-          if (!Array.isArray(vals)) continue
-          const strs = (vals as unknown[]).filter(v => typeof v === 'string') as string[]
+          const strs = JSON.parse(row.data as string) as string[]
+          if (!Array.isArray(strs)) continue
           if (row.config_key === 'resource_profiles') setProfiles(strs)
           if (row.config_key === 'org_units')         setOrgUnits(strs)
         }
