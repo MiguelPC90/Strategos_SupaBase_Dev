@@ -427,4 +427,46 @@
 
   .gres-import-item-name { font-size: 13px; font-weight: 600; flex: 1; }
   .gres-import-item-meta { font-size: 11px; color: var(--text2); }
+
+  /* ── Resource modal form ────────────────────────────────────── */
+  .gres-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .gres-form-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text2);
+  }
+
+  .gres-form-input,
+  .gres-form-select {
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .gres-form-input:focus,
+  .gres-form-select:focus { outline: none; border-color: var(--navy); }
+
+  .gres-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .gres-btn-danger {
+    color: var(--red);
+    border-color: var(--red);
+  }
+  .gres-btn-danger:hover:not(:disabled) { background: #fff0f0; }
 }

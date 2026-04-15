@@ -9,6 +9,7 @@ import { usePeople } from '../../hooks/usePeople'
 import { useFinancials } from '../../hooks/useFinancials'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import Badge from '../../components/Badge/Badge'
+import Modal from '../../components/Modal/Modal'
 import type { FteResource, Person, FinContract } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -22,6 +23,20 @@ interface PlanOption {
 
 // FteResource with guaranteed string id (new_ prefix for unsaved rows)
 type DraftResource = FteResource
+
+interface ResourceForm {
+  id: string | null
+  name: string
+  role: string
+  org_unit: string
+  type: string
+  allocation_pct: string
+  daily_cost: string
+  start_date: string
+  end_date: string
+  status: string
+  contract_id: string
+}
 
 // ── Constants ──────────────────────────────────────────────────────
 const RES_TYPES    = ['Interno', 'Externo']
@@ -108,45 +123,28 @@ function SummaryTable({ resources, workDays, onRowClick }: SummaryTableProps) {
   )
 }
 
-// ── ResourceCard ───────────────────────────────────────────────────
+// ── ResourceCard (read-only) ───────────────────────────────────────
 interface ResourceCardProps {
   res: DraftResource
-  people: Person[]
   contracts: FinContract[]
-  profiles: string[]
-  orgUnits: string[]
   workDays: number
-  onChange: (patch: Partial<DraftResource>) => void
+  onEdit: () => void
   onDelete: () => void
   onDuplicate: () => void
 }
 
-function ResourceCard({
-  res, people, contracts, profiles, orgUnits, workDays,
-  onChange, onDelete, onDuplicate,
-}: ResourceCardProps) {
+function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate }: ResourceCardProps) {
   const cost = calcCost(res, workDays)
   const isOverallocated = (res.allocation_pct ?? 0) > 100
   const dateErr = !!(res.start_date && res.end_date && res.end_date < res.start_date)
   const isExpired = !!(res.end_date && res.end_date < TODAY && res.status !== 'Inactivo')
   const isInactive = res.status === 'Inactivo'
+  const linkedContract = contracts.find(c => c.id === res.contract_id)
+  const status = res.status ?? 'Activo'
 
-  const handleNameChange = (val: string) => {
-    onChange({ name: val })
-    // Auto-fill from people catalog if exact match
-    const match = people.find(p => p.name.toLowerCase().trim() === val.toLowerCase().trim())
-    if (match) {
-      const patch: Partial<DraftResource> = { name: val }
-      if (!res.org_unit && match.org_unit) patch.org_unit = match.org_unit
-      if (!res.role     && match.role)     patch.role     = match.role
-      if (!res.type     && match.type)     patch.type     = match.type || 'Interno'
-      onChange(patch)
-    }
-  }
-
-  const datalistId = `people-dl-${res.id}`
-  const profilesDlId = `profiles-dl-${res.id}`
-  const unitsDlId = `units-dl-${res.id}`
+  const period = res.start_date && res.end_date
+    ? `${res.start_date.slice(0, 7)} → ${res.end_date.slice(0, 7)}`
+    : res.start_date ? `desde ${res.start_date.slice(0, 7)}` : '—'
 
   return (
     <div
@@ -157,146 +155,62 @@ function ResourceCard({
         isInactive ? 'gres-card--inactive' : '',
       ].filter(Boolean).join(' ')}
     >
-      {/* Datalists */}
-      <datalist id={datalistId}>
-        {people.filter(p => p.active !== false).map(p => (
-          <option key={p.id} value={p.name} />
-        ))}
-      </datalist>
-      <datalist id={profilesDlId}>
-        {profiles.map(p => <option key={p} value={p} />)}
-      </datalist>
-      <datalist id={unitsDlId}>
-        {orgUnits.map(u => <option key={u} value={u} />)}
-      </datalist>
-
       <div className="gres-card-body">
         {/* Main row */}
         <div className="gres-card-main">
           <div className="gres-field">
-            <label className="gres-field-label">Nome</label>
-            <input
-              className="gres-input gres-input--name"
-              list={datalistId}
-              value={res.name}
-              placeholder="Nome do recurso"
-              onChange={e => handleNameChange(e.target.value)}
-            />
+            <span className="gres-field-label">Nome</span>
+            <strong style={{ fontSize: 13 }}>{res.name || <span style={{ color: 'var(--text3)' }}>—</span>}</strong>
           </div>
           <div className="gres-field">
-            <label className="gres-field-label">Perfil</label>
-            <input
-              className="gres-input"
-              list={profilesDlId}
-              value={res.role ?? ''}
-              placeholder="Perfil"
-              onChange={e => onChange({ role: e.target.value || null })}
-            />
+            <span className="gres-field-label">Perfil</span>
+            <span style={{ fontSize: 12 }}>{res.role ?? '—'}</span>
           </div>
           <div className="gres-field">
-            <label className="gres-field-label">Tipo</label>
-            <select
-              className="gres-select"
-              value={res.type ?? 'Interno'}
-              onChange={e => onChange({ type: e.target.value })}
-            >
-              {RES_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+            <span className="gres-field-label">Tipo</span>
+            <span style={{ fontSize: 12 }}>{res.type ?? '—'}</span>
           </div>
           <div className="gres-field">
-            <label className="gres-field-label">% Aloc.</label>
-            <input
-              className="gres-input"
-              type="number"
-              min={0}
-              max={200}
-              value={res.allocation_pct ?? 0}
-              onChange={e => onChange({ allocation_pct: parseFloat(e.target.value) || 0 })}
-              style={isOverallocated ? { borderColor: 'var(--red)', background: '#fff5f5' } : {}}
-            />
+            <span className="gres-field-label">% Aloc.</span>
+            <span style={{ fontSize: 12, color: isOverallocated ? 'var(--red)' : undefined, fontWeight: isOverallocated ? 700 : undefined }}>
+              {res.allocation_pct ?? 0}%
+            </span>
           </div>
           <div className="gres-field">
-            <label className="gres-field-label">Estado</label>
-            <select
-              className="gres-select"
-              value={res.status ?? 'Activo'}
-              onChange={e => onChange({ status: e.target.value })}
-            >
-              {RES_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <span className="gres-field-label">Estado</span>
+            <Badge variant={status === 'Activo' ? 'green' : 'grey'}>{status}</Badge>
           </div>
           <div className="gres-card-actions">
+            <button className="gres-icon-btn" onClick={onEdit} title="Editar" style={{ fontSize: 14 }}>✎</button>
             <button className="gres-icon-btn" onClick={onDuplicate} title="Duplicar">⧉</button>
             <button className="gres-icon-btn danger" onClick={onDelete} title="Eliminar">✕</button>
           </div>
         </div>
 
         {/* Detail row */}
-        <div className={`gres-card-detail${res.type === 'Externo' ? ' gres-card-detail--contract' : ''}`}>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: 8 }}>
           <div className="gres-field">
-            <label className="gres-field-label">Unidade Org.</label>
-            <input
-              className="gres-input"
-              list={unitsDlId}
-              value={res.org_unit ?? ''}
-              placeholder="Unidade"
-              onChange={e => onChange({ org_unit: e.target.value || null })}
-            />
+            <span className="gres-field-label">Unidade Org.</span>
+            <span style={{ fontSize: 12 }}>{res.org_unit ?? '—'}</span>
           </div>
           <div className="gres-field">
-            <label className="gres-field-label">Custo/dia (€)</label>
-            <input
-              className="gres-input"
-              type="number"
-              min={0}
-              value={res.daily_cost ?? ''}
-              placeholder="0"
-              onChange={e => onChange({ daily_cost: parseFloat(e.target.value) || null })}
-            />
+            <span className="gres-field-label">Custo/dia</span>
+            <span style={{ fontSize: 12 }}>{res.daily_cost != null ? fmtEur(res.daily_cost) : '—'}</span>
           </div>
           <div className="gres-field">
-            <label className="gres-field-label">Data Início</label>
-            <input
-              className={`gres-input${dateErr ? ' gres-input--err' : ''}`}
-              type="date"
-              value={res.start_date ?? ''}
-              onChange={e => onChange({ start_date: e.target.value || null })}
-            />
+            <span className="gres-field-label">Período</span>
+            <span style={{ fontSize: 12 }}>{period}</span>
           </div>
-          <div className="gres-field">
-            <label className="gres-field-label">Data Fim</label>
-            <input
-              className={`gres-input${dateErr ? ' gres-input--err' : ''}`}
-              type="date"
-              value={res.end_date ?? ''}
-              onChange={e => onChange({ end_date: e.target.value || null })}
-            />
-          </div>
-          {res.type === 'Externo' ? (
+          {res.type === 'Externo' && (
             <div className="gres-field">
-              <label className="gres-field-label">Contrato</label>
-              <select
-                className="gres-select"
-                value={res.contract_id ?? ''}
-                onChange={e => onChange({ contract_id: e.target.value || null })}
-              >
-                <option value="">— sem contrato —</option>
-                {contracts.map(c => (
-                  <option key={c.id} value={c.id}>{c.supplier}</option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <div className="gres-field">
-              <label className="gres-field-label">Tipo</label>
-              <span style={{ fontSize: 11, color: 'var(--text3)', paddingTop: 4 }}>Interno</span>
+              <span className="gres-field-label">Contrato</span>
+              <span style={{ fontSize: 12 }}>{linkedContract?.supplier ?? '—'}</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Footer: cost hint + inactive warning */}
-      {(cost > 0 || isExpired) && (
+      {(cost > 0 || isExpired || dateErr) && (
         <div className="gres-card-footer">
           {cost > 0 && (
             <span className="gres-cost-hint">
@@ -304,9 +218,129 @@ function ResourceCard({
               {` (${monthsBetween(res.start_date, res.end_date)} meses × ${workDays} dias/mês)`}
             </span>
           )}
-          {isExpired && (
-            <span className="gres-inactive-hint">⚠ Data fim passada — considere marcar como Inactivo</span>
+          {isExpired && <span className="gres-inactive-hint">⚠ Data fim passada — considere marcar como Inactivo</span>}
+          {dateErr && <span className="gres-inactive-hint">⚠ Data fim anterior a data início</span>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── ResourceModalBody ──────────────────────────────────────────────
+function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnits }: {
+  form: ResourceForm
+  setForm: (f: ResourceForm) => void
+  people: Person[]
+  contracts: FinContract[]
+  profiles: string[]
+  orgUnits: string[]
+}) {
+  const set = (patch: Partial<ResourceForm>) => setForm({ ...form, ...patch })
+
+  const handleNameChange = (val: string) => {
+    const match = people.find(p => p.name.toLowerCase().trim() === val.toLowerCase().trim())
+    if (match) {
+      set({
+        name:     val,
+        role:     form.role     || match.role     || '',
+        org_unit: form.org_unit || match.org_unit || '',
+        type:     form.type !== 'Interno' ? form.type : (match.type || 'Interno'),
+      })
+    } else {
+      set({ name: val })
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="gres-form-field">
+        <label className="gres-form-label">Nome</label>
+        <input className="gres-form-input" list="res-modal-people-dl" value={form.name}
+          onChange={e => handleNameChange(e.target.value)} placeholder="Nome do recurso" />
+        <datalist id="res-modal-people-dl">
+          {people.filter(p => p.active !== false).map(p => (
+            <option key={p.id} value={p.name} />
+          ))}
+        </datalist>
+      </div>
+      <div className="gres-form-row">
+        <div className="gres-form-field">
+          <label className="gres-form-label">Perfil</label>
+          {profiles.length > 0 ? (
+            <select className="gres-form-select" value={form.role}
+              onChange={e => set({ role: e.target.value })}>
+              <option value="">— perfil —</option>
+              {profiles.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          ) : (
+            <input className="gres-form-input" value={form.role}
+              onChange={e => set({ role: e.target.value })} placeholder="Perfil" />
           )}
+        </div>
+        <div className="gres-form-field">
+          <label className="gres-form-label">Unidade Org.</label>
+          {orgUnits.length > 0 ? (
+            <select className="gres-form-select" value={form.org_unit}
+              onChange={e => set({ org_unit: e.target.value })}>
+              <option value="">— unidade —</option>
+              {orgUnits.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          ) : (
+            <input className="gres-form-input" value={form.org_unit}
+              onChange={e => set({ org_unit: e.target.value })} placeholder="Unidade Org." />
+          )}
+        </div>
+      </div>
+      <div className="gres-form-row">
+        <div className="gres-form-field">
+          <label className="gres-form-label">Tipo</label>
+          <select className="gres-form-select" value={form.type}
+            onChange={e => set({ type: e.target.value })}>
+            {RES_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div className="gres-form-field">
+          <label className="gres-form-label">% Alocação</label>
+          <input className="gres-form-input" type="number" min={0} max={200}
+            value={form.allocation_pct}
+            onChange={e => set({ allocation_pct: e.target.value })} />
+        </div>
+      </div>
+      <div className="gres-form-row">
+        <div className="gres-form-field">
+          <label className="gres-form-label">Custo/Dia (€)</label>
+          <input className="gres-form-input" type="number" min={0}
+            value={form.daily_cost}
+            onChange={e => set({ daily_cost: e.target.value })} placeholder="0" />
+        </div>
+        <div className="gres-form-field">
+          <label className="gres-form-label">Estado</label>
+          <select className="gres-form-select" value={form.status}
+            onChange={e => set({ status: e.target.value })}>
+            {RES_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="gres-form-row">
+        <div className="gres-form-field">
+          <label className="gres-form-label">Data Início</label>
+          <input className="gres-form-input" type="date" value={form.start_date}
+            onChange={e => set({ start_date: e.target.value })} />
+        </div>
+        <div className="gres-form-field">
+          <label className="gres-form-label">Data Fim</label>
+          <input className="gres-form-input" type="date" value={form.end_date}
+            onChange={e => set({ end_date: e.target.value })} />
+        </div>
+      </div>
+      {form.type === 'Externo' && (
+        <div className="gres-form-field">
+          <label className="gres-form-label">Contrato</label>
+          <select className="gres-form-select" value={form.contract_id}
+            onChange={e => set({ contract_id: e.target.value })}>
+            <option value="">— sem contrato —</option>
+            {contracts.map(c => <option key={c.id} value={c.id}>{c.supplier}</option>)}
+          </select>
         </div>
       )}
     </div>
@@ -477,15 +511,15 @@ export default function GestaoRecursos() {
   useEffect(() => {
     supabase.from('app_config')
       .select('config_key, data')
-      .in('config_key', ['res_perfis', 'res_unidades'])
+      .in('config_key', ['resource_profiles', 'org_units'])
       .then(({ data }) => {
         if (!data) return
         for (const row of data) {
           const vals = (row.data as Record<string, unknown>).values
           if (!Array.isArray(vals)) continue
           const strs = (vals as unknown[]).filter(v => typeof v === 'string') as string[]
-          if (row.config_key === 'res_perfis'   && strs.length > 0) setProfiles(strs)
-          if (row.config_key === 'res_unidades' && strs.length > 0) setOrgUnits(strs)
+          if (row.config_key === 'resource_profiles' && strs.length > 0) setProfiles(strs)
+          if (row.config_key === 'org_units'         && strs.length > 0) setOrgUnits(strs)
         }
       })
   }, [])
@@ -514,16 +548,79 @@ export default function GestaoRecursos() {
     setDraft(d => d.map(r => r.id === id ? { ...r, ...patch } : r))
   }, [])
 
-  const addResource = useCallback(() => {
+  // ── Resource modal ───────────────────────────────────────
+  const [resourceModal, setResourceModal] = useState<ResourceForm | null>(null)
+  const [resModalErr,   setResModalErr]   = useState<string | null>(null)
+
+  const openNewResource = useCallback(() => {
     if (!selectedPlan) return
-    const id = newId()
-    setDraft(d => [...d, {
-      id, pds_id: selectedPlan.key, app_id: newAppId(), program_id: selectedPlan.program_id,
-      name: '', org_unit: null, role: null, type: 'Interno', daily_cost: null,
-      id2: selectedPlan.id2, start_date: null, end_date: null,
-      allocation_pct: 100, contract_id: null, status: 'Activo', sort_order: null,
-    }])
+    setResModalErr(null)
+    setResourceModal({
+      id: null, name: '', role: '', org_unit: '', type: 'Interno',
+      allocation_pct: '100', daily_cost: '', start_date: '', end_date: '',
+      status: 'Activo', contract_id: '',
+    })
   }, [selectedPlan])
+
+  const openEditResource = useCallback((id: string) => {
+    const r = draft.find(x => x.id === id)
+    if (!r) return
+    setResModalErr(null)
+    setResourceModal({
+      id: r.id,
+      name: r.name ?? '',
+      role: r.role ?? '',
+      org_unit: r.org_unit ?? '',
+      type: r.type ?? 'Interno',
+      allocation_pct: String(r.allocation_pct ?? 100),
+      daily_cost: r.daily_cost != null ? String(r.daily_cost) : '',
+      start_date: r.start_date ?? '',
+      end_date: r.end_date ?? '',
+      status: r.status ?? 'Activo',
+      contract_id: r.contract_id ?? '',
+    })
+  }, [draft])
+
+  const confirmResource = useCallback(() => {
+    if (!resourceModal) return
+    const f = resourceModal
+    const allocPct = parseFloat(f.allocation_pct)
+    if (!f.name.trim()) { setResModalErr('Nome é obrigatório.'); return }
+    if (isNaN(allocPct) || allocPct < 0) { setResModalErr('% Alocação inválida.'); return }
+    const patch: Partial<DraftResource> = {
+      name: f.name.trim(),
+      role: f.role || null,
+      org_unit: f.org_unit || null,
+      type: f.type || 'Interno',
+      allocation_pct: allocPct,
+      daily_cost: f.daily_cost !== '' ? parseFloat(f.daily_cost) : null,
+      start_date: f.start_date || null,
+      end_date: f.end_date || null,
+      status: f.status || 'Activo',
+      contract_id: f.contract_id || null,
+    }
+    if (f.id) {
+      updateResource(f.id, patch)
+    } else {
+      if (!selectedPlan) return
+      const id = newId()
+      setDraft(d => [...d, {
+        id, pds_id: selectedPlan.key, app_id: newAppId(), program_id: selectedPlan.program_id,
+        name: patch.name!, org_unit: patch.org_unit ?? null, role: patch.role ?? null,
+        type: patch.type!, daily_cost: patch.daily_cost ?? null, id2: selectedPlan.id2,
+        start_date: patch.start_date ?? null, end_date: patch.end_date ?? null,
+        allocation_pct: patch.allocation_pct!, contract_id: patch.contract_id ?? null,
+        status: patch.status!, sort_order: null,
+      }])
+    }
+    setResourceModal(null)
+  }, [resourceModal, selectedPlan, updateResource, setDraft])
+
+  const deleteFromModal = useCallback(() => {
+    if (!resourceModal?.id) return
+    deleteResource(resourceModal.id)
+    setResourceModal(null)
+  }, [resourceModal, deleteResource])
 
   const deleteResource = useCallback((id: string) => {
     setDraft(d => d.filter(r => r.id !== id))
@@ -656,11 +753,6 @@ export default function GestaoRecursos() {
     }
   }, [saving, selectedPlan, isDirty, draft, deleted, dbResources, refetch])
 
-  // ── Scroll to card ───────────────────────────────────────────
-  const scrollToCard = (id: string) => {
-    document.getElementById(`res-card-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
-
   // ── Render ───────────────────────────────────────────────────
   const noProgram = !programId
   const noPlans   = !noProgram && !planosLoading && planOptions.length === 0
@@ -764,7 +856,7 @@ export default function GestaoRecursos() {
             <SummaryTable
               resources={draft}
               workDays={workDays}
-              onRowClick={scrollToCard}
+              onRowClick={openEditResource}
             />
           )}
 
@@ -772,7 +864,7 @@ export default function GestaoRecursos() {
           <div className="gres-cards-section">
             <div className="gres-cards-toolbar">
               <span className="gres-cards-title">Recursos Alocados ({draft.length})</span>
-              <button className="gres-btn gres-btn-primary" onClick={addResource}>+ Adicionar Recurso</button>
+              <button className="gres-btn gres-btn-primary" onClick={openNewResource}>+ Adicionar Recurso</button>
             </div>
 
             {draft.length === 0 ? (
@@ -784,12 +876,9 @@ export default function GestaoRecursos() {
                 <ResourceCard
                   key={res.id}
                   res={res}
-                  people={people}
                   contracts={planContracts}
-                  profiles={profiles}
-                  orgUnits={orgUnits}
                   workDays={workDays}
-                  onChange={patch => updateResource(res.id, patch)}
+                  onEdit={() => openEditResource(res.id)}
                   onDelete={() => deleteResource(res.id)}
                   onDuplicate={() => duplicateResource(res.id)}
                 />
@@ -809,6 +898,37 @@ export default function GestaoRecursos() {
           onClose={() => setShowImport(false)}
         />
       )}
+
+      {/* Resource modal */}
+      <Modal
+        isOpen={!!resourceModal}
+        onClose={() => setResourceModal(null)}
+        title={resourceModal?.id ? 'Editar Recurso' : 'Novo Recurso'}
+        width={500}
+        footer={
+          <>
+            {resourceModal?.id && (
+              <button className="gres-btn gres-btn-danger" onClick={deleteFromModal} style={{ marginRight: 'auto' }}>
+                Eliminar
+              </button>
+            )}
+            <button className="gres-btn" onClick={() => setResourceModal(null)}>Cancelar</button>
+            <button className="gres-btn gres-btn-save" onClick={confirmResource}>Guardar</button>
+            {resModalErr && <span className="gres-save-err">{resModalErr}</span>}
+          </>
+        }
+      >
+        {resourceModal && (
+          <ResourceModalBody
+            form={resourceModal}
+            setForm={setResourceModal}
+            people={people}
+            contracts={planContracts}
+            profiles={profiles}
+            orgUnits={orgUnits}
+          />
+        )}
+      </Modal>
     </div>
   )
 }
