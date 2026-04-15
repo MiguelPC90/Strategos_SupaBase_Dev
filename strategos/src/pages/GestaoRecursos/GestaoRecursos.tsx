@@ -616,16 +616,16 @@ export default function GestaoRecursos() {
     setResourceModal(null)
   }, [resourceModal, selectedPlan, updateResource, setDraft])
 
+  const deleteResource = useCallback((id: string) => {
+    setDraft(d => d.filter(r => r.id !== id))
+    if (!isNew(id)) setDeleted(prev => new Set([...prev, id]))
+  }, [])
+
   const deleteFromModal = useCallback(() => {
     if (!resourceModal?.id) return
     deleteResource(resourceModal.id)
     setResourceModal(null)
   }, [resourceModal, deleteResource])
-
-  const deleteResource = useCallback((id: string) => {
-    setDraft(d => d.filter(r => r.id !== id))
-    if (!isNew(id)) setDeleted(prev => new Set([...prev, id]))
-  }, [])
 
   const duplicateResource = useCallback((id: string) => {
     setDraft(d => {
