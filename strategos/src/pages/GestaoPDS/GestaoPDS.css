@@ -136,7 +136,6 @@
 
   /* ── Item ───────────────────────────────────────────────────── */
   .pds-item {
-    position: relative;
     width: 100%;
     box-sizing: border-box;
     border: 1px solid var(--border);
@@ -191,8 +190,8 @@
   .pds-item-row {
     display: flex;
     align-items: flex-start;
-    gap: 6px;
-    padding: 12px 36px 12px 14px;
+    gap: 8px;
+    padding: 12px 14px;
   }
 
   .pds-move-btns {
@@ -278,9 +277,8 @@
 
   /* ── Remove button ──────────────────────────────────────────── */
   .pds-remove-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
+    flex-shrink: 0;
+    align-self: flex-start;
     width: 20px;
     height: 20px;
     border: none;
