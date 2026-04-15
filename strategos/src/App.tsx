@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import Layout from './components/Layout/Layout'
 import Login from './pages/Login/Login'
 import Dashboard from './pages/Dashboard/Dashboard'
@@ -18,16 +18,70 @@ import { useAuth } from './hooks/useAuth'
 import { usePermissions } from './hooks/usePermissions'
 import type { PageKey } from './types/index'
 
+const ALL_PAGES: PageKey[] = [
+  'dashboard', 'actividades', 'gantt', 'evolucao', 'ponto-situacao',
+  'exec-financeira', 'recursos', 'gestao-iniciativas', 'gestao-pds',
+  'gestao-riscos', 'gestao-financeira', 'gestao-recursos',
+]
+
 function PageGuard({ page, children }: { page: PageKey; children: React.ReactNode }) {
   const { hasAccess, loading } = usePermissions()
+  const navigate = useNavigate()
+
   if (loading) return null
+
   if (!hasAccess(page)) {
+    const firstAccessible = ALL_PAGES.find(p => p !== page && hasAccess(p))
+    if (firstAccessible) {
+      return <Navigate to={`/${firstAccessible}`} replace />
+    }
+    // No pages accessible at all — show styled denial card
     return (
-      <div className="page-placeholder">
-        <p>Sem permissão para aceder a esta página.</p>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        minHeight: 320,
+      }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '0.75rem',
+          textAlign: 'center',
+          maxWidth: 360,
+          padding: '2rem',
+        }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--navy)' }}>Sem permissão</div>
+          <div style={{ fontSize: 14, color: 'var(--text3)', lineHeight: 1.5 }}>
+            Não tens acesso a esta página. Contacta o administrador.
+          </div>
+          <button
+            onClick={() => navigate('/dashboard')}
+            style={{
+              marginTop: '0.5rem',
+              padding: '0.5rem 1.25rem',
+              background: 'var(--navy)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 'var(--r)',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Ir para o Dashboard
+          </button>
+        </div>
       </div>
     )
   }
+
   return <>{children}</>
 }
 
