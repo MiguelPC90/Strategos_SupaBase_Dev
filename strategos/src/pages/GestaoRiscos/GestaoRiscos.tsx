@@ -84,11 +84,12 @@ function toForm(r: Risk): RiskForm {
 
 // ── Panel ──────────────────────────────────────────────────────
 interface PanelProps {
-  form:     RiskForm
-  onChange: (f: RiskForm) => void
+  form:       RiskForm
+  onChange:   (f: RiskForm) => void
+  matrixSize: number
 }
 
-function Panel({ form, onChange }: PanelProps) {
+function Panel({ form, onChange, matrixSize }: PanelProps) {
   const set =
     (k: keyof RiskForm) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -113,13 +114,13 @@ function Panel({ form, onChange }: PanelProps) {
         <div className="gr-field">
           <span className="gr-field-label">Impacto *</span>
           <select className="gr-field-select" value={form.impact} onChange={set('impact')}>
-            {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+            {Array.from({ length: matrixSize }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
         <div className="gr-field">
           <span className="gr-field-label">Probabilidade *</span>
           <select className="gr-field-select" value={form.probability} onChange={set('probability')}>
-            {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+            {Array.from({ length: matrixSize }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
       </div>
@@ -223,7 +224,17 @@ function RowMenu({ riskId, openId, onOpen, onEdit, onDuplicate, onDelete }: RowM
 export default function GestaoRiscos() {
   const { filters }  = useFilters()
   const { programs } = usePrograms()
-  const [selProgId, setSelProgId] = useState<string>('')
+  const [selProgId,   setSelProgId]   = useState<string>('')
+  const [matrixSize,  setMatrixSize]  = useState(5)
+
+  // Fetch risk matrix size from app_config
+  useEffect(() => {
+    supabase.from('app_config').select('data').eq('config_key', 'risk_matrix_size').limit(1)
+      .then(({ data }) => {
+        const parsed = parseInt(data?.[0]?.data ?? '5')
+        if (!isNaN(parsed) && parsed > 0) setMatrixSize(parsed)
+      })
+  }, [])
 
   // Initialise from global filter or first available program (once)
   useEffect(() => {
@@ -565,7 +576,7 @@ export default function GestaoRiscos() {
             </>
           }
         >
-          <Panel form={panelForm} onChange={f => setPanelForm(f)} />
+          <Panel form={panelForm} onChange={f => setPanelForm(f)} matrixSize={matrixSize} />
         </Modal>
       )}
     </div>
