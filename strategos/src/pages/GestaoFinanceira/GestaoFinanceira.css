@@ -471,4 +471,49 @@
     grid-template-columns: 1fr 1fr;
     gap: 10px;
   }
+
+  /* ── Invoice row ⋯ menu ─────────────────────────────────────── */
+  .gf-menu-btn {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 15px;
+    color: var(--text2);
+    padding: 0;
+    font-family: inherit;
+    letter-spacing: 1px;
+  }
+  .gf-menu-btn:hover { background: var(--bg3); }
+
+  .gf-inv-menu {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    min-width: 140px;
+    padding: 4px 0;
+  }
+
+  .gf-inv-menu-item {
+    display: block;
+    width: 100%;
+    padding: 7px 14px;
+    border: none;
+    background: none;
+    text-align: left;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .gf-inv-menu-item:hover { background: var(--bg2); }
+  .gf-inv-menu-item.danger { color: var(--red); }
+  .gf-inv-menu-item.danger:hover { background: #fff0f0; }
 }

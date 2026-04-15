@@ -1,5 +1,6 @@
 import './GestaoFinanceira.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -537,6 +538,60 @@ function InvoiceModalBody({ form, setForm, contracts, currencies, supplierFilter
   )
 }
 
+// ── ⋯ Invoice row menu ────────────────────────────────────────────
+const INV_MENU_H = 120 // 3 items × ~34px + 8px padding
+
+interface InvRowMenuProps {
+  invId: string
+  openId: string | null
+  onOpen: (id: string | null) => void
+  onEdit: () => void
+  onDuplicate: () => void
+  onDelete: () => void
+}
+
+function InvRowMenu({ invId, openId, onOpen, onEdit, onDuplicate, onDelete }: InvRowMenuProps) {
+  const open   = openId === invId
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!open && btnRef.current) {
+      const rect       = btnRef.current.getBoundingClientRect()
+      const right      = window.innerWidth - rect.right
+      const spaceBelow = window.innerHeight - rect.bottom
+      setPos(spaceBelow >= INV_MENU_H
+        ? { top: rect.bottom + 4, right }
+        : { bottom: window.innerHeight - rect.top + 4, right }
+      )
+    }
+    onOpen(open ? null : invId)
+  }
+
+  const menu = (
+    <div
+      className="gf-inv-menu"
+      style={{ position: 'fixed', zIndex: 300, ...(pos ?? {}) }}
+      onClick={e => e.stopPropagation()}
+    >
+      <button className="gf-inv-menu-item" onClick={() => { onOpen(null); onEdit() }}>Editar</button>
+      <button className="gf-inv-menu-item" onClick={() => { onOpen(null); onDuplicate() }}>Duplicar</button>
+      <button className="gf-inv-menu-item danger" onClick={() => {
+        onOpen(null)
+        if (window.confirm('Eliminar esta factura?')) onDelete()
+      }}>Eliminar</button>
+    </div>
+  )
+
+  return (
+    <>
+      <button ref={btnRef} className="gf-menu-btn" onClick={handleClick} title="Acções">⋯</button>
+      {open && pos !== null && createPortal(menu, document.body)}
+    </>
+  )
+}
+
 // ── InvoicesTab ────────────────────────────────────────────────────
 interface InvoicesTabProps {
   invoices: FinInvoice[]
@@ -557,6 +612,15 @@ const INV_STATUS_COLOR: Record<string, string> = {
 
 function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts, currencies }: InvoicesTabProps) {
   const [statusFilter, setStatusFilter] = useState('Todos')
+  const [openMenuId,   setOpenMenuId]   = useState<string | null>(null)
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!openMenuId) return
+    const handler = () => setOpenMenuId(null)
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [openMenuId])
 
   const visible = useMemo(() =>
     statusFilter === 'Todos' ? invoices : invoices.filter(i => i.status === statusFilter),
@@ -598,7 +662,7 @@ function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts
                 <th style={{ width: 90 }}>Vencimento</th>
                 <th style={{ width: 90 }}>Pagamento</th>
                 <th style={{ width: 80 }}>Estado</th>
-                <th style={{ width: 72 }} />
+                <th style={{ width: 40 }} />
               </tr>
             </thead>
             <tbody>
@@ -625,10 +689,15 @@ function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts
                         {inv.status}
                       </span>
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <button className="gf-icon-btn" onClick={() => onEdit(inv)} title="Editar" style={{ fontSize: 14 }}>✎</button>
-                      <button className="gf-icon-btn" onClick={() => onDuplicate(inv.id)} title="Duplicar" style={{ color: 'var(--text2)', fontSize: 14 }}>⧉</button>
-                      <button className="gf-icon-btn" onClick={() => onDelete(inv.id)} title="Remover">✕</button>
+                    <td style={{ textAlign: 'center' }}>
+                      <InvRowMenu
+                        invId={inv.id}
+                        openId={openMenuId}
+                        onOpen={setOpenMenuId}
+                        onEdit={() => onEdit(inv)}
+                        onDuplicate={() => onDuplicate(inv.id)}
+                        onDelete={() => onDelete(inv.id)}
+                      />
                     </td>
                   </tr>
                 )
