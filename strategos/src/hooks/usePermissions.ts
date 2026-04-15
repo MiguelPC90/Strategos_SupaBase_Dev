@@ -1,111 +1,71 @@
-import { useEffect, useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { useCallback } from 'react'
 import { useAuth } from './useAuth'
 import { useRole } from './useRole'
 import type { UserPermission, PageKey } from '../types/index'
 
-// Pages accessible to viewers (read-only, no edit)
-const VIEWER_PAGES: PageKey[] = [
-  'dashboard',
-  'actividades',
-  'gantt',
-  'evolucao',
-  'ponto-situacao',
-  'exec-financeira',
-  'recursos',
-]
-
 interface UsePermissionsResult {
   permissions: UserPermission[]
-  /** Returns true if the user can view the given page (optionally scoped to a program) */
+  /** Can the current user view/access this page (sidebar visibility + direct URL)? */
   hasAccess: (page: PageKey, programId?: string) => boolean
-  /** Returns true if the user can edit data on the given page (optionally scoped to a program) */
+  /** Can the current user mutate data on this page? */
   canEdit: (page: PageKey, programId?: string) => boolean
+  /** True while the role profile is still loading */
   loading: boolean
 }
 
+function isAllowed(level: string): boolean {
+  return level === 'view' || level === 'edit'
+}
+
 export function usePermissions(): UsePermissionsResult {
-  const { user } = useAuth()
-  const { role, isAdmin, isGestor, loading: roleLoading } = useRole()
-
-  const [permissions, setPermissions] = useState<UserPermission[]>([])
-  const [loading, setLoading]         = useState(true)
-
-  useEffect(() => {
-    if (!user || roleLoading) return
-    // Admins and gestors don't need per-row permission records
-    if (isAdmin || isGestor) {
-      setPermissions([])
-      setLoading(false)
-      return
-    }
-
-    let cancelled = false
-    setLoading(true)
-
-    supabase
-      .from('user_permissions')
-      .select('*')
-      .eq('user_id', user.id)
-      .then(({ data, error }) => {
-        if (cancelled) return
-        if (!error) setPermissions((data ?? []) as UserPermission[])
-        setLoading(false)
-      })
-
-    return () => { cancelled = true }
-  }, [user, roleLoading, isAdmin, isGestor])
-
-  const findPermission = useCallback(
-    (page: PageKey, programId?: string): UserPermission | undefined => {
-      // Most-specific match first: same page + same program
-      if (programId) {
-        const exact = permissions.find(
-          p => p.page === page && p.program_id === programId
-        )
-        if (exact) return exact
-      }
-      // Page-level permission (program_id null = applies to all programs)
-      return permissions.find(p => p.page === page && p.program_id === null)
-    },
-    [permissions]
-  )
+  // Permissions are fetched centrally in AuthContext
+  const { permissions } = useAuth()
+  const { role, isAdmin, loading: roleLoading } = useRole()
 
   const hasAccess = useCallback(
     (page: PageKey, programId?: string): boolean => {
+      // Admin bypasses all checks
       if (isAdmin) return true
+      // No permission rows at all → no restrictions configured
+      if (permissions.length === 0) return true
 
-      if (isGestor) return true
+      const pagePerms = permissions.filter(p => p.page === page)
+      // Permissions exist globally but none granted for this page → blocked
+      if (pagePerms.length === 0) return false
 
-      // viewer fallback — no specific row required
-      const perm = findPermission(page, programId)
-      if (perm) return perm.access_level !== 'none'
+      if (programId) {
+        // Most specific: page + program match
+        const specific = pagePerms.find(p => p.program_id === programId)
+        if (specific) return isAllowed(specific.access_level)
+        // Fallback: page-level row (program_id = null covers all programs)
+        const pageLevel = pagePerms.find(p => p.program_id === null)
+        if (pageLevel) return isAllowed(pageLevel.access_level)
+      }
 
-      // Default viewer access: view-only pages only
-      if (role === 'viewer') return VIEWER_PAGES.includes(page)
-
-      return false
+      // Sidebar / no-programId check: allow if any row grants access
+      return pagePerms.some(p => isAllowed(p.access_level))
     },
-    [isAdmin, isGestor, role, findPermission]
+    [isAdmin, permissions],
   )
 
   const canEdit = useCallback(
     (page: PageKey, programId?: string): boolean => {
       if (isAdmin) return true
-      if (isGestor) return true
-
-      const perm = findPermission(page, programId)
-      if (perm) return perm.access_level === 'edit'
-
-      return false
+      if (role === 'viewer') return false
+      // editor:
+      if (permissions.length === 0) return true
+      const pagePerms = permissions.filter(p => p.page === page)
+      if (pagePerms.length === 0) return true
+      if (programId) {
+        const specific = pagePerms.find(p => p.program_id === programId)
+        if (specific) return specific.access_level === 'edit'
+        const pageLevel = pagePerms.find(p => p.program_id === null)
+        if (pageLevel) return pageLevel.access_level === 'edit'
+      }
+      return pagePerms.some(p => p.access_level === 'edit')
     },
-    [isAdmin, isGestor, findPermission]
+    [isAdmin, role, permissions],
   )
 
-  return {
-    permissions,
-    hasAccess,
-    canEdit,
-    loading: loading || roleLoading,
-  }
+  return { permissions, hasAccess, canEdit, loading: roleLoading }
 }

@@ -5,9 +5,11 @@ import FilterBar from '../FilterBar/FilterBar'
 import Badge from '../Badge/Badge'
 import { useAuth } from '../../hooks/useAuth'
 import { useRole } from '../../hooks/useRole'
+import { usePermissions } from '../../hooks/usePermissions'
 import { useFilters } from '../../context/FilterContext'
 import { usePrograms } from '../../hooks/usePrograms'
 import { supabase } from '../../lib/supabase'
+import type { PageKey } from '../../types/index'
 
 interface NavItemConfig {
   to: string
@@ -193,6 +195,7 @@ const ROLE_LABEL: Record<string, string> = {
 export default function Layout() {
   const { signOut, user } = useAuth()
   const { profile, role, isAdmin } = useRole()
+  const { hasAccess } = usePermissions()
 
   const { filters, setFilter, resetFilters } = useFilters()
   const { programs } = usePrograms()
@@ -290,13 +293,13 @@ export default function Layout() {
       <nav className="sidebar collapsed">
         <div className="sidebar-nav">
           <span className="sidebar-group-lbl">Visualização</span>
-          {NAV_VIEW.map(item => (
+          {NAV_VIEW.filter(item => hasAccess(item.to.slice(1) as PageKey)).map(item => (
             <NavItem key={item.to} {...item} />
           ))}
 
           <div className="sidebar-sep" />
           <span className="sidebar-group-lbl">Gestão</span>
-          {NAV_MANAGE.map(item => (
+          {NAV_MANAGE.filter(item => hasAccess(item.to.slice(1) as PageKey)).map(item => (
             <NavItem key={item.to} {...item} isManage />
           ))}
         </div>
