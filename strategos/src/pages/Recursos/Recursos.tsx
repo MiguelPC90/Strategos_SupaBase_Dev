@@ -8,13 +8,14 @@ import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
 import { usePeople } from '../../hooks/usePeople'
 import { useFilters } from '../../context/FilterContext'
+import { supabase } from '../../lib/supabase'
 import type { FteResource, Person } from '../../types/index'
 
 const WORKING_DAYS = 22
 
 // ── Helpers ────────────────────────────────────────────────────
-function fmtEur(v: number): string {
-  return v.toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €'
+function fmtEur(v: number, sym = '€'): string {
+  return v.toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' ' + sym
 }
 
 function fmtMo(ym: string): string {
@@ -63,9 +64,10 @@ interface PlanViewProps {
   planoNames: Map<string, string>
   expanded: Set<string>
   onToggle: (key: string) => void
+  sym: string
 }
 
-function PlanView({ resources, planoNames, expanded, onToggle }: PlanViewProps) {
+function PlanView({ resources, planoNames, expanded, onToggle, sym }: PlanViewProps) {
   const groups = useMemo(() => {
     const map = new Map<string, { label: string; items: FteResource[] }>()
     for (const r of resources) {
@@ -109,7 +111,7 @@ function PlanView({ resources, planoNames, expanded, onToggle }: PlanViewProps) 
               </td>
               <td className="res-td-c">{names.size}</td>
               <td className="res-td-c">{fte.toFixed(1)}</td>
-              <td className="res-td-r">{fmtEur(cost)}</td>
+              <td className="res-td-r">{fmtEur(cost, sym)}</td>
               <td className="res-td-c">{intern}</td>
               <td className="res-td-c">{ext}</td>
             </tr>,
@@ -137,7 +139,7 @@ function PlanView({ resources, planoNames, expanded, onToggle }: PlanViewProps) 
                           <td>{r.role ?? '—'}</td>
                           <td><Badge variant={typeVar(r.type)}>{typeLbl(r.type)}</Badge></td>
                           <td className="res-td-c">{r.allocation_pct ?? 0}%</td>
-                          <td className="res-td-r">{r.daily_cost ? fmtEur(r.daily_cost) : '—'}</td>
+                          <td className="res-td-r">{r.daily_cost ? fmtEur(r.daily_cost, sym) : '—'}</td>
                           <td>
                             {r.start_date?.substring(0, 7) ?? '—'}
                             {' — '}
@@ -239,9 +241,10 @@ interface ResourcePanelProps {
   planoNames: Map<string, string>
   person: Person | undefined
   onClose: () => void
+  sym: string
 }
 
-function ResourcePanel({ name, resources, planoNames, person, onClose }: ResourcePanelProps) {
+function ResourcePanel({ name, resources, planoNames, person, onClose, sym }: ResourcePanelProps) {
   const myResources = useMemo(() => resources.filter(r => r.name === name), [resources, name])
   const first       = myResources[0]
 
@@ -275,7 +278,7 @@ function ResourcePanel({ name, resources, planoNames, person, onClose }: Resourc
               <Badge variant={typeVar(first.type)}>{typeLbl(first.type)}</Badge>
             </div>
           )}
-          {first?.daily_cost && <div className="res-info-row"><span>Custo/dia</span>{fmtEur(first.daily_cost)}</div>}
+          {first?.daily_cost && <div className="res-info-row"><span>Custo/dia</span>{fmtEur(first.daily_cost, sym)}</div>}
           {person?.email     && <div className="res-info-row"><span>Email</span>{person.email}</div>}
         </div>
 
@@ -310,6 +313,7 @@ export default function Recursos() {
   const [planKey_,       setPlanKey_]       = useState('')
   const [expandedPlans,  setExpandedPlans]  = useState(new Set<string>())
   const [selectedRes,    setSelectedRes]    = useState<string | null>(null)
+  const [currSymbol,     setCurrSymbol]     = useState('€')
 
   const [periodStart, setPeriodStart] = useState(() => `${new Date().getFullYear()}-01`)
   const [periodEnd,   setPeriodEnd]   = useState(() => `${new Date().getFullYear()}-12`)
@@ -325,6 +329,12 @@ export default function Recursos() {
 
   // Reset plan when program changes
   useEffect(() => { setPlanKey_('') }, [selProgId])
+
+  // Fetch default currency symbol
+  useEffect(() => {
+    supabase.from('currencies').select('symbol').eq('is_default', true).limit(1)
+      .then(({ data }) => { if (data?.[0]?.symbol) setCurrSymbol(data[0].symbol) })
+  }, [])
 
   const programId = selProgId ?? undefined
 
@@ -456,7 +466,7 @@ export default function Recursos() {
           <div className="res-kpi-row">
             <KpiCard label="Recursos únicos"     value={uniqueNames.size} color="navy" />
             <KpiCard label="FTE médio"            value={kpiFteMed.toFixed(2)} subtitle="por recurso" color="blue" />
-            <KpiCard label="Custo mensal estim."  value={fmtEur(kpiCusto)} color="green" />
+            <KpiCard label="Custo mensal estim."  value={fmtEur(kpiCusto, currSymbol)} color="green" />
             <KpiCard
               label="Internos / Externos"
               value={`${kpiInternos} / ${kpiExternos}`}
@@ -491,6 +501,7 @@ export default function Recursos() {
                 planoNames={planoNames}
                 expanded={expandedPlans}
                 onToggle={togglePlan}
+                sym={currSymbol}
               />
             ) : (
               <ResourceHeatmap
@@ -511,6 +522,7 @@ export default function Recursos() {
           planoNames={planoNames}
           person={selectedPerson}
           onClose={() => setSelectedRes(null)}
+          sym={currSymbol}
         />
       )}
     </div>

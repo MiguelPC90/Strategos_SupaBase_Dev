@@ -11,6 +11,7 @@ import { useFinancials } from '../../hooks/useFinancials'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
+import { supabase } from '../../lib/supabase'
 
 // ── Helpers ────────────────────────────────────────────────────
 function sumValuesByYear(values: Record<string, number>, year: string): number {
@@ -20,8 +21,8 @@ function sumValuesByYear(values: Record<string, number>, year: string): number {
     .reduce((s, [, v]) => s + v, 0)
 }
 
-function fmtEur(val: number): string {
-  return val.toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €'
+function fmtEur(val: number, sym = '€'): string {
+  return val.toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' ' + sym
 }
 
 function fmtPct(val: number): string {
@@ -38,7 +39,7 @@ function fmtMonth(ym: string): string {
 // ── CAPEX / OPEX donut ─────────────────────────────────────────
 interface PieEntry { name: string; value: number; fill: string }
 
-function CapexOpexChart({ data }: { data: PieEntry[] }) {
+function CapexOpexChart({ data, sym }: { data: PieEntry[]; sym: string }) {
   const total = data.reduce((s, d) => s + d.value, 0)
   if (total === 0) return <p className="ef-empty">Sem dados orçamentais.</p>
   return (
@@ -48,7 +49,7 @@ function CapexOpexChart({ data }: { data: PieEntry[] }) {
           {data.map((d, i) => <Cell key={i} fill={d.fill} />)}
         </Pie>
         <Tooltip
-          formatter={(v) => fmtEur(v as number)}
+          formatter={(v) => fmtEur(v as number, sym)}
           contentStyle={{ fontSize: 12, border: '1px solid var(--border2)' }}
         />
         <Legend
@@ -71,7 +72,7 @@ interface MonthBar {
   'Por facturar': number
 }
 
-function MonthlyChart({ data }: { data: MonthBar[] }) {
+function MonthlyChart({ data, sym }: { data: MonthBar[]; sym: string }) {
   if (data.length === 0) return <p className="ef-empty">Sem facturas com datas.</p>
   return (
     <ResponsiveContainer width="100%" height={220}>
@@ -88,7 +89,7 @@ function MonthlyChart({ data }: { data: MonthBar[] }) {
           width={44}
         />
         <Tooltip
-          formatter={(v) => fmtEur(v as number)}
+          formatter={(v) => fmtEur(v as number, sym)}
           labelFormatter={(label: string) => fmtMonth(String(label))}
           contentStyle={{ fontSize: 12 }}
         />
@@ -119,6 +120,7 @@ export default function ExecucaoFinanceira() {
   const [planKey,     setPlanKey]     = useState('')
   const [capexFilter, setCapexFilter] = useState<CapexFilter>('all')
   const [yearFilter,  setYearFilter]  = useState('')
+  const [currSymbol,  setCurrSymbol]  = useState('€')
 
   // Initialize selProgId from global filter or first program
   useEffect(() => {
@@ -131,6 +133,12 @@ export default function ExecucaoFinanceira() {
 
   // Reset plan when program changes
   useEffect(() => { setPlanKey('') }, [selProgId])
+
+  // Fetch default currency symbol
+  useEffect(() => {
+    supabase.from('currencies').select('symbol').eq('is_default', true).limit(1)
+      .then(({ data }) => { if (data?.[0]?.symbol) setCurrSymbol(data[0].symbol) })
+  }, [])
 
   const programId = selProgId ?? undefined
 
@@ -198,6 +206,7 @@ export default function ExecucaoFinanceira() {
     [invs]
   )
   const kpiDesvio = kpiCompr - kpiOrc
+  const fmt = (v: number) => fmtEur(v, currSymbol)
 
   // ── CAPEX / OPEX pie (year-filtered) ─────────────────────────
   const pieData = useMemo<PieEntry[]>(() => [
@@ -324,18 +333,18 @@ export default function ExecucaoFinanceira() {
         <>
           {/* KPI row */}
           <div className="ef-kpi-row">
-            <KpiCard label="Orçamento total" value={fmtEur(kpiOrc)} color="navy" />
+            <KpiCard label="Orçamento total" value={fmt(kpiOrc)} color="navy" />
             <KpiCard
               label="Executado"
-              value={fmtEur(kpiExec)}
+              value={fmt(kpiExec)}
               subtitle={kpiOrc > 0 ? fmtPct(kpiExec / kpiOrc * 100) + ' do orçamento' : undefined}
               color="green"
             />
-            <KpiCard label="Comprometido" value={fmtEur(kpiCompr)} color="blue" />
-            <KpiCard label="Em pagamento" value={fmtEur(kpiEmPag)} color="amber" />
+            <KpiCard label="Comprometido" value={fmt(kpiCompr)} color="blue" />
+            <KpiCard label="Em pagamento" value={fmt(kpiEmPag)} color="amber" />
             <KpiCard
               label="Desvio"
-              value={fmtEur(Math.abs(kpiDesvio))}
+              value={fmt(Math.abs(kpiDesvio))}
               subtitle={kpiDesvio > 0 ? 'acima do orçamento' : kpiDesvio < 0 ? 'abaixo do orçamento' : 'em linha'}
               color={kpiDesvio > 0 ? 'red' : kpiDesvio < 0 ? 'green' : 'text'}
             />
@@ -344,10 +353,10 @@ export default function ExecucaoFinanceira() {
           {/* Charts row */}
           <div className="ef-charts-row">
             <Card title="Execução mensal">
-              <MonthlyChart data={monthlyData} />
+              <MonthlyChart data={monthlyData} sym={currSymbol} />
             </Card>
             <Card title="Execução por tipo">
-              <CapexOpexChart data={pieData} />
+              <CapexOpexChart data={pieData} sym={currSymbol} />
             </Card>
           </div>
 
@@ -370,11 +379,11 @@ export default function ExecucaoFinanceira() {
                   {catRows.map(r => (
                     <tr key={r.cat}>
                       <td>{r.cat}</td>
-                      <td className="ef-td-r">{fmtEur(r.orc)}</td>
-                      <td className="ef-td-r">{fmtEur(r.exec)}</td>
+                      <td className="ef-td-r">{fmt(r.orc)}</td>
+                      <td className="ef-td-r">{fmt(r.exec)}</td>
                       <td className="ef-td-c">{fmtPct(r.pct)}</td>
                       <td className={`ef-td-r ${r.desvio > 0 ? 'ef-red' : r.desvio < 0 ? 'ef-grn' : ''}`}>
-                        {r.desvio > 0 ? '+' : r.desvio < 0 ? '–' : ''}{fmtEur(Math.abs(r.desvio))}
+                        {r.desvio > 0 ? '+' : r.desvio < 0 ? '–' : ''}{fmt(Math.abs(r.desvio))}
                       </td>
                     </tr>
                   ))}
@@ -382,10 +391,10 @@ export default function ExecucaoFinanceira() {
                 <tfoot>
                   <tr className="ef-total">
                     <td>Total</td>
-                    <td className="ef-td-r">{fmtEur(catRows.reduce((s, r) => s + r.orc, 0))}</td>
-                    <td className="ef-td-r">{fmtEur(catRows.reduce((s, r) => s + r.exec, 0))}</td>
+                    <td className="ef-td-r">{fmt(catRows.reduce((s, r) => s + r.orc, 0))}</td>
+                    <td className="ef-td-r">{fmt(catRows.reduce((s, r) => s + r.exec, 0))}</td>
                     <td className="ef-td-c">{fmtPct(kpiOrc > 0 ? kpiExec / kpiOrc * 100 : 0)}</td>
-                    <td className="ef-td-r">{fmtEur(Math.abs(catRows.reduce((s, r) => s + r.desvio, 0)))}</td>
+                    <td className="ef-td-r">{fmt(Math.abs(catRows.reduce((s, r) => s + r.desvio, 0)))}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -413,8 +422,8 @@ export default function ExecucaoFinanceira() {
                       <tr key={c.id}>
                         <td>{c.supplier}</td>
                         <td>{c.category}</td>
-                        <td className="ef-td-r">{fmtEur(c.total_amount)}</td>
-                        <td className="ef-td-r">{fmtEur(fact)}</td>
+                        <td className="ef-td-r">{fmt(c.total_amount)}</td>
+                        <td className="ef-td-r">{fmt(fact)}</td>
                         <td className="ef-td-c">{fmtPct(pct)}</td>
                         <td><Badge variant={variant}>{label}</Badge></td>
                       </tr>
