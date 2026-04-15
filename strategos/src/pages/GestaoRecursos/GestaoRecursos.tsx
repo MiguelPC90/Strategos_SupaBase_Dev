@@ -62,8 +62,8 @@ function calcCost(r: DraftResource, workDays: number): number {
   return pct * cost * workDays * mo
 }
 
-function fmtEur(n: number): string {
-  return new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 0 }).format(Math.round(n)) + ' €'
+function fmtEur(n: number, sym = '€'): string {
+  return new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 0 }).format(Math.round(n)) + ' ' + sym
 }
 
 function fmtFte(n: number): string {
@@ -75,9 +75,10 @@ interface SummaryTableProps {
   resources: DraftResource[]
   workDays: number
   onRowClick: (id: string) => void
+  sym: string
 }
 
-function SummaryTable({ resources, workDays, onRowClick }: SummaryTableProps) {
+function SummaryTable({ resources, workDays, onRowClick, sym }: SummaryTableProps) {
   if (resources.length === 0) return null
   return (
     <div className="gres-summary-wrap">
@@ -108,7 +109,7 @@ function SummaryTable({ resources, workDays, onRowClick }: SummaryTableProps) {
                 <td>{r.type ?? '—'}</td>
                 <td className="gres-td-r">{r.allocation_pct ?? 0}%</td>
                 <td>{period}</td>
-                <td className="gres-td-r">{cost > 0 ? fmtEur(cost) : '—'}</td>
+                <td className="gres-td-r">{cost > 0 ? fmtEur(cost, sym) : '—'}</td>
                 <td>
                   <Badge variant={status === 'Activo' ? 'green' : 'grey'}>{status}</Badge>
                 </td>
@@ -129,9 +130,10 @@ interface ResourceCardProps {
   onEdit: () => void
   onDelete: () => void
   onDuplicate: () => void
+  sym: string
 }
 
-function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate }: ResourceCardProps) {
+function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate, sym }: ResourceCardProps) {
   const cost = calcCost(res, workDays)
   const isOverallocated = (res.allocation_pct ?? 0) > 100
   const dateErr = !!(res.start_date && res.end_date && res.end_date < res.start_date)
@@ -193,7 +195,7 @@ function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate 
           </div>
           <div className="gres-field">
             <span className="gres-field-label">Custo/dia</span>
-            <span style={{ fontSize: 12 }}>{res.daily_cost != null ? fmtEur(res.daily_cost) : '—'}</span>
+            <span style={{ fontSize: 12 }}>{res.daily_cost != null ? fmtEur(res.daily_cost, sym) : '—'}</span>
           </div>
           <div className="gres-field">
             <span className="gres-field-label">Período</span>
@@ -212,7 +214,7 @@ function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate 
         <div className="gres-card-footer">
           {cost > 0 && (
             <span className="gres-cost-hint">
-              Custo estimado: <strong>{fmtEur(cost)}</strong>
+              Custo estimado: <strong>{fmtEur(cost, sym)}</strong>
               {` (${monthsBetween(res.start_date, res.end_date)} meses × ${workDays} dias/mês)`}
             </span>
           )}
@@ -225,13 +227,14 @@ function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate 
 }
 
 // ── ResourceModalBody ──────────────────────────────────────────────
-function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnits }: {
+function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnits, sym }: {
   form: ResourceForm
   setForm: (f: ResourceForm) => void
   people: Person[]
   contracts: FinContract[]
   profiles: string[]
   orgUnits: string[]
+  sym: string
 }) {
   const set = (patch: Partial<ResourceForm>) => setForm({ ...form, ...patch })
 
@@ -306,7 +309,7 @@ function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnit
       </div>
       <div className="gres-form-row">
         <div className="gres-form-field">
-          <label className="gres-form-label">Custo/Dia (€)</label>
+          <label className="gres-form-label">Custo/Dia ({sym})</label>
           <input className="gres-form-input" type="number" min={0}
             value={form.daily_cost}
             onChange={e => set({ daily_cost: e.target.value })} placeholder="0" />
@@ -503,8 +506,9 @@ export default function GestaoRecursos() {
   const [workDays, setWorkDays] = useState(22)
 
   // ── AppConfig: profiles + org units ─────────────────────────
-  const [profiles, setProfiles] = useState<string[]>([])
-  const [orgUnits, setOrgUnits] = useState<string[]>([])
+  const [profiles,   setProfiles]   = useState<string[]>([])
+  const [orgUnits,   setOrgUnits]   = useState<string[]>([])
+  const [currSymbol, setCurrSymbol] = useState('€')
 
   useEffect(() => {
     supabase.from('app_config')
@@ -519,6 +523,12 @@ export default function GestaoRecursos() {
           if (row.config_key === 'org_units')         setOrgUnits(strs)
         }
       })
+  }, [])
+
+  // Fetch default currency symbol
+  useEffect(() => {
+    supabase.from('currencies').select('symbol').eq('is_default', true).limit(1)
+      .then(({ data }) => { if (data?.[0]?.symbol) setCurrSymbol(data[0].symbol) })
   }, [])
 
   // ── Draft state ──────────────────────────────────────────────
@@ -839,7 +849,7 @@ export default function GestaoRecursos() {
           <div className="gres-kpi-row">
             <KpiCard label="Recursos Activos"   value={kpis.active}              color="navy" />
             <KpiCard label="FTE Total"           value={fmtFte(kpis.ftTotal)}    color="blue" />
-            <KpiCard label="Custo Estimado"      value={fmtEur(kpis.costTotal)}  color="text" />
+            <KpiCard label="Custo Estimado"      value={fmtEur(kpis.costTotal, currSymbol)}  color="text" />
             <KpiCard
               label="Sobrealocações"
               value={kpis.overAlloc}
@@ -854,6 +864,7 @@ export default function GestaoRecursos() {
               resources={draft}
               workDays={workDays}
               onRowClick={openEditResource}
+              sym={currSymbol}
             />
           )}
 
@@ -878,6 +889,7 @@ export default function GestaoRecursos() {
                   onEdit={() => openEditResource(res.id)}
                   onDelete={() => deleteResource(res.id)}
                   onDuplicate={() => duplicateResource(res.id)}
+                  sym={currSymbol}
                 />
               ))
             )}
@@ -923,6 +935,7 @@ export default function GestaoRecursos() {
             contracts={planContracts}
             profiles={profiles}
             orgUnits={orgUnits}
+            sym={currSymbol}
           />
         )}
       </Modal>
