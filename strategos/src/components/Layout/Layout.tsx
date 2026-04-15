@@ -186,7 +186,7 @@ function getInitials(fullName: string | null | undefined, email: string | undefi
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Admin',
-  gestor: 'Gestor',
+  editor: 'Gestor',
   viewer: 'Visualizador',
 }
 
@@ -369,7 +369,7 @@ export default function Layout() {
                 <div className="profile-dropdown-email">{displayEmail}</div>
                 {roleLabel && (
                   <div className="profile-dropdown-role">
-                    <Badge variant={role === 'admin' ? 'navy' : role === 'gestor' ? 'blue' : 'grey'}>
+                    <Badge variant={role === 'admin' ? 'navy' : role === 'editor' ? 'blue' : 'grey'}>
                       {roleLabel}
                     </Badge>
                   </div>

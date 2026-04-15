@@ -5,7 +5,7 @@
 
 // ── Utility types ─────────────────────────────────────────────
 export type AccessLevel = 'none' | 'view' | 'edit'
-export type UserRole    = 'admin' | 'gestor' | 'viewer'
+export type UserRole    = 'admin' | 'editor' | 'viewer'
 export type PageKey =
   | 'dashboard'
   | 'actividades'

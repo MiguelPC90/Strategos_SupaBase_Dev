@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
-type Role = 'admin' | 'gestor' | 'viewer'
+type Role = 'admin' | 'editor' | 'viewer'
 
 interface Profile {
   id: string
@@ -55,7 +55,7 @@ export function useRole(): UseRoleResult {
     profile,
     role,
     isAdmin: role === 'admin',
-    isGestor: role === 'gestor',
+    isGestor: role === 'editor',
     isViewer: role === 'viewer',
     loading,
   }

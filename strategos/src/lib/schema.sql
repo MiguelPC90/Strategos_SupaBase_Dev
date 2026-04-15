@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   email       TEXT        NOT NULL,
   full_name   TEXT,
   role        TEXT        NOT NULL DEFAULT 'viewer'
-                          CHECK (role IN ('admin', 'gestor', 'viewer')),
+                          CHECK (role IN ('admin', 'editor', 'viewer')),
   avatar_url  TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()

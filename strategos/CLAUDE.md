@@ -224,7 +224,7 @@ Defined inside `src/App.tsx`. Wraps the root `<Route>` element:
 
 ### profiles table
 
-Columns: `id` (FK → auth.users), `email`, `full_name`, `role` (`admin | gestor | viewer`), `avatar_url`
+Columns: `id` (FK → auth.users), `email`, `full_name`, `role` (`admin | editor | viewer`), `avatar_url`
 
 Auto-created on signup via `handle_new_user()` trigger. Default role is `viewer`.
 
@@ -238,7 +238,7 @@ RLS policies:
 | Role | Access |
 |---|---|
 | `admin` | Full access + Admin page visible in sidebar |
-| `gestor` | Can edit data, no Admin page |
+| `editor` | Can edit data, no Admin page |
 | `viewer` | Read-only |
 
 The Admin sidebar link is conditionally rendered: only shown when `isAdmin === true` (from `useRole`).
@@ -267,7 +267,7 @@ All interfaces mirror the Supabase schema exactly. Import from `'../types/index'
 | `UserPermission` | Per-user, per-page, per-program access level |
 | `AppConfig` | Key-value app configuration stored in Supabase |
 | `AccessLevel` | `'none' \| 'view' \| 'edit'` |
-| `UserRole` | `'admin' \| 'gestor' \| 'viewer'` |
+| `UserRole` | `'admin' \| 'editor' \| 'viewer'` |
 | `PageKey` | Union of all valid route page keys |
 
 > **`cost_categories` schema:** `id`, `name` (text), `is_capex` (boolean). No `program_id` column — program assignments live in the join table below.
@@ -346,7 +346,7 @@ canEdit('actividades')                 // → boolean
 Resolution order (first match wins):
 
 1. **admin role** → always `hasAccess=true`, `canEdit=true`
-2. **gestor role** → always `hasAccess=true`, `canEdit=true`
+2. **editor role** → always `hasAccess=true`, `canEdit=true`
 3. **Specific permission row** (matching `page` + `program_id`) → use `access_level`
 4. **Page-level permission row** (`program_id = null`) → use `access_level`
 5. **viewer default** → `hasAccess=true` for view pages only, `canEdit=false` always

@@ -888,11 +888,11 @@ function AdminPermissoes({ profiles }: { profiles: Profile[] }) {
 // ── Section 3a: Utilizadores ───────────────────────────────────
 function roleBadge(role: UserRole) {
   if (role === 'admin')  return <Badge variant="navy">Admin</Badge>
-  if (role === 'gestor') return <Badge variant="blue">Gestor</Badge>
+  if (role === 'editor') return <Badge variant="blue">Gestor</Badge>
   return <Badge variant="grey">Viewer</Badge>
 }
 
-interface InviteForm { email: string; role: 'gestor' | 'viewer' }
+interface InviteForm { email: string; role: 'editor' | 'viewer' }
 
 function AdminUtilizadores() {
   const { user: currentUser } = useAuth()
@@ -1023,9 +1023,9 @@ function AdminUtilizadores() {
                 <select
                   className="adm-select"
                   value={invite.role}
-                  onChange={e => setInvite(v => ({ ...v, role: e.target.value as 'gestor' | 'viewer' }))}
+                  onChange={e => setInvite(v => ({ ...v, role: e.target.value as 'editor' | 'viewer' }))}
                 >
-                  <option value="gestor">Gestor</option>
+                  <option value="editor">Gestor</option>
                   <option value="viewer">Viewer</option>
                 </select>
               </div>
@@ -1069,7 +1069,7 @@ function AdminUtilizadores() {
                               autoFocus
                             >
                               <option value="admin">Admin</option>
-                              <option value="gestor">Gestor</option>
+                              <option value="editor">Gestor</option>
                               <option value="viewer">Viewer</option>
                             </select>
                           ) : roleBadge(p.role)}
