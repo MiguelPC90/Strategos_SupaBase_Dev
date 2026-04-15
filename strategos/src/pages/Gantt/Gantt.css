@@ -148,9 +148,17 @@
     box-shadow: none;
   }
 
-  /* N0/N1 row + hover backgrounds on the merged cell */
-  .gantt-row-n0 .gantt-sticky { background: rgba(0, 46, 94, 0.12); }
-  .gantt-row-n0:hover .gantt-sticky { background: rgba(0, 46, 94, 0.18); }
+  /* N0/N1 row + hover backgrounds on the merged cell.
+     background-color provides an opaque base so scrolled content
+     cannot bleed through; background-image overlays the tint. */
+  .gantt-row-n0 .gantt-sticky {
+    background-color: var(--bg);
+    background-image: linear-gradient(rgba(0, 46, 94, 0.12), rgba(0, 46, 94, 0.12));
+  }
+  .gantt-row-n0:hover .gantt-sticky {
+    background-color: var(--bg);
+    background-image: linear-gradient(rgba(0, 46, 94, 0.18), rgba(0, 46, 94, 0.18));
+  }
   .gantt-row-n1 .gantt-sticky { background: var(--bg2); }
   .gantt-row-n1:hover .gantt-sticky,
   .gantt-row-n2:hover .gantt-sticky,
