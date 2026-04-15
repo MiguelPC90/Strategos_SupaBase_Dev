@@ -15,6 +15,7 @@ import GestaoFinanceira from './pages/GestaoFinanceira/GestaoFinanceira'
 import GestaoRecursos from './pages/GestaoRecursos/GestaoRecursos'
 import Admin from './pages/Admin/Admin'
 import { useAuth } from './hooks/useAuth'
+import { useRole } from './hooks/useRole'
 import { usePermissions } from './hooks/usePermissions'
 import type { PageKey } from './types/index'
 
@@ -85,6 +86,13 @@ function PageGuard({ page, children }: { page: PageKey; children: React.ReactNod
   return <>{children}</>
 }
 
+function AdminGuard({ children }: { children: React.ReactNode }) {
+  const { isAdmin, loading } = useRole()
+  if (loading) return null
+  if (!isAdmin) return <Navigate to="/dashboard" replace />
+  return <>{children}</>
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
 
@@ -141,7 +149,7 @@ export default function App() {
           <Route path="gestao-riscos"      element={<PageGuard page="gestao-riscos">     <GestaoRiscos />      </PageGuard>} />
           <Route path="gestao-financeira"  element={<PageGuard page="gestao-financeira"> <GestaoFinanceira />  </PageGuard>} />
           <Route path="gestao-recursos"    element={<PageGuard page="gestao-recursos">   <GestaoRecursos />    </PageGuard>} />
-          <Route path="admin"              element={<Admin />} />
+          <Route path="admin"              element={<AdminGuard><Admin /></AdminGuard>} />
         </Route>
       </Routes>
     </BrowserRouter>
