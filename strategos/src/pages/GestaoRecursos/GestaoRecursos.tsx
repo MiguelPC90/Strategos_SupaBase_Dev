@@ -41,8 +41,6 @@ interface ResourceForm {
 // ── Constants ──────────────────────────────────────────────────────
 const RES_TYPES    = ['Interno', 'Externo']
 const RES_STATUSES = ['Activo', 'Inactivo']
-const DEFAULT_PROFILES = ['PM', 'Gestor de Projecto', 'Técnico', 'Consultor', 'Especialista', 'Arquitecto', 'Analista', 'Desenvolvedor']
-const DEFAULT_UNITS    = ['TI', 'Gestão', 'Operações', 'RH', 'Finanças', 'Jurídico', 'Comunicação', 'Engenharia']
 const TODAY = new Date().toISOString().slice(0, 10)
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -505,8 +503,8 @@ export default function GestaoRecursos() {
   const [workDays, setWorkDays] = useState(22)
 
   // ── AppConfig: profiles + org units ─────────────────────────
-  const [profiles, setProfiles] = useState<string[]>(DEFAULT_PROFILES)
-  const [orgUnits, setOrgUnits] = useState<string[]>(DEFAULT_UNITS)
+  const [profiles, setProfiles] = useState<string[]>([])
+  const [orgUnits, setOrgUnits] = useState<string[]>([])
 
   useEffect(() => {
     supabase.from('app_config')
@@ -518,8 +516,8 @@ export default function GestaoRecursos() {
           const vals = (row.data as Record<string, unknown>).values
           if (!Array.isArray(vals)) continue
           const strs = (vals as unknown[]).filter(v => typeof v === 'string') as string[]
-          if (row.config_key === 'resource_profiles' && strs.length > 0) setProfiles(strs)
-          if (row.config_key === 'org_units'         && strs.length > 0) setOrgUnits(strs)
+          if (row.config_key === 'resource_profiles') setProfiles(strs)
+          if (row.config_key === 'org_units')         setOrgUnits(strs)
         }
       })
   }, [])
