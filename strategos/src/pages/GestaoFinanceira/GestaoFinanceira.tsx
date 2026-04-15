@@ -1,5 +1,5 @@
 import './GestaoFinanceira.css'
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -98,6 +98,8 @@ interface BudgetTabProps {
   lines: FinBudgetLine[]
   setLines: (lines: FinBudgetLine[]) => void
   onDelete: (id: string) => void
+  onSaveLine: (b: FinBudgetLine) => void
+  savedRows: Set<string>
   /** Categories (with is_capex) configured in Admin → Financeiro for this program */
   categories: CategoryOption[]
   /** Currencies (with symbol) from the currencies table */
@@ -108,7 +110,7 @@ interface BudgetTabProps {
   managementYears: string[]
 }
 
-function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultCurrency, managementYears }: BudgetTabProps) {
+function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, categories, currencies, defaultCurrency, managementYears }: BudgetTabProps) {
   // Seed from management_years; merge with any year keys already on lines
   const years = useMemo(() => {
     const ks = new Set<string>(managementYears)
@@ -200,7 +202,7 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
           </thead>
           <tbody>
             {lines.map(b => (
-              <tr key={b.id}>
+              <tr key={b.id} style={savedRows.has(b.id) ? { boxShadow: 'inset 0 0 0 2px #95BB42' } : undefined}>
                 <td>
                   <button className="gf-icon-btn" onClick={() => onDelete(b.id)} title="Remover">✕</button>
                 </td>
@@ -212,6 +214,7 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
                       const patch: Partial<FinBudgetLine> = { category: name }
                       if (cat != null) patch.capex = Boolean(cat.is_capex)
                       updateLine(b.id, patch)
+                      onSaveLine({ ...b, ...patch })
                     }}>
                     <option value="">— categoria —</option>
                     {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
@@ -233,7 +236,11 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
                 </td>
                 <td className="gf-td-c">
                   <select className="gf-cell-select" value={b.currency}
-                    onChange={e => updateLine(b.id, { currency: e.target.value })}>
+                    onChange={e => {
+                      const val = e.target.value
+                      updateLine(b.id, { currency: val })
+                      onSaveLine({ ...b, currency: val })
+                    }}>
                     {currencies.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
                   </select>
                 </td>
@@ -241,13 +248,15 @@ function BudgetTab({ lines, setLines, onDelete, categories, currencies, defaultC
                   <td key={y} className="gf-td-r">
                     <input className="gf-cell-input gf-cell-input--num"
                       value={b.values[y] ?? 0}
-                      onChange={e => setYearValue(b.id, y, e.target.value)} />
+                      onChange={e => setYearValue(b.id, y, e.target.value)}
+                      onBlur={e => onSaveLine({ ...b, values: { ...b.values, [y]: parseFloat(e.target.value.replace(',', '.')) || 0 } })} />
                   </td>
                 ))}
                 <td className="gf-td-total">{fmtEur(lineTotal(b), currSymbolMap.get(b.currency) ?? '€')}</td>
                 <td>
                   <input className="gf-cell-input" value={b.note ?? ''} placeholder="Nota"
-                    onChange={e => updateLine(b.id, { note: e.target.value || null })} />
+                    onChange={e => updateLine(b.id, { note: e.target.value || null })}
+                    onBlur={e => onSaveLine({ ...b, note: e.target.value || null })} />
                 </td>
               </tr>
             ))}
@@ -738,11 +747,12 @@ export default function GestaoFinanceira() {
     [planOptions, selectedKey])
 
   // ── Draft state ──────────────────────────────────────────────
-  const [draft,    setDraft]    = useState<DraftState>(EMPTY_DRAFT)
-  const [committed, setCommitted] = useState<DraftState>(EMPTY_DRAFT)
-  const [deletedBudget,    setDeletedBudget]    = useState<Set<string>>(new Set())
-  const [deletedContracts, setDeletedContracts] = useState<Set<string>>(new Set())
-  const [deletedInvoices,  setDeletedInvoices]  = useState<Set<string>>(new Set())
+  const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT)
+
+  // ── Budget auto-save state ───────────────────────────────────
+  const [rowSaved,    setRowSaved]    = useState<Set<string>>(new Set())
+  const savingRowsRef = useRef<Set<string>>(new Set())
+  const [errToast,    setErrToast]    = useState<string | null>(null)
 
   useEffect(() => {
     if (loading) return
@@ -753,18 +763,10 @@ export default function GestaoFinanceira() {
       invoices:  dbInvoices.filter(i => i.plano_id === pdsId),
     }
     setDraft(state)
-    setCommitted(state)
-    setDeletedBudget(new Set())
-    setDeletedContracts(new Set())
-    setDeletedInvoices(new Set())
+    setRowSaved(new Set())
   // Re-run only when plan or loaded data changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPlan?.key, loading, budgetLines, dbContracts, dbInvoices])
-
-  const isDirty = useMemo(() =>
-    JSON.stringify(draft) !== JSON.stringify(committed) ||
-    deletedBudget.size > 0 || deletedContracts.size > 0 || deletedInvoices.size > 0,
-    [draft, committed, deletedBudget, deletedContracts, deletedInvoices])
 
   // ── Draft setters ────────────────────────────────────────────
   const setBudget    = useCallback((budget: FinBudgetLine[])   => setDraft(d => ({ ...d, budget })), [])
@@ -773,17 +775,18 @@ export default function GestaoFinanceira() {
 
   const deleteBudget = useCallback((id: string) => {
     setDraft(d => ({ ...d, budget: d.budget.filter(b => b.id !== id) }))
-    if (!isNew(id)) setDeletedBudget(prev => new Set([...prev, id]))
+    if (!isNew(id)) {
+      supabase.from('fin_budget_lines').delete().eq('id', id)
+        .then(({ error }) => { if (error) console.error('Delete budget line failed', error) })
+    }
   }, [])
 
   const deleteContract = useCallback((id: string) => {
     setDraft(d => ({ ...d, contracts: d.contracts.filter(c => c.id !== id) }))
-    if (!isNew(id)) setDeletedContracts(prev => new Set([...prev, id]))
   }, [])
 
   const deleteInvoice = useCallback((id: string) => {
     setDraft(d => ({ ...d, invoices: d.invoices.filter(i => i.id !== id) }))
-    if (!isNew(id)) setDeletedInvoices(prev => new Set([...prev, id]))
   }, [])
 
   // ── Contract panel ───────────────────────────────────────────
@@ -971,127 +974,54 @@ export default function GestaoFinanceira() {
       desvio:      adjudicado - budgetTotal }
   }, [draft])
 
-  // ── Save ─────────────────────────────────────────────────────
-  const [saving,  setSaving]  = useState(false)
-  const [saveErr, setSaveErr] = useState<string | null>(null)
-  const [toast,   setToast]   = useState(false)
-
-  const handleSave = useCallback(async () => {
-    if (saving || !selectedPlan || !isDirty) return
-    setSaving(true)
-    setSaveErr(null)
-
-    const pdsId  = selectedPlan.key
-    const progId = selectedPlan.program_id
-
+  // ── Budget line auto-save ─────────────────────────────────────
+  const saveBudgetLine = useCallback(async (b: FinBudgetLine) => {
+    const key = b.id
+    if (savingRowsRef.current.has(key)) return
+    savingRowsRef.current.add(key)
+    const pdsId  = selectedPlan?.key
+    const progId = selectedPlan?.program_id
+    if (!pdsId) { savingRowsRef.current.delete(key); return }
     try {
-      const existBudget    = draft.budget.filter(b => !isNew(b.id))
-      const newBudget      = draft.budget.filter(b => isNew(b.id))
-      const existContracts = draft.contracts.filter(c => !isNew(c.id))
-      const newContracts   = draft.contracts.filter(c => isNew(c.id))
-      const existInvoices  = draft.invoices.filter(i => !isNew(i.id))
-      const newInvoices    = draft.invoices.filter(i => isNew(i.id))
-      const delBudgetArr    = Array.from(deletedBudget)
-      const delContractsArr = Array.from(deletedContracts)
-      const delInvoicesArr  = Array.from(deletedInvoices)
-
-      let insertedBudget:    FinBudgetLine[] = []
-      let insertedContracts: FinContract[]   = []
-      let insertedInvoices:  FinInvoice[]    = []
-
-      const ops: Promise<unknown>[] = []
-
-      // Upsert existing
-      if (existBudget.length)
-        ops.push(supabase.from('fin_budget_lines').upsert(
-          existBudget.map(b => ({ id: b.id, plano_id: pdsId, app_id: b.app_id, program_id: progId,
-            category: b.category, capex: b.capex, currency: b.currency,
-            values: b.values, note: b.note, source_ref: b.source_ref, sort_order: b.sort_order })),
-          { onConflict: 'id' }).then(r => { if (r.error) throw r.error }))
-
-      if (existContracts.length)
-        ops.push(supabase.from('fin_contracts').upsert(
-          existContracts.map(c => ({ id: c.id, plano_id: pdsId, app_id: c.app_id, program_id: progId,
-            supplier: c.supplier, category: c.category, currency: c.currency,
-            exchange_rate_ref: c.exchange_rate_ref, total_amount: c.total_amount,
-            award_date: c.award_date, end_date: c.end_date, description: c.description, sort_order: c.sort_order })),
-          { onConflict: 'id' }).then(r => { if (r.error) throw r.error }))
-
-      if (existInvoices.length)
-        ops.push(supabase.from('fin_invoices').upsert(
-          existInvoices.map(i => ({ id: i.id, plano_id: pdsId, contract_id: i.contract_id,
-            app_id: i.app_id, app_contract_id: i.app_contract_id, program_id: progId,
-            ref: i.ref, supplier: i.supplier, doc_type: i.doc_type, description: i.description,
-            amount: i.amount, currency: i.currency, exchange_rate: i.exchange_rate,
-            issue_date: i.issue_date, due_date: i.due_date, payment_date: i.payment_date,
-            status: i.status, memo: i.memo, sort_order: i.sort_order })),
-          { onConflict: 'id' }).then(r => { if (r.error) throw r.error }))
-
-      // Deletes
-      if (delBudgetArr.length)
-        ops.push(supabase.from('fin_budget_lines').delete().in('id', delBudgetArr).then(r => { if (r.error) throw r.error }))
-      if (delContractsArr.length)
-        ops.push(supabase.from('fin_contracts').delete().in('id', delContractsArr).then(r => { if (r.error) throw r.error }))
-      if (delInvoicesArr.length)
-        ops.push(supabase.from('fin_invoices').delete().in('id', delInvoicesArr).then(r => { if (r.error) throw r.error }))
-
-      // Inserts (need back real IDs)
-      if (newBudget.length)
-        ops.push(supabase.from('fin_budget_lines').insert(
-          newBudget.map((b, idx) => ({ plano_id: pdsId, app_id: b.app_id, program_id: progId,
+      if (isNew(key)) {
+        const { data, error } = await supabase
+          .from('fin_budget_lines')
+          .insert({
+            plano_id: pdsId, app_id: b.app_id, program_id: progId,
             category: b.category, capex: b.capex, currency: b.currency,
             values: b.values, note: b.note, source_ref: b.source_ref,
-            sort_order: existBudget.length + idx }))).select()
-          .then(r => { if (r.error) throw r.error; insertedBudget = (r.data ?? []) as FinBudgetLine[] }))
-
-      if (newContracts.length)
-        ops.push(supabase.from('fin_contracts').insert(
-          newContracts.map((c, idx) => ({ plano_id: pdsId, app_id: c.app_id, program_id: progId,
-            supplier: c.supplier, category: c.category, currency: c.currency,
-            exchange_rate_ref: c.exchange_rate_ref, total_amount: c.total_amount,
-            award_date: c.award_date, end_date: c.end_date, description: c.description,
-            sort_order: existContracts.length + idx }))).select()
-          .then(r => { if (r.error) throw r.error; insertedContracts = (r.data ?? []) as FinContract[] }))
-
-      if (newInvoices.length)
-        ops.push(supabase.from('fin_invoices').insert(
-          newInvoices.map((i, idx) => ({ plano_id: pdsId, contract_id: i.contract_id,
-            app_id: i.app_id, app_contract_id: i.app_contract_id, program_id: progId,
-            ref: i.ref, supplier: i.supplier, doc_type: i.doc_type, description: i.description,
-            amount: i.amount, currency: i.currency, exchange_rate: i.exchange_rate,
-            issue_date: i.issue_date, due_date: i.due_date, payment_date: i.payment_date,
-            status: i.status, memo: i.memo, sort_order: existInvoices.length + idx }))).select()
-          .then(r => { if (r.error) throw r.error; insertedInvoices = (r.data ?? []) as FinInvoice[] }))
-
-      console.log('[GestaoFinanceira] save payload:', {
-        plano_id: pdsId, program_id: progId,
-        existBudget: existBudget.length, newBudget: newBudget.length,
-        existContracts: existContracts.length, newContracts: newContracts.length,
-        existInvoices: existInvoices.length, newInvoices: newInvoices.length,
-        delBudget: delBudgetArr.length, delContracts: delContractsArr.length, delInvoices: delInvoicesArr.length,
-      })
-      await Promise.all(ops)
-      console.log('[GestaoFinanceira] save result: success')
-
-      // Patch draft with server IDs
-      const finalBudget    = [...existBudget, ...newBudget.map((b, i) => insertedBudget[i] ?? b)]
-      const finalContracts = [...existContracts, ...newContracts.map((c, i) => insertedContracts[i] ?? c)]
-      const finalInvoices  = [...existInvoices, ...newInvoices.map((inv, i) => insertedInvoices[i] ?? inv)]
-
-      const finalDraft: DraftState = { budget: finalBudget, contracts: finalContracts, invoices: finalInvoices }
-      setDraft(finalDraft)
-      setCommitted(finalDraft)
-      setDeletedBudget(new Set())
-      setDeletedContracts(new Set())
-      setDeletedInvoices(new Set())
-      setToast(true)
-      setTimeout(() => setToast(false), 2000)
+            sort_order: b.sort_order,
+          })
+          .select()
+          .single()
+        if (error) throw error
+        if (!data) throw new Error('Sem resposta do servidor')
+        const realId = (data as FinBudgetLine).id
+        setDraft(d => ({
+          ...d,
+          budget: d.budget.map(line => line.id === key ? { ...line, id: realId } : line),
+        }))
+        setRowSaved(prev => new Set([...prev, realId]))
+        setTimeout(() => setRowSaved(prev => { const n = new Set(prev); n.delete(realId); return n }), 500)
+      } else {
+        const { error } = await supabase
+          .from('fin_budget_lines')
+          .upsert({
+            id: key, plano_id: pdsId, app_id: b.app_id, program_id: progId,
+            category: b.category, capex: b.capex, currency: b.currency,
+            values: b.values, note: b.note, source_ref: b.source_ref, sort_order: b.sort_order,
+          }, { onConflict: 'id' })
+        if (error) throw error
+        setRowSaved(prev => new Set([...prev, key]))
+        setTimeout(() => setRowSaved(prev => { const n = new Set(prev); n.delete(key); return n }), 500)
+      }
     } catch (e) {
-      setSaveErr(e instanceof Error ? e.message : 'Erro ao guardar')
+      setErrToast(e instanceof Error ? e.message : 'Erro ao guardar rubrica')
+      setTimeout(() => setErrToast(null), 3000)
     } finally {
-      setSaving(false)
+      savingRowsRef.current.delete(key)
     }
-  }, [saving, selectedPlan, isDirty, draft, deletedBudget, deletedContracts, deletedInvoices])
+  }, [selectedPlan])
 
   // ── Render ───────────────────────────────────────────────────
   const noProgram = !programId
@@ -1125,15 +1055,7 @@ export default function GestaoFinanceira() {
            : planOptions.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
         </select>
         <div className="gf-spacer" />
-        {saveErr && <span className="gf-save-err">{saveErr}</span>}
-        {toast   && <span className="gf-toast">Guardado!</span>}
-        <button
-          className="gf-btn gf-btn-save"
-          onClick={handleSave}
-          disabled={!selectedPlan || !isDirty || saving}
-        >
-          {saving ? 'A guardar…' : isDirty ? 'Guardar alterações' : 'Guardar'}
-        </button>
+        {errToast && <span className="gf-save-err">{errToast}</span>}
       </div>
 
       {loading ? (
@@ -1180,6 +1102,8 @@ export default function GestaoFinanceira() {
               lines={draft.budget}
               setLines={setBudget}
               onDelete={deleteBudget}
+              onSaveLine={saveBudgetLine}
+              savedRows={rowSaved}
               categories={categories}
               currencies={currencies}
               defaultCurrency={defaultCurrency}
