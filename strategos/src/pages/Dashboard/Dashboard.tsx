@@ -249,15 +249,14 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
     }
     const sortedProgs = programs.slice().sort((a, b) => a.sort_order - b.sort_order)
     const progsWithData = sortedProgs.filter(p => leaves.some(a => a.program_id === p.id))
-    const useSep = progsWithData.length > 1
+    // Tag each eixo entry with its program name when there are multiple programs,
+    // so EixoAxisTick can render a centered group label below the eixo names.
+    const multiProg = progsWithData.length > 1
     const result: BarEntry[] = []
-    let sepIdx = 0
     for (const prog of sortedProgs) {
       const progLeaves = leaves.filter(a => a.program_id === prog.id)
       if (progLeaves.length === 0) continue
-      if (useSep) {
-        result.push({ name: `__sep__${sepIdx++}`, concluidas: 0, em_dia: 0, em_atraso: 0, isSeparator: true, program: prog.name })
-      }
+      const progName = multiProg ? prog.name : undefined
       const progEixos = allEixos
         .filter(e => e.program_id === prog.id)
         .sort((a, b) => a.sort_order - b.sort_order)
@@ -268,14 +267,14 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
           const acts = byEixo.get(e.name)
           if (!acts) continue
           seen.add(e.name)
-          result.push({ name: e.name, ...barCounts(acts) })
+          result.push({ name: e.name, ...barCounts(acts), program: progName })
         }
         for (const [n1, acts] of byEixo) {
-          if (!seen.has(n1)) result.push({ name: n1, ...barCounts(acts) })
+          if (!seen.has(n1)) result.push({ name: n1, ...barCounts(acts), program: progName })
         }
       } else {
         for (const [n1, acts] of byEixo) {
-          result.push({ name: n1, ...barCounts(acts) })
+          result.push({ name: n1, ...barCounts(acts), program: progName })
         }
       }
     }
@@ -299,20 +298,34 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
   const EixoAxisTick = useCallback((props: AxisTickProps): React.ReactElement | null => {
     const { x, y, index } = props
     if (x === undefined || y === undefined || index === undefined) return null
-    const entry = chartDataRef.current[index]
+    const data = chartDataRef.current
+    const entry = data[index]
     if (!entry) return null
-    if (entry.isSeparator) {
-      return (
-        <text x={x} y={(y ?? 0) + 12} textAnchor="middle" fontSize={11} fontWeight={600} fill="#002E5E">
-          {entry.program ?? ''}
-        </text>
-      )
+
+    // Build consecutive program groups so we can place the label under the center bar
+    const groups: Array<{ progName: string; start: number; end: number }> = []
+    for (let i = 0; i < data.length; i++) {
+      const pn = data[i].program ?? ''
+      if (groups.length === 0 || groups[groups.length - 1].progName !== pn) {
+        groups.push({ progName: pn, start: i, end: i })
+      } else {
+        groups[groups.length - 1].end = i
+      }
     }
+    const group = groups.find(g => index >= g.start && index <= g.end)
+    const midIdx = group ? Math.floor((group.start + group.end) / 2) : -1
+    const showProgLabel = index === midIdx && !!group?.progName
+
     return (
       <g transform={`translate(${x},${y})`}>
         <text x={0} y={0} dy={10} transform="rotate(-35)" textAnchor="end" fontSize={11} fill="#5c5c58">
           {entry.name}
         </text>
+        {showProgLabel && (
+          <text x={0} y={30} textAnchor="middle" fontSize={11} fontWeight={600} fill="#002E5E">
+            {group!.progName}
+          </text>
+        )}
       </g>
     )
   }, [])
@@ -328,7 +341,7 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
       }
     >
       {chartChip === 'eixo' ? (
-        chartDataEixo.filter(e => !e.isSeparator).length === 0 ? (
+        chartDataEixo.length === 0 ? (
           <div className="page-placeholder" style={{ minHeight: 220 }}><p>Sem dados carregados</p></div>
         ) : (
           <div className="dash-chart-container">
