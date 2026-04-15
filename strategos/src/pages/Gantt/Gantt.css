@@ -148,7 +148,9 @@
     box-shadow: none;
   }
 
-  /* N1 row + hover backgrounds on the merged cell */
+  /* N0/N1 row + hover backgrounds on the merged cell */
+  .gantt-row-n0 .gantt-sticky { background: rgba(0, 46, 94, 0.12); }
+  .gantt-row-n0:hover .gantt-sticky { background: rgba(0, 46, 94, 0.18); }
   .gantt-row-n1 .gantt-sticky { background: var(--bg2); }
   .gantt-row-n1:hover .gantt-sticky,
   .gantt-row-n2:hover .gantt-sticky,
@@ -188,6 +190,10 @@
   .gantt-th .gantt-sticky-exec { color: inherit; }
 
   /* ── Row levels ─────────────────────────────────────────────── */
+  .gantt-row-n0 .gantt-tl-td { background: rgba(0, 46, 94, 0.07); }
+  .gantt-row-n0:hover .gantt-tl-td { background: rgba(0, 46, 94, 0.12); }
+  .gantt-row-n0 .gantt-filler-td { background: rgba(0, 46, 94, 0.07); }
+  .gantt-row-n0:hover .gantt-filler-td { background: rgba(0, 46, 94, 0.12); }
   .gantt-row-n1 { background: var(--bg2); }
 
   /* Timeline cells hover for non-sticky tds */
@@ -205,6 +211,15 @@
   }
 
   /* Name label levels */
+  .gantt-name-n0 {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--navy);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+  }
   .gantt-name-n1 {
     font-weight: 700;
     color: var(--navy);

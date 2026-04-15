@@ -4,8 +4,9 @@ import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import { useActivities } from '../../hooks/useActivities'
+import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
-import type { Activity } from '../../types/index'
+import type { Activity, Program } from '../../types/index'
 import { leafPctPrev, leafStatus } from '../../lib/rollup'
 
 const TODAY = new Date().toISOString().slice(0, 10)
@@ -76,6 +77,7 @@ function computeStats(acts: Activity[]): Stats {
 interface N3Group { n3: string; acts: Activity[] }
 interface N2Group { n2: string; n3groups: N3Group[]; allActs: Activity[] }
 interface N1Group { n1: string; n2groups: N2Group[]; allActs: Activity[] }
+interface N0Group { progId: string; progName: string; n1groups: N1Group[]; allActs: Activity[] }
 
 function buildTree(activities: Activity[]): N1Group[] {
   const n1Map = new Map<string, Activity[]>()
@@ -110,6 +112,28 @@ function buildTree(activities: Activity[]): N1Group[] {
     })
     return { n1, n2groups, allActs }
   })
+}
+
+function buildProgramTree(activities: Activity[], programs: Program[]): N0Group[] {
+  const progMap = new Map<string, Activity[]>()
+  for (const a of activities) {
+    const key = a.program_id ?? ''
+    if (!progMap.has(key)) progMap.set(key, [])
+    progMap.get(key)!.push(a)
+  }
+  const groups: N0Group[] = []
+  for (const p of programs) {
+    if (progMap.has(p.id)) {
+      const acts = progMap.get(p.id)!
+      groups.push({ progId: p.id, progName: p.name, n1groups: buildTree(acts), allActs: acts })
+    }
+  }
+  // Activities with no matching program_id
+  const unmatched = progMap.get('')
+  if (unmatched?.length) {
+    groups.push({ progId: '', progName: '—', n1groups: buildTree(unmatched), allActs: unmatched })
+  }
+  return groups
 }
 
 // ── Sub-components ─────────────────────────────────────────────
@@ -158,9 +182,15 @@ export default function Actividades() {
     program_id: filters.programIds[0],
     cutoffDate: filters.cutoffDate,
   })
+  const { programs } = usePrograms()
+  const multiProg = programs.length > 1
 
   const filtered = useMemo(() => getFilteredActivities(activities), [activities, getFilteredActivities])
   const tree     = useMemo(() => buildTree(filtered), [filtered])
+  const n0tree   = useMemo(
+    () => multiProg ? buildProgramTree(filtered, programs) : null,
+    [filtered, programs, multiProg]
+  )
   const summary  = useMemo(() => computeStats(filtered.filter(a => a.level === 4)), [filtered])
 
   // Collapse state: Set of node keys that are collapsed
@@ -177,7 +207,8 @@ export default function Actividades() {
 
   const collapseAll = useCallback(() => {
     const keys = new Set<string>()
-    for (const n1g of tree) {
+    const n1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
+    for (const n1g of n1groups) {
       keys.add(`n1:${n1g.n1}`)
       for (const n2g of n1g.n2groups) {
         keys.add(`n2:${n1g.n1}:${n2g.n2}`)
@@ -186,169 +217,210 @@ export default function Actividades() {
         }
       }
     }
+    if (n0tree) {
+      for (const n0g of n0tree) keys.add(`n0:${n0g.progId}`)
+    }
     setCollapsed(keys)
-  }, [tree])
+  }, [n0tree, tree])
 
   const expandAll = useCallback(() => setCollapsed(new Set()), [])
 
   const rows: React.ReactNode[] = []
 
-  for (const n1g of tree) {
-    const n1key   = `n1:${n1g.n1}`
-    const n1col   = collapsed.has(n1key)
-    const n1stats = computeStats(n1g.allActs.filter(a => a.level === 4))
-    const n1st    = groupStatus(n1stats.concluidas, n1stats.total, n1stats.em_atraso)
-
-    rows.push(
-      <tr key={n1key} className="act-row-n1">
-        <td>
-          <div className="act-name-cell" style={{ paddingLeft: 4 }}>
-            <button className="act-toggle" onClick={() => toggle(n1key)}>
-              {n1col ? '▶' : '▼'}
-            </button>
-            <span className="act-name-n1">{n1g.n1}</span>
-          </div>
-        </td>
-        <td className="act-td-c">
-          <Badge variant={BADGE_VARIANT[n1st]}>{STATUS_LABEL[n1st]}</Badge>
-        </td>
-        <CountsCell {...n1stats} />
-        <td className="act-td-c"><DualBar exec={n1stats.exec} execObj={n1stats.exec_obj} statusCls={n1st} /></td>
-        <DeadlineCell date={n1stats.latest_end} />
-      </tr>
-    )
-
-    if (n1col) continue
-
-    for (const n2g of n1g.n2groups) {
-      const n2key   = `n2:${n1g.n1}:${n2g.n2}`
-      const n2col   = collapsed.has(n2key)
-      const n2stats = computeStats(n2g.allActs.filter(a => a.level === 4))
-      const n2st    = groupStatus(n2stats.concluidas, n2stats.total, n2stats.em_atraso)
+  // Inner helper — pushes N1/N2/N3/N4 rows into `rows`.
+  // n1Indent: paddingLeft for N1; subsequent levels add 16px each.
+  const renderN1Rows = (n1groups: N1Group[], n1Indent: number) => {
+    for (const n1g of n1groups) {
+      const n1key   = `n1:${n1g.n1}`
+      const n1col   = collapsed.has(n1key)
+      const n1stats = computeStats(n1g.allActs.filter(a => a.level === 4))
+      const n1st    = groupStatus(n1stats.concluidas, n1stats.total, n1stats.em_atraso)
 
       rows.push(
-        <tr key={n2key} className="act-row-n2">
+        <tr key={n1key} className="act-row-n1">
           <td>
-            <div className="act-name-cell" style={{ paddingLeft: 20 }}>
-              <button className="act-toggle" onClick={() => toggle(n2key)}>
-                {n2col ? '▶' : '▼'}
+            <div className="act-name-cell" style={{ paddingLeft: n1Indent }}>
+              <button className="act-toggle" onClick={() => toggle(n1key)}>
+                {n1col ? '▶' : '▼'}
               </button>
-              <span className="act-name-n2">{n2g.n2}</span>
+              <span className="act-name-n1">{n1g.n1}</span>
             </div>
           </td>
           <td className="act-td-c">
-            <Badge variant={BADGE_VARIANT[n2st]}>{STATUS_LABEL[n2st]}</Badge>
+            <Badge variant={BADGE_VARIANT[n1st]}>{STATUS_LABEL[n1st]}</Badge>
           </td>
-          <CountsCell {...n2stats} />
-          <td className="act-td-c"><DualBar exec={n2stats.exec} execObj={n2stats.exec_obj} statusCls={n2st} /></td>
-          <DeadlineCell date={n2stats.latest_end} />
+          <CountsCell {...n1stats} />
+          <td className="act-td-c"><DualBar exec={n1stats.exec} execObj={n1stats.exec_obj} statusCls={n1st} /></td>
+          <DeadlineCell date={n1stats.latest_end} />
         </tr>
       )
 
-      if (n2col) continue
+      if (n1col) continue
 
-      for (const n3g of n2g.n3groups) {
-        // No n3 key — render all activities directly (no header)
-        if (!n3g.n3) {
-          for (const a of n3g.acts) {
-            const ast  = actStatus(a)
-            const aend = a.rf ?? a.bf ?? a.finish
-            rows.push(
-              <tr key={a.id} className="act-row-n4">
-                <td>
-                  <div className="act-name-cell" style={{ paddingLeft: 36 }}>
-                    <span className="act-name-n4" title={a.name}>{a.name}</span>
-                  </div>
-                </td>
-                <td className="act-td-c">
-                  <Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge>
-                </td>
-                <td className="act-td-c" />
-                <td className="act-td-c"><DualBar exec={a.pct} execObj={a.pct_prev} statusCls={ast} /></td>
-                <DeadlineCell date={aend ?? null} />
-              </tr>
-            )
-          }
-          continue
-        }
-
-        // Non-empty n3: check for real children (exclude the level-3 representative)
-        const n3ChildLeaves = n3g.acts.filter(a => a.level !== 3)
-        const n3HasChildren = n3ChildLeaves.length > 0
-
-        if (!n3HasChildren) {
-          // Macroactividade with no sub-activities — render as single leaf row, no header
-          for (const a of n3g.acts) {
-            const ast  = actStatus(a)
-            const aend = a.rf ?? a.bf ?? a.finish
-            rows.push(
-              <tr key={a.id} className="act-row-n4">
-                <td>
-                  <div className="act-name-cell" style={{ paddingLeft: 36 }}>
-                    <span className="act-name-n4" title={a.name}>{a.name}</span>
-                  </div>
-                </td>
-                <td className="act-td-c">
-                  <Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge>
-                </td>
-                <td className="act-td-c" />
-                <td className="act-td-c"><DualBar exec={a.pct} execObj={a.pct_prev} statusCls={ast} /></td>
-                <DeadlineCell date={aend ?? null} />
-              </tr>
-            )
-          }
-          continue
-        }
-
-        // Has real children — render N3 header row
-        const n3key   = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
-        const n3col   = collapsed.has(n3key)
-        const n3stats = computeStats(n3g.acts.filter(a => a.level === 4))
-        const n3st    = groupStatus(n3stats.concluidas, n3stats.total, n3stats.em_atraso)
+      for (const n2g of n1g.n2groups) {
+        const n2key   = `n2:${n1g.n1}:${n2g.n2}`
+        const n2col   = collapsed.has(n2key)
+        const n2stats = computeStats(n2g.allActs.filter(a => a.level === 4))
+        const n2st    = groupStatus(n2stats.concluidas, n2stats.total, n2stats.em_atraso)
 
         rows.push(
-          <tr key={n3key} className="act-row-n3">
+          <tr key={n2key} className="act-row-n2">
             <td>
-              <div className="act-name-cell" style={{ paddingLeft: 36 }}>
-                <button className="act-toggle" onClick={() => toggle(n3key)}>
-                  {n3col ? '▶' : '▼'}
+              <div className="act-name-cell" style={{ paddingLeft: n1Indent + 16 }}>
+                <button className="act-toggle" onClick={() => toggle(n2key)}>
+                  {n2col ? '▶' : '▼'}
                 </button>
-                <span className="act-name-n3">{n3g.n3}</span>
+                <span className="act-name-n2">{n2g.n2}</span>
               </div>
             </td>
             <td className="act-td-c">
-              <Badge variant={BADGE_VARIANT[n3st]}>{STATUS_LABEL[n3st]}</Badge>
+              <Badge variant={BADGE_VARIANT[n2st]}>{STATUS_LABEL[n2st]}</Badge>
             </td>
-            <CountsCell {...n3stats} />
-            <td className="act-td-c"><DualBar exec={n3stats.exec} execObj={n3stats.exec_obj} statusCls={n3st} /></td>
-            <DeadlineCell date={n3stats.latest_end} />
+            <CountsCell {...n2stats} />
+            <td className="act-td-c"><DualBar exec={n2stats.exec} execObj={n2stats.exec_obj} statusCls={n2st} /></td>
+            <DeadlineCell date={n2stats.latest_end} />
           </tr>
         )
 
-        if (n3col) continue
+        if (n2col) continue
 
-        // Render only non-representative children (representative excluded to avoid duplicate)
-        for (const a of n3ChildLeaves) {
-          const ast  = actStatus(a)
-          const aend = a.rf ?? a.bf ?? a.finish
+        for (const n3g of n2g.n3groups) {
+          // No n3 key — render all activities directly (no header)
+          if (!n3g.n3) {
+            for (const a of n3g.acts) {
+              const ast  = actStatus(a)
+              const aend = a.rf ?? a.bf ?? a.finish
+              rows.push(
+                <tr key={a.id} className="act-row-n4">
+                  <td>
+                    <div className="act-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
+                      <span className="act-name-n4" title={a.name}>{a.name}</span>
+                    </div>
+                  </td>
+                  <td className="act-td-c">
+                    <Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge>
+                  </td>
+                  <td className="act-td-c" />
+                  <td className="act-td-c"><DualBar exec={a.pct} execObj={a.pct_prev} statusCls={ast} /></td>
+                  <DeadlineCell date={aend ?? null} />
+                </tr>
+              )
+            }
+            continue
+          }
+
+          // Non-empty n3: check for real children (exclude the level-3 representative)
+          const n3ChildLeaves = n3g.acts.filter(a => a.level !== 3)
+          const n3HasChildren = n3ChildLeaves.length > 0
+
+          if (!n3HasChildren) {
+            // Macroactividade with no sub-activities — render as single leaf row, no header
+            for (const a of n3g.acts) {
+              const ast  = actStatus(a)
+              const aend = a.rf ?? a.bf ?? a.finish
+              rows.push(
+                <tr key={a.id} className="act-row-n4">
+                  <td>
+                    <div className="act-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
+                      <span className="act-name-n4" title={a.name}>{a.name}</span>
+                    </div>
+                  </td>
+                  <td className="act-td-c">
+                    <Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge>
+                  </td>
+                  <td className="act-td-c" />
+                  <td className="act-td-c"><DualBar exec={a.pct} execObj={a.pct_prev} statusCls={ast} /></td>
+                  <DeadlineCell date={aend ?? null} />
+                </tr>
+              )
+            }
+            continue
+          }
+
+          // Has real children — render N3 header row
+          const n3key   = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
+          const n3col   = collapsed.has(n3key)
+          const n3stats = computeStats(n3g.acts.filter(a => a.level === 4))
+          const n3st    = groupStatus(n3stats.concluidas, n3stats.total, n3stats.em_atraso)
+
           rows.push(
-            <tr key={a.id} className="act-row-n4">
+            <tr key={n3key} className="act-row-n3">
               <td>
-                <div className="act-name-cell" style={{ paddingLeft: 52 }}>
-                  <span className="act-name-n4" title={a.name}>{a.name}</span>
+                <div className="act-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
+                  <button className="act-toggle" onClick={() => toggle(n3key)}>
+                    {n3col ? '▶' : '▼'}
+                  </button>
+                  <span className="act-name-n3">{n3g.n3}</span>
                 </div>
               </td>
               <td className="act-td-c">
-                <Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge>
+                <Badge variant={BADGE_VARIANT[n3st]}>{STATUS_LABEL[n3st]}</Badge>
               </td>
-              <td className="act-td-c" />
-              <td className="act-td-c"><DualBar exec={a.pct} execObj={a.pct_prev} statusCls={ast} /></td>
-              <DeadlineCell date={aend ?? null} />
+              <CountsCell {...n3stats} />
+              <td className="act-td-c"><DualBar exec={n3stats.exec} execObj={n3stats.exec_obj} statusCls={n3st} /></td>
+              <DeadlineCell date={n3stats.latest_end} />
             </tr>
           )
+
+          if (n3col) continue
+
+          // Render only non-representative children (representative excluded to avoid duplicate)
+          for (const a of n3ChildLeaves) {
+            const ast  = actStatus(a)
+            const aend = a.rf ?? a.bf ?? a.finish
+            rows.push(
+              <tr key={a.id} className="act-row-n4">
+                <td>
+                  <div className="act-name-cell" style={{ paddingLeft: n1Indent + 48 }}>
+                    <span className="act-name-n4" title={a.name}>{a.name}</span>
+                  </div>
+                </td>
+                <td className="act-td-c">
+                  <Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge>
+                </td>
+                <td className="act-td-c" />
+                <td className="act-td-c"><DualBar exec={a.pct} execObj={a.pct_prev} statusCls={ast} /></td>
+                <DeadlineCell date={aend ?? null} />
+              </tr>
+            )
+          }
         }
       }
     }
+  }
+
+  if (n0tree) {
+    // Multi-program: N0 group header + indented N1 subtree
+    for (const n0g of n0tree) {
+      const n0key   = `n0:${n0g.progId}`
+      const n0col   = collapsed.has(n0key)
+      const n0stats = computeStats(n0g.allActs.filter(a => a.level === 4))
+      const n0st    = groupStatus(n0stats.concluidas, n0stats.total, n0stats.em_atraso)
+
+      rows.push(
+        <tr key={n0key} className="act-row-n0">
+          <td>
+            <div className="act-name-cell" style={{ paddingLeft: 4 }}>
+              <button className="act-toggle" onClick={() => toggle(n0key)}>
+                {n0col ? '▶' : '▼'}
+              </button>
+              <span className="act-name-n0">{n0g.progName}</span>
+            </div>
+          </td>
+          <td className="act-td-c">
+            <Badge variant={BADGE_VARIANT[n0st]}>{STATUS_LABEL[n0st]}</Badge>
+          </td>
+          <CountsCell {...n0stats} />
+          <td className="act-td-c"><DualBar exec={n0stats.exec} execObj={n0stats.exec_obj} statusCls={n0st} /></td>
+          <DeadlineCell date={n0stats.latest_end} />
+        </tr>
+      )
+
+      if (!n0col) renderN1Rows(n0g.n1groups, 16)
+    }
+  } else {
+    // Single program (or no programs): existing behaviour, no N0 header
+    renderN1Rows(tree, 4)
   }
 
   const filterInfo = filters.n1Values.length > 0
