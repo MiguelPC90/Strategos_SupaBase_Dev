@@ -97,7 +97,7 @@
   }
   .act-dualbar-track {
     width: 80px;
-    height: 10px;
+    height: 6px;
     position: relative;
     border-radius: 3px;
     overflow: hidden;
@@ -114,13 +114,13 @@
   }
   .act-dualbar-real {
     position: absolute;
-    top: 1px; left: 0;
-    height: 8px;
+    top: 0; left: 0;
+    height: 100%;
     background: var(--navy);
     border-radius: 3px;
   }
-  .act-dualbar-real.red  { background: #E24B4A; }
-  .act-dualbar-real.green { background: #95BB42; }
+  .act-dualbar-real.red  { background: var(--red); }
+  .act-dualbar-real.green { background: var(--green); }
   .act-dualbar-label {
     font-size: 10px;
     min-width: 54px;
