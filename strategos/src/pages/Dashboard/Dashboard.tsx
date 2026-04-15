@@ -15,7 +15,7 @@ import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useSnapshots } from '../../hooks/useSnapshots'
 import { useFilters } from '../../context/FilterContext'
-import type { Activity } from '../../types/index'
+import type { Activity, Program, Eixo, Plano } from '../../types/index'
 import { leafPctPrev, leafStatus } from '../../lib/rollup'
 
 const TODAY = new Date().toISOString().slice(0, 10)
@@ -190,14 +190,17 @@ const DETAIL_COLS: Column[] = [
     sortable: false,
     minWidth: '250px',
     render: (_v, row) => {
-      const indent = Number(row._indent ?? 0)
-      const isStrong = Boolean(row._isTotals) || Boolean(row._isParent) || Boolean(row._isProgHeader)
-      const isNavy   = Boolean(row._isTotals) || Boolean(row._isProgHeader)
+      const isN0     = Boolean(row._isProgHeader) || (!!row._prog_id && !row._n1 && !row._isTotals)
+      const isN1     = !!row._n1 && !row._n2 && !row._isProgHeader
+      const isN2     = !!row._n2
+      const isTotals = Boolean(row._isTotals)
+      const paddingLeft = isN1 ? '12px' : isN2 ? '24px' : undefined
       return (
         <span style={{
-          fontWeight: isStrong ? 700 : 400,
-          color: isNavy ? 'var(--navy)' : undefined,
-          paddingLeft: indent > 0 ? `${indent * 16}px` : undefined,
+          fontWeight:  (isN0 || isN1 || isTotals) ? 700 : 400,
+          fontSize:    isN0 ? 13.5 : 13,
+          color:       (isN0 || isTotals) ? 'var(--navy)' : 'var(--text)',
+          paddingLeft,
         }}>
           {String(row.nome ?? '')}
         </span>
@@ -228,10 +231,287 @@ const DETAIL_COLS: Column[] = [
   },
 ]
 
-// ── Component ─────────────────────────────────────────────────
-export default function Dashboard() {
-  const [tableChip, setTableChip] = useState<'programa' | 'eixo' | 'plano'>('eixo')
+// ── BarChartCard ───────────────────────────────────────────────
+interface BarChartCardProps {
+  leaves: Activity[]
+  programs: Program[]
+  allEixos: Eixo[]
+}
+
+function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
   const [chartChip, setChartChip] = useState<'eixo' | 'programa'>('eixo')
+  const chartDataRef = useRef<BarEntry[]>([])
+
+  const chartDataEixo = useMemo((): BarEntry[] => {
+    if (programs.length === 0) {
+      return Array.from(groupBy(leaves, a => a.n1 || '(sem eixo)').entries())
+        .map(([n1, acts]) => ({ name: n1, ...barCounts(acts) }))
+    }
+    const sortedProgs = programs.slice().sort((a, b) => a.sort_order - b.sort_order)
+    const progsWithData = sortedProgs.filter(p => leaves.some(a => a.program_id === p.id))
+    const useSep = progsWithData.length > 1
+    const result: BarEntry[] = []
+    let sepIdx = 0
+    for (const prog of sortedProgs) {
+      const progLeaves = leaves.filter(a => a.program_id === prog.id)
+      if (progLeaves.length === 0) continue
+      if (useSep) {
+        result.push({ name: `__sep__${sepIdx++}`, concluidas: 0, em_dia: 0, em_atraso: 0, isSeparator: true, program: prog.name })
+      }
+      const progEixos = allEixos
+        .filter(e => e.program_id === prog.id)
+        .sort((a, b) => a.sort_order - b.sort_order)
+      const byEixo = groupBy(progLeaves, a => a.n1 || '(sem eixo)')
+      if (progEixos.length > 0) {
+        const seen = new Set<string>()
+        for (const e of progEixos) {
+          const acts = byEixo.get(e.name)
+          if (!acts) continue
+          seen.add(e.name)
+          result.push({ name: e.name, ...barCounts(acts) })
+        }
+        for (const [n1, acts] of byEixo) {
+          if (!seen.has(n1)) result.push({ name: n1, ...barCounts(acts) })
+        }
+      } else {
+        for (const [n1, acts] of byEixo) {
+          result.push({ name: n1, ...barCounts(acts) })
+        }
+      }
+    }
+    return result
+  }, [leaves, programs, allEixos])
+
+  const chartDataProg = useMemo((): BarEntry[] =>
+    programs
+      .slice()
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map(prog => {
+        const progLeaves = leaves.filter(a => a.program_id === prog.id)
+        if (progLeaves.length === 0) return null
+        return { name: prog.name, ...barCounts(progLeaves) }
+      })
+      .filter((e): e is BarEntry => e !== null),
+  [leaves, programs])
+
+  chartDataRef.current = chartDataEixo
+
+  const EixoAxisTick = useCallback((props: AxisTickProps): React.ReactElement | null => {
+    const { x, y, index } = props
+    if (x === undefined || y === undefined || index === undefined) return null
+    const entry = chartDataRef.current[index]
+    if (!entry) return null
+    if (entry.isSeparator) {
+      return (
+        <text x={x} y={(y ?? 0) + 12} textAnchor="middle" fontSize={11} fontWeight={600} fill="#002E5E">
+          {entry.program ?? ''}
+        </text>
+      )
+    }
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text x={0} y={0} dy={10} transform="rotate(-35)" textAnchor="end" fontSize={11} fill="#5c5c58">
+          {entry.name}
+        </text>
+      </g>
+    )
+  }, [])
+
+  return (
+    <Card
+      title={chartChip === 'eixo' ? 'Actividades por Eixo — Estado' : 'Actividades por Programa — Estado'}
+      actions={
+        <div className="dash-chart-toggle">
+          <button className={`chip${chartChip === 'eixo' ? ' active' : ''}`} onClick={() => setChartChip('eixo')}>Eixo</button>
+          <button className={`chip${chartChip === 'programa' ? ' active' : ''}`} onClick={() => setChartChip('programa')}>Programa</button>
+        </div>
+      }
+    >
+      {chartChip === 'eixo' ? (
+        chartDataEixo.filter(e => !e.isSeparator).length === 0 ? (
+          <div className="page-placeholder" style={{ minHeight: 220 }}><p>Sem dados carregados</p></div>
+        ) : (
+          <div className="dash-chart-container">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartDataEixo} margin={{ top: 4, right: 8, left: -16, bottom: 56 }}>
+                <XAxis dataKey="name" tick={EixoAxisTick as (props: unknown) => React.ReactElement | null} interval={0} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip content={ChartTooltip as (props: unknown) => React.ReactElement | null} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS}>
+                  <LabelList dataKey="concluidas" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                </Bar>
+                <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA}>
+                  <LabelList dataKey="em_dia" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                </Bar>
+                <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO} radius={[3, 3, 0, 0]}>
+                  <LabelList dataKey="em_atraso" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )
+      ) : (
+        chartDataProg.length === 0 ? (
+          <div className="page-placeholder" style={{ minHeight: 220 }}><p>Sem dados carregados</p></div>
+        ) : (
+          <div className="dash-chart-container">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartDataProg} margin={{ top: 4, right: 8, left: -16, bottom: 48 }}>
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip content={ChartTooltip as (props: unknown) => React.ReactElement | null} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS}>
+                  <LabelList dataKey="concluidas" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                </Bar>
+                <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA}>
+                  <LabelList dataKey="em_dia" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                </Bar>
+                <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO} radius={[3, 3, 0, 0]}>
+                  <LabelList dataKey="em_atraso" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )
+      )}
+    </Card>
+  )
+}
+
+// ── DetailTableCard ────────────────────────────────────────────
+interface DetailTableCardProps {
+  leaves: Activity[]
+  programs: Program[]
+  allEixos: Eixo[]
+  allPlanos: Plano[]
+  totalsRow: Record<string, unknown>
+  onRowClick: (row: Record<string, unknown>) => void
+}
+
+function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onRowClick }: DetailTableCardProps) {
+  const [tableChip, setTableChip] = useState<'programa' | 'eixo' | 'plano'>('eixo')
+
+  const tableRows = useMemo((): Record<string, unknown>[] => {
+    const sortedProgs = programs.slice().sort((a, b) => a.sort_order - b.sort_order)
+
+    if (tableChip === 'programa') {
+      return sortedProgs
+        .map(prog => {
+          const progLeaves = leaves.filter(a => a.program_id === prog.id)
+          if (progLeaves.length === 0) return null
+          return { ...buildRow(prog.name, calcMetrics(progLeaves), false), _prog_id: prog.id }
+        })
+        .filter((r): r is Record<string, unknown> => r !== null)
+    }
+
+    const rows: Record<string, unknown>[] = []
+
+    function orderedEixoEntries(progLeaves: Activity[], progId: string): Array<{ name: string; leaves: Activity[] }> {
+      const byEixo = groupBy(progLeaves, a => a.n1 || '(sem eixo)')
+      const progEixos = allEixos
+        .filter(e => e.program_id === progId)
+        .sort((a, b) => a.sort_order - b.sort_order)
+      const result: Array<{ name: string; leaves: Activity[] }> = []
+      const seen = new Set<string>()
+      for (const e of progEixos) {
+        const acts = byEixo.get(e.name)
+        if (!acts) continue
+        seen.add(e.name)
+        result.push({ name: e.name, leaves: acts })
+      }
+      for (const [n1, acts] of byEixo) {
+        if (seen.has(n1)) continue
+        result.push({ name: n1, leaves: acts })
+      }
+      return result
+    }
+
+    if (tableChip === 'eixo') {
+      for (const prog of sortedProgs) {
+        const progLeaves = leaves.filter(a => a.program_id === prog.id)
+        if (progLeaves.length === 0) continue
+        rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves), false), _prog_id: prog.id, _isProgHeader: true })
+        for (const { name, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
+          rows.push({ ...buildRow(name, calcMetrics(eixoLeaves), false), _n1: name, _prog_id: prog.id })
+        }
+      }
+      return rows
+    }
+
+    // ── Plano de Acção ────────────────────────────────────────
+    for (const prog of sortedProgs) {
+      const progLeaves = leaves.filter(a => a.program_id === prog.id)
+      if (progLeaves.length === 0) continue
+      rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves), false), _prog_id: prog.id, _isProgHeader: true })
+      for (const { name: eixoName, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
+        rows.push({ ...buildRow(eixoName, calcMetrics(eixoLeaves), true), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
+        const byPlano = groupBy(eixoLeaves, a => a.n2 || '(sem plano)')
+        const eixoPlanos = allPlanos
+          .filter(p => p.program_id === prog.id && p.eixo?.name === eixoName)
+          .sort((a, b) => a.sort_order - b.sort_order)
+        const seen = new Set<string>()
+        for (const plano of eixoPlanos) {
+          const acts = byPlano.get(plano.name)
+          if (!acts) continue
+          seen.add(plano.name)
+          rows.push({ ...buildRow(plano.name, calcMetrics(acts), false), _n1: eixoName, _n2: plano.name, _indent: 2 })
+        }
+        for (const [n2, acts] of byPlano) {
+          if (seen.has(n2)) continue
+          rows.push({ ...buildRow(n2, calcMetrics(acts), false), _n1: eixoName, _n2: n2, _indent: 2 })
+        }
+      }
+    }
+    return rows
+  }, [tableChip, leaves, programs, allEixos, allPlanos])
+
+  const title = tableChip === 'programa' ? 'Detalhe por Programa'
+    : tableChip === 'eixo' ? 'Detalhe por Eixo'
+    : 'Detalhe por Plano de Acção'
+
+  return (
+    <Card title={title}>
+      <div className="toggle-chips">
+        <button
+          className={`chip${tableChip === 'programa' ? ' active' : ''}`}
+          onClick={() => setTableChip('programa')}
+        >
+          Programa
+        </button>
+        <button
+          className={`chip${tableChip === 'eixo' ? ' active' : ''}`}
+          onClick={() => setTableChip('eixo')}
+        >
+          Eixo
+        </button>
+        <button
+          className={`chip${tableChip === 'plano' ? ' active' : ''}`}
+          onClick={() => setTableChip('plano')}
+        >
+          Plano de Acção
+        </button>
+      </div>
+      <Table
+        columns={DETAIL_COLS}
+        rows={tableRows}
+        emptyMessage="Sem dados carregados"
+        layout="fixed"
+        footerRow={totalsRow}
+        onRowClick={onRowClick}
+        rowClassName={row => {
+          if (row._prog_id && !row._n1 && !row._isTotals) return 'dash-prog-hdr'
+          if (row._n1 && !row._n2) return 'dash-n1-row'
+          return undefined
+        }}
+      />
+    </Card>
+  )
+}
+
+// ── Dashboard (main) ───────────────────────────────────────────
+export default function Dashboard() {
   const [evoMetric, setEvoMetric] = useState<EvoMetric>('grau_exec')
 
   const navigate = useNavigate()
@@ -307,86 +587,6 @@ export default function Dashboard() {
     fmtPct1,
   )
 
-  // ── Bar chart data ───────────────────────────────────────────
-  const chartDataRef = useRef<BarEntry[]>([])
-
-  const chartDataEixo = useMemo((): BarEntry[] => {
-    if (programs.length === 0) {
-      // Programs not yet loaded — flat group by n1
-      return Array.from(groupBy(leaves, a => a.n1 || '(sem eixo)').entries())
-        .map(([n1, acts]) => ({ name: n1, ...barCounts(acts) }))
-    }
-    const sortedProgs = programs.slice().sort((a, b) => a.sort_order - b.sort_order)
-    const progsWithData = sortedProgs.filter(p => leaves.some(a => a.program_id === p.id))
-    const useSep = progsWithData.length > 1
-    const result: BarEntry[] = []
-    let sepIdx = 0
-    for (const prog of sortedProgs) {
-      const progLeaves = leaves.filter(a => a.program_id === prog.id)
-      if (progLeaves.length === 0) continue
-      if (useSep) {
-        result.push({ name: `__sep__${sepIdx++}`, concluidas: 0, em_dia: 0, em_atraso: 0, isSeparator: true, program: prog.name })
-      }
-      const progEixos = allEixos
-        .filter(e => e.program_id === prog.id)
-        .sort((a, b) => a.sort_order - b.sort_order)
-      const byEixo = groupBy(progLeaves, a => a.n1 || '(sem eixo)')
-      if (progEixos.length > 0) {
-        const seen = new Set<string>()
-        for (const e of progEixos) {
-          const acts = byEixo.get(e.name)
-          if (!acts) continue
-          seen.add(e.name)
-          result.push({ name: e.name, ...barCounts(acts) })
-        }
-        for (const [n1, acts] of byEixo) {
-          if (!seen.has(n1)) result.push({ name: n1, ...barCounts(acts) })
-        }
-      } else {
-        for (const [n1, acts] of byEixo) {
-          result.push({ name: n1, ...barCounts(acts) })
-        }
-      }
-    }
-    return result
-  }, [leaves, programs, allEixos])
-
-  const chartDataProg = useMemo((): BarEntry[] =>
-    programs
-      .slice()
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map(prog => {
-        const progLeaves = leaves.filter(a => a.program_id === prog.id)
-        if (progLeaves.length === 0) return null
-        return { name: prog.name, ...barCounts(progLeaves) }
-      })
-      .filter((e): e is BarEntry => e !== null),
-  [leaves, programs])
-
-  // Set ref synchronously so EixoAxisTick reads current data during render
-  chartDataRef.current = chartDataEixo
-
-  const EixoAxisTick = useCallback((props: AxisTickProps): React.ReactElement | null => {
-    const { x, y, index } = props
-    if (x === undefined || y === undefined || index === undefined) return null
-    const entry = chartDataRef.current[index]
-    if (!entry) return null
-    if (entry.isSeparator) {
-      return (
-        <text x={x} y={(y ?? 0) + 12} textAnchor="middle" fontSize={11} fontWeight={600} fill="#002E5E">
-          {entry.program ?? ''}
-        </text>
-      )
-    }
-    return (
-      <g transform={`translate(${x},${y})`}>
-        <text x={0} y={0} dy={10} transform="rotate(-35)" textAnchor="end" fontSize={11} fill="#5c5c58">
-          {entry.name}
-        </text>
-      </g>
-    )
-  }, [])
-
   // ── Pie chart data ───────────────────────────────────────────
   const pieData = useMemo(() => [
     { name: 'Concluídas', value: m.concluidas, color: CLR_CONCLUIDAS },
@@ -414,84 +614,6 @@ export default function Dashboard() {
       conc_data_obj:   100,
     }
   }), [snapshots, snapshotProgramId])
-
-  // ── Detail table rows ────────────────────────────────────────
-  const tableRows = useMemo((): Record<string, unknown>[] => {
-    const sortedProgs = programs.slice().sort((a, b) => a.sort_order - b.sort_order)
-
-    // ── Programa ──────────────────────────────────────────────
-    if (tableChip === 'programa') {
-      return sortedProgs
-        .map(prog => {
-          const progLeaves = leaves.filter(a => a.program_id === prog.id)
-          if (progLeaves.length === 0) return null
-          return { ...buildRow(prog.name, calcMetrics(progLeaves), false), _prog_id: prog.id }
-        })
-        .filter((r): r is Record<string, unknown> => r !== null)
-    }
-
-    const rows: Record<string, unknown>[] = []
-
-    // Helper: build ordered (eixoName, eixoLeaves) pairs for a set of leaves
-    function orderedEixoEntries(progLeaves: Activity[], progId: string): Array<{ name: string; leaves: Activity[] }> {
-      const byEixo = groupBy(progLeaves, a => a.n1 || '(sem eixo)')
-      const progEixos = allEixos
-        .filter(e => e.program_id === progId)
-        .sort((a, b) => a.sort_order - b.sort_order)
-      const result: Array<{ name: string; leaves: Activity[] }> = []
-      const seen = new Set<string>()
-      for (const e of progEixos) {
-        const acts = byEixo.get(e.name)
-        if (!acts) continue
-        seen.add(e.name)
-        result.push({ name: e.name, leaves: acts })
-      }
-      for (const [n1, acts] of byEixo) {
-        if (seen.has(n1)) continue
-        result.push({ name: n1, leaves: acts })
-      }
-      return result
-    }
-
-    // ── Eixo ──────────────────────────────────────────────────
-    if (tableChip === 'eixo') {
-      for (const prog of sortedProgs) {
-        const progLeaves = leaves.filter(a => a.program_id === prog.id)
-        if (progLeaves.length === 0) continue
-        rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves), false), _prog_id: prog.id, _isProgHeader: true })
-        for (const { name, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
-          rows.push({ ...buildRow(name, calcMetrics(eixoLeaves), false), _n1: name, _prog_id: prog.id })
-        }
-      }
-      return rows
-    }
-
-    // ── Plano de Acção ────────────────────────────────────────
-    for (const prog of sortedProgs) {
-      const progLeaves = leaves.filter(a => a.program_id === prog.id)
-      if (progLeaves.length === 0) continue
-      rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves), false), _prog_id: prog.id, _isProgHeader: true })
-      for (const { name: eixoName, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
-        rows.push({ ...buildRow(eixoName, calcMetrics(eixoLeaves), true), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
-        const byPlano = groupBy(eixoLeaves, a => a.n2 || '(sem plano)')
-        const eixoPlanos = allPlanos
-          .filter(p => p.program_id === prog.id && p.eixo?.name === eixoName)
-          .sort((a, b) => a.sort_order - b.sort_order)
-        const seen = new Set<string>()
-        for (const plano of eixoPlanos) {
-          const acts = byPlano.get(plano.name)
-          if (!acts) continue
-          seen.add(plano.name)
-          rows.push({ ...buildRow(plano.name, calcMetrics(acts), false), _n1: eixoName, _n2: plano.name, _indent: 2 })
-        }
-        for (const [n2, acts] of byPlano) {
-          if (seen.has(n2)) continue
-          rows.push({ ...buildRow(n2, calcMetrics(acts), false), _n1: eixoName, _n2: n2, _indent: 2 })
-        }
-      }
-    }
-    return rows
-  }, [tableChip, leaves, programs, allEixos, allPlanos])
 
   // ── Last snapshot date for Evolution card ────────────────────
   const lastSnapDate = useMemo(() => {
@@ -584,65 +706,7 @@ export default function Dashboard() {
       {/* ── Row 2: Charts ─────────────────────────────────────── */}
       <div className="dashboard-charts-grid">
 
-        <Card
-          title={chartChip === 'eixo' ? 'Actividades por Eixo — Estado' : 'Actividades por Programa — Estado'}
-          actions={
-            <div className="dash-chart-toggle">
-              <button className={`chip${chartChip === 'eixo' ? ' active' : ''}`} onClick={() => setChartChip('eixo')}>Eixo</button>
-              <button className={`chip${chartChip === 'programa' ? ' active' : ''}`} onClick={() => setChartChip('programa')}>Programa</button>
-            </div>
-          }
-        >
-          {chartChip === 'eixo' ? (
-            chartDataEixo.filter(e => !e.isSeparator).length === 0 ? (
-              <div className="page-placeholder" style={{ minHeight: 220 }}><p>Sem dados carregados</p></div>
-            ) : (
-              <div className="dash-chart-container">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartDataEixo} margin={{ top: 4, right: 8, left: -16, bottom: 56 }}>
-                    <XAxis dataKey="name" tick={EixoAxisTick as (props: unknown) => React.ReactElement | null} interval={0} />
-                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                    <Tooltip content={ChartTooltip as (props: unknown) => React.ReactElement | null} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS}>
-                      <LabelList dataKey="concluidas" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
-                    </Bar>
-                    <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA}>
-                      <LabelList dataKey="em_dia" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
-                    </Bar>
-                    <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO} radius={[3, 3, 0, 0]}>
-                      <LabelList dataKey="em_atraso" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )
-          ) : (
-            chartDataProg.length === 0 ? (
-              <div className="page-placeholder" style={{ minHeight: 220 }}><p>Sem dados carregados</p></div>
-            ) : (
-              <div className="dash-chart-container">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartDataProg} margin={{ top: 4, right: 8, left: -16, bottom: 48 }}>
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} />
-                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                    <Tooltip content={ChartTooltip as (props: unknown) => React.ReactElement | null} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS}>
-                      <LabelList dataKey="concluidas" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
-                    </Bar>
-                    <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA}>
-                      <LabelList dataKey="em_dia" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
-                    </Bar>
-                    <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO} radius={[3, 3, 0, 0]}>
-                      <LabelList dataKey="em_atraso" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )
-          )}
-        </Card>
+        <BarChartCard leaves={leaves} programs={programs} allEixos={allEixos} />
 
         <Card title="Estado Global">
           {m.total === 0 ? (
@@ -768,41 +832,14 @@ export default function Dashboard() {
       </div>
 
       {/* ── Row 4: Detail table ───────────────────────────────── */}
-      <Card title={
-        tableChip === 'programa' ? 'Detalhe por Programa'
-        : tableChip === 'eixo'   ? 'Detalhe por Eixo'
-        :                          'Detalhe por Plano de Acção'
-      }>
-        <div className="toggle-chips">
-          <button
-            className={`chip${tableChip === 'programa' ? ' active' : ''}`}
-            onClick={() => setTableChip('programa')}
-          >
-            Programa
-          </button>
-          <button
-            className={`chip${tableChip === 'eixo' ? ' active' : ''}`}
-            onClick={() => setTableChip('eixo')}
-          >
-            Eixo
-          </button>
-          <button
-            className={`chip${tableChip === 'plano' ? ' active' : ''}`}
-            onClick={() => setTableChip('plano')}
-          >
-            Plano de Acção
-          </button>
-        </div>
-        <Table
-          columns={DETAIL_COLS}
-          rows={tableRows}
-          emptyMessage="Sem dados carregados"
-          layout="fixed"
-          footerRow={totalsRow}
-          onRowClick={handleRowClick}
-          rowClassName={row => row._isProgHeader ? 'dash-prog-hdr' : undefined}
-        />
-      </Card>
+      <DetailTableCard
+        leaves={leaves}
+        programs={programs}
+        allEixos={allEixos}
+        allPlanos={allPlanos}
+        totalsRow={totalsRow}
+        onRowClick={handleRowClick}
+      />
     </>
   )
 }
