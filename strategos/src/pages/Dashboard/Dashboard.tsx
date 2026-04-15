@@ -56,8 +56,6 @@ interface Metrics {
   grau_exec: number
   /** Average pct_prev (0–100) */
   exec_obj: number
-  /** Count of leaf activities with bs != null and bs <= TODAY */
-  conc_a_data_denom: number
 }
 
 function classify(a: Activity): 'concluida' | 'em_dia' | 'em_atraso' {
@@ -70,9 +68,9 @@ function classify(a: Activity): 'concluida' | 'em_dia' | 'em_atraso' {
 function calcMetrics(acts: Activity[]): Metrics {
   const total = acts.length
   if (total === 0) {
-    return { total: 0, concluidas: 0, em_dia: 0, em_atraso: 0, grau_exec: 0, exec_obj: 0, conc_a_data_denom: 0 }
+    return { total: 0, concluidas: 0, em_dia: 0, em_atraso: 0, grau_exec: 0, exec_obj: 0 }
   }
-  let concluidas = 0, em_dia = 0, em_atraso = 0, sumPct = 0, sumPrev = 0, conc_a_data_denom = 0
+  let concluidas = 0, em_dia = 0, em_atraso = 0, sumPct = 0, sumPrev = 0
   for (const a of acts) {
     const cls = classify(a)
     if (cls === 'concluida') concluidas++
@@ -80,13 +78,11 @@ function calcMetrics(acts: Activity[]): Metrics {
     else em_atraso++
     sumPct  += a.pct
     sumPrev += leafPctPrev(a, TODAY)
-    if (a.bf && a.bf <= TODAY) conc_a_data_denom++
   }
   return {
     total, concluidas, em_dia, em_atraso,
     grau_exec: sumPct  / total,
     exec_obj:  sumPrev / total,
-    conc_a_data_denom,
   }
 }
 
@@ -168,7 +164,7 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 
 function buildRow(nome: string, m: Metrics, isParent: boolean): Record<string, unknown> {
   const concGeral = safeDiv(m.concluidas, m.total) * 100
-  const concData  = safeDiv(m.concluidas, m.conc_a_data_denom) * 100
+  const concData  = safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100
   const cgObj     = safeDiv(m.concluidas + m.em_atraso, m.total) * 100
   return {
     _isParent: isParent,
@@ -181,7 +177,7 @@ function buildRow(nome: string, m: Metrics, isParent: boolean): Record<string, u
     exec_obj:   m.total > 0 ? fmtPct(m.exec_obj)  : '—',
     conc_geral: m.total > 0 ? fmtPct(concGeral)   : '—',
     cg_obj:     m.total > 0 ? fmtPct(cgObj)       : '—',
-    conc_data:  m.conc_a_data_denom > 0 ? fmtPct(concData) : '—',
+    conc_data:  m.concluidas + m.em_atraso > 0 ? fmtPct(concData) : '—',
     cd_obj:     '100%',
   }
 }
@@ -589,8 +585,8 @@ export default function Dashboard() {
   const kpiGrauExec  = m.total > 0 ? fmtPct(m.grau_exec) : '—'
   const kpiConcGeral = m.total > 0
     ? fmtPct(safeDiv(m.concluidas, m.total) * 100) : '—'
-  const kpiConcData  = m.conc_a_data_denom > 0
-    ? fmtPct(safeDiv(m.concluidas, m.conc_a_data_denom) * 100) : '—'
+  const kpiConcData  = m.concluidas + m.em_atraso > 0
+    ? fmtPct(safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100) : '—'
   const kpiExecObj   = m.total > 0 ? fmtPct(m.exec_obj) : '—'
   const kpiCgObj     = m.total > 0
     ? fmtPct(safeDiv(m.concluidas + m.em_atraso, m.total) * 100) : '—'
@@ -622,13 +618,10 @@ export default function Dashboard() {
     prevKpi && prevKpi.total > 0 ? safeDiv(prevKpi.concluidas, prevKpi.total) * 100 : null,
     fmtPct1,
   )
-  const prevConcDataDenom = prevKpi
-    ? (prevKpi.conc_a_data_denom ?? (prevKpi.concluidas + prevKpi.em_atraso))
-    : null
   const trendConcData = mkTrend(
-    m.conc_a_data_denom > 0 ? safeDiv(m.concluidas, m.conc_a_data_denom) * 100 : 0,
-    prevKpi && prevConcDataDenom && prevConcDataDenom > 0
-      ? safeDiv(prevKpi.concluidas, prevConcDataDenom) * 100
+    m.concluidas + m.em_atraso > 0 ? safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100 : 0,
+    prevKpi && prevKpi.concluidas + prevKpi.em_atraso > 0
+      ? safeDiv(prevKpi.concluidas, prevKpi.concluidas + prevKpi.em_atraso) * 100
       : null,
     fmtPct1,
   )
@@ -646,7 +639,6 @@ export default function Dashboard() {
     const kpi = (pid !== undefined && pid in s.by_n0) ? s.by_n0[pid] : s.kpi
     const { total, concluidas, em_atraso } = kpi
     const due  = concluidas + em_atraso
-    const concDataDenom = kpi.conc_a_data_denom ?? due
     const d    = new Date(s.snap_date)
     const date = d.getFullYear() === new Date().getFullYear()
       ? d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })
@@ -657,7 +649,7 @@ export default function Dashboard() {
       grau_exec_obj:   total > 0 ? +(due / total * 100).toFixed(1)    : null,
       conc_geral_real: total > 0 ? +(concluidas / total * 100).toFixed(1) : null,
       conc_geral_obj:  total > 0 ? +(due / total * 100).toFixed(1)    : null,
-      conc_data_real:  concDataDenom > 0 ? +(concluidas / concDataDenom * 100).toFixed(1) : null,
+      conc_data_real:  due > 0 ? +(concluidas / due * 100).toFixed(1) : null,
       conc_data_obj:   100,
     }
   }), [snapshots, snapshotProgramId])
@@ -681,8 +673,8 @@ export default function Dashboard() {
     exec_obj:   m.total > 0 ? fmtPct(m.exec_obj)  : '—',
     conc_geral: m.total > 0 ? fmtPct(safeDiv(m.concluidas, m.total) * 100) : '—',
     cg_obj:     m.total > 0 ? fmtPct(safeDiv(m.concluidas + m.em_atraso, m.total) * 100) : '—',
-    conc_data:  m.conc_a_data_denom > 0
-      ? fmtPct(safeDiv(m.concluidas, m.conc_a_data_denom) * 100) : '—',
+    conc_data:  m.concluidas + m.em_atraso > 0
+      ? fmtPct(safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100) : '—',
     cd_obj:     '100%',
   }), [m])
 
