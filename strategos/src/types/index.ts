@@ -239,6 +239,8 @@ export interface SnapshotKpi {
   em_dia: number
   em_atraso: number
   exec_media: number
+  /** Activities with bs != null and bs <= snap_date (denominator for conc à data) */
+  conc_a_data_denom?: number
 }
 
 export interface Snapshot {

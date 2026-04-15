@@ -123,7 +123,8 @@ export default function Evolucao() {
     () => filtered.map(s => {
       const kpi   = extractKpi(s, programId)
       const concr = kpi.total > 0 ? kpi.concluidas / kpi.total * 100 : 0
-      const aData = kpi.total > 0 ? (kpi.concluidas + kpi.em_dia) / kpi.total * 100 : 0
+      const aDataDenom = kpi.conc_a_data_denom ?? kpi.total
+      const aData = aDataDenom > 0 ? kpi.concluidas / aDataDenom * 100 : 0
       return {
         fullDate: s.snap_date,
         exec:     +kpi.exec_media.toFixed(1),
@@ -148,10 +149,12 @@ export default function Evolucao() {
     const first = extractKpi(filtered[0], programId)
     const last  = extractKpi(filtered[filtered.length - 1], programId)
 
-    const firstConcr = first.total > 0 ? first.concluidas / first.total * 100 : 0
-    const lastConcr  = last.total  > 0 ? last.concluidas  / last.total  * 100 : 0
-    const firstAData = first.total > 0 ? (first.concluidas + first.em_dia) / first.total * 100 : 0
-    const lastAData  = last.total  > 0 ? (last.concluidas  + last.em_dia)  / last.total  * 100 : 0
+    const firstConcr      = first.total > 0 ? first.concluidas / first.total * 100 : 0
+    const lastConcr       = last.total  > 0 ? last.concluidas  / last.total  * 100 : 0
+    const firstADataDenom = first.conc_a_data_denom ?? first.total
+    const lastADataDenom  = last.conc_a_data_denom  ?? last.total
+    const firstAData = firstADataDenom > 0 ? first.concluidas / firstADataDenom * 100 : 0
+    const lastAData  = lastADataDenom  > 0 ? last.concluidas  / lastADataDenom  * 100 : 0
 
     const groups: CompGroup[] = [
       {
