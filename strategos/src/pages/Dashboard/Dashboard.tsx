@@ -80,7 +80,7 @@ function calcMetrics(acts: Activity[]): Metrics {
     else em_atraso++
     sumPct  += a.pct
     sumPrev += leafPctPrev(a, TODAY)
-    if (a.bs && a.bs <= TODAY) conc_a_data_denom++
+    if (a.bf && a.bf <= TODAY) conc_a_data_denom++
   }
   return {
     total, concluidas, em_dia, em_atraso,
