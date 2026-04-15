@@ -228,19 +228,20 @@ export default function GestaoPDS() {
   const planOptions = useMemo<PlanOption[]>(() =>
     planos.map(p => {
       const eixoName = p.eixo?.name ?? ''
+      const progName = programs.find(pg => pg.id === p.program_id)?.name ?? ''
       return {
         key:        p.id,
         label:      eixoName ? `${eixoName} › ${p.name}` : p.name,
-        n0:         '',
+        n0:         progName,
         n1:         eixoName,
         n2:         p.name,
-        id0:        '',
+        id0:        p.program_id ?? '',
         id1:        p.eixo?.code ?? '',
         id2:        p.code,
         program_id: p.program_id,
       }
     }),
-    [planos]
+    [planos, programs]
   )
 
   const [selectedKey, setSelectedKey] = useState<string>('')
@@ -401,7 +402,8 @@ export default function GestaoPDS() {
     const effectiveId = baseEntry?.id ?? localEntryId
     const payload = {
       ...(effectiveId ? { id: effectiveId } : {}),
-      program_id:        selectedPlan.program_id,
+      program_id:        selProgId,
+      plano_id:          selectedPlan.key,
       n0:                selectedPlan.n0,
       n1:                selectedPlan.n1,
       plan_name:         selectedPlan.n2,
