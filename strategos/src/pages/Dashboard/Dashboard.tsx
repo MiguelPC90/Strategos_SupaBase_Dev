@@ -120,7 +120,7 @@ interface BarEntry {
   concluidas: number
   em_dia: number
   em_atraso: number
-  isSeparator?: boolean
+  isSpacer?: boolean
   program?: string
 }
 
@@ -151,7 +151,7 @@ interface ChartTooltipItem {
 }
 
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: ChartTooltipItem[]; label?: string }) {
-  if (!active || !payload?.length || payload[0]?.payload?.isSeparator) return null
+  if (!active || !payload?.length || payload[0]?.payload?.isSpacer) return null
   return (
     <div style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6, padding: '6px 10px', fontSize: 12 }}>
       <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
@@ -240,7 +240,8 @@ interface BarChartCardProps {
 
 function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
   const [chartChip, setChartChip] = useState<'eixo' | 'programa'>('eixo')
-  const chartDataRef = useRef<BarEntry[]>([])
+  const chartDataRef  = useRef<BarEntry[]>([])
+  const xCoordsRef    = useRef<Record<number, number>>({})
 
   const chartDataEixo = useMemo((): BarEntry[] => {
     if (programs.length === 0) {
@@ -256,6 +257,10 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
     for (const prog of sortedProgs) {
       const progLeaves = leaves.filter(a => a.program_id === prog.id)
       if (progLeaves.length === 0) continue
+      // Insert a narrow spacer bar between program groups to create a visual separator
+      if (result.length > 0 && multiProg) {
+        result.push({ name: '', concluidas: 0, em_dia: 0, em_atraso: 0, isSpacer: true })
+      }
       const progName = multiProg ? prog.name : undefined
       const progEixos = allEixos
         .filter(e => e.program_id === prog.id)
@@ -294,17 +299,23 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
   [leaves, programs])
 
   chartDataRef.current = chartDataEixo
+  xCoordsRef.current   = {}
 
   const EixoAxisTick = useCallback((props: AxisTickProps): React.ReactElement | null => {
     const { x, y, index } = props
     if (x === undefined || y === undefined || index === undefined) return null
     const data = chartDataRef.current
     const entry = data[index]
-    if (!entry) return null
+    // Return nothing for spacer bars — they are invisible separators
+    if (!entry || entry.isSpacer) return null
 
-    // Build consecutive program groups so we can place the label under the center bar
+    // Accumulate each bar's pixel x so we can compute a true group center later
+    xCoordsRef.current[index] = x
+
+    // Build consecutive program groups, skipping spacer entries
     const groups: Array<{ progName: string; start: number; end: number }> = []
     for (let i = 0; i < data.length; i++) {
+      if (data[i].isSpacer) continue
       const pn = data[i].program ?? ''
       if (groups.length === 0 || groups[groups.length - 1].progName !== pn) {
         groups.push({ progName: pn, start: i, end: i })
@@ -313,8 +324,23 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
       }
     }
     const group = groups.find(g => index >= g.start && index <= g.end)
-    const midIdx = group ? Math.floor((group.start + group.end) / 2) : -1
-    const showProgLabel = index === midIdx && !!group?.progName
+
+    // Render the program label on the LAST bar of the group so all earlier
+    // x positions are already stored in xCoordsRef and we can compute the
+    // true pixel centre of the group.
+    const showProgLabel = index === group?.end && !!group?.progName
+    let progLabelX = 0
+    if (showProgLabel && group) {
+      const xs: number[] = []
+      for (let i = group.start; i <= group.end; i++) {
+        const xi = xCoordsRef.current[i]
+        if (xi !== undefined) xs.push(xi)
+      }
+      if (xs.length > 0) {
+        const avgX = xs.reduce((s, v) => s + v, 0) / xs.length
+        progLabelX = avgX - x
+      }
+    }
 
     return (
       <g transform={`translate(${x},${y})`}>
@@ -322,7 +348,7 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
           {entry.name}
         </text>
         {showProgLabel && (
-          <text x={0} y={30} textAnchor="middle" fontSize={11} fontWeight={600} fill="#002E5E">
+          <text x={progLabelX} y={30} textAnchor="middle" fontSize={11} fontWeight={600} fill="#002E5E">
             {group!.progName}
           </text>
         )}
@@ -350,7 +376,7 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
                 <XAxis dataKey="name" tick={EixoAxisTick as (props: unknown) => React.ReactElement | null} interval={0} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip content={ChartTooltip as (props: unknown) => React.ReactElement | null} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Legend wrapperStyle={{ paddingTop: 24, fontSize: 11 }} />
                 <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS}>
                   <LabelList dataKey="concluidas" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
