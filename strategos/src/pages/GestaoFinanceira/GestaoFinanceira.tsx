@@ -786,7 +786,7 @@ export default function GestaoFinanceira() {
     return () => { cancelled = true }
   }, [programId])
   const { planos, loading: planosLoading } = usePlanos(programId)
-  const { budgetLines, contracts: dbContracts, invoices: dbInvoices, loading: finLoading } = useFinancials(programId)
+  const { budgetLines, contracts: dbContracts, invoices: dbInvoices, loading: finLoading, refetch } = useFinancials(programId)
   const loading = finLoading || planosLoading
 
   // ── Plan options from planos table ───────────────────────────
@@ -856,6 +856,10 @@ export default function GestaoFinanceira() {
 
   const deleteInvoice = useCallback((id: string) => {
     setDraft(d => ({ ...d, invoices: d.invoices.filter(i => i.id !== id) }))
+    if (!isNew(id)) {
+      supabase.from('fin_invoices').delete().eq('id', id)
+        .then(({ error }) => { if (error) console.error('Delete invoice failed', error) })
+    }
   }, [])
 
   // ── Contract panel ───────────────────────────────────────────
@@ -953,60 +957,68 @@ export default function GestaoFinanceira() {
     })
   }, [])
 
-  const confirmInvoice = useCallback(() => {
+  const confirmInvoice = useCallback(async () => {
     if (!invoiceModal || !selectedPlan) return
     const amount = parseFloat(invoiceModal.amount)
     if (isNaN(amount) || amount < 0) { setInvModalErr('Montante inválido.'); return }
     const exRate = invoiceModal.exchange_rate !== '' ? parseFloat(invoiceModal.exchange_rate) : null
     const pdsId  = selectedPlan.key
     const progId = selectedPlan.program_id
+    const ctrId  = draft.contracts.find(c => c.app_id === invoiceModal.app_contract_id)?.id ?? null
 
-    if (invoiceModal.id) {
-      const iid = invoiceModal.id
-      setDraft(d => ({
-        ...d,
-        invoices: d.invoices.map(i => i.id === iid ? {
-          ...i,
-          ref:              invoiceModal.ref,
-          supplier:         invoiceModal.supplier,
-          app_contract_id:  invoiceModal.app_contract_id,
-          contract_id:      d.contracts.find(c => c.app_id === invoiceModal!.app_contract_id)?.id ?? null,
-          doc_type:         invoiceModal.doc_type,
-          amount,
-          currency:         invoiceModal.currency,
-          exchange_rate:    exRate,
-          issue_date:       invoiceModal.issue_date || null,
-          due_date:         invoiceModal.due_date || null,
-          payment_date:     invoiceModal.payment_date || null,
-          status:           invoiceModal.status,
-        } : i),
-      }))
-    } else {
-      setDraft(d => ({
-        ...d,
-        invoices: [...d.invoices, {
-          id: newId(), pds_id: null, plano_id: pdsId,
-          contract_id: d.contracts.find(c => c.app_id === invoiceModal!.app_contract_id)?.id ?? null,
-          app_id: newAppId(), app_contract_id: invoiceModal.app_contract_id,
-          program_id: progId,
-          ref:           invoiceModal.ref,
-          supplier:      invoiceModal.supplier,
-          doc_type:      invoiceModal.doc_type,
-          description:   null,
-          amount,
-          currency:      invoiceModal.currency,
-          exchange_rate: exRate,
-          issue_date:    invoiceModal.issue_date || null,
-          due_date:      invoiceModal.due_date || null,
-          payment_date:  invoiceModal.payment_date || null,
-          status:        invoiceModal.status,
-          memo:          null,
-          sort_order:    d.invoices.length,
-        }],
-      }))
+    try {
+      if (invoiceModal.id && !isNew(invoiceModal.id)) {
+        // Update existing DB row
+        const { error } = await supabase
+          .from('fin_invoices')
+          .update({
+            app_contract_id: invoiceModal.app_contract_id,
+            contract_id:     ctrId,
+            ref:             invoiceModal.ref,
+            supplier:        invoiceModal.supplier,
+            doc_type:        invoiceModal.doc_type,
+            amount,
+            currency:        invoiceModal.currency,
+            exchange_rate:   exRate,
+            issue_date:      invoiceModal.issue_date || null,
+            due_date:        invoiceModal.due_date || null,
+            payment_date:    invoiceModal.payment_date || null,
+            status:          invoiceModal.status,
+          })
+          .eq('id', invoiceModal.id)
+        if (error) throw error
+      } else {
+        // Insert new row
+        const { error } = await supabase
+          .from('fin_invoices')
+          .insert({
+            plano_id:        pdsId,
+            program_id:      progId,
+            app_id:          newAppId(),
+            app_contract_id: invoiceModal.app_contract_id,
+            contract_id:     ctrId,
+            ref:             invoiceModal.ref,
+            supplier:        invoiceModal.supplier,
+            doc_type:        invoiceModal.doc_type,
+            description:     null,
+            amount,
+            currency:        invoiceModal.currency,
+            exchange_rate:   exRate,
+            issue_date:      invoiceModal.issue_date || null,
+            due_date:        invoiceModal.due_date || null,
+            payment_date:    invoiceModal.payment_date || null,
+            status:          invoiceModal.status,
+            memo:            null,
+            sort_order:      draft.invoices.length,
+          })
+        if (error) throw error
+      }
+      setInvoiceModal(null)
+      refetch()
+    } catch (e) {
+      setInvModalErr(e instanceof Error ? e.message : 'Erro ao guardar.')
     }
-    setInvoiceModal(null)
-  }, [invoiceModal, selectedPlan])
+  }, [invoiceModal, selectedPlan, draft.contracts, draft.invoices.length, refetch])
 
   const deleteInvoiceFromModal = useCallback(() => {
     if (!invoiceModal?.id) return

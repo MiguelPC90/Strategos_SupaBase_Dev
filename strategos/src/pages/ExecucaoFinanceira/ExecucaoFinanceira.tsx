@@ -253,7 +253,7 @@ export default function ExecucaoFinanceira() {
 
   // ── Contract rows ─────────────────────────────────────────────
   const ctrRows = useMemo(() => ctrs.map(c => {
-    const fact = invs.filter(i => i.contract_id === c.id && i.status !== 'Anulada').reduce((s, i) => s + i.amount, 0)
+    const fact = invs.filter(i => (i.contract_id === c.id || i.app_contract_id === c.app_id) && i.status !== 'Anulada').reduce((s, i) => s + i.amount, 0)
     return { c, fact, pct: c.total_amount > 0 ? fact / c.total_amount * 100 : 0 }
   }), [ctrs, invs])
 
