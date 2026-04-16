@@ -177,7 +177,14 @@
   /* ── Estado badge fixed width ───────────────────────────────── */
   .ef-badge-estado {
     display: inline-block;
-    min-width: 90px;
+    width: 110px;
     text-align: center;
+    padding: 3px 8px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 500;
   }
+  .ef-badge-estado--grey  { background: #eceef0; color: #5c5c58; }
+  .ef-badge-estado--blue  { background: #e8f0fb; color: var(--blue); }
+  .ef-badge-estado--green { background: #eaf3d8; color: #3B6D11; }
 }

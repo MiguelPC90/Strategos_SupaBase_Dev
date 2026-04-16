@@ -6,7 +6,6 @@ import {
 } from 'recharts'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
-import Badge from '../../components/Badge/Badge'
 import { useFinancials } from '../../hooks/useFinancials'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
@@ -452,7 +451,7 @@ export default function ExecucaoFinanceira() {
                         <td className="ef-td-r">{fmt(c.total_amount)}</td>
                         <td className="ef-td-r">{fmt(fact)}</td>
                         <td className="ef-td-c">{fmtPct(pct)}</td>
-                        <td><span className="ef-badge-estado"><Badge variant={variant}>{label}</Badge></span></td>
+                        <td><span className={`ef-badge-estado ef-badge-estado--${variant}`}>{label}</span></td>
                       </tr>
                     )
                   })}
