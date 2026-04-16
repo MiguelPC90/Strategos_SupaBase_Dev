@@ -852,6 +852,10 @@ export default function GestaoFinanceira() {
 
   const deleteContract = useCallback((id: string) => {
     setDraft(d => ({ ...d, contracts: d.contracts.filter(c => c.id !== id) }))
+    if (!isNew(id)) {
+      supabase.from('fin_contracts').delete().eq('id', id)
+        .then(({ error }) => { if (error) console.error('Delete contract failed', error) })
+    }
   }, [])
 
   const deleteInvoice = useCallback((id: string) => {
@@ -881,7 +885,7 @@ export default function GestaoFinanceira() {
     })
   }, [])
 
-  const confirmContract = useCallback(() => {
+  const confirmContract = useCallback(async () => {
     if (!contractPanel || !selectedPlan) return
     if (!contractPanel.supplier.trim()) { setPanelErr('Fornecedor obrigatório.'); return }
     const totalAmt = parseFloat(contractPanel.total_amount)
@@ -889,43 +893,50 @@ export default function GestaoFinanceira() {
     const exRate = contractPanel.exchange_rate_ref !== '' ? parseFloat(contractPanel.exchange_rate_ref) : null
     const pdsId  = selectedPlan.key
     const progId = selectedPlan.program_id
-    const appId  = newAppId()
 
-    if (contractPanel.id) {
-      const cid = contractPanel.id
-      setDraft(d => ({
-        ...d,
-        contracts: d.contracts.map(c => c.id === cid ? {
-          ...c,
-          supplier:          contractPanel.supplier.trim(),
-          category:          contractPanel.category,
-          total_amount:      totalAmt,
-          currency:          contractPanel.currency,
-          exchange_rate_ref: exRate,
-          award_date:        contractPanel.award_date || null,
-          end_date:          contractPanel.end_date || null,
-          description:       contractPanel.description || null,
-        } : c),
-      }))
-    } else {
-      setDraft(d => ({
-        ...d,
-        contracts: [...d.contracts, {
-          id: newId(), pds_id: null, plano_id: pdsId, app_id: appId, program_id: progId,
-          supplier:          contractPanel.supplier.trim(),
-          category:          contractPanel.category,
-          total_amount:      totalAmt,
-          currency:          contractPanel.currency,
-          exchange_rate_ref: exRate,
-          award_date:        contractPanel.award_date || null,
-          end_date:          contractPanel.end_date || null,
-          description:       contractPanel.description || null,
-          sort_order:        d.contracts.length,
-        }],
-      }))
+    try {
+      if (contractPanel.id && !isNew(contractPanel.id)) {
+        // Update existing DB row
+        const { error } = await supabase
+          .from('fin_contracts')
+          .update({
+            supplier:          contractPanel.supplier.trim(),
+            category:          contractPanel.category,
+            total_amount:      totalAmt,
+            currency:          contractPanel.currency,
+            exchange_rate_ref: exRate,
+            award_date:        contractPanel.award_date || null,
+            end_date:          contractPanel.end_date || null,
+            description:       contractPanel.description || null,
+          })
+          .eq('id', contractPanel.id)
+        if (error) throw error
+      } else {
+        // Insert new row
+        const { error } = await supabase
+          .from('fin_contracts')
+          .insert({
+            plano_id:          pdsId,
+            program_id:        progId,
+            app_id:            newAppId(),
+            supplier:          contractPanel.supplier.trim(),
+            category:          contractPanel.category,
+            total_amount:      totalAmt,
+            currency:          contractPanel.currency,
+            exchange_rate_ref: exRate,
+            award_date:        contractPanel.award_date || null,
+            end_date:          contractPanel.end_date || null,
+            description:       contractPanel.description || null,
+            sort_order:        draft.contracts.length,
+          })
+        if (error) throw error
+      }
+      setContractPanel(null)
+      refetch()
+    } catch (e) {
+      setPanelErr(e instanceof Error ? e.message : 'Erro ao guardar.')
     }
-    setContractPanel(null)
-  }, [contractPanel, selectedPlan])
+  }, [contractPanel, selectedPlan, draft.contracts.length, refetch])
 
   // ── Invoice modal ────────────────────────────────────────────
   const [invoiceModal,          setInvoiceModal]          = useState<InvoiceForm | null>(null)
