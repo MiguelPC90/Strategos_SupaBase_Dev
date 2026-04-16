@@ -24,19 +24,8 @@
     white-space: nowrap;
   }
 
-  .gr-plan-select {
-    border: 1px solid var(--border2);
-    border-radius: var(--r);
-    padding: 5px 10px;
-    font-size: 13px;
-    color: var(--text);
-    background: var(--bg);
-    font-family: inherit;
-    min-width: 240px;
-    max-width: 420px;
-  }
-  .gr-plan-select:focus   { outline: none; border-color: var(--navy); }
-  .gr-plan-select:disabled { opacity: 0.6; }
+  /* Layout overrides for .styled-select inside the controls bar */
+  .gr-controls-bar .styled-select { min-width: 240px; max-width: 420px; }
 
   .gr-spacer { flex: 1; }
 

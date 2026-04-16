@@ -1146,7 +1146,7 @@ export default function GestaoFinanceira() {
           <>
             <label className="gf-label">Programa:</label>
             <select
-              className="gf-plan-select"
+              className="styled-select"
               value={selProgId}
               onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
             >
@@ -1156,7 +1156,7 @@ export default function GestaoFinanceira() {
         )}
         <label className="gf-label">Plano de Acção:</label>
         <select
-          className="gf-plan-select"
+          className="styled-select"
           value={selectedKey}
           onChange={e => setSelectedKey(e.target.value)}
           disabled={noProgram || noPlans}

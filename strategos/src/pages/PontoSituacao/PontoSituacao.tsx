@@ -28,7 +28,18 @@ function statusVariant(status: string): BadgeVariant {
   const s = status.toLowerCase()
   if (s === 'concluído' || s === 'concluída') return 'green'
   if (s === 'em curso') return 'blue'
+  if (s === 'em atraso') return 'red'
   return 'grey'
+}
+
+// ── Display status: auto-override to 'Em atraso' when date is past ──
+function displayStatus(item: PdsItem): string | null {
+  if (!item.status) return null
+  const s = item.status.toLowerCase()
+  if (s !== 'concluído' && s !== 'concluída' && item.date && item.date < TODAY) {
+    return 'Em atraso'
+  }
+  return item.status
 }
 
 // ── Text renderer: **bold** + newlines via CSS pre-wrap ────────
@@ -51,15 +62,16 @@ function ItemList({ items, className = '' }: ItemListProps) {
   }
   return (
     <ul className={`pds-item-list${className ? ` ${className}` : ''}`}>
-      {items.map((item, i) => (
-        <li key={i} className="pds-item">
-          <span className="pds-item-text">{renderText(item.text)}</span>
-          {item.date && <span className="pds-item-date">{fmtDate(item.date)}</span>}
-          {item.status && (
-            <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
-          )}
-        </li>
-      ))}
+      {items.map((item, i) => {
+        const ds = displayStatus(item)
+        return (
+          <li key={i} className="pds-item">
+            <span className="pds-item-text">{renderText(item.text)}</span>
+            {item.date && <span className="pds-item-date">{fmtDate(item.date)}</span>}
+            {ds && <Badge variant={statusVariant(ds)}>{ds}</Badge>}
+          </li>
+        )
+      })}
     </ul>
   )
 }
@@ -245,7 +257,7 @@ export default function PontoSituacao() {
           <>
             <span className="pds-selector-label">Programa</span>
             <select
-              className="pds-selector-select"
+              className="styled-select"
               value={selProgId ?? ''}
               onChange={e => setSelProgId(e.target.value || null)}
             >
@@ -258,7 +270,7 @@ export default function PontoSituacao() {
         )}
         <span className="pds-selector-label">Plano</span>
         <select
-          className="pds-selector-select"
+          className="styled-select"
           value={selectedKey}
           onChange={e => setSelectedKey(e.target.value)}
         >

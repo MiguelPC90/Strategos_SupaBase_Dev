@@ -64,3 +64,25 @@
     margin: 0;
   }
 }
+
+@layer components {
+  /* ── Styled plan/program selector ──────────────────────────── */
+  .styled-select {
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 5px 28px 5px 10px;
+    font-size: 13px;
+    color: var(--text);
+    background-color: var(--bg2);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235c5c58'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    transition: border-color 0.12s;
+  }
+  .styled-select:focus    { outline: none; border-color: var(--navy); }
+  .styled-select:hover    { border-color: var(--border2); background-color: var(--bg3); }
+  .styled-select:disabled { opacity: 0.6; cursor: default; }
+}

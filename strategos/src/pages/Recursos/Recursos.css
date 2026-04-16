@@ -33,18 +33,9 @@
     white-space: nowrap;
   }
 
-  .res-selector-select {
-    border: 1px solid var(--border2);
-    border-radius: var(--r);
-    padding: 5px 10px;
-    font-size: 13px;
-    color: var(--text);
-    background: var(--bg2);
-    cursor: pointer;
-  }
-  .res-selector-select.res-plan-select { flex: 1; max-width: 420px; }
-  .res-selector-select.res-period-select { width: 110px; }
-  .res-selector-select:focus { outline: none; border-color: var(--navy); }
+  /* Layout overrides for .styled-select inside the controls bar */
+  .res-controls-bar .styled-select { flex: 1; max-width: 420px; }
+  .res-controls-bar .res-period-select { flex: none; width: 110px; }
 
   /* ── KPI row ────────────────────────────────────────────────── */
   .res-kpi-row {

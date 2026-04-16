@@ -457,7 +457,7 @@ export default function GestaoPDS() {
           <>
             <label className="pds-label">Programa:</label>
             <select
-              className="pds-plan-select"
+              className="styled-select"
               value={selProgId}
               onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
             >
@@ -467,7 +467,7 @@ export default function GestaoPDS() {
         )}
         <label className="pds-label">Plano de Acção:</label>
         <select
-          className="pds-plan-select"
+          className="styled-select"
           value={selectedKey}
           onChange={(e) => setSelectedKey(e.target.value)}
           disabled={noProgram || noPlans}

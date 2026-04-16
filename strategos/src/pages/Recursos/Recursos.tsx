@@ -417,7 +417,7 @@ export default function Recursos() {
           <>
             <span className="res-selector-label">Programa</span>
             <select
-              className="res-selector-select res-plan-select"
+              className="styled-select"
               value={selProgId ?? ''}
               onChange={e => setSelProgId(e.target.value || null)}
             >
@@ -428,7 +428,7 @@ export default function Recursos() {
         )}
         <span className="res-selector-label">Plano</span>
         <select
-          className="res-selector-select res-plan-select"
+          className="styled-select"
           value={planKey_}
           onChange={e => setPlanKey_(e.target.value)}
         >
@@ -440,7 +440,7 @@ export default function Recursos() {
 
         <span className="res-selector-label">De</span>
         <select
-          className="res-selector-select res-period-select"
+          className="styled-select res-period-select"
           value={periodStart}
           onChange={e => setPeriodStart(e.target.value)}
         >
@@ -449,7 +449,7 @@ export default function Recursos() {
 
         <span className="res-selector-label">Até</span>
         <select
-          className="res-selector-select res-period-select"
+          className="styled-select res-period-select"
           value={periodEnd}
           onChange={e => setPeriodEnd(e.target.value)}
         >

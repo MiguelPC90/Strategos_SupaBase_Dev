@@ -773,7 +773,7 @@ export default function GestaoRecursos() {
           <>
             <label className="gres-label">Programa:</label>
             <select
-              className="gres-plan-select"
+              className="styled-select"
               value={selProgId}
               onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
             >
@@ -783,7 +783,7 @@ export default function GestaoRecursos() {
         )}
         <label className="gres-label">Plano:</label>
         <select
-          className="gres-plan-select"
+          className="styled-select"
           value={selectedKey}
           onChange={e => setSelectedKey(e.target.value)}
           disabled={noProgram || noPlans}

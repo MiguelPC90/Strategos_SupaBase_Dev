@@ -417,7 +417,7 @@ export default function GestaoRiscos() {
           <>
             <label className="gr-label">Programa:</label>
             <select
-              className="gr-plan-select"
+              className="styled-select"
               value={selProgId}
               onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
             >
@@ -427,7 +427,7 @@ export default function GestaoRiscos() {
         )}
         <label className="gr-label">Plano de Acção:</label>
         <select
-          className="gr-plan-select"
+          className="styled-select"
           value={selectedKey}
           onChange={e => setSelectedKey(e.target.value)}
           disabled={noProgram || noPlans}

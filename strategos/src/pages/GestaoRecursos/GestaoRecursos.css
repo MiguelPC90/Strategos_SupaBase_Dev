@@ -24,19 +24,8 @@
     white-space: nowrap;
   }
 
-  .gres-plan-select {
-    border: 1px solid var(--border2);
-    border-radius: var(--r);
-    padding: 5px 10px;
-    font-size: 13px;
-    color: var(--text);
-    background: var(--bg);
-    font-family: inherit;
-    min-width: 240px;
-    max-width: 380px;
-  }
-  .gres-plan-select:focus   { outline: none; border-color: var(--navy); }
-  .gres-plan-select:disabled { opacity: 0.6; }
+  /* Layout overrides for .styled-select inside the controls bar */
+  .gres-controls-bar .styled-select { min-width: 240px; max-width: 380px; }
 
   .gres-days-input {
     border: 1px solid var(--border2);

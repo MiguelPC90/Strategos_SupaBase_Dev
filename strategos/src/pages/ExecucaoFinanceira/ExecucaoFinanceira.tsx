@@ -278,7 +278,7 @@ export default function ExecucaoFinanceira() {
           <>
             <span className="ef-selector-label">Programa</span>
             <select
-              className="ef-selector-select"
+              className="styled-select"
               value={selProgId ?? ''}
               onChange={e => setSelProgId(e.target.value || null)}
             >
@@ -291,7 +291,7 @@ export default function ExecucaoFinanceira() {
         )}
         <span className="ef-selector-label">Plano</span>
         <select
-          className="ef-selector-select"
+          className="styled-select"
           value={planKey}
           onChange={e => setPlanKey(e.target.value)}
         >
