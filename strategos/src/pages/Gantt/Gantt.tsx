@@ -16,7 +16,7 @@ const TODAY = new Date().toISOString().slice(0, 10)
 type StatusCls    = 'concluida' | 'em_dia' | 'em_atraso'
 type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
 type Scale        = 'Semana' | 'Mês' | 'Trimestre'
-type LevelView    = 'todos' | 'programa' | 'eixo' | 'plano' | 'actividade'
+type LevelView    = 'todos' | 'programa' | 'eixo' | 'plano' | 'macro' | 'actividade'
 
 const SCALES: Scale[] = ['Semana', 'Mês', 'Trimestre']
 const COL_WIDTH: Record<Scale, number> = { Semana: 40, Mês: 80, Trimestre: 120 }
@@ -78,14 +78,15 @@ function buildLevelKeys(
         for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
       }
     }
-  } else {
-    // 'plano'
+  } else if (level === 'plano') {
+    // collapse n3:*
     for (const n1g of n1groups) {
       for (const n2g of n1g.n2groups) {
         for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
       }
     }
   }
+  // 'macro': collapse n4:* — n4 rows are leaf rows with no toggle, so this is a no-op (expands all)
   return keys
 }
 
@@ -619,6 +620,7 @@ export default function Gantt() {
             {multiProg && <button className={`gantt-scale-chip${levelView === 'programa' ? ' active' : ''}`} onClick={() => applyLevel('programa')}>Programa</button>}
             <button className={`gantt-scale-chip${levelView === 'eixo' ? ' active' : ''}`} onClick={() => applyLevel('eixo')}>Eixo</button>
             <button className={`gantt-scale-chip${levelView === 'plano' ? ' active' : ''}`} onClick={() => applyLevel('plano')}>Plano</button>
+            <button className={`gantt-scale-chip${levelView === 'macro' ? ' active' : ''}`} onClick={() => applyLevel('macro')}>Macroactividade</button>
             <button className={`gantt-scale-chip${levelView === 'actividade' ? ' active' : ''}`} onClick={() => applyLevel('actividade')}>Actividade</button>
           </div>
           <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>

@@ -17,7 +17,7 @@ type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
 
 // ── Status helpers ─────────────────────────────────────────────
 type StatusCls = 'concluida' | 'em_dia' | 'em_atraso'
-type LevelView  = 'todos' | 'programa' | 'eixo' | 'plano' | 'actividade'
+type LevelView  = 'todos' | 'programa' | 'eixo' | 'plano' | 'macro' | 'actividade'
 
 function actStatus(a: Activity): StatusCls {
   const s = leafStatus(a, TODAY)
@@ -108,14 +108,15 @@ function buildLevelKeys(
         for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
       }
     }
-  } else {
-    // 'plano': N2 expanded; N3 visible but collapsed (spec: collapse n3:*)
+  } else if (level === 'plano') {
+    // N2 expanded; N3 visible but collapsed (spec: collapse n3:*)
     for (const n1g of n1groups) {
       for (const n2g of n1g.n2groups) {
         for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
       }
     }
   }
+  // 'macro': collapse n4:* — n4 rows are leaf rows with no toggle, so this is a no-op (expands all)
   return keys
 }
 
@@ -509,6 +510,7 @@ export default function Actividades() {
             )}
             <button className={`act-chip${levelView === 'eixo' ? ' active' : ''}`} onClick={() => applyLevel('eixo')}>Eixo</button>
             <button className={`act-chip${levelView === 'plano' ? ' active' : ''}`} onClick={() => applyLevel('plano')}>Plano</button>
+            <button className={`act-chip${levelView === 'macro' ? ' active' : ''}`} onClick={() => applyLevel('macro')}>Macroactividade</button>
             <button className={`act-chip${levelView === 'actividade' ? ' active' : ''}`} onClick={() => applyLevel('actividade')}>Actividade</button>
           </div>
         }
