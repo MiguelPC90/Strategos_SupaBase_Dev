@@ -21,14 +21,16 @@ export function leafPctPrev(a: Activity, today: string): number {
 
 /**
  * Derived status for a single leaf activity (level >= 4).
- * - pct >= 100                  → 'Concluída'
- * - today > bf AND pct < 100    → 'Em atraso'
- * - else                        → 'Em dia'
+ * - pct >= 100                        → 'Concluída'
+ * - today > bf AND pct < 100          → 'Em atraso' (overdue by baseline deadline)
+ * - pct < leafPctPrev(a, today)       → 'Em atraso' (behind schedule, no threshold)
+ * - else                              → 'Em dia'
  */
 export function leafStatus(a: Activity, today: string): string {
   if (a.pct >= 100) return 'Concluída'
-  const bf = a.bf ?? a.finish
-  if (bf && today > bf) return 'Em atraso'
+  const pct_prev = leafPctPrev(a, today)
+  if (a.bf && today > a.bf && a.pct < 100) return 'Em atraso'
+  if (a.pct < pct_prev) return 'Em atraso'
   return 'Em dia'
 }
 
