@@ -845,27 +845,30 @@ export default function GestaoFinanceira() {
 
   const deleteBudget = useCallback((id: string) => {
     setDraft(d => ({ ...d, budget: d.budget.filter(b => b.id !== id) }))
+    showToast('Eliminado.', 'info')
     if (!isNew(id)) {
       supabase.from('fin_budget_lines').delete().eq('id', id)
-        .then(({ error }) => { if (error) console.error('Delete budget line failed', error) })
+        .then(({ error }) => { if (error) showToast(`Erro: ${error.message}`, 'error') })
     }
-  }, [])
+  }, [showToast])
 
   const deleteContract = useCallback((id: string) => {
     setDraft(d => ({ ...d, contracts: d.contracts.filter(c => c.id !== id) }))
+    showToast('Eliminado.', 'info')
     if (!isNew(id)) {
       supabase.from('fin_contracts').delete().eq('id', id)
-        .then(({ error }) => { if (error) console.error('Delete contract failed', error) })
+        .then(({ error }) => { if (error) showToast(`Erro: ${error.message}`, 'error') })
     }
-  }, [])
+  }, [showToast])
 
   const deleteInvoice = useCallback((id: string) => {
     setDraft(d => ({ ...d, invoices: d.invoices.filter(i => i.id !== id) }))
+    showToast('Eliminado.', 'info')
     if (!isNew(id)) {
       supabase.from('fin_invoices').delete().eq('id', id)
-        .then(({ error }) => { if (error) console.error('Delete invoice failed', error) })
+        .then(({ error }) => { if (error) showToast(`Erro: ${error.message}`, 'error') })
     }
-  }, [])
+  }, [showToast])
 
   // ── Contract panel ───────────────────────────────────────────
   const [contractPanel, setContractPanel] = useState<ContractForm | null>(null)
@@ -933,11 +936,14 @@ export default function GestaoFinanceira() {
         if (error) throw error
       }
       setContractPanel(null)
+      showToast('Guardado!', 'success')
       refetch()
     } catch (e) {
-      setPanelErr(e instanceof Error ? e.message : 'Erro ao guardar.')
+      const msg = e instanceof Error ? e.message : 'Erro ao guardar.'
+      setPanelErr(msg)
+      showToast(`Erro: ${msg}`, 'error')
     }
-  }, [contractPanel, selectedPlan, draft.contracts.length, refetch])
+  }, [contractPanel, selectedPlan, draft.contracts.length, refetch, showToast])
 
   // ── Invoice modal ────────────────────────────────────────────
   const [invoiceModal,          setInvoiceModal]          = useState<InvoiceForm | null>(null)
@@ -1026,11 +1032,14 @@ export default function GestaoFinanceira() {
         if (error) throw error
       }
       setInvoiceModal(null)
+      showToast('Guardado!', 'success')
       refetch()
     } catch (e) {
-      setInvModalErr(e instanceof Error ? e.message : 'Erro ao guardar.')
+      const msg = e instanceof Error ? e.message : 'Erro ao guardar.'
+      setInvModalErr(msg)
+      showToast(`Erro: ${msg}`, 'error')
     }
-  }, [invoiceModal, selectedPlan, draft.contracts, draft.invoices.length, refetch])
+  }, [invoiceModal, selectedPlan, draft.contracts, draft.invoices.length, refetch, showToast])
 
   const deleteInvoiceFromModal = useCallback(() => {
     if (!invoiceModal?.id) return
@@ -1098,6 +1107,7 @@ export default function GestaoFinanceira() {
         }))
         setRowSaved(prev => new Set([...prev, realId]))
         setTimeout(() => setRowSaved(prev => { const n = new Set(prev); n.delete(realId); return n }), 500)
+        showToast('Guardado!', 'success')
       } else {
         const { error } = await supabase
           .from('fin_budget_lines')
@@ -1109,13 +1119,14 @@ export default function GestaoFinanceira() {
         if (error) throw error
         setRowSaved(prev => new Set([...prev, key]))
         setTimeout(() => setRowSaved(prev => { const n = new Set(prev); n.delete(key); return n }), 500)
+        showToast('Guardado!', 'success')
       }
     } catch (e) {
       showToast(`Erro: ${e instanceof Error ? e.message : 'Erro ao guardar rubrica'}`, 'error')
     } finally {
       savingRowsRef.current.delete(key)
     }
-  }, [selectedPlan])
+  }, [selectedPlan, showToast])
 
   // ── Render ───────────────────────────────────────────────────
   const noProgram = !programId
