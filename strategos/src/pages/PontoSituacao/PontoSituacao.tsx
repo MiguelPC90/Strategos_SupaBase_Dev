@@ -51,28 +51,52 @@ function renderText(text: string) {
 }
 
 // ── PDS item list ──────────────────────────────────────────────
+type ItemListVariant = 'default' | 'attention' | 'progress'
+
 interface ItemListProps {
   items: PdsItem[]
-  className?: string
+  variant?: ItemListVariant
 }
 
-function ItemList({ items, className = '' }: ItemListProps) {
+function ItemList({ items, variant = 'default' }: ItemListProps) {
   if (items.length === 0) {
-    return <p className="pds-empty-items">Sem itens.</p>
+    return <p className="pds-empty">Sem itens.</p>
   }
+
+  // "Principais Avanços" plain-text mode: all items have no date AND no status
+  if (variant === 'progress' && items.every(item => !item.date && !item.status)) {
+    return (
+      <div className="pds-progress-wrap">
+        {items.map((item, i) => (
+          <p key={i} className="pds-progress-para">{renderText(item.text)}</p>
+        ))}
+      </div>
+    )
+  }
+
   return (
-    <ul className={`pds-item-list${className ? ` ${className}` : ''}`}>
+    <div className="pds-item-rows">
+      <div className="pds-item-header">
+        <span className="pds-item-header-label col-item">Item</span>
+        <span className="pds-item-header-label col-date">Data</span>
+        <span className="pds-item-header-label col-status">Estado</span>
+      </div>
       {items.map((item, i) => {
         const ds = displayStatus(item)
         return (
-          <li key={i} className="pds-item">
+          <div
+            key={i}
+            className={`pds-item-row${variant === 'attention' ? ' pds-attention-row' : ''}`}
+          >
             <span className="pds-item-text">{renderText(item.text)}</span>
-            {item.date && <span className="pds-item-date">{fmtDate(item.date)}</span>}
-            {ds && <Badge variant={statusVariant(ds)}>{ds}</Badge>}
-          </li>
+            <span className="pds-item-date">{item.date ? fmtDate(item.date) : '—'}</span>
+            <span className="pds-item-badge">
+              {ds && <Badge variant={statusVariant(ds)}>{ds}</Badge>}
+            </span>
+          </div>
         )
       })}
-    </ul>
+    </div>
   )
 }
 
@@ -376,7 +400,7 @@ export default function PontoSituacao() {
 
           {/* 2×2 card grid */}
           <div className="pds-grid">
-            <Card title="Compromissos anteriores">
+            <Card title={<>Compromissos anteriores <span className="pds-section-count">({visibleCommitments.length})</span></>}>
               <ItemList items={visibleCommitments} />
               {hiddenCommitmentsCount > 0 && (
                 <p className="pds-hidden-note">
@@ -386,14 +410,14 @@ export default function PontoSituacao() {
                 </p>
               )}
             </Card>
-            <Card title="Principais avanços">
-              <ItemList items={entry?.progress_items ?? []} />
+            <Card title={<>Principais avanços <span className="pds-section-count">({(entry?.progress_items ?? []).length})</span></>}>
+              <ItemList items={entry?.progress_items ?? []} variant="progress" />
             </Card>
-            <Card title="Próximos passos">
+            <Card title={<>Próximos passos <span className="pds-section-count">({(entry?.next_steps_items ?? []).length})</span></>}>
               <ItemList items={entry?.next_steps_items ?? []} />
             </Card>
-            <Card title="Pontos de atenção" className="pds-attention-card">
-              <ItemList items={entry?.attention_items ?? []} className="pds-attention-list" />
+            <Card title={<>Pontos de atenção <span className="pds-section-count">({(entry?.attention_items ?? []).length})</span></>} className="pds-attention-card">
+              <ItemList items={entry?.attention_items ?? []} variant="attention" />
             </Card>
           </div>
 

@@ -188,67 +188,104 @@
     gap: 14px;
   }
 
-  /* ── Item list ───────────────────────────────────────────────── */
-  .pds-item-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+  /* ── Item list rows ──────────────────────────────────────────── */
+  .pds-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px 4px 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
   }
 
-  .pds-item {
+  .pds-item-header-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text3);
+  }
+
+  .col-item   { flex: 1; }
+  .col-date   { width: 90px; flex-shrink: 0; }
+  .col-status { width: 80px; flex-shrink: 0; }
+
+  .pds-item-row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 8px;
-    padding: 8px 0;
+    padding: 7px 8px;
+    border-radius: 4px;
     border-bottom: 1px solid var(--border);
     font-size: 13px;
-    line-height: 1.5;
     color: var(--text);
+    transition: background 0.1s;
   }
-  .pds-item:last-child { border-bottom: none; }
+  .pds-item-row:last-child { border-bottom: none; }
+  .pds-item-row:hover { background: var(--bg2); }
 
   .pds-item-text {
     flex: 1;
+    line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-word;
   }
 
   .pds-item-date {
-    font-size: 11px;
+    width: 90px;
+    flex-shrink: 0;
+    font-size: 12px;
     color: var(--text3);
     white-space: nowrap;
-    flex-shrink: 0;
-    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
   }
 
-  .pds-empty-items {
-    font-size: 13px;
+  .pds-item-badge {
+    width: 80px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .pds-attention-row { background: rgba(163, 45, 45, 0.03); }
+  .pds-attention-row:hover { background: rgba(163, 45, 45, 0.07); }
+
+  .pds-empty {
+    font-style: italic;
+    font-size: 12px;
     color: var(--text3);
-    padding: 20px 0;
+    padding: 16px 12px;
     margin: 0;
-    text-align: center;
+  }
+
+  /* "Principais Avanços" plain-text mode */
+  .pds-progress-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 0;
+  }
+
+  .pds-progress-para {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* Count in Card title — lighter weight */
+  .pds-section-count {
+    font-weight: 400;
+    color: var(--text3);
+    text-transform: none;
+    letter-spacing: 0;
   }
 
   /* ── Attention card — red left border ────────────────────────── */
   .pds-attention-card {
     border-left: 3px solid var(--red) !important;
-  }
-
-  /* Attention items — red left bar + light red background */
-  .pds-attention-list .pds-item {
-    background: rgba(163, 45, 45, 0.04);
-    border-radius: 4px;
-    padding-left: 6px;
-    padding-right: 4px;
-  }
-  .pds-attention-list .pds-item::before {
-    content: '';
-    width: 3px;
-    align-self: stretch;
-    background: var(--red);
-    border-radius: 2px;
-    flex-shrink: 0;
-    opacity: 0.45;
   }
 
   /* ── Hidden commitments note ─────────────────────────────────── */
