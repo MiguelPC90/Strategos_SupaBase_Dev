@@ -340,14 +340,15 @@
     color: var(--text);
   }
 
+  /* .styled-select-sm handles visuals; only layout + flash overrides here */
+  .adm-perm-matrix .styled-select-sm {
+    padding: 4px 24px 4px 6px;
+    font-size: 11px;
+    min-width: 70px;
+  }
+
   .adm-matrix-select {
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 3px 4px;
-    font-size: 12px;
-    background: white;
     width: 72px;
-    cursor: pointer;
     transition: border-color 0.15s;
   }
 

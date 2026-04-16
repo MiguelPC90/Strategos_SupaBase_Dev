@@ -210,7 +210,7 @@ function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, categorie
                   <button className="gf-icon-btn" onClick={() => onDelete(b.id)} title="Remover">✕</button>
                 </td>
                 <td>
-                  <select className="gf-cell-select" value={b.category}
+                  <select className="styled-select-sm gf-cell-select" value={b.category}
                     onChange={e => {
                       const name = e.target.value
                       const cat = categories.find(c => c.name === name)
@@ -238,7 +238,7 @@ function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, categorie
                     : <span style={{ color: 'var(--text3)', fontSize: 13 }}>—</span>}
                 </td>
                 <td className="gf-td-c">
-                  <select className="gf-cell-select" value={b.currency}
+                  <select className="styled-select-sm gf-cell-select" value={b.currency}
                     onChange={e => {
                       const val = e.target.value
                       updateLine(b.id, { currency: val })

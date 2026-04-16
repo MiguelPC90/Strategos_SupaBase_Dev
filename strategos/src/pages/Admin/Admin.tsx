@@ -892,7 +892,7 @@ function AdminPermissoes({ profiles }: { profiles: Profile[] }) {
       {loadingPerms ? (
         <p className="adm-help">A carregar…</p>
       ) : (
-        <div className="adm-matrix-wrap">
+        <div className="adm-matrix-wrap adm-perm-matrix">
           <table className="adm-matrix">
             <thead>
               <tr>
@@ -912,7 +912,7 @@ function AdminPermissoes({ profiles }: { profiles: Profile[] }) {
                     return (
                       <td key={pg.key}>
                         <select
-                          className={`adm-matrix-select${flashCells.has(cellKey) ? ' saved' : ''}`}
+                          className={`styled-select-sm adm-matrix-select${flashCells.has(cellKey) ? ' saved' : ''}`}
                           value={val}
                           onChange={e => handleCellChange(p.id, pg.key, e.target.value as CellValue)}
                         >
