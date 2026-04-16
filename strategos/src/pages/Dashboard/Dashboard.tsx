@@ -24,7 +24,7 @@ const TODAY = new Date().toISOString().slice(0, 10)
 // ── Chart colours ─────────────────────────────────────────────
 const CLR_CONCLUIDAS = '#95BB42'
 const CLR_EM_DIA     = '#002E5E'
-const CLR_EM_ATRASO  = '#E24B4A'
+const CLR_EM_ATRASO  = '#A32D2D'
 
 // ── Pie slice label ───────────────────────────────────────────
 interface PieLabelProps {
@@ -195,7 +195,7 @@ const DETAIL_COLS: Column[] = [
       const isN1     = !!row._n1 && !row._n2 && !row._isProgHeader
       const isN2     = !!row._n2
       const isTotals = Boolean(row._isTotals)
-      const paddingLeft = isN1 ? '12px' : isN2 ? '24px' : undefined
+      const paddingLeft = isN1 ? '16px' : isN2 ? '28px' : undefined
       return (
         <span style={{
           fontWeight:  (isN0 || isN1 || isTotals) ? 700 : 400,
@@ -378,14 +378,14 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip content={ChartTooltip as (props: unknown) => React.ReactElement | null} />
                 <Legend wrapperStyle={{ paddingTop: 24, fontSize: 11 }} />
-                <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS}>
-                  <LabelList dataKey="concluidas" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
-                </Bar>
                 <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA}>
                   <LabelList dataKey="em_dia" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
-                <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO} radius={[3, 3, 0, 0]}>
+                <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO}>
                   <LabelList dataKey="em_atraso" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                </Bar>
+                <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS} radius={[3, 3, 0, 0]}>
+                  <LabelList dataKey="concluidas" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -402,14 +402,14 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip content={ChartTooltip as (props: unknown) => React.ReactElement | null} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS}>
-                  <LabelList dataKey="concluidas" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
-                </Bar>
                 <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA}>
                   <LabelList dataKey="em_dia" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
-                <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO} radius={[3, 3, 0, 0]}>
+                <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO}>
                   <LabelList dataKey="em_atraso" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                </Bar>
+                <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS} radius={[3, 3, 0, 0]}>
+                  <LabelList dataKey="concluidas" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -629,9 +629,9 @@ export default function Dashboard() {
 
   // ── Pie chart data ───────────────────────────────────────────
   const pieData = useMemo(() => [
-    { name: 'Concluídas', value: m.concluidas, color: CLR_CONCLUIDAS },
     { name: 'Em dia',     value: m.em_dia,     color: CLR_EM_DIA },
     { name: 'Em atraso',  value: m.em_atraso,  color: CLR_EM_ATRASO },
+    { name: 'Concluídas', value: m.concluidas, color: CLR_CONCLUIDAS },
   ], [m])
 
   // ── Line chart data ──────────────────────────────────────────
