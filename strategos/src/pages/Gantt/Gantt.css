@@ -319,34 +319,60 @@
   /* ── Tooltip ────────────────────────────────────────────────── */
   .gantt-tooltip {
     position: fixed;
-    background: #1a1a18;
-    color: #fff;
-    border-radius: var(--r);
-    padding: 9px 12px;
-    font-size: 11px;
+    z-index: 1000;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+    box-shadow: 0 10px 32px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.06);
+    padding: 14px 16px;
+    min-width: 260px;
+    max-width: 320px;
+    font-family: inherit;
     pointer-events: none;
-    z-index: 9999;
-    max-width: 260px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    animation: gantt-tooltip-fade-in 120ms ease-out;
+  }
+  @keyframes gantt-tooltip-fade-in {
+    from { opacity: 0; transform: translateY(-2px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .gantt-tooltip-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  .gantt-tooltip-status {
+    margin-bottom: 12px;
+  }
+  .gantt-tooltip-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 16px;
+    row-gap: 8px;
+    align-items: center;
+  }
+  .gantt-tooltip-label {
+    font-size: 11px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
     white-space: nowrap;
   }
-  .gantt-tt-name {
-    font-weight: 600;
+  .gantt-tooltip-value {
     font-size: 12px;
-    margin-bottom: 6px;
-    white-space: normal;
-    line-height: 1.4;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
   }
-  .gantt-tt-row {
-    line-height: 1.7;
-    color: rgba(255,255,255,0.7);
-  }
-  .gantt-tt-row span {
-    color: rgba(255,255,255,0.4);
-    margin-right: 5px;
-    min-width: 60px;
-    display: inline-block;
-  }
+  .gantt-tooltip-value.delay-pos  { color: var(--red);   font-weight: 500; }
+  .gantt-tooltip-value.delay-neg  { color: var(--green); font-weight: 500; }
+  .gantt-tooltip-value.delay-zero { color: var(--text2); }
 
   /* ── Empty state ────────────────────────────────────────────── */
   .gantt-empty {

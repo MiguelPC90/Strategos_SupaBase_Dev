@@ -238,8 +238,51 @@ interface TooltipState {
   name: string
   bs: string | null; bf: string | null
   rs: string | null; rf: string | null
-  pct: number; status: string
+  pct: number; pct_prev: number
+  statusCls: StatusCls
   x: number; y: number
+}
+
+// ── Tooltip sub-component ─────────────────────────────────────
+function GanttTooltip({ tooltip }: { tooltip: TooltipState }) {
+  // Deviation: prefer rf−bf, fallback rs−bs
+  let devDays: number | null = null
+  if (tooltip.rf != null && tooltip.bf != null) {
+    devDays = Math.round((new Date(tooltip.rf).getTime() - new Date(tooltip.bf).getTime()) / 86400000)
+  } else if (tooltip.rs != null && tooltip.bs != null) {
+    devDays = Math.round((new Date(tooltip.rs).getTime() - new Date(tooltip.bs).getTime()) / 86400000)
+  }
+  const devText = devDays === null ? '—'
+    : devDays > 0  ? `+${devDays} dias`
+    : devDays < 0  ? `\u2212${Math.abs(devDays)} dias`
+    : '0 dias'
+  const devCls  = devDays === null ? '' : devDays > 0 ? 'delay-pos' : devDays < 0 ? 'delay-neg' : 'delay-zero'
+
+  // Execution progress colour
+  const execCls = tooltip.pct > tooltip.pct_prev ? 'delay-neg'
+    : tooltip.pct < tooltip.pct_prev ? 'delay-pos'
+    : ''
+
+  return (
+    <div className="gantt-tooltip" style={{ left: tooltip.x + 12, top: tooltip.y + 12 }}>
+      <div className="gantt-tooltip-name">{tooltip.name}</div>
+      <div className="gantt-tooltip-status">
+        <Badge variant={BADGE_VARIANT[tooltip.statusCls]}>{STATUS_LABEL[tooltip.statusCls]}</Badge>
+      </div>
+      <div className="gantt-tooltip-grid">
+        <span className="gantt-tooltip-label">Baseline</span>
+        <span className="gantt-tooltip-value">{fmt(tooltip.bs)} → {fmt(tooltip.bf)}</span>
+        <span className="gantt-tooltip-label">Real</span>
+        <span className="gantt-tooltip-value">{fmt(tooltip.rs)} → {fmt(tooltip.rf)}</span>
+        <span className="gantt-tooltip-label">Desvio</span>
+        <span className={`gantt-tooltip-value${devCls ? ` ${devCls}` : ''}`}>{devText}</span>
+        <span className="gantt-tooltip-label">Execução</span>
+        <span className={`gantt-tooltip-value${execCls ? ` ${execCls}` : ''}`}>
+          {tooltip.pct}% (prev. {Math.round(tooltip.pct_prev)}%)
+        </span>
+      </div>
+    </div>
+  )
 }
 
 // ── Bar sub-component ──────────────────────────────────────────
@@ -359,7 +402,9 @@ export default function Gantt() {
     const handlers = act ? {
       onMouseEnter: (e: React.MouseEvent) => setTooltip({
         name: act.name, bs: act.bs, bf: act.bf, rs: act.rs, rf: act.rf,
-        pct: act.pct, status: act.status, x: e.clientX, y: e.clientY,
+        pct: act.pct, pct_prev: act.pct_prev,
+        statusCls: actStatus(act),
+        x: e.clientX, y: e.clientY,
       }),
       onMouseMove:  (e: React.MouseEvent) => setTooltip(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null),
       onMouseLeave: () => setTooltip(null),
@@ -674,15 +719,7 @@ export default function Gantt() {
         )}
       </Card>
 
-      {tooltip && (
-        <div className="gantt-tooltip" style={{ left: tooltip.x + 14, top: tooltip.y - 8 }}>
-          <div className="gantt-tt-name">{tooltip.name}</div>
-          <div className="gantt-tt-row"><span>Baseline:</span>{fmt(tooltip.bs)} → {fmt(tooltip.bf)}</div>
-          <div className="gantt-tt-row"><span>Real:</span>{fmt(tooltip.rs)} → {fmt(tooltip.rf)}</div>
-          <div className="gantt-tt-row"><span>Execução:</span>{tooltip.pct}%</div>
-          <div className="gantt-tt-row"><span>Estado:</span>{tooltip.status}</div>
-        </div>
-      )}
+      {tooltip && <GanttTooltip tooltip={tooltip} />}
     </>
   )
 }
