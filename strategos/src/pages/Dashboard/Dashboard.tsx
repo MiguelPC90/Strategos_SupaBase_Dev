@@ -645,10 +645,11 @@ export default function Dashboard() {
       ? d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })
       : d.toLocaleDateString('pt-PT', { month: 'short', year: '2-digit' })
     const execReal = total > 0 ? +kpi.exec_media.toFixed(1) : null
+    const execObj  = total > 0 ? +((kpi.exec_media_prev ?? kpi.exec_media).toFixed(1)) : null
     return {
       date,
       grau_exec_real:  execReal,
-      grau_exec_obj:   execReal,                        // no pct_previsto in snapshot; use same as exec
+      grau_exec_obj:   execObj,
       conc_geral_real: total > 0 ? +(concluidas / total * 100).toFixed(1) : null,
       conc_geral_obj:  total > 0 ? +(due / total * 100).toFixed(1) : null, // expected: (concluded + overdue) / total
       conc_data_real:  due > 0 ? +(concluidas / due * 100).toFixed(1) : null,

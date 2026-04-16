@@ -239,6 +239,8 @@ export interface SnapshotKpi {
   em_dia: number
   em_atraso: number
   exec_media: number
+  /** Average pct_prev (0–100) — planned execution objective at snapshot time */
+  exec_media_prev?: number
   /** Activities with bs != null and bs <= snap_date (denominator for conc à data) */
   conc_a_data_denom?: number
 }
