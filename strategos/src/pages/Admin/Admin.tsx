@@ -38,7 +38,7 @@ const SECTIONS: Section[] = [
 ]
 
 // ── Section 1: Geral ───────────────────────────────────────────
-const CONFIG_KEYS = ['client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date', 'status_delay_threshold', 'status_delay_threshold_aggregates', 'status_delay_threshold_leaves'] as const
+const CONFIG_KEYS = ['client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date', 'status_delay_threshold', 'status_delay_threshold_aggregates', 'status_delay_threshold_leaves', 'pds_hide_completed_days'] as const
 
 function AdminGeral() {
   const { showToast } = useToast()
@@ -48,6 +48,7 @@ function AdminGeral() {
   const [logoUrl,        setLogoUrl]        = useState('')
   const [delayThreshold,       setDelayThreshold]       = useState(20)
   const [delayThresholdLeaves, setDelayThresholdLeaves] = useState(0)
+  const [hideCompletedDays,    setHideCompletedDays]    = useState(90)
   const [loading,    setLoading]    = useState(true)
   const [saving,     setSaving]     = useState(false)
   const [uploading,  setUploading]  = useState(false)
@@ -72,6 +73,8 @@ function AdminGeral() {
         // New key takes priority; fall back to legacy key for existing installations
         setDelayThreshold(parseInt(map['status_delay_threshold_aggregates'] ?? map['status_delay_threshold'] ?? '20') || 20)
         setDelayThresholdLeaves(parseInt(map['status_delay_threshold_leaves'] ?? '0') || 0)
+        const hcd = parseInt(map['pds_hide_completed_days'] ?? '')
+        if (!isNaN(hcd)) setHideCompletedDays(hcd)
       })
       .catch(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -86,6 +89,7 @@ function AdminGeral() {
         { config_key: 'cutoff_date',             data: cutoffDate },
         { config_key: 'status_delay_threshold_aggregates', data: String(delayThreshold) },
         { config_key: 'status_delay_threshold_leaves',     data: String(delayThresholdLeaves) },
+        { config_key: 'pds_hide_completed_days',           data: String(hideCompletedDays) },
       ]
       await Promise.all(
         pairs.map(p => supabase.from('app_config').upsert(p, { onConflict: 'config_key' }))
@@ -209,6 +213,21 @@ function AdminGeral() {
                   Desvio tolerado antes de marcar actividades individuais como atrasadas. 0 = qualquer desvio é atraso.
                 </span>
               </div>
+            </div>
+
+            <div className="adm-field">
+              <label className="adm-label">Ocultar compromissos concluídos após (dias)</label>
+              <input
+                className="adm-input"
+                type="number"
+                min={0}
+                step={1}
+                value={hideCompletedDays}
+                onChange={e => setHideCompletedDays(parseInt(e.target.value) || 0)}
+              />
+              <span className="adm-help">
+                Compromissos anteriores concluídos há mais de X dias são ocultados no Ponto de Situação. Compromissos em aberto aparecem sempre.
+              </span>
             </div>
 
             <button

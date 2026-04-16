@@ -1,5 +1,5 @@
 import './PontoSituacao.css'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
@@ -7,8 +7,29 @@ import { usePdsEntries } from '../../hooks/usePdsEntries'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useRisks } from '../../hooks/useRisks'
+import { useActivities } from '../../hooks/useActivities'
 import { useFilters } from '../../context/FilterContext'
-import type { PdsItem } from '../../types/index'
+import { useToast } from '../../context/ToastContext'
+import { leafStatus, leafPctPrev } from '../../lib/rollup'
+import { supabase } from '../../lib/supabase'
+import type { PdsItem, PdsEntry } from '../../types/index'
+
+const TODAY = new Date().toISOString().slice(0, 10)
+
+// ── Date formatter — always dd/mm/yyyy ────────────────────────
+function fmtDate(iso: string): string {
+  const [y, m, d] = iso.slice(0, 10).split('-')
+  return `${d}/${m}/${y}`
+}
+
+// ── Item status → Badge variant ──────────────────────────────
+type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
+function statusVariant(status: string): BadgeVariant {
+  const s = status.toLowerCase()
+  if (s === 'concluído' || s === 'concluída') return 'green'
+  if (s === 'em curso') return 'blue'
+  return 'grey'
+}
 
 // ── Text renderer: **bold** + newlines via CSS pre-wrap ────────
 function renderText(text: string) {
@@ -33,47 +54,55 @@ function ItemList({ items, className = '' }: ItemListProps) {
       {items.map((item, i) => (
         <li key={i} className="pds-item">
           <span className="pds-item-text">{renderText(item.text)}</span>
-          {item.date && <span className="pds-item-date">{item.date}</span>}
-          {item.status && <Badge variant="grey">{item.status}</Badge>}
+          {item.date && <span className="pds-item-date">{fmtDate(item.date)}</span>}
+          {item.status && (
+            <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
+          )}
         </li>
       ))}
     </ul>
   )
 }
 
-// ── Date formatter ─────────────────────────────────────────────
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-PT', {
-    day: '2-digit', month: 'short', year: 'numeric',
-  })
-}
-
 // ── Risk helpers ────────────────────────────────────────────────
 type RiskBadge = 'green' | 'amber' | 'red' | 'grey'
 
 function grauVariant(grau: number): RiskBadge {
-  if (grau <= 4)  return 'green'
-  if (grau <= 9)  return 'amber'
+  if (grau <= 4) return 'green'
+  if (grau <= 9) return 'amber'
   return 'red'
 }
 
 function estadoVariant(status: string): RiskBadge {
   const s = status.toLowerCase()
-  if (s === 'aberto')         return 'red'
-  if (s === 'em mitigação')   return 'amber'
-  if (s === 'mitigado')       return 'grey'
-  if (s === 'fechado')        return 'green'
+  if (s === 'aberto')       return 'red'
+  if (s === 'em mitigação') return 'amber'
+  if (s === 'mitigado')     return 'grey'
+  if (s === 'fechado')      return 'green'
   return 'grey'
 }
 
 // ── Main page ──────────────────────────────────────────────────
 export default function PontoSituacao() {
-  const { filters }  = useFilters()
-  const { programs } = usePrograms()
+  const { filters }   = useFilters()
+  const { programs }  = usePrograms()
+  const { showToast } = useToast()
 
-  const [selProgId,   setSelProgId]   = useState<string | null>(null)
-  const [selectedKey, setSelectedKey] = useState('')
-  const [entryIdx,    setEntryIdx]    = useState(0)
+  // ── State ──────────────────────────────────────────────────
+  const [selProgId,         setSelProgId]         = useState<string | null>(null)
+  const [selectedKey,       setSelectedKey]       = useState('')
+  const [hideCompletedDays, setHideCompletedDays] = useState(90)
+  const [adjustedEntry,     setAdjustedEntry]     = useState<PdsEntry | null>(null)
+  const lastProcessedId = useRef<string | null>(null)
+
+  // ── Data hooks ─────────────────────────────────────────────
+  const programId = selProgId ?? undefined
+  const { entries, loading } = usePdsEntries(programId)
+  const { planos }           = usePlanos(programId)
+  const { risks }            = useRisks(programId)
+  const { activities }       = useActivities({ program_id: programId })
+
+  // ── Effects ────────────────────────────────────────────────
 
   // Initialize selProgId from global filter or first program
   useEffect(() => {
@@ -84,31 +113,40 @@ export default function PontoSituacao() {
     })
   }, [programs, filters.programIds])
 
-  // Reset plan when program changes
+  // Reset plan selection when program changes
   useEffect(() => {
     setSelectedKey('')
-    setEntryIdx(0)
   }, [selProgId])
 
-  const programId = selProgId ?? undefined
+  // Reset adjusted entry + process flag when plan changes
+  useEffect(() => {
+    setAdjustedEntry(null)
+    lastProcessedId.current = null
+  }, [selectedKey])
 
-  const { entries, loading } = usePdsEntries(programId)
-  const { planos }           = usePlanos(programId)
-  const { risks }            = useRisks(programId)
+  // Load pds_hide_completed_days from app_config
+  useEffect(() => {
+    supabase.from('app_config').select('data').eq('config_key', 'pds_hide_completed_days').single()
+      .then(({ data }) => {
+        if (data != null) {
+          const v = parseInt(data.data ?? '')
+          if (!isNaN(v)) setHideCompletedDays(v)
+        }
+      })
+  }, [])
 
-  // Plan selector options from planos table
+  // ── Derived data ───────────────────────────────────────────
+
   const planOptions = useMemo(() =>
     planos.map(p => ({ key: p.id, label: p.name })),
     [planos]
   )
 
-  // Selected plano object
   const selectedPlano = useMemo(
     () => planos.find(p => p.id === selectedKey) ?? null,
     [planos, selectedKey]
   )
 
-  // Entries for the selected plano (matched by plan_name + eixo name)
   const planEntries = useMemo(() => {
     if (!selectedPlano) return []
     return entries
@@ -119,25 +157,89 @@ export default function PontoSituacao() {
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
   }, [entries, selectedPlano])
 
-  // Risks linked to the selected plano via plano_id
   const planRisks = useMemo(() => {
     if (!selectedKey) return []
     return risks.filter(r => r.plano_id === selectedKey)
   }, [risks, selectedKey])
 
-  function handlePlanChange(key: string) {
-    setSelectedKey(key)
-    setEntryIdx(0)
-  }
+  // N4+ leaf activities for KPIs, filtered by plano_id
+  const planLeaves = useMemo(() => {
+    if (!selectedKey) return []
+    return activities.filter(a => a.plano_id === selectedKey && a.level >= 4)
+  }, [activities, selectedKey])
 
-  const entry      = planEntries[entryIdx] ?? null
-  const planLabel  = planOptions.find(o => o.key === selectedKey)?.label ?? ''
-  const totalPages = planEntries.length
+  // ── Auto-transition: next_steps → commitments ─────────────
+  useEffect(() => {
+    const rawEntry = planEntries[0] ?? null
+    if (!rawEntry || lastProcessedId.current === rawEntry.id) return
+    lastProcessedId.current = rawEntry.id
 
+    const nextSteps = rawEntry.next_steps_items ?? []
+    const toMove = nextSteps.filter(item =>
+      item.status === 'Concluído' || item.status === 'Concluída' ||
+      (item.date && item.date < TODAY)
+    )
+
+    if (toMove.length === 0) return  // nothing to do; display uses planEntries[0]
+
+    const toMoveSet      = new Set(toMove)
+    const remaining      = nextSteps.filter(item => !toMoveSet.has(item))
+    const newCommitments = [...(rawEntry.commitments_items ?? []), ...toMove]
+
+    setAdjustedEntry({ ...rawEntry, next_steps_items: remaining, commitments_items: newCommitments })
+    showToast(
+      `${toMove.length} ${toMove.length === 1 ? 'item transitou' : 'itens transitaram'} para Compromissos Anteriores`
+    )
+    void supabase.from('pds_entries').update({
+      next_steps_items:  remaining,
+      commitments_items: newCommitments,
+    }).eq('id', rawEntry.id)
+  }, [planEntries, showToast])
+
+  // Latest entry, post-transition
+  const entry     = adjustedEntry ?? (planEntries[0] ?? null)
+  const planLabel = planOptions.find(o => o.key === selectedKey)?.label ?? ''
+
+  // ── KPI computations ───────────────────────────────────────
+  const kpi = useMemo(() => {
+    const total = planLeaves.length
+    if (total === 0) return null
+    const statuses   = planLeaves.map(a => leafStatus(a, TODAY))
+    const concluidas = statuses.filter(s => s === 'Concluída').length
+    const emDia      = statuses.filter(s => s === 'Em dia').length
+    const emAtraso   = statuses.filter(s => s === 'Em atraso').length
+    const pct        = Math.round(planLeaves.reduce((s, a) => s + a.pct, 0) / total)
+    const pctPrev    = Math.round(planLeaves.reduce((s, a) => s + leafPctPrev(a, TODAY), 0) / total)
+    const geralReal  = Math.round((concluidas / total) * 100)
+    const geralObj   = Math.round(((concluidas + emAtraso) / total) * 100)
+    const aDataReal  = (concluidas + emAtraso) > 0
+      ? Math.round((concluidas / (concluidas + emAtraso)) * 100)
+      : 0
+    return { total, concluidas, emDia, emAtraso, pct, pctPrev, geralReal, geralObj, aDataReal }
+  }, [planLeaves])
+
+  // ── Filter old completed commitments ──────────────────────
+  const { visibleCommitments, hiddenCommitmentsCount } = useMemo(() => {
+    const items = entry?.commitments_items ?? []
+    if (hideCompletedDays <= 0) return { visibleCommitments: items, hiddenCommitmentsCount: 0 }
+    const cutoff = new Date(TODAY)
+    cutoff.setDate(cutoff.getDate() - hideCompletedDays)
+    const cutoffStr = cutoff.toISOString().slice(0, 10)
+    const hidden = items.filter(item =>
+      (item.status === 'Concluído' || item.status === 'Concluída') &&
+      item.date && item.date < cutoffStr
+    )
+    return {
+      visibleCommitments:     items.filter(i => !hidden.includes(i)),
+      hiddenCommitmentsCount: hidden.length,
+    }
+  }, [entry, hideCompletedDays])
+
+  // ── Render ─────────────────────────────────────────────────
   return (
     <div className="pds-page">
 
-      {/* Plan selector */}
+      {/* Plan selector bar */}
       <div className="pds-selector-bar">
         {programs.length > 1 && (
           <>
@@ -158,7 +260,7 @@ export default function PontoSituacao() {
         <select
           className="pds-selector-select"
           value={selectedKey}
-          onChange={e => handlePlanChange(e.target.value)}
+          onChange={e => setSelectedKey(e.target.value)}
         >
           <option value="">— Seleccionar plano —</option>
           {planOptions.map(o => (
@@ -180,35 +282,97 @@ export default function PontoSituacao() {
         <div className="pds-placeholder">Sem pontos de situação para este plano.</div>
       ) : (
         <>
-          {/* Header bar — navy, plan path + date navigator */}
+          {/* Header bar — navy, plan path + latest date */}
           <div className="pds-header-bar">
             <span className="pds-header-path">{planLabel}</span>
-            <div className="pds-header-nav">
-              <button
-                className="pds-nav-btn"
-                disabled={entryIdx >= totalPages - 1}
-                onClick={() => setEntryIdx(i => Math.min(i + 1, totalPages - 1))}
-                title="Entrada anterior"
-              >←</button>
-              <span className="pds-header-date">
-                {entry && fmtDate(entry.updated_at)}
-                {totalPages > 1 && (
-                  <span className="pds-header-count"> ({entryIdx + 1}/{totalPages})</span>
-                )}
-              </span>
-              <button
-                className="pds-nav-btn"
-                disabled={entryIdx === 0}
-                onClick={() => setEntryIdx(i => Math.max(i - 1, 0))}
-                title="Entrada seguinte"
-              >→</button>
-            </div>
+            {entry && (
+              <span className="pds-header-date">{fmtDate(entry.updated_at)}</span>
+            )}
           </div>
+
+          {/* KPI row */}
+          {kpi && (
+            <div className="pds-kpi-row">
+
+              {/* Card 1 — Dados Gerais */}
+              <div className="pds-kpi-card">
+                <div className="pds-kpi-card-title">Dados Gerais</div>
+                <div className="pds-kpi-grid-2x2">
+                  <div className="pds-kpi-cell">
+                    <span className="pds-kpi-label">Total</span>
+                    <span className="pds-kpi-value pds-kpi-navy">{kpi.total}</span>
+                  </div>
+                  <div className="pds-kpi-cell">
+                    <span className="pds-kpi-label">Concluídas</span>
+                    <span className="pds-kpi-value pds-kpi-green">{kpi.concluidas}</span>
+                  </div>
+                  <div className="pds-kpi-cell">
+                    <span className="pds-kpi-label">Em dia</span>
+                    <span className="pds-kpi-value pds-kpi-green">{kpi.emDia}</span>
+                  </div>
+                  <div className="pds-kpi-cell">
+                    <span className="pds-kpi-label">Em atraso</span>
+                    <span className="pds-kpi-value pds-kpi-red">{kpi.emAtraso}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2 — Grau de Execução */}
+              <div className="pds-kpi-card">
+                <div className="pds-kpi-card-title">Grau de Execução</div>
+                <div className="pds-kpi-exec-row">
+                  <div className="pds-kpi-exec-cell">
+                    <span className="pds-kpi-exec-label">Realizado</span>
+                    <span className="pds-kpi-exec-value pds-kpi-navy">{kpi.pct}%</span>
+                  </div>
+                  <div className="pds-kpi-exec-cell pds-kpi-exec-dashed">
+                    <span className="pds-kpi-exec-label">Objectivo</span>
+                    <span className="pds-kpi-exec-value pds-kpi-green">{kpi.pctPrev}%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3 — Concretização */}
+              <div className="pds-kpi-card">
+                <div className="pds-kpi-card-title">Concretização</div>
+                <div className="pds-kpi-grid-2x2">
+                  <div className="pds-kpi-cell">
+                    <span className="pds-kpi-label">Geral real</span>
+                    <span className="pds-kpi-sublabel">N.º Conc. / Total</span>
+                    <span className="pds-kpi-value pds-kpi-navy">{kpi.geralReal}%</span>
+                  </div>
+                  <div className="pds-kpi-cell pds-kpi-cell-dashed">
+                    <span className="pds-kpi-label">Geral obj.</span>
+                    <span className="pds-kpi-sublabel">(Conc.+Atr.) / Total</span>
+                    <span className="pds-kpi-value pds-kpi-green">{kpi.geralObj}%</span>
+                  </div>
+                  <div className="pds-kpi-cell">
+                    <span className="pds-kpi-label">À data real</span>
+                    <span className="pds-kpi-sublabel">Conc. / (Conc.+Atr.)</span>
+                    <span className="pds-kpi-value pds-kpi-navy">{kpi.aDataReal}%</span>
+                  </div>
+                  <div className="pds-kpi-cell pds-kpi-cell-dashed">
+                    <span className="pds-kpi-label">À data obj.</span>
+                    <span className="pds-kpi-sublabel">Objectivo</span>
+                    <span className="pds-kpi-value pds-kpi-green">100%</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
 
           {/* 2×2 card grid */}
           <div className="pds-grid">
             <Card title="Compromissos anteriores">
-              <ItemList items={entry?.commitments_items ?? []} />
+              <ItemList items={visibleCommitments} />
+              {hiddenCommitmentsCount > 0 && (
+                <p className="pds-hidden-note">
+                  {hiddenCommitmentsCount} compromisso{hiddenCommitmentsCount !== 1 ? 's' : ''}{' '}
+                  concluído{hiddenCommitmentsCount !== 1 ? 's' : ''} há mais de {hideCompletedDays} dias{' '}
+                  {hiddenCommitmentsCount !== 1 ? 'foram ocultados' : 'foi ocultado'}
+                </p>
+              )}
             </Card>
             <Card title="Principais avanços">
               <ItemList items={entry?.progress_items ?? []} />
@@ -216,7 +380,7 @@ export default function PontoSituacao() {
             <Card title="Próximos passos">
               <ItemList items={entry?.next_steps_items ?? []} />
             </Card>
-            <Card title="Pontos de atenção">
+            <Card title="Pontos de atenção" className="pds-attention-card">
               <ItemList items={entry?.attention_items ?? []} className="pds-attention-list" />
             </Card>
           </div>

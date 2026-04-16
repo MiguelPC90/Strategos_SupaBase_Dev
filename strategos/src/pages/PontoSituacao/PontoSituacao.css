@@ -31,13 +31,20 @@
     max-width: 560px;
     border: 1px solid var(--border2);
     border-radius: var(--r);
-    padding: 5px 10px;
+    padding: 5px 28px 5px 10px;
     font-size: 13px;
     color: var(--text);
-    background: var(--bg2);
+    background-color: var(--bg2);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235c5c58'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    appearance: none;
+    -webkit-appearance: none;
     cursor: pointer;
+    transition: border-color 0.12s;
   }
   .pds-selector-select:focus { outline: none; border-color: var(--navy); }
+  .pds-selector-select:hover { border-color: var(--border2); background-color: var(--bg3); }
 
   .pds-selector-sep {
     width: 1px;
@@ -74,37 +81,122 @@
     white-space: nowrap;
   }
 
-  .pds-header-nav {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   .pds-header-date {
     font-size: 12px;
     color: rgba(255,255,255,0.75);
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
-  .pds-header-count {
-    font-size: 11px;
-    color: rgba(255,255,255,0.5);
+  /* ── KPI row ─────────────────────────────────────────────────── */
+  .pds-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
   }
 
-  .pds-nav-btn {
-    background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,255,255,0.22);
-    border-radius: 4px;
-    color: #fff;
-    cursor: pointer;
-    padding: 3px 9px;
-    font-size: 14px;
-    line-height: 1.4;
-    transition: background 0.12s;
+  .pds-kpi-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 12px 14px;
   }
-  .pds-nav-btn:hover:not(:disabled) { background: rgba(255,255,255,0.22); }
-  .pds-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .pds-kpi-card-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--navy);
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pds-kpi-grid-2x2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .pds-kpi-cell {
+    background: var(--bg2);
+    border-radius: calc(var(--r) - 2px);
+    padding: 7px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .pds-kpi-cell-dashed {
+    background: var(--bg);
+    border: 1px dashed var(--border2);
+  }
+
+  .pds-kpi-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .pds-kpi-sublabel {
+    font-size: 9px;
+    color: var(--text3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pds-kpi-value {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pds-kpi-navy  { color: var(--navy); }
+  .pds-kpi-green { color: var(--green); }
+  .pds-kpi-red   { color: var(--red); }
+
+  /* Card 2: Grau de Execução */
+  .pds-kpi-exec-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .pds-kpi-exec-cell {
+    flex: 1;
+    background: var(--bg2);
+    border-radius: calc(var(--r) - 2px);
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .pds-kpi-exec-dashed {
+    background: var(--bg);
+    border: 1px dashed var(--border2);
+  }
+
+  .pds-kpi-exec-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .pds-kpi-exec-value {
+    font-size: 28px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
 
   /* ── 2×2 card grid ───────────────────────────────────────────── */
   .pds-grid {
@@ -154,15 +246,36 @@
     text-align: center;
   }
 
-  /* ── Attention items — amber left bar ────────────────────────── */
+  /* ── Attention card — red left border ────────────────────────── */
+  .pds-attention-card {
+    border-left: 3px solid var(--red) !important;
+  }
+
+  /* Attention items — red left bar + light red background */
+  .pds-attention-list .pds-item {
+    background: rgba(163, 45, 45, 0.04);
+    border-radius: 4px;
+    padding-left: 6px;
+    padding-right: 4px;
+  }
   .pds-attention-list .pds-item::before {
     content: '';
     width: 3px;
     align-self: stretch;
-    background: var(--amber);
+    background: var(--red);
     border-radius: 2px;
     flex-shrink: 0;
-    opacity: 0.55;
+    opacity: 0.45;
+  }
+
+  /* ── Hidden commitments note ─────────────────────────────────── */
+  .pds-hidden-note {
+    font-size: 11px;
+    color: var(--text3);
+    text-align: center;
+    padding: 8px 0 2px;
+    margin: 8px 0 0;
+    border-top: 1px solid var(--border);
   }
 
   /* ── Risks table ─────────────────────────────────────────────── */
