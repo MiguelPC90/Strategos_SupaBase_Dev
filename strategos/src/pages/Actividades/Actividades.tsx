@@ -1,5 +1,5 @@
 import './Actividades.css'
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
@@ -8,7 +8,8 @@ import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
 import type { Activity, Program } from '../../types/index'
-import { leafPctPrev, leafStatus } from '../../lib/rollup'
+import { leafPctPrev, leafStatus, rollupStatus } from '../../lib/rollup'
+import { supabase } from '../../lib/supabase'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -24,9 +25,9 @@ function actStatus(a: Activity): StatusCls {
   return 'em_dia'
 }
 
-function groupStatus(concluidas: number, total: number, em_atraso: number): StatusCls {
-  if (total > 0 && concluidas === total) return 'concluida'
-  if (em_atraso > 0) return 'em_atraso'
+function toStatusCls(s: string): StatusCls {
+  if (s === 'Concluída') return 'concluida'
+  if (s === 'Em atraso') return 'em_atraso'
   return 'em_dia'
 }
 
@@ -194,6 +195,12 @@ export default function Actividades() {
   )
   const summary  = useMemo(() => computeStats(filtered.filter(a => a.level === 4)), [filtered])
 
+  const [delayThreshold, setDelayThreshold] = useState(20)
+  useEffect(() => {
+    supabase.from('app_config').select('data').eq('config_key', 'status_delay_threshold').single()
+      .then(({ data }) => { if (data) setDelayThreshold(parseInt(data.data) || 20) })
+  }, [])
+
   // Collapse state: Set of node keys that are collapsed
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
@@ -234,8 +241,9 @@ export default function Actividades() {
     for (const n1g of n1groups) {
       const n1key   = `n1:${n1g.n1}`
       const n1col   = collapsed.has(n1key)
-      const n1stats = computeStats(n1g.allActs.filter(a => a.level === 4))
-      const n1st    = groupStatus(n1stats.concluidas, n1stats.total, n1stats.em_atraso)
+      const n1leaves = n1g.allActs.filter(a => a.level === 4)
+      const n1stats  = computeStats(n1leaves)
+      const n1st     = toStatusCls(rollupStatus(n1leaves, TODAY, delayThreshold))
 
       rows.push(
         <tr key={n1key} className="act-row-n1">
@@ -261,8 +269,9 @@ export default function Actividades() {
       for (const n2g of n1g.n2groups) {
         const n2key   = `n2:${n1g.n1}:${n2g.n2}`
         const n2col   = collapsed.has(n2key)
-        const n2stats = computeStats(n2g.allActs.filter(a => a.level === 4))
-        const n2st    = groupStatus(n2stats.concluidas, n2stats.total, n2stats.em_atraso)
+        const n2leaves = n2g.allActs.filter(a => a.level === 4)
+        const n2stats  = computeStats(n2leaves)
+        const n2st     = toStatusCls(rollupStatus(n2leaves, TODAY, delayThreshold))
 
         rows.push(
           <tr key={n2key} className="act-row-n2">
@@ -341,8 +350,9 @@ export default function Actividades() {
           // Has real children — render N3 header row
           const n3key   = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
           const n3col   = collapsed.has(n3key)
-          const n3stats = computeStats(n3g.acts.filter(a => a.level === 4))
-          const n3st    = groupStatus(n3stats.concluidas, n3stats.total, n3stats.em_atraso)
+          const n3leaves = n3g.acts.filter(a => a.level === 4)
+          const n3stats  = computeStats(n3leaves)
+          const n3st     = toStatusCls(rollupStatus(n3leaves, TODAY, delayThreshold))
 
           rows.push(
             <tr key={n3key} className="act-row-n3">
@@ -395,8 +405,9 @@ export default function Actividades() {
     for (const n0g of n0tree) {
       const n0key   = `n0:${n0g.progId}`
       const n0col   = collapsed.has(n0key)
-      const n0stats = computeStats(n0g.allActs.filter(a => a.level === 4))
-      const n0st    = groupStatus(n0stats.concluidas, n0stats.total, n0stats.em_atraso)
+      const n0leaves = n0g.allActs.filter(a => a.level === 4)
+      const n0stats  = computeStats(n0leaves)
+      const n0st     = toStatusCls(rollupStatus(n0leaves, TODAY, delayThreshold))
 
       rows.push(
         <tr key={n0key} className="act-row-n0">
