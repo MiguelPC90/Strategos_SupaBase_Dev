@@ -6,7 +6,7 @@ import Badge from '../../components/Badge/Badge'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
-import { rollupPct, rollupStatus, leafStatus } from '../../lib/rollup'
+import { rollupPct, rollupStatus, leafStatus, leafPctPrev, rollupPctPrev } from '../../lib/rollup'
 import { supabase } from '../../lib/supabase'
 import type { Activity, Program } from '../../types/index'
 
@@ -240,12 +240,13 @@ interface TooltipState {
   rs: string | null; rf: string | null
   pct: number; pct_prev: number
   statusCls: StatusCls
+  childCount: number | null
   x: number; y: number
 }
 
 // ── Tooltip sub-component ─────────────────────────────────────
 function GanttTooltip({ tooltip }: { tooltip: TooltipState }) {
-  const { name, bs, bf, rs, rf, pct, pct_prev, statusCls, x, y } = tooltip
+  const { name, bs, bf, rs, rf, pct, pct_prev, statusCls, childCount, x, y } = tooltip
 
   // Deviation: prefer rf−bf, fallback rs−bs
   let deviationDays: number | null = null
@@ -317,6 +318,12 @@ function GanttTooltip({ tooltip }: { tooltip: TooltipState }) {
         <span className={`gantt-tooltip-value${execCls ? ` ${execCls}` : ''}`}>
           {pct}% (prev. {Math.round(pct_prev)}%)
         </span>
+        {childCount !== null && (
+          <>
+            <span className="gantt-tooltip-label">Actividades</span>
+            <span className="gantt-tooltip-value">{childCount}</span>
+          </>
+        )}
       </div>
     </div>
   )
@@ -435,14 +442,30 @@ export default function Gantt() {
     status: StatusCls,
     act: Activity | null,
     showTodayLabel = false,
+    tooltipGroup?: { name: string; leaves: Activity[] },
   ): JSX.Element {
-    const handlers = act ? {
-      onMouseEnter: (e: React.MouseEvent) => setTooltip({
+    let onEnter: ((e: React.MouseEvent) => void) | null = null
+    if (act) {
+      onEnter = (e: React.MouseEvent) => setTooltip({
         name: act.name, bs: act.bs, bf: act.bf, rs: act.rs, rf: act.rf,
-        pct: act.pct, pct_prev: act.pct_prev,
+        pct: act.pct, pct_prev: leafPctPrev(act, TODAY),
         statusCls: actStatus(act),
+        childCount: null,
         x: e.clientX, y: e.clientY,
-      }),
+      })
+    } else if (tooltipGroup) {
+      const { name, leaves } = tooltipGroup
+      onEnter = (e: React.MouseEvent) => setTooltip({
+        name, bs, bf, rs, rf,
+        pct: Math.round(rollupPct(leaves)),
+        pct_prev: rollupPctPrev(leaves, TODAY),
+        statusCls: status,
+        childCount: leaves.length,
+        x: e.clientX, y: e.clientY,
+      })
+    }
+    const handlers = onEnter ? {
+      onMouseEnter: onEnter,
       onMouseMove:  (e: React.MouseEvent) => setTooltip(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null),
       onMouseLeave: () => setTooltip(null),
     } : {}
@@ -450,7 +473,7 @@ export default function Gantt() {
     return (
       <td
         key="tl"
-        className={`gantt-tl-td${act ? ' gantt-tl-hoverable' : ''}`}
+        className={`gantt-tl-td${(act || tooltipGroup) ? ' gantt-tl-hoverable' : ''}`}
         style={{ width: timelineW, minWidth: timelineW }}
         colSpan={nPeriodCols}
         {...handlers}
@@ -500,7 +523,8 @@ export default function Gantt() {
               <div className="gantt-sticky-exec">{Math.round(rollupPct(n1g.allActs.filter(a => a.level === 4)))}%</div>
             </div>
           </td>
-          {makeTimeline(n1dr.bs, n1dr.bf, n1dr.rs, n1dr.rf, n1st, null, showLabel)}
+          {makeTimeline(n1dr.bs, n1dr.bf, n1dr.rs, n1dr.rf, n1st, null, showLabel,
+            { name: n1g.n1, leaves: n1g.allActs.filter(a => a.level === 4) })}
           <td className="gantt-filler-td" />
         </tr>
       )
@@ -526,7 +550,8 @@ export default function Gantt() {
                 <div className="gantt-sticky-exec">{Math.round(rollupPct(n2g.allActs.filter(a => a.level === 4)))}%</div>
               </div>
             </td>
-            {makeTimeline(n2dr.bs, n2dr.bf, n2dr.rs, n2dr.rf, n2st, null)}
+            {makeTimeline(n2dr.bs, n2dr.bf, n2dr.rs, n2dr.rf, n2st, null, false,
+              { name: n2g.n2, leaves: n2g.allActs.filter(a => a.level === 4) })}
             <td className="gantt-filler-td" />
           </tr>
         )
@@ -609,7 +634,8 @@ export default function Gantt() {
                   <div className="gantt-sticky-exec">{Math.round(rollupPct(n3ChildLeaves.filter(a => a.level === 4)))}%</div>
                 </div>
               </td>
-              {makeTimeline(n3dr.bs, n3dr.bf, n3dr.rs, n3dr.rf, n3st, null)}
+              {makeTimeline(n3dr.bs, n3dr.bf, n3dr.rs, n3dr.rf, n3st, null, false,
+                { name: n3g.n3, leaves: n3ChildLeaves.filter(a => a.level === 4) })}
               <td className="gantt-filler-td" />
             </tr>
           )
@@ -664,7 +690,8 @@ export default function Gantt() {
               <div className="gantt-sticky-exec">{Math.round(rollupPct(n0g.allActs.filter(a => a.level === 4)))}%</div>
             </div>
           </td>
-          {makeTimeline(n0dr.bs, n0dr.bf, n0dr.rs, n0dr.rf, n0st, null, showLabel)}
+          {makeTimeline(n0dr.bs, n0dr.bf, n0dr.rs, n0dr.rf, n0st, null, showLabel,
+            { name: n0g.progName, leaves: n0g.allActs.filter(a => a.level === 4) })}
           <td className="gantt-filler-td" />
         </tr>
       )
