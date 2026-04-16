@@ -63,8 +63,8 @@ function ItemList({ items, variant = 'default' }: ItemListProps) {
     return <p className="pds-empty">Sem itens.</p>
   }
 
-  // "Principais Avanços" plain-text mode: all items have no date AND no status
-  if (variant === 'progress' && items.every(item => !item.date && !item.status)) {
+  // Plain-text fallback for progress + attention: all items lack date AND status
+  if ((variant === 'progress' || variant === 'attention') && items.every(item => !item.date && !item.status)) {
     return (
       <div className="pds-progress-wrap">
         {items.map((item, i) => (
