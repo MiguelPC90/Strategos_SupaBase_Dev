@@ -83,6 +83,8 @@ interface N1Group { n1: string; n2groups: N2Group[]; allActs: Activity[] }
 interface N0Group { progId: string; progName: string; n1groups: N1Group[]; allActs: Activity[] }
 
 // ── Level-view collapse key builder ───────────────────────────
+// Each level collapses exactly the rows AT that depth, making them the
+// visible leaf (folded ▶, no children rendered below).
 function buildLevelKeys(
   level: LevelView,
   n0tree: N0Group[] | null,
@@ -90,33 +92,31 @@ function buildLevelKeys(
 ): Set<string> {
   const keys = new Set<string>()
   if (level === 'todos' || level === 'actividade') return keys
-  const n1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
+
   if (level === 'programa') {
-    // N0 visible+expanded; N1 visible but collapsed (spec: collapse n1:*, n2:*, n3:*)
-    for (const n1g of n1groups) {
-      keys.add(`n1:${n1g.n1}`)
-      for (const n2g of n1g.n2groups) {
-        keys.add(`n2:${n1g.n1}:${n2g.n2}`)
-        for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
-      }
-    }
-  } else if (level === 'eixo') {
-    // N1 expanded; N2 visible but collapsed (spec: collapse n2:*, n3:*)
-    for (const n1g of n1groups) {
-      for (const n2g of n1g.n2groups) {
-        keys.add(`n2:${n1g.n1}:${n2g.n2}`)
-        for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
-      }
-    }
+    // Collapse N0 rows: program rows fold (▶), eixos not rendered
+    if (n0tree) for (const n0g of n0tree) keys.add(`n0:${n0g.progId}`)
+    return keys
+  }
+
+  const n1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
+
+  if (level === 'eixo') {
+    // Collapse N1 rows: eixo rows fold (▶), planos not rendered
+    for (const n1g of n1groups) keys.add(`n1:${n1g.n1}`)
   } else if (level === 'plano') {
-    // N2 expanded; N3 visible but collapsed (spec: collapse n3:*)
+    // Collapse N2 rows: plano rows fold (▶), macros not rendered
+    for (const n1g of n1groups) {
+      for (const n2g of n1g.n2groups) keys.add(`n2:${n1g.n1}:${n2g.n2}`)
+    }
+  } else if (level === 'macro') {
+    // Collapse N3 rows: macro rows fold (▶), activities not rendered
     for (const n1g of n1groups) {
       for (const n2g of n1g.n2groups) {
         for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
       }
     }
   }
-  // 'macro': collapse n4:* — n4 rows are leaf rows with no toggle, so this is a no-op (expands all)
   return keys
 }
 
