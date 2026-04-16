@@ -6,7 +6,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     border-bottom: 1px solid var(--border);
     margin-bottom: 0;
   }
@@ -61,6 +61,15 @@
     transition: background 0.12s;
   }
   .gantt-toolbar-btn:hover { background: var(--bg3); }
+
+  /* Separator between toolbar chip groups */
+  .gantt-toolbar-sep {
+    display: inline-block;
+    width: 1px;
+    height: 16px;
+    background: var(--border2);
+    flex-shrink: 0;
+  }
 
   /* Row toggle button (▶/▼) */
   .gantt-toggle {

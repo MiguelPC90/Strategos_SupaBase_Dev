@@ -16,6 +16,7 @@ const TODAY = new Date().toISOString().slice(0, 10)
 type StatusCls    = 'concluida' | 'em_dia' | 'em_atraso'
 type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
 type Scale        = 'Semana' | 'Mês' | 'Trimestre'
+type LevelView    = 'todos' | 'programa' | 'eixo' | 'plano' | 'actividade'
 
 const SCALES: Scale[] = ['Semana', 'Mês', 'Trimestre']
 const COL_WIDTH: Record<Scale, number> = { Semana: 40, Mês: 80, Trimestre: 120 }
@@ -52,6 +53,41 @@ interface N3Group { n3: string; acts: Activity[] }
 interface N2Group { n2: string; n3groups: N3Group[]; allActs: Activity[] }
 interface N1Group { n1: string; n2groups: N2Group[]; allActs: Activity[] }
 interface N0Group { progId: string; progName: string; n1groups: N1Group[]; allActs: Activity[] }
+
+// ── Level-view collapse key builder ───────────────────────────
+function buildLevelKeys(
+  level: LevelView,
+  n0tree: N0Group[] | null,
+  tree: N1Group[]
+): Set<string> {
+  const keys = new Set<string>()
+  if (level === 'todos' || level === 'actividade') return keys
+  const n1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
+  if (level === 'programa') {
+    for (const n1g of n1groups) {
+      keys.add(`n1:${n1g.n1}`)
+      for (const n2g of n1g.n2groups) {
+        keys.add(`n2:${n1g.n1}:${n2g.n2}`)
+        for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
+      }
+    }
+  } else if (level === 'eixo') {
+    for (const n1g of n1groups) {
+      for (const n2g of n1g.n2groups) {
+        keys.add(`n2:${n1g.n1}:${n2g.n2}`)
+        for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
+      }
+    }
+  } else {
+    // 'plano'
+    for (const n1g of n1groups) {
+      for (const n2g of n1g.n2groups) {
+        for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
+      }
+    }
+  }
+  return keys
+}
 
 function buildTree(activities: Activity[]): N1Group[] {
   const n1Map = new Map<string, Activity[]>()
@@ -288,6 +324,12 @@ export default function Gantt() {
   }, [n0tree, tree])
 
   const expandAll = useCallback(() => setCollapsed(new Set()), [])
+
+  const [levelView, setLevelView] = useState<LevelView>('todos')
+  const applyLevel = useCallback((level: LevelView) => {
+    setLevelView(level)
+    setCollapsed(buildLevelKeys(level, n0tree, tree))
+  }, [n0tree, tree])
 
   const { rangeStart, totalMs, periods, todayPct } = useMemo(() => {
     const dr = computeDateRange(filtered)
@@ -570,6 +612,14 @@ export default function Gantt() {
                 onClick={() => setScale(s)}
               >{s}</button>
             ))}
+          </div>
+          <span className="gantt-toolbar-sep" />
+          <div className="gantt-scale-chips">
+            <button className={`gantt-scale-chip${levelView === 'todos' ? ' active' : ''}`} onClick={() => applyLevel('todos')}>Todos</button>
+            {multiProg && <button className={`gantt-scale-chip${levelView === 'programa' ? ' active' : ''}`} onClick={() => applyLevel('programa')}>Programa</button>}
+            <button className={`gantt-scale-chip${levelView === 'eixo' ? ' active' : ''}`} onClick={() => applyLevel('eixo')}>Eixo</button>
+            <button className={`gantt-scale-chip${levelView === 'plano' ? ' active' : ''}`} onClick={() => applyLevel('plano')}>Plano</button>
+            <button className={`gantt-scale-chip${levelView === 'actividade' ? ' active' : ''}`} onClick={() => applyLevel('actividade')}>Actividade</button>
           </div>
           <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
             <button className="gantt-toolbar-btn" onClick={collapseAll}>Colapsar</button>

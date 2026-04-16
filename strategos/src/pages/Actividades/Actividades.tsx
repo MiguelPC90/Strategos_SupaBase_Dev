@@ -17,6 +17,7 @@ type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
 
 // ── Status helpers ─────────────────────────────────────────────
 type StatusCls = 'concluida' | 'em_dia' | 'em_atraso'
+type LevelView  = 'todos' | 'programa' | 'eixo' | 'plano' | 'actividade'
 
 function actStatus(a: Activity): StatusCls {
   const s = leafStatus(a, TODAY)
@@ -80,6 +81,43 @@ interface N3Group { n3: string; acts: Activity[] }
 interface N2Group { n2: string; n3groups: N3Group[]; allActs: Activity[] }
 interface N1Group { n1: string; n2groups: N2Group[]; allActs: Activity[] }
 interface N0Group { progId: string; progName: string; n1groups: N1Group[]; allActs: Activity[] }
+
+// ── Level-view collapse key builder ───────────────────────────
+function buildLevelKeys(
+  level: LevelView,
+  n0tree: N0Group[] | null,
+  tree: N1Group[]
+): Set<string> {
+  const keys = new Set<string>()
+  if (level === 'todos' || level === 'actividade') return keys
+  const n1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
+  if (level === 'programa') {
+    // N0 visible+expanded; N1 visible but collapsed (spec: collapse n1:*, n2:*, n3:*)
+    for (const n1g of n1groups) {
+      keys.add(`n1:${n1g.n1}`)
+      for (const n2g of n1g.n2groups) {
+        keys.add(`n2:${n1g.n1}:${n2g.n2}`)
+        for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
+      }
+    }
+  } else if (level === 'eixo') {
+    // N1 expanded; N2 visible but collapsed (spec: collapse n2:*, n3:*)
+    for (const n1g of n1groups) {
+      for (const n2g of n1g.n2groups) {
+        keys.add(`n2:${n1g.n1}:${n2g.n2}`)
+        for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
+      }
+    }
+  } else {
+    // 'plano': N2 expanded; N3 visible but collapsed (spec: collapse n3:*)
+    for (const n1g of n1groups) {
+      for (const n2g of n1g.n2groups) {
+        for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
+      }
+    }
+  }
+  return keys
+}
 
 function buildTree(activities: Activity[]): N1Group[] {
   const n1Map = new Map<string, Activity[]>()
@@ -232,6 +270,12 @@ export default function Actividades() {
   }, [n0tree, tree])
 
   const expandAll = useCallback(() => setCollapsed(new Set()), [])
+
+  const [levelView, setLevelView] = useState<LevelView>('todos')
+  const applyLevel = useCallback((level: LevelView) => {
+    setLevelView(level)
+    setCollapsed(buildLevelKeys(level, n0tree, tree))
+  }, [n0tree, tree])
 
   const rows: React.ReactNode[] = []
 
@@ -452,12 +496,20 @@ export default function Actividades() {
       <Card
         title="Actividades"
         actions={
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             {filterInfo && (
               <span style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>{filterInfo}</span>
             )}
             <button className="act-btn" onClick={collapseAll}>Colapsar tudo</button>
             <button className="act-btn" onClick={expandAll}>Expandir tudo</button>
+            <span className="act-sep" />
+            <button className={`act-chip${levelView === 'todos' ? ' active' : ''}`} onClick={() => applyLevel('todos')}>Todos</button>
+            {multiProg && (
+              <button className={`act-chip${levelView === 'programa' ? ' active' : ''}`} onClick={() => applyLevel('programa')}>Programa</button>
+            )}
+            <button className={`act-chip${levelView === 'eixo' ? ' active' : ''}`} onClick={() => applyLevel('eixo')}>Eixo</button>
+            <button className={`act-chip${levelView === 'plano' ? ' active' : ''}`} onClick={() => applyLevel('plano')}>Plano</button>
+            <button className={`act-chip${levelView === 'actividade' ? ' active' : ''}`} onClick={() => applyLevel('actividade')}>Actividade</button>
           </div>
         }
       >

@@ -17,6 +17,30 @@
   }
   .act-btn:hover { background: var(--bg3); }
 
+  /* Level-view chips */
+  .act-chip {
+    padding: 3px 10px;
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    background: var(--bg2);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text2);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+  .act-chip:hover { background: var(--bg3); }
+  .act-chip.active { background: var(--navy); color: #fff; border-color: var(--navy); font-weight: 600; }
+
+  /* Separator between button groups */
+  .act-sep {
+    display: inline-block;
+    width: 1px;
+    height: 16px;
+    background: var(--border2);
+    flex-shrink: 0;
+  }
+
   /* Hierarchy table */
   .act-table {
     width: 100%;
