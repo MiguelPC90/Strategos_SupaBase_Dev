@@ -322,7 +322,7 @@ export default function ExecucaoFinanceira() {
 
         <span className="ef-selector-label">Ano</span>
         <select
-          className="ef-year-select"
+          className="styled-select ef-year-select"
           value={yearFilter}
           onChange={e => setYearFilter(e.target.value)}
         >

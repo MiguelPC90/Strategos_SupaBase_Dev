@@ -434,7 +434,6 @@
   }
 
   .gf-field-input,
-  .gf-field-select,
   .gf-field-textarea {
     border: 1px solid var(--border2);
     border-radius: var(--r);
@@ -447,7 +446,6 @@
     box-sizing: border-box;
   }
   .gf-field-input:focus,
-  .gf-field-select:focus,
   .gf-field-textarea:focus { outline: none; border-color: var(--navy); }
 
   .gf-field-textarea {

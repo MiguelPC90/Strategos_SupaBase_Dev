@@ -176,7 +176,7 @@ function PdsSection({
                       }
                     />
                     <select
-                      className="pds-item-status"
+                      className="styled-select-sm"
                       value={item.status ?? 'Pendente'}
                       onChange={(e) =>
                         onChangeItem(sectionKey, idx, { status: e.target.value })
@@ -589,7 +589,7 @@ export default function GestaoPDS() {
                     Estado
                   </div>
                   <select
-                    style={{ border: '1px solid var(--border2)', borderRadius: 'var(--r)', padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' as const, background: 'var(--bg)' }}
+                    className="styled-select-sm"
                     value={newItemStatus}
                     onChange={e => setNewItemStatus(e.target.value)}
                   >

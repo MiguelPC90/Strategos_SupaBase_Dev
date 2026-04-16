@@ -383,18 +383,6 @@
     flex-shrink: 0;
   }
 
-  .gres-import-plan-select {
-    border: 1px solid var(--border2);
-    border-radius: var(--r);
-    padding: 6px 10px;
-    font-size: 13px;
-    color: var(--text);
-    background: var(--bg);
-    font-family: inherit;
-    width: 100%;
-  }
-  .gres-import-plan-select:focus { outline: none; border-color: var(--navy); }
-
   .gres-import-list {
     display: flex;
     flex-direction: column;
@@ -432,8 +420,7 @@
     color: var(--text2);
   }
 
-  .gres-form-input,
-  .gres-form-select {
+  .gres-form-input {
     border: 1px solid var(--border2);
     border-radius: var(--r);
     padding: 6px 10px;
@@ -444,8 +431,7 @@
     width: 100%;
     box-sizing: border-box;
   }
-  .gres-form-input:focus,
-  .gres-form-select:focus { outline: none; border-color: var(--navy); }
+  .gres-form-input:focus { outline: none; border-color: var(--navy); }
 
   .gres-form-row {
     display: grid;

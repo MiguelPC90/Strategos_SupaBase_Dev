@@ -226,7 +226,7 @@ export default function Evolucao() {
       <div className="evol-controls-bar">
         <span className="evol-ctrl-label">Programa</span>
         <select
-          className="evol-select"
+          className="styled-select"
           value={programId}
           onChange={e => setProgramId(e.target.value)}
         >

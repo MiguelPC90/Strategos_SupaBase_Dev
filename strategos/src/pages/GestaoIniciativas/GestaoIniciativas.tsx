@@ -179,7 +179,7 @@ function Panel({ form, eixos, planos, activities, peopleNames, onChange }: Panel
           {/* 2. Nível */}
           <div className="gi-field">
             <span className="gi-field-label">Nível</span>
-            <select className="gi-level-select" value={form.level} onChange={handleLevelChange}>
+            <select className="styled-select-sm" value={form.level} onChange={handleLevelChange}>
               <option value="3">Macroactividade</option>
               <option value="4">Actividade</option>
               <option value="5">Tarefa</option>
@@ -191,14 +191,14 @@ function Panel({ form, eixos, planos, activities, peopleNames, onChange }: Panel
           <div className="gi-field-row">
             <div className="gi-field">
               <span className="gi-field-label">Eixo</span>
-              <select className="gi-field-select" value={form.n1} onChange={handleN1Change}>
+              <select className="styled-select-sm" value={form.n1} onChange={handleN1Change}>
                 <option value="">— seleccionar —</option>
                 {eixos.map(e => <option key={e} value={e}>{e}</option>)}
               </select>
             </div>
             <div className="gi-field">
               <span className="gi-field-label">Plano de Acção</span>
-              <select className="gi-field-select" value={form.n2} onChange={handleN2Change}>
+              <select className="styled-select-sm" value={form.n2} onChange={handleN2Change}>
                 <option value="">— seleccionar —</option>
                 {planos.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
@@ -211,7 +211,7 @@ function Panel({ form, eixos, planos, activities, peopleNames, onChange }: Panel
               <div className="gi-field">
                 <span className="gi-context-label">Macroactividade</span>
                 <select
-                  className="gi-field-select"
+                  className="styled-select-sm"
                   value={form.n3}
                   onChange={e => onChange({ ...form, n3: e.target.value, n4: '', n5: '' })}
                 >
@@ -228,7 +228,7 @@ function Panel({ form, eixos, planos, activities, peopleNames, onChange }: Panel
               <div className="gi-field">
                 <span className="gi-context-label">Actividade</span>
                 <select
-                  className="gi-field-select"
+                  className="styled-select-sm"
                   value={form.n4}
                   onChange={e => onChange({ ...form, n4: e.target.value, n5: '' })}
                 >
@@ -245,7 +245,7 @@ function Panel({ form, eixos, planos, activities, peopleNames, onChange }: Panel
               <div className="gi-field">
                 <span className="gi-context-label">Tarefa</span>
                 <select
-                  className="gi-field-select"
+                  className="styled-select-sm"
                   value={form.n5}
                   onChange={e => onChange({ ...form, n5: e.target.value })}
                 >
@@ -883,7 +883,7 @@ export default function GestaoIniciativas() {
           <>
             <label className="gi-prog-label">Programa</label>
             <select
-              className="gi-prog-select"
+              className="styled-select"
               value={selProgId ?? ''}
               onChange={e => setSelProgId(e.target.value || null)}
             >

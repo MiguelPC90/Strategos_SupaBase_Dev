@@ -298,7 +298,7 @@ function ContractModalBody({ form, setForm, currencies, categories }: {
       </div>
       <div className="gf-field">
         <label className="gf-field-label">Categoria</label>
-        <select className="gf-field-select" value={form.category}
+        <select className="styled-select-sm" value={form.category}
           onChange={e => set({ category: e.target.value })}>
           <option value="">— categoria —</option>
           {categories.map(cat => (
@@ -319,7 +319,7 @@ function ContractModalBody({ form, setForm, currencies, categories }: {
         </div>
         <div className="gf-field">
           <label className="gf-field-label">Moeda</label>
-          <select className="gf-field-select" value={form.currency}
+          <select className="styled-select-sm" value={form.currency}
             onChange={e => set({ currency: e.target.value })}>
             {currencies.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
           </select>
@@ -458,7 +458,7 @@ function InvoiceModalBody({ form, setForm, contracts, currencies, supplierFilter
       <div className="gf-field-row">
         <div className="gf-field">
           <label className="gf-field-label">Fornecedor</label>
-          <select className="gf-field-select" value={supplierFilter}
+          <select className="styled-select-sm" value={supplierFilter}
             onChange={e => {
               setSupplierFilter(e.target.value)
               set({ app_contract_id: '', supplier: e.target.value })
@@ -469,7 +469,7 @@ function InvoiceModalBody({ form, setForm, contracts, currencies, supplierFilter
         </div>
         <div className="gf-field">
           <label className="gf-field-label">Contrato</label>
-          <select className="gf-field-select" value={form.app_contract_id}
+          <select className="styled-select-sm" value={form.app_contract_id}
             onChange={e => {
               const c = contracts.find(x => x.app_id === e.target.value)
               set({ app_contract_id: e.target.value, ...(c ? { supplier: c.supplier } : {}) })
@@ -490,7 +490,7 @@ function InvoiceModalBody({ form, setForm, contracts, currencies, supplierFilter
         </div>
         <div className="gf-field">
           <label className="gf-field-label">Tipo Doc.</label>
-          <select className="gf-field-select" value={form.doc_type}
+          <select className="styled-select-sm" value={form.doc_type}
             onChange={e => set({ doc_type: e.target.value })}>
             {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
@@ -504,7 +504,7 @@ function InvoiceModalBody({ form, setForm, contracts, currencies, supplierFilter
         </div>
         <div className="gf-field">
           <label className="gf-field-label">Moeda</label>
-          <select className="gf-field-select" value={form.currency}
+          <select className="styled-select-sm" value={form.currency}
             onChange={e => set({ currency: e.target.value })}>
             {currencies.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
           </select>
@@ -530,7 +530,7 @@ function InvoiceModalBody({ form, setForm, contracts, currencies, supplierFilter
         </div>
         <div className="gf-field">
           <label className="gf-field-label">Estado</label>
-          <select className="gf-field-select" value={form.status}
+          <select className="styled-select-sm" value={form.status}
             onChange={e => set({ status: e.target.value })}>
             {INV_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>

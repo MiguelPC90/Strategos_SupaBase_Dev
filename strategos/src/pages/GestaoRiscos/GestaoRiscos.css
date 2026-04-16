@@ -214,7 +214,6 @@
   }
 
   .gr-field-input,
-  .gr-field-select,
   .gr-field-textarea {
     border: 1px solid var(--border2);
     border-radius: var(--r);
@@ -227,7 +226,6 @@
     box-sizing: border-box;
   }
   .gr-field-input:focus,
-  .gr-field-select:focus,
   .gr-field-textarea:focus { outline: none; border-color: var(--navy); }
 
   .gr-field-textarea {

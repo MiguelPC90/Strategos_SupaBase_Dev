@@ -270,7 +270,7 @@ function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnit
         <div className="gres-form-field">
           <label className="gres-form-label">Perfil</label>
           {profiles.length > 0 ? (
-            <select className="gres-form-select" value={form.role}
+            <select className="styled-select-sm" value={form.role}
               onChange={e => set({ role: e.target.value })}>
               <option value="">— perfil —</option>
               {profiles.map(p => <option key={p} value={p}>{p}</option>)}
@@ -283,7 +283,7 @@ function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnit
         <div className="gres-form-field">
           <label className="gres-form-label">Unidade Org.</label>
           {orgUnits.length > 0 ? (
-            <select className="gres-form-select" value={form.org_unit}
+            <select className="styled-select-sm" value={form.org_unit}
               onChange={e => set({ org_unit: e.target.value })}>
               <option value="">— unidade —</option>
               {orgUnits.map(u => <option key={u} value={u}>{u}</option>)}
@@ -297,7 +297,7 @@ function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnit
       <div className="gres-form-row">
         <div className="gres-form-field">
           <label className="gres-form-label">Tipo</label>
-          <select className="gres-form-select" value={form.type}
+          <select className="styled-select-sm" value={form.type}
             onChange={e => set({ type: e.target.value })}>
             {RES_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
@@ -318,7 +318,7 @@ function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnit
         </div>
         <div className="gres-form-field">
           <label className="gres-form-label">Estado</label>
-          <select className="gres-form-select" value={form.status}
+          <select className="styled-select-sm" value={form.status}
             onChange={e => set({ status: e.target.value })}>
             {RES_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -339,7 +339,7 @@ function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnit
       {form.type === 'Externo' && (
         <div className="gres-form-field">
           <label className="gres-form-label">Contrato</label>
-          <select className="gres-form-select" value={form.contract_id}
+          <select className="styled-select-sm" value={form.contract_id}
             onChange={e => set({ contract_id: e.target.value })}>
             <option value="">— sem contrato —</option>
             {contracts.map(c => <option key={c.id} value={c.id}>{c.supplier}</option>)}
@@ -402,7 +402,7 @@ function ImportPanel({ planOptions, currentPlanKey, allResources, onImport, onCl
           <div>
             <label className="gres-field-label" style={{ display: 'block', marginBottom: 4 }}>Plano de origem</label>
             <select
-              className="gres-import-plan-select"
+              className="styled-select-sm"
               value={sourcePlanKey}
               onChange={e => { setSourcePlanKey(e.target.value); setSelected(new Set()) }}
             >

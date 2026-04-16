@@ -115,13 +115,13 @@ function Panel({ form, onChange, matrixSize }: PanelProps) {
       <div className="gr-field-row">
         <div className="gr-field">
           <span className="gr-field-label">Impacto *</span>
-          <select className="gr-field-select" value={form.impact} onChange={set('impact')}>
+          <select className="styled-select-sm" value={form.impact} onChange={set('impact')}>
             {Array.from({ length: matrixSize }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
         <div className="gr-field">
           <span className="gr-field-label">Probabilidade *</span>
-          <select className="gr-field-select" value={form.probability} onChange={set('probability')}>
+          <select className="styled-select-sm" value={form.probability} onChange={set('probability')}>
             {Array.from({ length: matrixSize }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
@@ -139,7 +139,7 @@ function Panel({ form, onChange, matrixSize }: PanelProps) {
 
       <div className="gr-field">
         <span className="gr-field-label">Estado *</span>
-        <select className="gr-field-select" value={form.status} onChange={set('status')}>
+        <select className="styled-select-sm" value={form.status} onChange={set('status')}>
           <option>Aberto</option>
           <option>Em mitigação</option>
           <option>Mitigado</option>

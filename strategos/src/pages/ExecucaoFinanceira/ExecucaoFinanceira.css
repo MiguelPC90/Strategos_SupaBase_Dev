@@ -36,17 +36,8 @@
   /* Layout overrides for .styled-select inside the selector bar */
   .ef-selector-bar .styled-select { flex: 1; max-width: 420px; }
 
-  .ef-year-select {
-    width: 110px;
-    border: 1px solid var(--border2);
-    border-radius: var(--r);
-    padding: 5px 10px;
-    font-size: 13px;
-    color: var(--text);
-    background: var(--bg2);
-    cursor: pointer;
-  }
-  .ef-year-select:focus { outline: none; border-color: var(--navy); }
+  /* ef-year-select: layout only — visual from .styled-select */
+  .ef-year-select { width: 110px; flex: none; }
 
   /* ── CAPEX/OPEX chips ───────────────────────────────────────── */
   .ef-chips {

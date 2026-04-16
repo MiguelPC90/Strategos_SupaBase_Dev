@@ -254,18 +254,6 @@
   }
   .pds-item-date:focus { outline: none; border-color: var(--navy); }
 
-  .pds-item-status {
-    border: 1px solid var(--border2);
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 11px;
-    color: var(--text);
-    background: var(--bg);
-    font-family: inherit;
-    cursor: pointer;
-  }
-  .pds-item-status:focus { outline: none; border-color: var(--navy); }
-
   /* ── Remove button ──────────────────────────────────────────── */
   .pds-remove-btn {
     flex-shrink: 0;
