@@ -7,6 +7,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useRole } from '../../hooks/useRole'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useFilters } from '../../context/FilterContext'
+import { ToastList } from '../Toast/Toast'
 import { usePrograms } from '../../hooks/usePrograms'
 import { supabase } from '../../lib/supabase'
 import type { PageKey } from '../../types/index'
@@ -412,6 +413,7 @@ export default function Layout() {
           <Outlet />
         </div>
         <footer className="app-footer">Powered by Strategos</footer>
+        <ToastList />
       </main>
     </>
   )

@@ -1,5 +1,6 @@
 import './GestaoRiscos.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useToast } from '../../context/ToastContext'
 import { createPortal } from 'react-dom'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
@@ -224,6 +225,7 @@ function RowMenu({ riskId, openId, onOpen, onEdit, onDuplicate, onDelete }: RowM
 export default function GestaoRiscos() {
   const { filters }  = useFilters()
   const { programs } = usePrograms()
+  const { showToast } = useToast()
   const [selProgId,   setSelProgId]   = useState<string>('')
   const [matrixSize,  setMatrixSize]  = useState(5)
 
@@ -307,14 +309,6 @@ export default function GestaoRiscos() {
   const [panelSaving, setPanelSaving] = useState(false)
   const [panelErr,    setPanelErr]    = useState('')
 
-  // ── Toast ────────────────────────────────────────────────────
-  const [toast, setToast] = useState('')
-  useEffect(() => {
-    if (!toast) return
-    const t = setTimeout(() => setToast(''), 2000)
-    return () => clearTimeout(t)
-  }, [toast])
-
   // ── Panel open/close ─────────────────────────────────────────
   const openNew = useCallback(() => {
     setPanelForm(blankForm())
@@ -380,7 +374,7 @@ export default function GestaoRiscos() {
     setPanelSaving(false)
     if (errMsg) { setPanelErr(errMsg); return }
     setPanelForm(null)
-    setToast('Guardado!')
+    showToast('Guardado!')
     refetch()
   }, [panelForm, selectedPlan, planRisks.length, refetch])
 
@@ -394,7 +388,7 @@ export default function GestaoRiscos() {
     setPanelSaving(false)
     if (error) { setPanelErr(error.message); return }
     setPanelForm(null)
-    setToast('Eliminado.')
+    showToast('Eliminado.', 'info')
     refetch()
   }, [panelForm, refetch])
 
@@ -406,7 +400,7 @@ export default function GestaoRiscos() {
     if (!confirm(`Eliminar "${preview}"? Esta acção não pode ser desfeita.`)) return
     const { error } = await supabase.from('risks').delete().eq('id', r.id)
     if (error) { alert(`Erro ao eliminar: ${error.message}`); return }
-    setToast('Eliminado.')
+    showToast('Eliminado.', 'info')
     refetch()
   }, [refetch])
 
@@ -449,8 +443,6 @@ export default function GestaoRiscos() {
         </select>
 
         <div className="gr-spacer" />
-
-        {toast && <span className="gr-toast">{toast}</span>}
 
         <button
           className="gr-btn gr-btn-primary"
