@@ -413,6 +413,12 @@ export default function GestaoIniciativas() {
 
   const [batchSaving, setBatchSaving] = useState(false)
   const [toast, setToast] = useState('')
+  const [delayThreshold, setDelayThreshold] = useState(20)
+
+  useEffect(() => {
+    supabase.from('app_config').select('data').eq('config_key', 'status_delay_threshold').single()
+      .then(({ data }) => { if (data) setDelayThreshold(parseInt(data.data) || 20) })
+  }, [])
 
   // Apply dirty overrides for display
   const localActs = useMemo(() =>
@@ -673,7 +679,7 @@ export default function GestaoIniciativas() {
     const n1col = collapsed.has(n1g.key)
     const n1leaves = n1g.all.filter(a => a.level === 4)
     const n1pct = rollupPct(n1leaves); const n1prev = rollupPctPrev(n1leaves, TODAY)
-    const n1st  = rollupStatus(n1leaves, TODAY); const n1dr = rollupDateRange(n1leaves)
+    const n1st  = rollupStatus(n1leaves, TODAY, delayThreshold); const n1dr = rollupDateRange(n1leaves)
     rows.push(
       <tr key={n1g.key} className="gi-row-n1">
         <td>
@@ -693,7 +699,7 @@ export default function GestaoIniciativas() {
       const n2col = collapsed.has(n2g.key)
       const n2leaves = n2g.all.filter(a => a.level === 4)
       const n2pct = rollupPct(n2leaves); const n2prev = rollupPctPrev(n2leaves, TODAY)
-      const n2st  = rollupStatus(n2leaves, TODAY); const n2dr = rollupDateRange(n2leaves)
+      const n2st  = rollupStatus(n2leaves, TODAY, delayThreshold); const n2dr = rollupDateRange(n2leaves)
       const n2Owner = dbPlanos.find(p => p.name === n2g.n2)?.owner || '—'
       rows.push(
         <tr key={n2g.key} className="gi-row-n2">
@@ -725,7 +731,7 @@ export default function GestaoIniciativas() {
         const n3col = collapsed.has(n3g.key)
         const n3leaves = n3g.all.filter(a => a.level === 4)
         const n3pct = rollupPct(n3leaves); const n3prev = rollupPctPrev(n3leaves, TODAY)
-        const n3st  = rollupStatus(n3leaves, TODAY); const n3dr = rollupDateRange(n3leaves)
+        const n3st  = rollupStatus(n3leaves, TODAY, delayThreshold); const n3dr = rollupDateRange(n3leaves)
         const n3Rep  = n3g.all.find(a => a.level === 3)
         const n3Sibs = n3Rep
           ? localActs.filter(a => a.level === 3 && a.n1 === n3Rep.n1 && a.n2 === n3Rep.n2)
@@ -780,7 +786,7 @@ export default function GestaoIniciativas() {
           const n4col = collapsed.has(n4g.key)
           const n4leaves = n4g.all.filter(a => a.level === 4)
           const n4pct = rollupPct(n4leaves); const n4prev = rollupPctPrev(n4leaves, TODAY)
-          const n4st  = rollupStatus(n4leaves, TODAY); const n4dr = rollupDateRange(n4leaves)
+          const n4st  = rollupStatus(n4leaves, TODAY, delayThreshold); const n4dr = rollupDateRange(n4leaves)
           const n4Rep  = n4g.all.find(a => a.level === 4)
           const n4Sibs = n4Rep
             ? localActs.filter(a => a.level === 4 && a.n1 === n4Rep.n1 && a.n2 === n4Rep.n2 && a.n3 === n4Rep.n3)

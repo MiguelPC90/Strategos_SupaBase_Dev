@@ -1,11 +1,12 @@
 import './Gantt.css'
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
 import { rollupPct, rollupStatus, leafStatus } from '../../lib/rollup'
+import { supabase } from '../../lib/supabase'
 import type { Activity, Program } from '../../types/index'
 
 const TODAY = new Date().toISOString().slice(0, 10)
@@ -30,9 +31,9 @@ function actStatus(a: Activity): StatusCls {
   return 'em_dia'
 }
 
-function groupStatus(acts: Activity[]): StatusCls {
+function groupStatus(acts: Activity[], threshold: number): StatusCls {
   const leaves = acts.filter(a => a.level === 4)
-  const s = rollupStatus(leaves, TODAY)
+  const s = rollupStatus(leaves, TODAY, threshold)
   if (s === 'Concluída') return 'concluida'
   if (s === 'Em atraso') return 'em_atraso'
   return 'em_dia'
@@ -248,9 +249,15 @@ export default function Gantt() {
     [filtered, programs, multiProg]
   )
 
-  const [scale, setScale]         = useState<Scale>('Mês')
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
-  const [tooltip, setTooltip]     = useState<TooltipState | null>(null)
+  const [scale, setScale]               = useState<Scale>('Mês')
+  const [collapsed, setCollapsed]       = useState<Set<string>>(new Set())
+  const [tooltip, setTooltip]           = useState<TooltipState | null>(null)
+  const [delayThreshold, setDelayThreshold] = useState(20)
+
+  useEffect(() => {
+    supabase.from('app_config').select('data').eq('config_key', 'status_delay_threshold').single()
+      .then(({ data }) => { if (data) setDelayThreshold(parseInt(data.data) || 20) })
+  }, [])
 
   const toggle = useCallback((key: string) => {
     setCollapsed(prev => {
@@ -347,7 +354,7 @@ export default function Gantt() {
     for (const n1g of n1groups) {
       const n1key = `n1:${n1g.n1}`
       const n1col = collapsed.has(n1key)
-      const n1st  = groupStatus(n1g.allActs)
+      const n1st  = groupStatus(n1g.allActs, delayThreshold)
       const n1dr  = groupDateRange(n1g.allActs)
       const showLabel = firstRow; firstRow = false
 
@@ -374,7 +381,7 @@ export default function Gantt() {
       for (const n2g of n1g.n2groups) {
         const n2key = `n2:${n1g.n1}:${n2g.n2}`
         const n2col = collapsed.has(n2key)
-        const n2st  = groupStatus(n2g.allActs)
+        const n2st  = groupStatus(n2g.allActs, delayThreshold)
         const n2dr  = groupDateRange(n2g.allActs)
 
         rows.push(
@@ -457,7 +464,7 @@ export default function Gantt() {
           // ── Has real children: render collapsible N3 header + children only ──
           const n3key = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
           const n3col = collapsed.has(n3key)
-          const n3st  = groupStatus(n3ChildLeaves)
+          const n3st  = groupStatus(n3ChildLeaves, delayThreshold)
           const n3dr  = groupDateRange(n3ChildLeaves)
 
           rows.push(
@@ -511,7 +518,7 @@ export default function Gantt() {
     for (const n0g of n0tree) {
       const n0key = `n0:${n0g.progId}`
       const n0col = collapsed.has(n0key)
-      const n0st  = groupStatus(n0g.allActs)
+      const n0st  = groupStatus(n0g.allActs, delayThreshold)
       const n0dr  = groupDateRange(n0g.allActs)
       const showLabel = firstRow; firstRow = false
 

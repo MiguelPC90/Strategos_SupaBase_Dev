@@ -46,14 +46,18 @@ export function rollupPctPrev(activities: Activity[], today: string): number {
 
 /**
  * Rollup status from N4 leaves using date + schedule logic.
- * - All pct >= 100                        → 'Concluída'
- * - today > max(bf) AND avg pct < 100     → 'Em atraso'
- * - avg pct_previsto > avg pct            → 'Em atraso'
- * - else                                  → 'Em dia'
+ * - All pct >= 100                                    → 'Concluída'
+ * - today > max(bf) AND avg pct < 100                → 'Em atraso'
+ * - (avg pct_previsto − avg pct) > threshold         → 'Em atraso'
+ * - else                                             → 'Em dia'
+ *
+ * `threshold` (default 20) is the minimum gap between previsto and real
+ * before a group is classified as 'Em atraso'. Configurable via app_config
+ * key 'status_delay_threshold'.
  *
  * Pass N4 leaves only.
  */
-export function rollupStatus(leaves: Activity[], today: string): string {
+export function rollupStatus(leaves: Activity[], today: string, threshold = 20): string {
   if (leaves.length === 0) return 'Em dia'
   if (leaves.every(a => a.pct >= 100)) return 'Concluída'
   const avgPct = leaves.reduce((s, a) => s + a.pct, 0) / leaves.length
@@ -63,7 +67,7 @@ export function rollupStatus(leaves: Activity[], today: string): string {
   }, null)
   if (maxBf && today > maxBf && avgPct < 100) return 'Em atraso'
   const avgPrev = rollupPctPrev(leaves, today)
-  if (avgPrev > avgPct) return 'Em atraso'
+  if ((avgPrev - avgPct) > threshold) return 'Em atraso'
   return 'Em dia'
 }
 

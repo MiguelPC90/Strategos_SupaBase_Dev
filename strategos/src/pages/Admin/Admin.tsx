@@ -37,13 +37,14 @@ const SECTIONS: Section[] = [
 ]
 
 // ── Section 1: Geral ───────────────────────────────────────────
-const CONFIG_KEYS = ['client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date'] as const
+const CONFIG_KEYS = ['client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date', 'status_delay_threshold'] as const
 
 function AdminGeral() {
-  const [title,      setTitle]      = useState('')
-  const [subtitle,   setSubtitle]   = useState('')
-  const [cutoffDate, setCutoffDate] = useState('')
-  const [logoUrl,    setLogoUrl]    = useState('')
+  const [title,          setTitle]          = useState('')
+  const [subtitle,       setSubtitle]       = useState('')
+  const [cutoffDate,     setCutoffDate]     = useState('')
+  const [logoUrl,        setLogoUrl]        = useState('')
+  const [delayThreshold, setDelayThreshold] = useState(20)
   const [loading,    setLoading]    = useState(true)
   const [saving,     setSaving]     = useState(false)
   const [uploading,  setUploading]  = useState(false)
@@ -62,10 +63,11 @@ function AdminGeral() {
         if (error || !data) return
         const map: Record<string, string> = {}
         for (const row of data) map[row.config_key] = row.data
-        setTitle(map['client_title']     ?? '')
+        setTitle(map['client_title']       ?? '')
         setSubtitle(map['client_subtitle'] ?? '')
         setLogoUrl(map['client_logo_url']  ?? '')
         setCutoffDate(map['cutoff_date']   ?? '')
+        setDelayThreshold(parseInt(map['status_delay_threshold'] ?? '20') || 20)
       })
       .catch(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -75,9 +77,10 @@ function AdminGeral() {
     setSaving(true)
     try {
       const pairs = [
-        { config_key: 'client_title',    data: title },
-        { config_key: 'client_subtitle', data: subtitle },
-        { config_key: 'cutoff_date',     data: cutoffDate },
+        { config_key: 'client_title',            data: title },
+        { config_key: 'client_subtitle',         data: subtitle },
+        { config_key: 'cutoff_date',             data: cutoffDate },
+        { config_key: 'status_delay_threshold',  data: String(delayThreshold) },
       ]
       await Promise.all(
         pairs.map(p => supabase.from('app_config').upsert(p, { onConflict: 'config_key' }))
@@ -169,6 +172,22 @@ function AdminGeral() {
                 onChange={e => setCutoffDate(e.target.value)}
               />
               <span className="adm-help">Dados anteriores a esta data não são mostrados</span>
+            </div>
+
+            <div className="adm-field">
+              <label className="adm-label">Threshold de atraso (%)</label>
+              <input
+                className="adm-input"
+                type="number"
+                min={0}
+                max={100}
+                step={5}
+                value={delayThreshold}
+                onChange={e => setDelayThreshold(parseInt(e.target.value) || 0)}
+              />
+              <span className="adm-help">
+                Diferença mínima entre % previsto e % real para classificar N0-N3 como "Em atraso". Default: 20%
+              </span>
             </div>
 
             <button
