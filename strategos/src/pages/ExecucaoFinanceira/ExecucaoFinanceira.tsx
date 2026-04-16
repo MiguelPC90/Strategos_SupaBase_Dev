@@ -103,10 +103,10 @@ function MonthlyChart({ data, sym }: { data: MonthBar[]; sym: string }) {
 }
 
 // ── Contract estado ────────────────────────────────────────────
-function contractEstado(pct: number): { label: string; variant: 'grey' | 'amber' | 'green' } {
+function contractEstado(pct: number): { label: string; variant: 'grey' | 'blue' | 'green' } {
   if (pct <= 0)   return { label: 'Não iniciado', variant: 'grey' }
   if (pct >= 100) return { label: 'Concluído',    variant: 'green' }
-  return                  { label: 'Em execução',  variant: 'amber' }
+  return                  { label: 'Em curso',     variant: 'blue' }
 }
 
 // ── Main page ──────────────────────────────────────────────────
@@ -195,20 +195,21 @@ export default function ExecucaoFinanceira() {
   }, [planLines])
 
   // ── KPIs ─────────────────────────────────────────────────────
-  const kpiOrc   = useMemo(
+  const kpiOrc  = useMemo(
     () => lines.reduce((s, l) => s + sumValuesByYear(l.values, yearFilter), 0),
     [lines, yearFilter]
   )
-  const kpiExec  = useMemo(() => invs.filter(i => i.status === 'Pago').reduce((s, i) => s + i.amount, 0), [invs])
-  const kpiCompr = useMemo(() => ctrs.reduce((s, c) => s + c.total_amount, 0), [ctrs])
-  const kpiEmPag = useMemo(
-    () => invs.filter(i => i.status === 'Recebida' || i.status === 'Em pagamento').reduce((s, i) => s + i.amount, 0),
+  const kpiAdj  = useMemo(() => ctrs.reduce((s, c) => s + c.total_amount, 0), [ctrs])
+  const kpiFact = useMemo(
+    () => invs.filter(i => i.status !== 'Anulada').reduce((s, i) => s + i.amount, 0),
     [invs]
   )
-  const kpiDesvio = kpiCompr - kpiOrc
+  const kpiPago = useMemo(() => invs.filter(i => i.status === 'Pago').reduce((s, i) => s + i.amount, 0), [invs])
+  const kpiPorFact = kpiAdj - kpiFact
+  const kpiDisp    = kpiOrc - kpiAdj
   const fmt = (v: number) => fmtEur(v, currSymbol)
 
-  // ── CAPEX / OPEX pie (year-filtered) ─────────────────────────
+  // ── CAPEX / OPEX pie (year-filtered, orçamento) ──────────────
   const pieData = useMemo<PieEntry[]>(() => [
     { name: 'CAPEX', value: lines.filter(l =>  l.capex).reduce((s, l) => s + sumValuesByYear(l.values, yearFilter), 0), fill: '#185FA5' },
     { name: 'OPEX',  value: lines.filter(l => !l.capex).reduce((s, l) => s + sumValuesByYear(l.values, yearFilter), 0), fill: '#95BB42' },
@@ -225,6 +226,7 @@ export default function ExecucaoFinanceira() {
       if (!ds) continue
       const key = ds.substring(0, 7)
       const row = map.get(key) ?? { p: 0, e: 0, o: 0 }
+      if (inv.status === 'Anulada') continue
       if (inv.status === 'Pago') row.p += inv.amount
       else if (inv.status === 'Recebida' || inv.status === 'Em pagamento') row.e += inv.amount
       else row.o += inv.amount
@@ -235,27 +237,23 @@ export default function ExecucaoFinanceira() {
       .map(([month, v]) => ({ month, Pago: v.p, 'Em pagamento': v.e, 'Por facturar': v.o }))
   }, [invs, yearFilter])
 
-  // ── Category execution rows (year-filtered budget) ────────────
-  const catMap = useMemo(() => {
-    const m = new Map<string, string>()
-    for (const c of ctrs) m.set(c.id, c.category)
-    return m
-  }, [ctrs])
-
+  // ── Category rows (Rubrica | Tipo | Orçamento | Adjudicado | % Adj. | Disponível)
   const catRows = useMemo(() => {
     const cats = [...new Set(lines.map(l => l.category))].sort()
     return cats.map(cat => {
-      const orc  = lines.filter(l => l.category === cat).reduce((s, l) => s + sumValuesByYear(l.values, yearFilter), 0)
-      const exec = invs
-        .filter(i => i.status === 'Pago' && catMap.get(i.contract_id ?? '') === cat)
-        .reduce((s, i) => s + i.amount, 0)
-      return { cat, orc, exec, pct: orc > 0 ? exec / orc * 100 : 0, desvio: exec - orc }
+      const catLines = lines.filter(l => l.category === cat)
+      const orc      = catLines.reduce((s, l) => s + sumValuesByYear(l.values, yearFilter), 0)
+      const isCapex  = catLines.some(l => l.capex)
+      const adj      = ctrs.filter(c => c.category === cat).reduce((s, c) => s + c.total_amount, 0)
+      const pctAdj   = orc > 0 ? adj / orc * 100 : 0
+      const disp     = orc - adj
+      return { cat, isCapex, orc, adj, pctAdj, disp }
     })
-  }, [lines, invs, catMap, yearFilter])
+  }, [lines, ctrs, yearFilter])
 
   // ── Contract rows ─────────────────────────────────────────────
   const ctrRows = useMemo(() => ctrs.map(c => {
-    const fact = invs.filter(i => i.contract_id === c.id).reduce((s, i) => s + i.amount, 0)
+    const fact = invs.filter(i => i.contract_id === c.id && i.status !== 'Anulada').reduce((s, i) => s + i.amount, 0)
     return { c, fact, pct: c.total_amount > 0 ? fact / c.total_amount * 100 : 0 }
   }), [ctrs, invs])
 
@@ -331,22 +329,38 @@ export default function ExecucaoFinanceira() {
         <div className="ef-empty-page">Sem dados financeiros carregados.</div>
       ) : (
         <>
-          {/* KPI row */}
+          {/* KPI row — 6 cards */}
           <div className="ef-kpi-row">
-            <KpiCard label="Orçamento total" value={fmt(kpiOrc)} color="navy" />
+            <KpiCard label="Orçamento Total"      value={fmt(kpiOrc)} color="navy" />
             <KpiCard
-              label="Executado"
-              value={fmt(kpiExec)}
-              subtitle={kpiOrc > 0 ? fmtPct(kpiExec / kpiOrc * 100) + ' do orçamento' : undefined}
+              label="Adjudicado"
+              value={fmt(kpiAdj)}
+              subtitle={kpiOrc > 0 ? fmtPct(kpiAdj / kpiOrc * 100) + ' do orçamento' : undefined}
+              color="blue"
+            />
+            <KpiCard
+              label="Facturado"
+              value={fmt(kpiFact)}
+              subtitle={kpiAdj > 0 ? fmtPct(kpiFact / kpiAdj * 100) + ' do adjudicado' : undefined}
+              color="amber"
+            />
+            <KpiCard
+              label="Pago"
+              value={fmt(kpiPago)}
+              subtitle={kpiFact > 0 ? fmtPct(kpiPago / kpiFact * 100) + ' do facturado' : undefined}
               color="green"
             />
-            <KpiCard label="Comprometido" value={fmt(kpiCompr)} color="blue" />
-            <KpiCard label="Em pagamento" value={fmt(kpiEmPag)} color="amber" />
             <KpiCard
-              label="Desvio"
-              value={fmt(Math.abs(kpiDesvio))}
-              subtitle={kpiDesvio > 0 ? 'acima do orçamento' : kpiDesvio < 0 ? 'abaixo do orçamento' : 'em linha'}
-              color={kpiDesvio > 0 ? 'red' : kpiDesvio < 0 ? 'green' : 'text'}
+              label="Por Facturar"
+              value={fmt(Math.max(0, kpiPorFact))}
+              subtitle={kpiAdj > 0 ? fmtPct(Math.max(0, kpiPorFact) / kpiAdj * 100) + ' do adjudicado' : undefined}
+              color="red"
+            />
+            <KpiCard
+              label="Orçamento Disponível"
+              value={fmt(Math.max(0, kpiDisp))}
+              subtitle={kpiOrc > 0 ? fmtPct(Math.max(0, kpiDisp) / kpiOrc * 100) + ' do orçamento' : undefined}
+              color="text"
             />
           </div>
 
@@ -360,7 +374,7 @@ export default function ExecucaoFinanceira() {
             </Card>
           </div>
 
-          {/* Rubrica execution table */}
+          {/* Rubricas table */}
           <Card title="Execução por rubrica">
             {catRows.length === 0 ? (
               <p className="ef-empty">Sem linhas orçamentais.</p>
@@ -369,32 +383,33 @@ export default function ExecucaoFinanceira() {
                 <thead>
                   <tr>
                     <th>Rubrica</th>
+                    <th>Tipo</th>
                     <th className="ef-th-r">Orçamento</th>
-                    <th className="ef-th-r">Executado</th>
-                    <th className="ef-th-c">% Execução</th>
-                    <th className="ef-th-r">Desvio</th>
+                    <th className="ef-th-r">Adjudicado</th>
+                    <th className="ef-th-c">% Adj.</th>
+                    <th className="ef-th-r">Disponível</th>
                   </tr>
                 </thead>
                 <tbody>
                   {catRows.map(r => (
                     <tr key={r.cat}>
                       <td>{r.cat}</td>
+                      <td><Badge variant={r.isCapex ? 'navy' : 'green'}>{r.isCapex ? 'CAPEX' : 'OPEX'}</Badge></td>
                       <td className="ef-td-r">{fmt(r.orc)}</td>
-                      <td className="ef-td-r">{fmt(r.exec)}</td>
-                      <td className="ef-td-c">{fmtPct(r.pct)}</td>
-                      <td className={`ef-td-r ${r.desvio > 0 ? 'ef-red' : r.desvio < 0 ? 'ef-grn' : ''}`}>
-                        {r.desvio > 0 ? '+' : r.desvio < 0 ? '–' : ''}{fmt(Math.abs(r.desvio))}
-                      </td>
+                      <td className="ef-td-r">{fmt(r.adj)}</td>
+                      <td className="ef-td-c">{fmtPct(r.pctAdj)}</td>
+                      <td className={`ef-td-r ${r.disp < 0 ? 'ef-red' : ''}`}>{fmt(Math.max(0, r.disp))}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="ef-total">
                     <td>Total</td>
+                    <td />
                     <td className="ef-td-r">{fmt(catRows.reduce((s, r) => s + r.orc, 0))}</td>
-                    <td className="ef-td-r">{fmt(catRows.reduce((s, r) => s + r.exec, 0))}</td>
-                    <td className="ef-td-c">{fmtPct(kpiOrc > 0 ? kpiExec / kpiOrc * 100 : 0)}</td>
-                    <td className="ef-td-r">{fmt(Math.abs(catRows.reduce((s, r) => s + r.desvio, 0)))}</td>
+                    <td className="ef-td-r">{fmt(catRows.reduce((s, r) => s + r.adj, 0))}</td>
+                    <td className="ef-td-c">{fmtPct(kpiOrc > 0 ? kpiAdj / kpiOrc * 100 : 0)}</td>
+                    <td className="ef-td-r">{fmt(Math.max(0, catRows.reduce((s, r) => s + r.disp, 0)))}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -409,7 +424,7 @@ export default function ExecucaoFinanceira() {
                   <tr>
                     <th>Fornecedor</th>
                     <th>Categoria</th>
-                    <th className="ef-th-r">Valor Total</th>
+                    <th className="ef-th-r">Adjudicado</th>
                     <th className="ef-th-r">Facturado</th>
                     <th className="ef-th-c">% Facturado</th>
                     <th>Estado</th>
