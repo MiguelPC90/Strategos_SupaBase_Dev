@@ -1,6 +1,7 @@
 import './GestaoPDS.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useToast } from '../../context/ToastContext'
+import Spinner from '../../components/Spinner/Spinner'
 import Modal from '../../components/Modal/Modal'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
@@ -497,7 +498,9 @@ export default function GestaoPDS() {
 
       {/* Content area */}
       {loading ? (
-        <div className="pds-status">A carregar…</div>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+          <Spinner />
+        </div>
       ) : noProgram ? (
         <div className="pds-status">
           Selecciona um programa para visualizar os PDS.

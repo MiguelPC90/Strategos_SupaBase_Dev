@@ -1,5 +1,6 @@
 import './Evolucao.css'
 import { useState, useMemo } from 'react'
+import Spinner from '../../components/Spinner/Spinner'
 import {
   LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -209,7 +210,11 @@ export default function Evolucao() {
   const dEmDia   = firstKpi && lastKpi ? lastKpi.em_dia      - firstKpi.em_dia      : null
   const dAtraso  = firstKpi && lastKpi ? lastKpi.em_atraso   - firstKpi.em_atraso   : null
 
-  if (loading) return <div className="evol-empty">A carregar…</div>
+  if (loading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+      <Spinner />
+    </div>
+  )
   if (error)   return <div className="evol-empty evol-error">{error}</div>
 
   const hasEnough = filtered.length >= 2

@@ -1,5 +1,6 @@
 import './PontoSituacao.css'
 import { useState, useMemo, useEffect } from 'react'
+import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import { usePdsEntries } from '../../hooks/usePdsEntries'
@@ -172,7 +173,9 @@ export default function PontoSituacao() {
           Seleccione um plano para ver o ponto de situação.
         </div>
       ) : loading ? (
-        <div className="pds-placeholder">A carregar…</div>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+          <Spinner />
+        </div>
       ) : planEntries.length === 0 ? (
         <div className="pds-placeholder">Sem pontos de situação para este plano.</div>
       ) : (

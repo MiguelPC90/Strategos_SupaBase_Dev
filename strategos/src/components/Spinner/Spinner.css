@@ -1,0 +1,17 @@
+@layer components {
+  .spinner {
+    display: inline-block;
+    border-radius: 50%;
+    border: 3px solid var(--bg3);
+    border-top-color: var(--navy);
+    animation: spinner-spin 0.7s linear infinite;
+  }
+
+  .spinner--sm { width: 20px; height: 20px; }
+  .spinner--md { width: 32px; height: 32px; }
+  .spinner--lg { width: 48px; height: 48px; }
+
+  @keyframes spinner-spin {
+    to { transform: rotate(360deg); }
+  }
+}

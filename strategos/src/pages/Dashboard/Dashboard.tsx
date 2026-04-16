@@ -1,6 +1,7 @@
 import './Dashboard.css'
 import { useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Spinner from '../../components/Spinner/Spinner'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LabelList,
@@ -694,11 +695,16 @@ export default function Dashboard() {
     navigate('/actividades')
   }
 
+  if (loading && activities.length === 0) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+        <Spinner />
+      </div>
+    )
+  }
+
   return (
     <>
-      {/* Subtle fetch indicator */}
-      {loading && <div className="dash-loading-bar" />}
-
       {/* ── Row 1: KPI cards ──────────────────────────────────── */}
       <div className="dashboard-top-grid">
 

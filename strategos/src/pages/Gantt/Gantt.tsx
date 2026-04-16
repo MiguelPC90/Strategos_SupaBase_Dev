@@ -1,5 +1,6 @@
 import './Gantt.css'
 import { useState, useMemo, useCallback, useEffect } from 'react'
+import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import { useActivities } from '../../hooks/useActivities'
@@ -576,8 +577,10 @@ export default function Gantt() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="gantt-empty">A carregar…</div>
+        {loading && activities.length === 0 ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+            <Spinner />
+          </div>
         ) : filtered.length === 0 ? (
           <div className="gantt-empty">
             {activities.length === 0

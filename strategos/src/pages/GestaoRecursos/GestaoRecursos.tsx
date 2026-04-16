@@ -1,6 +1,7 @@
 import './GestaoRecursos.css'
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useToast } from '../../context/ToastContext'
+import Spinner from '../../components/Spinner/Spinner'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -822,7 +823,9 @@ export default function GestaoRecursos() {
       </div>
 
       {loading ? (
-        <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>A carregar…</div>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+          <Spinner />
+        </div>
       ) : noProgram ? (
         <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
           Selecciona um programa para gerir recursos.

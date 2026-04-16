@@ -1,6 +1,7 @@
 import './GestaoIniciativas.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useToast } from '../../context/ToastContext'
+import Spinner from '../../components/Spinner/Spinner'
 import { createPortal } from 'react-dom'
 import Card from '../../components/Card/Card'
 import Modal from '../../components/Modal/Modal'
@@ -907,8 +908,10 @@ export default function GestaoIniciativas() {
       </div>
 
       <Card title="Actividades">
-        {loading ? (
-          <div className="gi-empty">A carregar…</div>
+        {loading && rawActivities.length === 0 ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+            <Spinner />
+          </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table className="gi-table">

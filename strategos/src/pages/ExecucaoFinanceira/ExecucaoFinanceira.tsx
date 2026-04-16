@@ -1,5 +1,6 @@
 import './ExecucaoFinanceira.css'
 import { useState, useMemo, useEffect } from 'react'
+import Spinner from '../../components/Spinner/Spinner'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -333,7 +334,9 @@ export default function ExecucaoFinanceira() {
       </div>
 
       {loading ? (
-        <div className="ef-empty-page">A carregar…</div>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+          <Spinner />
+        </div>
       ) : !hasData ? (
         <div className="ef-empty-page">Sem dados financeiros carregados.</div>
       ) : (

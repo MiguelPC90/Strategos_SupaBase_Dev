@@ -1,5 +1,6 @@
 import './Actividades.css'
 import { useState, useMemo, useCallback } from 'react'
+import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import KpiCard from '../../components/KpiCard/KpiCard'
@@ -449,8 +450,10 @@ export default function Actividades() {
           </div>
         }
       >
-        {loading ? (
-          <div className="act-empty">A carregar…</div>
+        {loading && activities.length === 0 ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+            <Spinner />
+          </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table className="act-table" style={{ tableLayout: 'fixed', width: '100%' }}>

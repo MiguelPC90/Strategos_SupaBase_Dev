@@ -1,5 +1,6 @@
 import './Recursos.css'
 import { useState, useMemo, useEffect } from 'react'
+import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import Badge from '../../components/Badge/Badge'
@@ -457,7 +458,9 @@ export default function Recursos() {
       </div>
 
       {loading ? (
-        <div className="res-empty-page">A carregar…</div>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+          <Spinner />
+        </div>
       ) : resources.length === 0 ? (
         <div className="res-empty-page">Nenhum recurso alocado.</div>
       ) : (

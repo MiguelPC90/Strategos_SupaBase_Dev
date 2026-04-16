@@ -1,6 +1,7 @@
 import './GestaoRiscos.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useToast } from '../../context/ToastContext'
+import Spinner from '../../components/Spinner/Spinner'
 import { createPortal } from 'react-dom'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
@@ -456,7 +457,9 @@ export default function GestaoRiscos() {
       {/* Risk table */}
       <Card title="Riscos">
         {loading ? (
-          <div className="gr-empty">A carregar…</div>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+            <Spinner />
+          </div>
         ) : noProgram ? (
           <div className="gr-empty">
             Selecciona um programa para gerir riscos.

@@ -1,6 +1,7 @@
 import './GestaoFinanceira.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useToast } from '../../context/ToastContext'
+import Spinner from '../../components/Spinner/Spinner'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
@@ -1168,7 +1169,9 @@ export default function GestaoFinanceira() {
       </div>
 
       {loading ? (
-        <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>A carregar…</div>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+          <Spinner />
+        </div>
       ) : noProgram ? (
         <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
           Selecciona um programa para visualizar as finanças.
