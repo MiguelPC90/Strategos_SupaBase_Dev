@@ -1,5 +1,5 @@
 import './Gantt.css'
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef, useLayoutEffect } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
@@ -269,8 +269,39 @@ function GanttTooltip({ tooltip }: { tooltip: TooltipState }) {
     : pct < pct_prev ? 'delay-pos'
     : ''
 
+  // Auto-flip: render off-screen first (opacity 0), measure, then snap into place
+  const tooltipRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState({ left: x + 12, top: y + 12, opacity: 0 })
+
+  useLayoutEffect(() => {
+    if (!tooltipRef.current) return
+    const rect = tooltipRef.current.getBoundingClientRect()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const margin = 12
+    const offset = 12
+
+    let left = x + offset
+    if (left + rect.width + margin > vw) {
+      left = x - rect.width - offset
+      if (left < margin) left = margin
+    }
+
+    let top = y + offset
+    if (top + rect.height + margin > vh) {
+      top = y - rect.height - offset
+      if (top < margin) top = margin
+    }
+
+    setPos({ left, top, opacity: 1 })
+  }, [x, y])
+
   return (
-    <div className="gantt-tooltip" style={{ left: x + 12, top: y + 12 }}>
+    <div
+      ref={tooltipRef}
+      className="gantt-tooltip"
+      style={{ left: pos.left, top: pos.top, opacity: pos.opacity, transition: 'opacity 80ms ease-out' }}
+    >
       <div className="gantt-tooltip-name">{name}</div>
       <div className="gantt-tooltip-status">
         <Badge variant={BADGE_VARIANT[statusCls]}>{STATUS_LABEL[statusCls]}</Badge>
