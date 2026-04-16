@@ -165,6 +165,15 @@ export default function ExecucaoFinanceira() {
     [invoices, planKey]
   )
 
+  // Category → isCapex map (from all plan budget lines, ignoring CAPEX/OPEX chip)
+  const catCapexMap = useMemo(() => {
+    const m = new Map<string, boolean>()
+    for (const l of planLines) {
+      if (!m.has(l.category)) m.set(l.category, l.capex)
+    }
+    return m
+  }, [planLines])
+
   // ── Step 2: CAPEX/OPEX filter ────────────────────────────────
   const lines = useMemo(() => {
     if (capexFilter === 'all') return planLines
@@ -253,9 +262,10 @@ export default function ExecucaoFinanceira() {
 
   // ── Contract rows ─────────────────────────────────────────────
   const ctrRows = useMemo(() => ctrs.map(c => {
-    const fact = invs.filter(i => (i.contract_id === c.id || i.app_contract_id === c.app_id) && i.status !== 'Anulada').reduce((s, i) => s + i.amount, 0)
-    return { c, fact, pct: c.total_amount > 0 ? fact / c.total_amount * 100 : 0 }
-  }), [ctrs, invs])
+    const fact    = invs.filter(i => (i.contract_id === c.id || i.app_contract_id === c.app_id) && i.status !== 'Anulada').reduce((s, i) => s + i.amount, 0)
+    const isCapex = catCapexMap.get(c.category) ?? false
+    return { c, fact, pct: c.total_amount > 0 ? fact / c.total_amount * 100 : 0, isCapex }
+  }), [ctrs, invs, catCapexMap])
 
   const hasData = budgetLines.length > 0 || contracts.length > 0
 
@@ -394,7 +404,7 @@ export default function ExecucaoFinanceira() {
                   {catRows.map(r => (
                     <tr key={r.cat}>
                       <td>{r.cat}</td>
-                      <td><Badge variant={r.isCapex ? 'navy' : 'green'}>{r.isCapex ? 'CAPEX' : 'OPEX'}</Badge></td>
+                      <td><span className={`ef-tipo-badge ${r.isCapex ? 'ef-tipo-badge--capex' : 'ef-tipo-badge--opex'}`}>{r.isCapex ? 'CAPEX' : 'OPEX'}</span></td>
                       <td className="ef-td-r">{fmt(r.orc)}</td>
                       <td className="ef-td-r">{fmt(r.adj)}</td>
                       <td className="ef-td-c">{fmtPct(r.pctAdj)}</td>
@@ -424,6 +434,7 @@ export default function ExecucaoFinanceira() {
                   <tr>
                     <th>Fornecedor</th>
                     <th>Categoria</th>
+                    <th>Tipo</th>
                     <th className="ef-th-r">Adjudicado</th>
                     <th className="ef-th-r">Facturado</th>
                     <th className="ef-th-c">% Facturado</th>
@@ -431,16 +442,17 @@ export default function ExecucaoFinanceira() {
                   </tr>
                 </thead>
                 <tbody>
-                  {ctrRows.map(({ c, fact, pct }) => {
+                  {ctrRows.map(({ c, fact, pct, isCapex }) => {
                     const { label, variant } = contractEstado(pct)
                     return (
                       <tr key={c.id}>
                         <td>{c.supplier}</td>
                         <td>{c.category}</td>
+                        <td><span className={`ef-tipo-badge ${isCapex ? 'ef-tipo-badge--capex' : 'ef-tipo-badge--opex'}`}>{isCapex ? 'CAPEX' : 'OPEX'}</span></td>
                         <td className="ef-td-r">{fmt(c.total_amount)}</td>
                         <td className="ef-td-r">{fmt(fact)}</td>
                         <td className="ef-td-c">{fmtPct(pct)}</td>
-                        <td><Badge variant={variant}>{label}</Badge></td>
+                        <td><span className="ef-badge-estado"><Badge variant={variant}>{label}</Badge></span></td>
                       </tr>
                     )
                   })}
