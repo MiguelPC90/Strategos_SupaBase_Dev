@@ -358,9 +358,9 @@ interface ContractsTabProps {
 }
 
 function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew, currencies }: ContractsTabProps) {
-  const invoicedFor = useCallback((appContractId: string) =>
+  const invoicedFor = useCallback((c: FinContract) =>
     invoices
-      .filter(i => i.app_contract_id === appContractId)
+      .filter(i => i.app_contract_id === c.app_id || i.contract_id === c.id)
       .reduce((s, i) => s + toEur(i.amount, i.exchange_rate), 0),
     [invoices])
 
@@ -374,7 +374,7 @@ function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew, currencies
       ) : (
         contracts.map(c => {
           const sym = currencies.find(cur => cur.code === c.currency)?.symbol ?? '€'
-          const invoicedEur = invoicedFor(c.app_id)
+          const invoicedEur = invoicedFor(c)
           const totalEur = toEur(c.total_amount, c.exchange_rate_ref)
           const nativeInvoiced = c.exchange_rate_ref ? invoicedEur / c.exchange_rate_ref : invoicedEur
           const pct = totalEur > 0 ? Math.round((invoicedEur / totalEur) * 100) : 0
@@ -669,7 +669,7 @@ function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts
               {visible.map(inv => {
                 const overdue = isOverdue(inv)
                 const sym = currencies.find(c => c.code === inv.currency)?.symbol ?? '€'
-                const linked = contracts.find(c => c.app_id === inv.app_contract_id)
+                const linked = contracts.find(c => c.app_id === inv.app_contract_id || c.id === inv.contract_id)
                 return (
                   <tr key={inv.id} className={`gf-inv-row${overdue ? ' gf-inv-row--overdue' : ''}`}>
                     <td className="gf-td-wrap">{inv.ref || <span style={{ color: 'var(--text3)' }}>—</span>}</td>
@@ -970,6 +970,7 @@ export default function GestaoFinanceira() {
           ref:              invoiceModal.ref,
           supplier:         invoiceModal.supplier,
           app_contract_id:  invoiceModal.app_contract_id,
+          contract_id:      d.contracts.find(c => c.app_id === invoiceModal!.app_contract_id)?.id ?? null,
           doc_type:         invoiceModal.doc_type,
           amount,
           currency:         invoiceModal.currency,
@@ -984,7 +985,8 @@ export default function GestaoFinanceira() {
       setDraft(d => ({
         ...d,
         invoices: [...d.invoices, {
-          id: newId(), pds_id: null, plano_id: pdsId, contract_id: null,
+          id: newId(), pds_id: null, plano_id: pdsId,
+          contract_id: d.contracts.find(c => c.app_id === invoiceModal!.app_contract_id)?.id ?? null,
           app_id: newAppId(), app_contract_id: invoiceModal.app_contract_id,
           program_id: progId,
           ref:           invoiceModal.ref,
