@@ -245,40 +245,46 @@ interface TooltipState {
 
 // ── Tooltip sub-component ─────────────────────────────────────
 function GanttTooltip({ tooltip }: { tooltip: TooltipState }) {
-  // Deviation: prefer rf−bf, fallback rs−bs
-  let devDays: number | null = null
-  if (tooltip.rf != null && tooltip.bf != null) {
-    devDays = Math.round((new Date(tooltip.rf).getTime() - new Date(tooltip.bf).getTime()) / 86400000)
-  } else if (tooltip.rs != null && tooltip.bs != null) {
-    devDays = Math.round((new Date(tooltip.rs).getTime() - new Date(tooltip.bs).getTime()) / 86400000)
-  }
-  const devText = devDays === null ? '—'
-    : devDays > 0  ? `+${devDays} dias`
-    : devDays < 0  ? `\u2212${Math.abs(devDays)} dias`
-    : '0 dias'
-  const devCls  = devDays === null ? '' : devDays > 0 ? 'delay-pos' : devDays < 0 ? 'delay-neg' : 'delay-zero'
+  const { name, bs, bf, rs, rf, pct, pct_prev, statusCls, x, y } = tooltip
 
-  // Execution progress colour
-  const execCls = tooltip.pct > tooltip.pct_prev ? 'delay-neg'
-    : tooltip.pct < tooltip.pct_prev ? 'delay-pos'
+  // Deviation: prefer rf−bf, fallback rs−bs
+  let deviationDays: number | null = null
+  if (rf && bf) {
+    deviationDays = Math.round((new Date(rf).getTime() - new Date(bf).getTime()) / 86400000)
+  } else if (rs && bs) {
+    deviationDays = Math.round((new Date(rs).getTime() - new Date(bs).getTime()) / 86400000)
+  }
+
+  const deviationText = deviationDays === null
+    ? '—'
+    : deviationDays > 0 ? `+${deviationDays} dias`
+    : deviationDays < 0 ? `${deviationDays} dias`
+    : '0 dias'
+
+  const deviationCls = deviationDays === null || deviationDays === 0
+    ? 'delay-zero'
+    : deviationDays > 0 ? 'delay-pos' : 'delay-neg'
+
+  const execCls = pct > pct_prev ? 'delay-neg'
+    : pct < pct_prev ? 'delay-pos'
     : ''
 
   return (
-    <div className="gantt-tooltip" style={{ left: tooltip.x + 12, top: tooltip.y + 12 }}>
-      <div className="gantt-tooltip-name">{tooltip.name}</div>
+    <div className="gantt-tooltip" style={{ left: x + 12, top: y + 12 }}>
+      <div className="gantt-tooltip-name">{name}</div>
       <div className="gantt-tooltip-status">
-        <Badge variant={BADGE_VARIANT[tooltip.statusCls]}>{STATUS_LABEL[tooltip.statusCls]}</Badge>
+        <Badge variant={BADGE_VARIANT[statusCls]}>{STATUS_LABEL[statusCls]}</Badge>
       </div>
       <div className="gantt-tooltip-grid">
         <span className="gantt-tooltip-label">Baseline</span>
-        <span className="gantt-tooltip-value">{fmt(tooltip.bs)} → {fmt(tooltip.bf)}</span>
+        <span className="gantt-tooltip-value">{fmt(bs)} → {fmt(bf)}</span>
         <span className="gantt-tooltip-label">Real</span>
-        <span className="gantt-tooltip-value">{fmt(tooltip.rs)} → {fmt(tooltip.rf)}</span>
+        <span className="gantt-tooltip-value">{fmt(rs)} → {fmt(rf)}</span>
         <span className="gantt-tooltip-label">Desvio</span>
-        <span className={`gantt-tooltip-value${devCls ? ` ${devCls}` : ''}`}>{devText}</span>
+        <span className={`gantt-tooltip-value ${deviationCls}`}>{deviationText}</span>
         <span className="gantt-tooltip-label">Execução</span>
         <span className={`gantt-tooltip-value${execCls ? ` ${execCls}` : ''}`}>
-          {tooltip.pct}% (prev. {Math.round(tooltip.pct_prev)}%)
+          {pct}% (prev. {Math.round(pct_prev)}%)
         </span>
       </div>
     </div>
