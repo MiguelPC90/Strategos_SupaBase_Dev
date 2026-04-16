@@ -1,5 +1,6 @@
 import './GestaoFinanceira.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useToast } from '../../context/ToastContext'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
@@ -712,6 +713,7 @@ function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts
 
 // ── Main component ─────────────────────────────────────────────────
 export default function GestaoFinanceira() {
+  const { showToast } = useToast()
   const { filters }  = useFilters()
   const { programs } = usePrograms()
   const [selProgId, setSelProgId] = useState<string>('')
@@ -821,7 +823,6 @@ export default function GestaoFinanceira() {
   // ── Budget auto-save state ───────────────────────────────────
   const [rowSaved,    setRowSaved]    = useState<Set<string>>(new Set())
   const savingRowsRef = useRef<Set<string>>(new Set())
-  const [errToast,    setErrToast]    = useState<string | null>(null)
 
   useEffect(() => {
     if (loading) return
@@ -1110,8 +1111,7 @@ export default function GestaoFinanceira() {
         setTimeout(() => setRowSaved(prev => { const n = new Set(prev); n.delete(key); return n }), 500)
       }
     } catch (e) {
-      setErrToast(e instanceof Error ? e.message : 'Erro ao guardar rubrica')
-      setTimeout(() => setErrToast(null), 3000)
+      showToast(`Erro: ${e instanceof Error ? e.message : 'Erro ao guardar rubrica'}`, 'error')
     } finally {
       savingRowsRef.current.delete(key)
     }
@@ -1149,7 +1149,6 @@ export default function GestaoFinanceira() {
            : planOptions.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
         </select>
         <div className="gf-spacer" />
-        {errToast && <span className="gf-save-err">{errToast}</span>}
       </div>
 
       {loading ? (

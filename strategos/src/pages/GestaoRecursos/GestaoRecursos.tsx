@@ -1,5 +1,6 @@
 import './GestaoRecursos.css'
 import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -458,6 +459,7 @@ function ImportPanel({ planOptions, currentPlanKey, allResources, onImport, onCl
 
 // ── Main component ─────────────────────────────────────────────────
 export default function GestaoRecursos() {
+  const { showToast } = useToast()
   const { filters }  = useFilters()
   const { programs } = usePrograms()
   const [selProgId, setSelProgId] = useState<string>('')
@@ -670,7 +672,6 @@ export default function GestaoRecursos() {
   // ── Save ─────────────────────────────────────────────────────
   const [saving,    setSaving]    = useState(false)
   const [saveErr,   setSaveErr]   = useState<string | null>(null)
-  const [toast,     setToast]     = useState('')
   const [conflicts, setConflicts] = useState<string[]>([])
 
   const handleSave = useCallback(async () => {
@@ -751,8 +752,7 @@ export default function GestaoRecursos() {
         }
       }
       setConflicts(conflictNames)
-      setToast('Guardado!')
-      setTimeout(() => setToast(''), 3000)
+      showToast('Guardado!')
     } catch (e) {
       setSaveErr(e instanceof Error ? e.message : 'Erro ao guardar')
     } finally {
@@ -802,7 +802,6 @@ export default function GestaoRecursos() {
         />
         <div className="gres-spacer" />
         {saveErr    && <span className="gres-save-err">{saveErr}</span>}
-        {toast      && <span className="gres-toast">{toast}</span>}
         {conflicts.length > 0 && (
           <span className="gres-warn">⚠ Sobrealocação: {conflicts.join(', ')}</span>
         )}

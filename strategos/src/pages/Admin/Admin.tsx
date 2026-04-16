@@ -1,5 +1,6 @@
 import './Admin.css'
 import { useState, useEffect, useRef, type ChangeEvent } from 'react'
+import { useToast } from '../../context/ToastContext'
 import * as XLSX from 'xlsx'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
@@ -40,6 +41,7 @@ const SECTIONS: Section[] = [
 const CONFIG_KEYS = ['client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date', 'status_delay_threshold'] as const
 
 function AdminGeral() {
+  const { showToast } = useToast()
   const [title,          setTitle]          = useState('')
   const [subtitle,       setSubtitle]       = useState('')
   const [cutoffDate,     setCutoffDate]     = useState('')
@@ -48,7 +50,6 @@ function AdminGeral() {
   const [loading,    setLoading]    = useState(true)
   const [saving,     setSaving]     = useState(false)
   const [uploading,  setUploading]  = useState(false)
-  const [toast,      setToast]      = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -86,8 +87,7 @@ function AdminGeral() {
         pairs.map(p => supabase.from('app_config').upsert(p, { onConflict: 'config_key' }))
       )
 
-      setToast(true)
-      setTimeout(() => setToast(false), 2000)
+      showToast('Guardado!')
     } finally {
       setSaving(false)
     }
@@ -230,7 +230,6 @@ function AdminGeral() {
         </div>
       </Card>
 
-      {toast && <div className="adm-toast">Guardado!</div>}
     </>
   )
 }
@@ -915,6 +914,7 @@ interface InviteForm { email: string; role: 'editor' | 'viewer' }
 
 function AdminUtilizadores() {
   const { user: currentUser } = useAuth()
+  const { showToast } = useToast()
 
   const [profiles,   setProfiles]   = useState<Profile[]>([])
   const [loadingP,   setLoadingP]   = useState(true)
@@ -924,12 +924,6 @@ function AdminUtilizadores() {
   const [showInvite, setShowInvite] = useState(false)
   const [invite,     setInvite]     = useState<InviteForm>({ email: '', role: 'viewer' })
   const [inviting,   setInviting]   = useState(false)
-  const [toast,      setToast]      = useState('')
-
-  function showToast(msg: string) {
-    setToast(msg)
-    setTimeout(() => setToast(''), 2500)
-  }
 
   async function loadProfiles() {
     setLoadingP(true)
@@ -962,11 +956,11 @@ function AdminUtilizadores() {
         .eq('id', editId)
         .select()
       console.log('[saveRole] result:', { data, error })
-      if (error) { showToast(`Erro: ${error.message}`); return }
-      if (!data || data.length === 0) { showToast('Sem permissão para editar'); return }
+      if (error) { showToast(`Erro: ${error.message}`, 'error'); return }
+      if (!data || data.length === 0) { showToast('Sem permissão para editar', 'warning'); return }
       setEditId(null)
       await loadProfiles()
-      showToast('Role actualizado')
+      showToast('Role actualizado', 'success')
     } finally {
       setSaving(false)
     }
@@ -1001,7 +995,7 @@ function AdminUtilizadores() {
       }
       setShowInvite(false)
       setInvite({ email: '', role: 'viewer' })
-      showToast('Convite enviado!')
+      showToast('Convite enviado!', 'success')
       await loadProfiles()
     } finally {
       setInviting(false)
@@ -1133,8 +1127,6 @@ function AdminUtilizadores() {
         <AdminPermissoes profiles={profiles} />
 
       </div>
-
-      {toast && <div className="adm-toast">{toast}</div>}
     </>
   )
 }
@@ -1153,10 +1145,10 @@ interface DraftPerson {
 
 // ── Shared: editable string-list backed by app_config ──────────
 function StringListEditor({ configKey, label, defaults = [] }: { configKey: string; label: string; defaults?: string[] }) {
+  const { showToast } = useToast()
   const [items,   setItems]   = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [saving,  setSaving]  = useState(false)
-  const [toast,   setToast]   = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -1192,8 +1184,7 @@ function StringListEditor({ configKey, label, defaults = [] }: { configKey: stri
         { onConflict: 'config_key' },
       )
       setItems(filtered)
-      setToast(true)
-      setTimeout(() => setToast(false), 2000)
+      showToast('Guardado!')
     } finally {
       setSaving(false)
     }
@@ -1223,7 +1214,6 @@ function StringListEditor({ configKey, label, defaults = [] }: { configKey: stri
         <button className="adm-btn-primary" onClick={save} disabled={saving}>
           {saving ? 'A guardar…' : 'Guardar'}
         </button>
-        {toast && <span style={{ fontSize: 12, color: 'var(--green)' }}>Guardado!</span>}
       </div>
     </>
   )
@@ -2025,13 +2015,13 @@ interface RiskThresholds { low: number; medium: number; high: number }
 const DEFAULT_RISK_STATES = ['Identificado', 'Em monitorização', 'Mitigado', 'Fechado']
 
 function MatrizTab() {
+  const { showToast } = useToast()
   const [size,    setSize]    = useState(5)
   const [low,     setLow]     = useState(4)
   const [medium,  setMedium]  = useState(9)
   const [high,    setHigh]    = useState(16)
   const [loading, setLoading] = useState(true)
   const [saving,  setSaving]  = useState(false)
-  const [toast,   setToast]   = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -2075,8 +2065,7 @@ function MatrizTab() {
         { config_key: 'risk_thresholds', data: JSON.stringify({ low, medium, high }) },
         { onConflict: 'config_key' },
       )
-      setToast(true)
-      setTimeout(() => setToast(false), 2000)
+      showToast('Guardado!')
     } finally {
       setSaving(false)
     }
@@ -2137,7 +2126,6 @@ function MatrizTab() {
           style={{ alignSelf: 'flex-end' }}>
           {saving ? 'A guardar…' : 'Guardar limiares'}
         </button>
-        {toast && <span style={{ fontSize: 12, color: 'var(--green)', alignSelf: 'center' }}>Guardado!</span>}
       </div>
 
       {/* ── Matrix preview ── */}
@@ -2227,11 +2215,9 @@ function fmtDateTime(iso: string) {
 
 // ── Tab: Snapshots ─────────────────────────────────────────────
 function SnapshotsTab() {
+  const { showToast } = useToast()
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [loading,   setLoading]   = useState(true)
-  const [toast,     setToast]     = useState('')
-
-  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2500) }
 
   async function loadSnapshots() {
     setLoading(true)
@@ -2252,7 +2238,7 @@ function SnapshotsTab() {
       showToast('Snapshot guardado!')
       await loadSnapshots()
     } catch {
-      showToast('Erro ao guardar snapshot')
+      showToast('Erro ao guardar snapshot', 'error')
     }
   }
 
@@ -2317,7 +2303,6 @@ function SnapshotsTab() {
         </div>
       )}
 
-      {toast && <div className="adm-toast">{toast}</div>}
     </>
   )
 }
@@ -2473,6 +2458,7 @@ const EXPORT_TABLES = [
 
 // ── Tab: Importar ──────────────────────────────────────────────
 function ImportarTab() {
+  const { showToast } = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
   const [file,         setFile]         = useState<File | null>(null)
   const [sheets,       setSheets]       = useState<string[]>([])
@@ -2480,9 +2466,6 @@ function ImportarTab() {
   const [previewRows,  setPreviewRows]  = useState<string[][]>([])
   const [previewCols,  setPreviewCols]  = useState<string[]>([])
   const [previewing,   setPreviewing]   = useState(false)
-  const [toast,        setToast]        = useState('')
-
-  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null
@@ -2598,24 +2581,20 @@ function ImportarTab() {
             {previewing ? 'A carregar…' : 'Pré-visualizar'}
           </button>
           <button className="adm-btn-primary" disabled={!hasPreviewed}
-            onClick={() => showToast('Importação via UI disponível em breve. Usa o script de importação para já.')}>
+            onClick={() => showToast('Importação via UI disponível em breve. Usa o script de importação para já.', 'info')}>
             Importar
           </button>
           <button className="adm-outline-btn" onClick={handleCancel}>Cancelar</button>
         </div>
       )}
-
-      {toast && <div className="adm-toast">{toast}</div>}
     </>
   )
 }
 
 // ── Tab: Exportar ──────────────────────────────────────────────
 function ExportarTab() {
+  const { showToast } = useToast()
   const [exporting, setExporting] = useState(false)
-  const [toast,     setToast]     = useState('')
-
-  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2500) }
 
   async function handleExport() {
     setExporting(true)
@@ -2634,7 +2613,7 @@ function ExportarTab() {
       XLSX.writeFile(wb, `Strategos_export_${date}.xlsx`)
       showToast('Exportação concluída!')
     } catch {
-      showToast('Erro na exportação')
+      showToast('Erro na exportação', 'error')
     } finally {
       setExporting(false)
     }
@@ -2648,18 +2627,17 @@ function ExportarTab() {
       <button className="adm-btn-primary" onClick={handleExport} disabled={exporting}>
         {exporting ? 'A exportar…' : 'Exportar tudo para Excel'}
       </button>
-      {toast && <div className="adm-toast">{toast}</div>}
     </>
   )
 }
 
 // ── Tab: Rótulos ───────────────────────────────────────────────
 function RotulosTab() {
+  const { showToast } = useToast()
   const { programs } = usePrograms()
   const [selProgId, setSelProgId] = useState<string | null>(null)
   const [labels,    setLabels]    = useState<FilterLabels>({ n1: '', n2: '', owner: '', sponsor: '' })
   const [saving,    setSaving]    = useState(false)
-  const [toast,     setToast]     = useState(false)
 
   useEffect(() => {
     if (programs.length > 0 && !selProgId) setSelProgId(programs[0].id)
@@ -2695,8 +2673,7 @@ function RotulosTab() {
         { config_key: `filter_labels_${selProgId}`, data: JSON.stringify(labels) },
         { onConflict: 'config_key' },
       )
-      setToast(true)
-      setTimeout(() => setToast(false), 2000)
+      showToast('Guardado!')
     } finally {
       setSaving(false)
     }
@@ -2741,7 +2718,6 @@ function RotulosTab() {
         <button className="adm-btn-primary" onClick={handleSave} disabled={saving || !selProgId}>
           {saving ? 'A guardar…' : 'Guardar'}
         </button>
-        {toast && <span style={{ fontSize: 12, color: 'var(--green)' }}>Guardado!</span>}
       </div>
     </>
   )

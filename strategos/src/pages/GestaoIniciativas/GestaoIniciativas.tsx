@@ -1,5 +1,6 @@
 import './GestaoIniciativas.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useToast } from '../../context/ToastContext'
 import { createPortal } from 'react-dom'
 import Card from '../../components/Card/Card'
 import Modal from '../../components/Modal/Modal'
@@ -376,6 +377,7 @@ function RowMenu({ actId, openId, canUp, canDown, onOpen, onEdit, onDuplicate, o
 
 // ── Main component ─────────────────────────────────────────────
 export default function GestaoIniciativas() {
+  const { showToast } = useToast()
   const { filters } = useFilters()
   const [selProgId, setSelProgId] = useState<string | null>(null)
 
@@ -412,7 +414,6 @@ export default function GestaoIniciativas() {
   const [panelErr, setPanelErr]     = useState('')
 
   const [batchSaving, setBatchSaving] = useState(false)
-  const [toast, setToast] = useState('')
   const [delayThreshold, setDelayThreshold] = useState(20)
 
   useEffect(() => {
@@ -442,13 +443,6 @@ export default function GestaoIniciativas() {
     document.addEventListener('click', handler)
     return () => document.removeEventListener('click', handler)
   }, [menuId])
-
-  // Toast auto-clear
-  useEffect(() => {
-    if (!toast) return
-    const t = setTimeout(() => setToast(''), 2000)
-    return () => clearTimeout(t)
-  }, [toast])
 
   // Initialize selProgId from global filter or first available program
   useEffect(() => {
@@ -504,7 +498,7 @@ export default function GestaoIniciativas() {
     setBatchSaving(false)
     if (!error) {
       setDirty(new Map())
-      setToast('Guardado!')
+      showToast('Guardado!')
       refetch()
     }
   }, [dirty, activities, refetch])
@@ -905,7 +899,6 @@ export default function GestaoIniciativas() {
         <button className="gi-btn" onClick={collapseAll}>Colapsar tudo</button>
         <button className="gi-btn" onClick={expandAll}>Expandir tudo</button>
         <div className="gi-spacer" />
-        {toast && <span className="gi-toast">{toast}</span>}
         {dirty.size > 0 && (
           <button className="gi-btn gi-btn-save" onClick={handleBatchSave} disabled={batchSaving}>
             {batchSaving ? 'A guardar…' : `Guardar (${dirty.size})`}

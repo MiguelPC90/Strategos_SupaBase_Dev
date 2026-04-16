@@ -1,5 +1,6 @@
 import './GestaoPDS.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useToast } from '../../context/ToastContext'
 import Modal from '../../components/Modal/Modal'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
@@ -208,6 +209,7 @@ function PdsSection({
 
 // ── Main component ─────────────────────────────────────────────
 export default function GestaoPDS() {
+  const { showToast } = useToast()
   const { filters }  = useFilters()
   const { programs } = usePrograms()
   const [selProgId, setSelProgId] = useState<string>('')
@@ -325,7 +327,6 @@ export default function GestaoPDS() {
   const [newItemStatus, setNewItemStatus] = useState('Pendente')
 
   // ── Save state ───────────────────────────────────────────────
-  const [toast,   setToast]   = useState(false)
   const [saving,  setSaving]  = useState(false)
   const [saveErr, setSaveErr] = useState<string | null>(null)
 
@@ -428,8 +429,7 @@ export default function GestaoPDS() {
     } else {
       if (data?.id) setLocalEntryId(data.id)
       setCommitted(draft)
-      setToast(true)
-      setTimeout(() => setToast(false), 2000)
+      showToast('Guardado!')
     }
   }, [selectedPlan, isDirty, saving, baseEntry, localEntryId, draft])
 
@@ -485,7 +485,6 @@ export default function GestaoPDS() {
         <div className="pds-spacer" />
 
         {saveErr && <span className="pds-save-err">{saveErr}</span>}
-        {toast   && <span className="pds-toast">Guardado!</span>}
 
         <button
           className="pds-btn pds-btn-save"
