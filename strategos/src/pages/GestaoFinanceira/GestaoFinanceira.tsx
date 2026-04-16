@@ -853,13 +853,18 @@ export default function GestaoFinanceira() {
   }, [showToast])
 
   const deleteContract = useCallback((id: string) => {
+    const hasInvoices = draft.invoices.some(i => i.contract_id === id)
+    if (hasInvoices) {
+      showToast('Este contrato tem facturas associadas. Elimina primeiro as facturas.', 'warning')
+      return
+    }
     setDraft(d => ({ ...d, contracts: d.contracts.filter(c => c.id !== id) }))
     showToast('Eliminado.', 'info')
     if (!isNew(id)) {
       supabase.from('fin_contracts').delete().eq('id', id)
         .then(({ error }) => { if (error) showToast(`Erro: ${error.message}`, 'error') })
     }
-  }, [showToast])
+  }, [showToast, draft.invoices])
 
   const deleteInvoice = useCallback((id: string) => {
     setDraft(d => ({ ...d, invoices: d.invoices.filter(i => i.id !== id) }))
