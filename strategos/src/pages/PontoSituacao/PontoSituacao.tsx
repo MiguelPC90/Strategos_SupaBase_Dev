@@ -89,7 +89,7 @@ function ItemList({ items, variant = 'default' }: ItemListProps) {
             className={`pds-item-row${variant === 'attention' ? ' pds-attention-row' : ''}`}
           >
             <span className="pds-item-text">{renderText(item.text)}</span>
-            <span className="pds-item-date">{item.date ? fmtDate(item.date) : '—'}</span>
+            <span className="pds-col-date">{item.date ? fmtDate(item.date) : '—'}</span>
             <span className="pds-item-badge">
               {ds && <Badge variant={statusVariant(ds)}>{ds}</Badge>}
             </span>

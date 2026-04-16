@@ -231,16 +231,13 @@
     word-break: break-word;
   }
 
-  .pds-item-date {
+  .pds-col-date {
     width: 90px;
     flex-shrink: 0;
     font-size: 12px;
     color: var(--text3);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
-    border: none;
-    background: none;
-    padding: 0;
   }
 
   .pds-item-badge {
