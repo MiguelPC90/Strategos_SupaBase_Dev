@@ -10,6 +10,7 @@ import { useFilters } from '../../context/FilterContext'
 import { ToastList } from '../Toast/Toast'
 import { usePrograms } from '../../hooks/usePrograms'
 import { supabase } from '../../lib/supabase'
+import { setThresholds } from '../../lib/rollup'
 import type { PageKey } from '../../types/index'
 
 interface NavItemConfig {
@@ -259,7 +260,10 @@ export default function Layout() {
     supabase
       .from('app_config')
       .select('config_key,data')
-      .in('config_key', ['client_title', 'client_logo_url', 'client_subtitle'])
+      .in('config_key', [
+        'client_title', 'client_logo_url', 'client_subtitle',
+        'status_delay_threshold_aggregates', 'status_delay_threshold', 'status_delay_threshold_leaves',
+      ])
       .then(({ data }) => {
         if (cancelled || !data) return
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -269,6 +273,10 @@ export default function Layout() {
         setClientTitle(map['client_title']     ?? '')
         setClientLogoUrl(map['client_logo_url']  ?? '')
         setClientSubtitle(map['client_subtitle'] ?? '')
+        // New keys take priority; fall back to legacy key for existing installations
+        const aggThreshold   = parseInt(map['status_delay_threshold_aggregates'] ?? map['status_delay_threshold'] ?? '20') || 20
+        const leavesThreshold = parseInt(map['status_delay_threshold_leaves'] ?? '0') || 0
+        setThresholds(aggThreshold, leavesThreshold)
       })
     return () => { cancelled = true }
   }, [])

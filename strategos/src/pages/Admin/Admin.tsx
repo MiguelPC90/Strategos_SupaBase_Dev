@@ -38,7 +38,7 @@ const SECTIONS: Section[] = [
 ]
 
 // ── Section 1: Geral ───────────────────────────────────────────
-const CONFIG_KEYS = ['client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date', 'status_delay_threshold'] as const
+const CONFIG_KEYS = ['client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date', 'status_delay_threshold', 'status_delay_threshold_aggregates', 'status_delay_threshold_leaves'] as const
 
 function AdminGeral() {
   const { showToast } = useToast()
@@ -46,7 +46,8 @@ function AdminGeral() {
   const [subtitle,       setSubtitle]       = useState('')
   const [cutoffDate,     setCutoffDate]     = useState('')
   const [logoUrl,        setLogoUrl]        = useState('')
-  const [delayThreshold, setDelayThreshold] = useState(20)
+  const [delayThreshold,       setDelayThreshold]       = useState(20)
+  const [delayThresholdLeaves, setDelayThresholdLeaves] = useState(0)
   const [loading,    setLoading]    = useState(true)
   const [saving,     setSaving]     = useState(false)
   const [uploading,  setUploading]  = useState(false)
@@ -68,7 +69,9 @@ function AdminGeral() {
         setSubtitle(map['client_subtitle'] ?? '')
         setLogoUrl(map['client_logo_url']  ?? '')
         setCutoffDate(map['cutoff_date']   ?? '')
-        setDelayThreshold(parseInt(map['status_delay_threshold'] ?? '20') || 20)
+        // New key takes priority; fall back to legacy key for existing installations
+        setDelayThreshold(parseInt(map['status_delay_threshold_aggregates'] ?? map['status_delay_threshold'] ?? '20') || 20)
+        setDelayThresholdLeaves(parseInt(map['status_delay_threshold_leaves'] ?? '0') || 0)
       })
       .catch(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -81,7 +84,8 @@ function AdminGeral() {
         { config_key: 'client_title',            data: title },
         { config_key: 'client_subtitle',         data: subtitle },
         { config_key: 'cutoff_date',             data: cutoffDate },
-        { config_key: 'status_delay_threshold',  data: String(delayThreshold) },
+        { config_key: 'status_delay_threshold_aggregates', data: String(delayThreshold) },
+        { config_key: 'status_delay_threshold_leaves',     data: String(delayThresholdLeaves) },
       ]
       await Promise.all(
         pairs.map(p => supabase.from('app_config').upsert(p, { onConflict: 'config_key' }))
@@ -174,20 +178,37 @@ function AdminGeral() {
               <span className="adm-help">Dados anteriores a esta data não são mostrados</span>
             </div>
 
-            <div className="adm-field">
-              <label className="adm-label">Threshold de atraso (%)</label>
-              <input
-                className="adm-input"
-                type="number"
-                min={0}
-                max={100}
-                step={5}
-                value={delayThreshold}
-                onChange={e => setDelayThreshold(parseInt(e.target.value) || 0)}
-              />
-              <span className="adm-help">
-                Diferença mínima entre % previsto e % real para classificar N0-N3 como "Em atraso". Default: 20%
-              </span>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div className="adm-field" style={{ flex: 1 }}>
+                <label className="adm-label">Threshold de atraso — Agregados (%)</label>
+                <input
+                  className="adm-input"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={delayThreshold}
+                  onChange={e => setDelayThreshold(parseInt(e.target.value) || 0)}
+                />
+                <span className="adm-help">
+                  Desvio tolerado antes de marcar planos, eixos e programas como atrasados.
+                </span>
+              </div>
+              <div className="adm-field" style={{ flex: 1 }}>
+                <label className="adm-label">Threshold de atraso — Folhas (%)</label>
+                <input
+                  className="adm-input"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={delayThresholdLeaves}
+                  onChange={e => setDelayThresholdLeaves(parseInt(e.target.value) || 0)}
+                />
+                <span className="adm-help">
+                  Desvio tolerado antes de marcar actividades individuais como atrasadas. 0 = qualquer desvio é atraso.
+                </span>
+              </div>
             </div>
 
             <button

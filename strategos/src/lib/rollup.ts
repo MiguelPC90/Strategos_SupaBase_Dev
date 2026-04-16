@@ -1,5 +1,18 @@
 import type { Activity } from '../types/index'
 
+// ── Module-level thresholds (set once at app startup via setThresholds) ───────
+let THRESHOLD_AGGREGATES = 20  // for N0-N3 rollup status
+let THRESHOLD_LEAVES     = 0   // for N4+ leaf status
+
+/**
+ * Set both thresholds from app_config. Called once in Layout on startup.
+ * Fallback chain: new key → old key → hardcoded default.
+ */
+export function setThresholds(aggregates: number, leaves: number): void {
+  THRESHOLD_AGGREGATES = aggregates
+  THRESHOLD_LEAVES     = leaves
+}
+
 /**
  * Date-based % prevista (0-100) for a single activity.
  * - today <= bs  → 0
@@ -21,16 +34,19 @@ export function leafPctPrev(a: Activity, today: string): number {
 
 /**
  * Derived status for a single leaf activity (level >= 4).
- * - pct >= 100                        → 'Concluída'
- * - today > bf AND pct < 100          → 'Em atraso' (overdue by baseline deadline)
- * - pct < leafPctPrev(a, today)       → 'Em atraso' (behind schedule, no threshold)
- * - else                              → 'Em dia'
+ * - pct >= 100                                        → 'Concluída'
+ * - today > bf AND pct < 100                          → 'Em atraso' (overdue)
+ * - pct < (leafPctPrev(a, today) − THRESHOLD_LEAVES)  → 'Em atraso' (behind schedule)
+ * - else                                              → 'Em dia'
+ *
+ * THRESHOLD_LEAVES defaults to 0 (any gap triggers delay). Configurable via
+ * app_config key 'status_delay_threshold_leaves'.
  */
 export function leafStatus(a: Activity, today: string): string {
   if (a.pct >= 100) return 'Concluída'
   const pct_prev = leafPctPrev(a, today)
   if (a.bf && today > a.bf && a.pct < 100) return 'Em atraso'
-  if (a.pct < pct_prev) return 'Em atraso'
+  if (a.pct < pct_prev - THRESHOLD_LEAVES) return 'Em atraso'
   return 'Em dia'
 }
 
@@ -53,13 +69,14 @@ export function rollupPctPrev(activities: Activity[], today: string): number {
  * - (avg pct_previsto − avg pct) > threshold         → 'Em atraso'
  * - else                                             → 'Em dia'
  *
- * `threshold` (default 20) is the minimum gap between previsto and real
- * before a group is classified as 'Em atraso'. Configurable via app_config
- * key 'status_delay_threshold'.
+ * `threshold` defaults to THRESHOLD_AGGREGATES (configurable via app_config
+ * key 'status_delay_threshold_aggregates'). Pages may override by passing
+ * their own locally-fetched value; the module default ensures the correct
+ * value when no explicit argument is supplied.
  *
  * Pass N4 leaves only.
  */
-export function rollupStatus(leaves: Activity[], today: string, threshold = 20): string {
+export function rollupStatus(leaves: Activity[], today: string, threshold = THRESHOLD_AGGREGATES): string {
   if (leaves.length === 0) return 'Em dia'
   if (leaves.every(a => a.pct >= 100)) return 'Concluída'
   const avgPct = leaves.reduce((s, a) => s + a.pct, 0) / leaves.length
