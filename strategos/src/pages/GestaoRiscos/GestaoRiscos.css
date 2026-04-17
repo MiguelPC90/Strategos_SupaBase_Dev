@@ -127,11 +127,6 @@
     border: 1px solid currentColor;
   }
 
-  .gr-grau-baixo { background: #eaf5d3; color: #3B6D11; }
-  .gr-grau-medio { background: #fef5e7; color: #854F0B; }
-  .gr-grau-alto  { background: #fdecea; color: #A32D2D; }
-  .gr-grau-crit  { background: #f5d5d5; color: #7B0000; }
-
   /* ── Empty ──────────────────────────────────────────────────── */
   .gr-empty {
     text-align: center;

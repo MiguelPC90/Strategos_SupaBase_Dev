@@ -12,6 +12,7 @@ import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import type { Risk } from '../../types/index'
+import { gradeStyle, gradeLabel } from '../../lib/riskColors'
 
 // ── Types ──────────────────────────────────────────────────────
 type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
@@ -40,20 +41,6 @@ interface RiskForm {
 // ── Helpers ────────────────────────────────────────────────────
 function calcGrau(impact: number, prob: number): number {
   return impact * prob
-}
-
-function grauLabel(g: number): string {
-  if (g <= 4)  return 'Baixo'
-  if (g <= 9)  return 'Médio'
-  if (g <= 16) return 'Alto'
-  return 'Crítico'
-}
-
-function grauCls(g: number): string {
-  if (g <= 4)  return 'gr-grau-baixo'
-  if (g <= 9)  return 'gr-grau-medio'
-  if (g <= 16) return 'gr-grau-alto'
-  return 'gr-grau-crit'
 }
 
 const ESTADO_BADGE: Record<string, BadgeVariant> = {
@@ -98,6 +85,7 @@ function Panel({ form, onChange, matrixSize }: PanelProps) {
       onChange({ ...form, [k]: e.target.value } as RiskForm)
 
   const grauVal = calcGrau(Number(form.impact), Number(form.probability))
+  const grauGs  = gradeStyle(grauVal, matrixSize)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -131,8 +119,12 @@ function Panel({ form, onChange, matrixSize }: PanelProps) {
         <span className="gr-field-label">Grau de Risco</span>
         <div className="gr-grau-display">
           <span className="gr-grau-num">{grauVal}</span>
-          <span className={`gr-grau-badge ${grauCls(grauVal)}`}>
-            {grauLabel(grauVal)}
+          <span
+            className="gr-grau-badge"
+            style={{ background: grauGs.bg, color: grauGs.color, borderColor: grauGs.border }}
+            title={gradeLabel(grauVal, matrixSize)}
+          >
+            {gradeLabel(grauVal, matrixSize)}
           </span>
         </div>
       </div>
@@ -508,7 +500,8 @@ export default function GestaoRiscos() {
               </thead>
               <tbody>
                 {planRisks.map(r => {
-                  const g = calcGrau(r.impact, r.probability)
+                  const g  = calcGrau(r.impact, r.probability)
+                  const gs = gradeStyle(g, matrixSize)
                   return (
                     <tr
                       key={r.id}
@@ -521,8 +514,12 @@ export default function GestaoRiscos() {
                       <td className="gr-td-c">{r.impact}</td>
                       <td className="gr-td-c">{r.probability}</td>
                       <td className="gr-td-c">
-                        <span className={`gr-grau-badge ${grauCls(g)}`}>
-                          {grauLabel(g)}
+                        <span
+                          className="gr-grau-badge"
+                          style={{ background: gs.bg, color: gs.color, borderColor: gs.border }}
+                          title={gradeLabel(g, matrixSize)}
+                        >
+                          {gradeLabel(g, matrixSize)}
                         </span>
                       </td>
                       <td className="gr-td-c">

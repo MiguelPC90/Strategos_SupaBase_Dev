@@ -13,6 +13,7 @@ import { useToast } from '../../context/ToastContext'
 import { leafStatus, leafPctPrev } from '../../lib/rollup'
 import { supabase } from '../../lib/supabase'
 import type { PdsItem, PdsEntry, Risk } from '../../types/index'
+import { gradeStyle, gradeLabel } from '../../lib/riskColors'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -112,25 +113,6 @@ function estadoVariant(status: string): RiskBadge {
   return 'grey'
 }
 
-// ── Risk matrix helpers ────────────────────────────────────────
-function gradeStyle(grade: number, size: number): { bg: string; color: string; border: string } {
-  const pct = grade / (size * size)
-  if (pct <= 0.2)  return { bg: '#4a9e3f', color: '#fff',    border: '#3d8534' }
-  if (pct <= 0.35) return { bg: '#8cc63f', color: '#1a1a18', border: '#7ab535' }
-  if (pct <= 0.5)  return { bg: '#f5c542', color: '#1a1a18', border: '#e0b23a' }
-  if (pct <= 0.7)  return { bg: '#f5943a', color: '#fff',    border: '#e0842e' }
-  return                  { bg: '#e85c4a', color: '#fff',    border: '#d44a38' }
-}
-
-function gradeLabel(grade: number, size: number): string {
-  const pct = grade / (size * size)
-  if (pct <= 0.2)  return 'Muito Baixo'
-  if (pct <= 0.35) return 'Baixo'
-  if (pct <= 0.5)  return 'Médio'
-  if (pct <= 0.7)  return 'Alto'
-  return 'Crítico'
-}
-
 // ── Risk matrix component ─────────────────────────────────────
 interface RiskMatrixProps {
   risks: Risk[]
@@ -149,18 +131,18 @@ function RiskMatrix({ risks, size, selectedIds, onSelect }: RiskMatrixProps) {
     return map
   }, [risks])
 
-  const items: ReactNode[] = []
-  const gridCols = `20px repeat(${size}, 1fr)`
+  const cells: ReactNode[] = []
+  const yNums: ReactNode[] = []
 
   for (let prob = size; prob >= 1; prob--) {
-    items.push(<span key={`y${prob}`} className="pds-risk-axis-num">{prob}</span>)
+    yNums.push(<span key={`y${prob}`} className="pds-risk-axis-num">{prob}</span>)
     for (let impact = 1; impact <= size; impact++) {
       const grade = impact * prob
       const gs    = gradeStyle(grade, size)
       const k     = `${impact},${prob}`
       const cellRisks = cellMap.get(k) ?? []
       const sel   = cellRisks.some(r => selectedIds.includes(r.id))
-      items.push(
+      cells.push(
         <div
           key={`c${impact}${prob}`}
           className={`pds-risk-cell${cellRisks.length ? ' has-risks' : ''}${sel ? ' selected' : ''}`}
@@ -177,12 +159,8 @@ function RiskMatrix({ risks, size, selectedIds, onSelect }: RiskMatrixProps) {
       )
     }
   }
-  items.push(<span key="xcorner" />)
-  for (let impact = 1; impact <= size; impact++) {
-    items.push(
-      <span key={`x${impact}`} className="pds-risk-axis-num pds-risk-axis-x">{impact}</span>
-    )
-  }
+
+  const gridCols = `repeat(${size}, 1fr)`
 
   return (
     <div className="pds-risk-matrix-wrap">
@@ -190,8 +168,19 @@ function RiskMatrix({ risks, size, selectedIds, onSelect }: RiskMatrixProps) {
       <div className="pds-risk-matrix-body">
         <span className="pds-risk-axis-label pds-risk-axis-y">PROBABILIDADE</span>
         <div className="pds-risk-matrix-right">
-          <div className="pds-risk-matrix" style={{ gridTemplateColumns: gridCols }}>
-            {items}
+          <div className="pds-risk-matrix-row">
+            <div className="pds-risk-y-col">{yNums}</div>
+            <div className="pds-risk-matrix" style={{ gridTemplateColumns: gridCols }}>
+              {cells}
+            </div>
+          </div>
+          <div className="pds-risk-x-row">
+            <div className="pds-risk-x-spacer" />
+            <div className="pds-risk-x-nums" style={{ gridTemplateColumns: gridCols }}>
+              {Array.from({ length: size }, (_, i) => (
+                <span key={i} className="pds-risk-axis-num pds-risk-axis-x">{i + 1}</span>
+              ))}
+            </div>
           </div>
           <span className="pds-risk-axis-label pds-risk-axis-bottom">IMPACTO</span>
         </div>
