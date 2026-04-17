@@ -2053,6 +2053,24 @@ type RiscoTab = 'matriz' | 'estados'
 
 const DEFAULT_RISK_STATES = ['Identificado', 'Em monitorização', 'Mitigado', 'Fechado']
 
+function enforceThresholdChain(
+  field: keyof RiskThresholds,
+  value: number,
+  current: RiskThresholds,
+  maxGrade: number,
+): RiskThresholds {
+  const t = { ...current, [field]: value }
+  if (t.very_low >= t.low)    t.low    = t.very_low + 1
+  if (t.low     >= t.medium)  t.medium = t.low      + 1
+  if (t.medium  >= t.high)    t.high   = t.medium   + 1
+  if (t.high    >= maxGrade)  t.high   = maxGrade   - 1
+  if (t.medium  >= t.high)    t.medium = t.high     - 1
+  if (t.low     >= t.medium)  t.low    = t.medium   - 1
+  if (t.very_low >= t.low)    t.very_low = t.low    - 1
+  if (t.very_low < 1)         t.very_low = 1
+  return t
+}
+
 function MatrizTab() {
   const { showToast } = useToast()
   const [size,    setSize]    = useState(5)
@@ -2113,6 +2131,18 @@ function MatrizTab() {
     }
   }
 
+  function handleThresholdChange(field: keyof RiskThresholds, value: number) {
+    const next = enforceThresholdChain(
+      field, value,
+      { very_low: veryLow, low, medium, high },
+      size * size,
+    )
+    setVeryLow(next.very_low)
+    setLow(next.low)
+    setMedium(next.medium)
+    setHigh(next.high)
+  }
+
   if (loading) return <p className="adm-help">A carregar…</p>
 
   const N    = size
@@ -2120,12 +2150,12 @@ function MatrizTab() {
   const rows = Array.from({ length: N }, (_, i) => N - i)
   const t: RiskThresholds = { very_low: veryLow, low, medium, high }
 
-  const LEVELS = [
-    { label: 'Muito Baixo até', swatch: gradeStyle(1, N, t).bg,              value: veryLow, set: setVeryLow },
-    { label: 'Baixo até',       swatch: gradeStyle(veryLow + 1, N, t).bg,    value: low,     set: setLow     },
-    { label: 'Médio até',       swatch: gradeStyle(low + 1, N, t).bg,        value: medium,  set: setMedium  },
-    { label: 'Alto até',        swatch: gradeStyle(medium + 1, N, t).bg,     value: high,    set: setHigh    },
-  ] as const
+  const LEVELS: { label: string; swatch: string; value: number; field: keyof RiskThresholds }[] = [
+    { label: 'Muito Baixo até', swatch: gradeStyle(1, N, t).bg,           value: veryLow, field: 'very_low' },
+    { label: 'Baixo até',       swatch: gradeStyle(veryLow + 1, N, t).bg, value: low,     field: 'low'      },
+    { label: 'Médio até',       swatch: gradeStyle(low + 1, N, t).bg,     value: medium,  field: 'medium'   },
+    { label: 'Alto até',        swatch: gradeStyle(medium + 1, N, t).bg,  value: high,    field: 'high'     },
+  ]
 
   return (
     <>
@@ -2160,7 +2190,7 @@ function MatrizTab() {
               step={1}
               value={lvl.value}
               style={{ width: 72 }}
-              onChange={e => lvl.set(parseInt(e.target.value, 10) || 1)}
+              onChange={e => handleThresholdChange(lvl.field, parseInt(e.target.value, 10) || 1)}
             />
           </div>
         ))}
