@@ -7,6 +7,7 @@ import Badge from '../../components/Badge/Badge'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { usePrograms } from '../../hooks/usePrograms'
+import { gradeStyle, type RiskThresholds, DEFAULT_THRESHOLDS } from '../../lib/riskColors'
 import type { Program, Eixo, Plano, Profile, Person, Snapshot, UserRole } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
@@ -2050,16 +2051,15 @@ function AdminFinanceiro() {
 // ── Section 6: Risco ──────────────────────────────────────────
 type RiscoTab = 'matriz' | 'estados'
 
-interface RiskThresholds { low: number; medium: number; high: number }
-
 const DEFAULT_RISK_STATES = ['Identificado', 'Em monitorização', 'Mitigado', 'Fechado']
 
 function MatrizTab() {
   const { showToast } = useToast()
   const [size,    setSize]    = useState(5)
-  const [low,     setLow]     = useState(4)
-  const [medium,  setMedium]  = useState(9)
-  const [high,    setHigh]    = useState(16)
+  const [veryLow, setVeryLow] = useState(DEFAULT_THRESHOLDS.very_low)
+  const [low,     setLow]     = useState(DEFAULT_THRESHOLDS.low)
+  const [medium,  setMedium]  = useState(DEFAULT_THRESHOLDS.medium)
+  const [high,    setHigh]    = useState(DEFAULT_THRESHOLDS.high)
   const [loading, setLoading] = useState(true)
   const [saving,  setSaving]  = useState(false)
 
@@ -2077,10 +2077,11 @@ function MatrizTab() {
           if (map['risk_matrix_size']) setSize(parseInt(map['risk_matrix_size'], 10) || 5)
           if (map['risk_thresholds']) {
             try {
-              const t = JSON.parse(map['risk_thresholds']) as RiskThresholds
-              setLow(t.low ?? 4)
-              setMedium(t.medium ?? 9)
-              setHigh(t.high ?? 16)
+              const t = JSON.parse(map['risk_thresholds']) as Partial<RiskThresholds>
+              setVeryLow(t.very_low ?? DEFAULT_THRESHOLDS.very_low)
+              setLow(t.low         ?? DEFAULT_THRESHOLDS.low)
+              setMedium(t.medium   ?? DEFAULT_THRESHOLDS.medium)
+              setHigh(t.high       ?? DEFAULT_THRESHOLDS.high)
             } catch { /* use defaults */ }
           }
         }
@@ -2101,8 +2102,9 @@ function MatrizTab() {
   async function saveThresholds() {
     setSaving(true)
     try {
+      const t: RiskThresholds = { very_low: veryLow, low, medium, high }
       await supabase.from('app_config').upsert(
-        { config_key: 'risk_thresholds', data: JSON.stringify({ low, medium, high }) },
+        { config_key: 'risk_thresholds', data: JSON.stringify(t) },
         { onConflict: 'config_key' },
       )
       showToast('Guardado!')
@@ -2111,18 +2113,19 @@ function MatrizTab() {
     }
   }
 
-  function cellStyle(score: number) {
-    if (score <= low)    return { background: '#EBF5E1' }
-    if (score <= medium) return { background: '#FDF3E7' }
-    if (score <= high)   return { background: '#FDECEA' }
-    return { background: '#7B0000', color: 'white' }
-  }
-
   if (loading) return <p className="adm-help">A carregar…</p>
 
   const N    = size
-  const cols = Array.from({ length: N }, (_, i) => i + 1)  // 1 … N
-  const rows = Array.from({ length: N }, (_, i) => N - i)  // N … 1 (top → bottom)
+  const cols = Array.from({ length: N }, (_, i) => i + 1)
+  const rows = Array.from({ length: N }, (_, i) => N - i)
+  const t: RiskThresholds = { very_low: veryLow, low, medium, high }
+
+  const LEVELS = [
+    { label: 'Muito Baixo até', swatch: gradeStyle(1, N, t).bg,              value: veryLow, set: setVeryLow },
+    { label: 'Baixo até',       swatch: gradeStyle(veryLow + 1, N, t).bg,    value: low,     set: setLow     },
+    { label: 'Médio até',       swatch: gradeStyle(low + 1, N, t).bg,        value: medium,  set: setMedium  },
+    { label: 'Alto até',        swatch: gradeStyle(medium + 1, N, t).bg,     value: high,    set: setHigh    },
+  ] as const
 
   return (
     <>
@@ -2142,35 +2145,39 @@ function MatrizTab() {
         </div>
       </div>
 
-      {/* ── Thresholds ── */}
-      <div className="adm-threshold-row">
-        <div className="adm-field" style={{ margin: 0 }}>
-          <label className="adm-label">Baixo até</label>
-          <input className="adm-input" type="number" min={1} max={N * N}
-            value={low} style={{ width: 80 }}
-            onChange={e => setLow(parseInt(e.target.value, 10) || 0)} />
+      {/* ── Thresholds — 5 levels ── */}
+      <div className="adm-label" style={{ marginBottom: 8 }}>Limiares de severidade</div>
+      <div className="adm-threshold-list">
+        {LEVELS.map(lvl => (
+          <div key={lvl.label} className="adm-threshold-level">
+            <span className="adm-level-swatch" style={{ background: lvl.swatch }} />
+            <span className="adm-level-label">{lvl.label}</span>
+            <input
+              className="adm-input"
+              type="number"
+              min={1}
+              max={N * N - 1}
+              step={1}
+              value={lvl.value}
+              style={{ width: 72 }}
+              onChange={e => lvl.set(parseInt(e.target.value, 10) || 1)}
+            />
+          </div>
+        ))}
+        <div className="adm-threshold-level">
+          <span className="adm-level-swatch" style={{ background: gradeStyle(high + 1, N, t).bg }} />
+          <span className="adm-level-label">Crítico</span>
+          <span className="adm-level-auto">&gt; {high}</span>
         </div>
-        <div className="adm-field" style={{ margin: 0 }}>
-          <label className="adm-label">Médio até</label>
-          <input className="adm-input" type="number" min={1} max={N * N}
-            value={medium} style={{ width: 80 }}
-            onChange={e => setMedium(parseInt(e.target.value, 10) || 0)} />
-        </div>
-        <div className="adm-field" style={{ margin: 0 }}>
-          <label className="adm-label">Alto até</label>
-          <input className="adm-input" type="number" min={1} max={N * N}
-            value={high} style={{ width: 80 }}
-            onChange={e => setHigh(parseInt(e.target.value, 10) || 0)} />
-        </div>
-        <button className="adm-btn-primary" onClick={saveThresholds} disabled={saving}
-          style={{ alignSelf: 'flex-end' }}>
-          {saving ? 'A guardar…' : 'Guardar limiares'}
-        </button>
       </div>
+
+      <button className="adm-btn-primary" onClick={saveThresholds} disabled={saving}
+        style={{ marginBottom: 24 }}>
+        {saving ? 'A guardar…' : 'Guardar limiares'}
+      </button>
 
       {/* ── Matrix preview ── */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-        {/* Rotated Probabilidade label */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           height: (N + 1) * 38, width: 14,
@@ -2179,28 +2186,26 @@ function MatrizTab() {
             Probabilidade ↑
           </span>
         </div>
-
-        {/* Grid + Impacto label */}
         <div>
           <div className="adm-matrix-preview"
             style={{ gridTemplateColumns: `repeat(${N + 1}, 36px)` }}>
-            {/* Header row: blank + impact numbers */}
             <div className="adm-matrix-header-cell" />
             {cols.map(col => (
               <div key={`ih-${col}`} className="adm-matrix-header-cell">{col}</div>
             ))}
-            {/* Data rows: prob header + score cells */}
             {rows.flatMap(prob => [
               <div key={`ph-${prob}`} className="adm-matrix-header-cell">{prob}</div>,
-              ...cols.map(imp => (
-                <div key={`c-${prob}-${imp}`} className="adm-matrix-cell"
-                  style={cellStyle(imp * prob)}>
-                  {imp * prob}
-                </div>
-              )),
+              ...cols.map(imp => {
+                const gs = gradeStyle(imp * prob, N, t)
+                return (
+                  <div key={`c-${prob}-${imp}`} className="adm-matrix-cell"
+                    style={{ background: gs.bg, color: gs.color }}>
+                    {imp * prob}
+                  </div>
+                )
+              }),
             ])}
           </div>
-          {/* Impacto label — centred under data columns (offset by the prob header col) */}
           <div style={{ textAlign: 'center', marginLeft: 38 }}>
             <span className="adm-axis-label">Impacto →</span>
           </div>

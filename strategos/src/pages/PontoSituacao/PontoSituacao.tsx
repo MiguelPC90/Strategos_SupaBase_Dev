@@ -13,7 +13,7 @@ import { useToast } from '../../context/ToastContext'
 import { leafStatus, leafPctPrev } from '../../lib/rollup'
 import { supabase } from '../../lib/supabase'
 import type { PdsItem, PdsEntry, Risk } from '../../types/index'
-import { gradeStyle, gradeLabel } from '../../lib/riskColors'
+import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -117,11 +117,12 @@ function estadoVariant(status: string): RiskBadge {
 interface RiskMatrixProps {
   risks: Risk[]
   size: number
+  thresholds: RiskThresholds
   selectedIds: string[]
   onSelect: (ids: string[]) => void
 }
 
-function RiskMatrix({ risks, size, selectedIds, onSelect }: RiskMatrixProps) {
+function RiskMatrix({ risks, size, thresholds, selectedIds, onSelect }: RiskMatrixProps) {
   const cellMap = useMemo(() => {
     const map = new Map<string, Risk[]>()
     for (const r of risks) {
@@ -138,7 +139,7 @@ function RiskMatrix({ risks, size, selectedIds, onSelect }: RiskMatrixProps) {
     yNums.push(<span key={`y${prob}`} className="pds-risk-axis-num">{prob}</span>)
     for (let impact = 1; impact <= size; impact++) {
       const grade = impact * prob
-      const gs    = gradeStyle(grade, size)
+      const gs    = gradeStyle(grade, size, thresholds)
       const k     = `${impact},${prob}`
       const cellRisks = cellMap.get(k) ?? []
       const sel   = cellRisks.some(r => selectedIds.includes(r.id))
@@ -193,11 +194,12 @@ function RiskMatrix({ risks, size, selectedIds, onSelect }: RiskMatrixProps) {
 interface RiskTableProps {
   risks: Risk[]
   size: number
+  thresholds: RiskThresholds
   selectedIds: string[]
   onSelect: (ids: string[]) => void
 }
 
-function RiskTable({ risks, size, selectedIds, onSelect }: RiskTableProps) {
+function RiskTable({ risks, size, thresholds, selectedIds, onSelect }: RiskTableProps) {
   return (
     <div className="pds-risk-table-wrap">
       <div className="pds-risk-table-header">
@@ -210,7 +212,7 @@ function RiskTable({ risks, size, selectedIds, onSelect }: RiskTableProps) {
       </div>
       {risks.map(r => {
         const grade = r.impact * r.probability
-        const gs    = gradeStyle(grade, size)
+        const gs    = gradeStyle(grade, size, thresholds)
         const sel   = selectedIds.includes(r.id)
         return (
           <div
@@ -222,7 +224,7 @@ function RiskTable({ risks, size, selectedIds, onSelect }: RiskTableProps) {
             <span className="pds-tc">{r.impact}</span>
             <span className="pds-tc">{r.probability}</span>
             <span className="pds-tc">
-              <span className="pds-risk-grade" style={{ background: gs.bg, color: gs.color }} title={gradeLabel(grade, size)}>
+              <span className="pds-risk-grade" style={{ background: gs.bg, color: gs.color }} title={gradeLabel(grade, size, thresholds)}>
                 {grade}
               </span>
             </span>
@@ -250,6 +252,7 @@ export default function PontoSituacao() {
   const [adjustedEntry,     setAdjustedEntry]     = useState<PdsEntry | null>(null)
   const [selectedRiskIds,   setSelectedRiskIds]   = useState<string[]>([])
   const [matrixSize,        setMatrixSize]        = useState(5)
+  const [thresholds,        setThresholds]        = useState<RiskThresholds>(DEFAULT_THRESHOLDS)
   const lastProcessedId = useRef<string | null>(null)
 
   // ── Data hooks ─────────────────────────────────────────────
@@ -291,11 +294,19 @@ export default function PontoSituacao() {
           if (!isNaN(v)) setHideCompletedDays(v)
         }
       })
-    supabase.from('app_config').select('data').eq('config_key', 'risk_matrix_size').single()
+    supabase.from('app_config').select('config_key, data')
+      .in('config_key', ['risk_matrix_size', 'risk_thresholds'])
       .then(({ data }) => {
-        if (data) {
-          const v = parseInt(data.data ?? '')
+        if (!data) return
+        const map: Record<string, string> = {}
+        for (const row of data) map[row.config_key] = row.data
+        if (map['risk_matrix_size']) {
+          const v = parseInt(map['risk_matrix_size'])
           if (!isNaN(v) && v >= 2 && v <= 8) setMatrixSize(v)
+        }
+        if (map['risk_thresholds']) {
+          try { setThresholds({ ...DEFAULT_THRESHOLDS, ...JSON.parse(map['risk_thresholds']) }) }
+          catch { /* keep defaults */ }
         }
       })
   }, [])
@@ -567,12 +578,14 @@ export default function PontoSituacao() {
                 <RiskMatrix
                   risks={planRisks}
                   size={matrixSize}
+                  thresholds={thresholds}
                   selectedIds={selectedRiskIds}
                   onSelect={handleSelectRisk}
                 />
                 <RiskTable
                   risks={planRisks}
                   size={matrixSize}
+                  thresholds={thresholds}
                   selectedIds={selectedRiskIds}
                   onSelect={handleSelectRisk}
                 />

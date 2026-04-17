@@ -467,6 +467,38 @@
     flex-wrap: wrap;
   }
 
+  .adm-threshold-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .adm-threshold-level {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .adm-level-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .adm-level-label {
+    font-size: 13px;
+    color: var(--text2);
+    min-width: 120px;
+  }
+
+  .adm-level-auto {
+    font-size: 13px;
+    color: var(--text3);
+    font-style: italic;
+  }
+
   .adm-matrix-preview {
     display: inline-grid;
     gap: 2px;

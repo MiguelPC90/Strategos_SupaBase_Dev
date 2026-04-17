@@ -12,7 +12,7 @@ import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import type { Risk } from '../../types/index'
-import { gradeStyle, gradeLabel } from '../../lib/riskColors'
+import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
 
 // ── Types ──────────────────────────────────────────────────────
 type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
@@ -76,16 +76,17 @@ interface PanelProps {
   form:       RiskForm
   onChange:   (f: RiskForm) => void
   matrixSize: number
+  thresholds: RiskThresholds
 }
 
-function Panel({ form, onChange, matrixSize }: PanelProps) {
+function Panel({ form, onChange, matrixSize, thresholds }: PanelProps) {
   const set =
     (k: keyof RiskForm) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       onChange({ ...form, [k]: e.target.value } as RiskForm)
 
   const grauVal = calcGrau(Number(form.impact), Number(form.probability))
-  const grauGs  = gradeStyle(grauVal, matrixSize)
+  const grauGs  = gradeStyle(grauVal, matrixSize, thresholds)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -122,9 +123,9 @@ function Panel({ form, onChange, matrixSize }: PanelProps) {
           <span
             className="gr-grau-badge"
             style={{ background: grauGs.bg, color: grauGs.color, borderColor: grauGs.border }}
-            title={gradeLabel(grauVal, matrixSize)}
+            title={gradeLabel(grauVal, matrixSize, thresholds)}
           >
-            {gradeLabel(grauVal, matrixSize)}
+            {gradeLabel(grauVal, matrixSize, thresholds)}
           </span>
         </div>
       </div>
@@ -221,13 +222,24 @@ export default function GestaoRiscos() {
   const { showToast } = useToast()
   const [selProgId,   setSelProgId]   = useState<string>('')
   const [matrixSize,  setMatrixSize]  = useState(5)
+  const [thresholds,  setThresholds]  = useState<RiskThresholds>(DEFAULT_THRESHOLDS)
 
-  // Fetch risk matrix size from app_config
+  // Fetch risk matrix config from app_config
   useEffect(() => {
-    supabase.from('app_config').select('data').eq('config_key', 'risk_matrix_size').limit(1)
+    supabase.from('app_config').select('config_key, data')
+      .in('config_key', ['risk_matrix_size', 'risk_thresholds'])
       .then(({ data }) => {
-        const parsed = parseInt(data?.[0]?.data ?? '5')
-        if (!isNaN(parsed) && parsed > 0) setMatrixSize(parsed)
+        if (!data) return
+        const map: Record<string, string> = {}
+        for (const row of data) map[row.config_key] = row.data
+        if (map['risk_matrix_size']) {
+          const parsed = parseInt(map['risk_matrix_size'])
+          if (!isNaN(parsed) && parsed > 0) setMatrixSize(parsed)
+        }
+        if (map['risk_thresholds']) {
+          try { setThresholds({ ...DEFAULT_THRESHOLDS, ...JSON.parse(map['risk_thresholds']) }) }
+          catch { /* keep defaults */ }
+        }
       })
   }, [])
 
@@ -501,7 +513,7 @@ export default function GestaoRiscos() {
               <tbody>
                 {planRisks.map(r => {
                   const g  = calcGrau(r.impact, r.probability)
-                  const gs = gradeStyle(g, matrixSize)
+                  const gs = gradeStyle(g, matrixSize, thresholds)
                   return (
                     <tr
                       key={r.id}
@@ -517,9 +529,9 @@ export default function GestaoRiscos() {
                         <span
                           className="gr-grau-badge"
                           style={{ background: gs.bg, color: gs.color, borderColor: gs.border }}
-                          title={gradeLabel(g, matrixSize)}
+                          title={gradeLabel(g, matrixSize, thresholds)}
                         >
-                          {gradeLabel(g, matrixSize)}
+                          {gradeLabel(g, matrixSize, thresholds)}
                         </span>
                       </td>
                       <td className="gr-td-c">
@@ -568,7 +580,7 @@ export default function GestaoRiscos() {
             </>
           }
         >
-          <Panel form={panelForm} onChange={f => setPanelForm(f)} matrixSize={matrixSize} />
+          <Panel form={panelForm} onChange={f => setPanelForm(f)} matrixSize={matrixSize} thresholds={thresholds} />
         </Modal>
       )}
     </div>
