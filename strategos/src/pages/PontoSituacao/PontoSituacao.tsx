@@ -170,7 +170,7 @@ function RiskMatrix({ risks, size, selectedIds, onSelect }: RiskMatrixProps) {
         <div className="pds-risk-matrix-right">
           <div className="pds-risk-matrix-row">
             <div className="pds-risk-y-col">{yNums}</div>
-            <div className="pds-risk-matrix" style={{ gridTemplateColumns: gridCols }}>
+            <div className="pds-risk-matrix" style={{ gridTemplateColumns: gridCols, gridTemplateRows: gridCols }}>
               {cells}
             </div>
           </div>
