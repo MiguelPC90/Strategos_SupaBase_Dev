@@ -301,7 +301,7 @@
   /* ── Risks split layout ──────────────────────────────────────── */
   .pds-risks-split {
     display: grid;
-    grid-template-columns: 2fr 3fr;
+    grid-template-columns: 240px 1fr;
     gap: 24px;
     align-items: start;
   }
@@ -309,6 +309,8 @@
   .pds-risks-empty { text-align: center; font-style: italic; }
 
   /* ── Risk matrix ─────────────────────────────────────────────── */
+  .pds-risk-matrix-wrap { max-width: 220px; }
+
   .pds-risk-matrix-label {
     font-size: 10px;
     font-weight: 700;
@@ -337,7 +339,6 @@
   }
 
   .pds-risk-cell {
-    aspect-ratio: 1;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -361,15 +362,15 @@
   }
 
   .pds-risk-dot {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     background: var(--navy);
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
   }
 

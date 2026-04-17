@@ -113,25 +113,33 @@ function estadoVariant(status: string): RiskBadge {
 }
 
 // ── Risk matrix helpers ────────────────────────────────────────
-interface Thresholds { low: number; medium: number; high: number }
+function gradeStyle(grade: number, size: number): { bg: string; color: string; border: string } {
+  const pct = grade / (size * size)
+  if (pct <= 0.2)  return { bg: '#4a9e3f', color: '#fff',    border: '#3d8534' }
+  if (pct <= 0.35) return { bg: '#8cc63f', color: '#1a1a18', border: '#7ab535' }
+  if (pct <= 0.5)  return { bg: '#f5c542', color: '#1a1a18', border: '#e0b23a' }
+  if (pct <= 0.7)  return { bg: '#f5943a', color: '#fff',    border: '#e0842e' }
+  return                  { bg: '#e85c4a', color: '#fff',    border: '#d44a38' }
+}
 
-function gradeStyle(grade: number, t: Thresholds): { bg: string; color: string; border: string } {
-  if (grade <= t.low)    return { bg: '#e8f5d0', color: '#3d6b0c', border: '#b5d97a' }
-  if (grade <= t.medium) return { bg: '#fef3d8', color: '#854F0B', border: '#e6c56a' }
-  if (grade <= t.high)   return { bg: '#fce8e8', color: '#A32D2D', border: '#e8a0a0' }
-  return                        { bg: '#6b1010', color: '#fff',    border: '#8B0000' }
+function gradeLabel(grade: number, size: number): string {
+  const pct = grade / (size * size)
+  if (pct <= 0.2)  return 'Muito Baixo'
+  if (pct <= 0.35) return 'Baixo'
+  if (pct <= 0.5)  return 'Médio'
+  if (pct <= 0.7)  return 'Alto'
+  return 'Crítico'
 }
 
 // ── Risk matrix component ─────────────────────────────────────
 interface RiskMatrixProps {
   risks: Risk[]
   size: number
-  thresholds: Thresholds
   selectedIds: string[]
   onSelect: (ids: string[]) => void
 }
 
-function RiskMatrix({ risks, size, thresholds, selectedIds, onSelect }: RiskMatrixProps) {
+function RiskMatrix({ risks, size, selectedIds, onSelect }: RiskMatrixProps) {
   const cellMap = useMemo(() => {
     const map = new Map<string, Risk[]>()
     for (const r of risks) {
@@ -148,7 +156,7 @@ function RiskMatrix({ risks, size, thresholds, selectedIds, onSelect }: RiskMatr
     items.push(<span key={`y${prob}`} className="pds-risk-axis-num">{prob}</span>)
     for (let impact = 1; impact <= size; impact++) {
       const grade = impact * prob
-      const gs    = gradeStyle(grade, thresholds)
+      const gs    = gradeStyle(grade, size)
       const k     = `${impact},${prob}`
       const cellRisks = cellMap.get(k) ?? []
       const sel   = cellRisks.some(r => selectedIds.includes(r.id))
@@ -195,12 +203,12 @@ function RiskMatrix({ risks, size, thresholds, selectedIds, onSelect }: RiskMatr
 // ── Risk table component ──────────────────────────────────────
 interface RiskTableProps {
   risks: Risk[]
-  thresholds: Thresholds
+  size: number
   selectedIds: string[]
   onSelect: (ids: string[]) => void
 }
 
-function RiskTable({ risks, thresholds, selectedIds, onSelect }: RiskTableProps) {
+function RiskTable({ risks, size, selectedIds, onSelect }: RiskTableProps) {
   return (
     <div className="pds-risk-table-wrap">
       <div className="pds-risk-table-header">
@@ -213,7 +221,7 @@ function RiskTable({ risks, thresholds, selectedIds, onSelect }: RiskTableProps)
       </div>
       {risks.map(r => {
         const grade = r.impact * r.probability
-        const gs    = gradeStyle(grade, thresholds)
+        const gs    = gradeStyle(grade, size)
         const sel   = selectedIds.includes(r.id)
         return (
           <div
@@ -225,7 +233,7 @@ function RiskTable({ risks, thresholds, selectedIds, onSelect }: RiskTableProps)
             <span className="pds-tc">{r.impact}</span>
             <span className="pds-tc">{r.probability}</span>
             <span className="pds-tc">
-              <span className="pds-risk-grade" style={{ background: gs.bg, color: gs.color }}>
+              <span className="pds-risk-grade" style={{ background: gs.bg, color: gs.color }} title={gradeLabel(grade, size)}>
                 {grade}
               </span>
             </span>
@@ -253,7 +261,6 @@ export default function PontoSituacao() {
   const [adjustedEntry,     setAdjustedEntry]     = useState<PdsEntry | null>(null)
   const [selectedRiskIds,   setSelectedRiskIds]   = useState<string[]>([])
   const [matrixSize,        setMatrixSize]        = useState(5)
-  const [thresholds,        setThresholds]        = useState<Thresholds>({ low: 4, medium: 9, high: 15 })
   const lastProcessedId = useRef<string | null>(null)
 
   // ── Data hooks ─────────────────────────────────────────────
@@ -295,18 +302,13 @@ export default function PontoSituacao() {
           if (!isNaN(v)) setHideCompletedDays(v)
         }
       })
-    Promise.all([
-      supabase.from('app_config').select('data').eq('config_key', 'risk_matrix_size').single(),
-      supabase.from('app_config').select('data').eq('config_key', 'risk_thresholds').single(),
-    ]).then(([sizeRes, threshRes]) => {
-      if (sizeRes.data) {
-        const v = parseInt(sizeRes.data.data ?? '')
-        if (!isNaN(v) && v >= 2 && v <= 8) setMatrixSize(v)
-      }
-      if (threshRes.data) {
-        try { setThresholds(JSON.parse(threshRes.data.data)) } catch { /* keep defaults */ }
-      }
-    })
+    supabase.from('app_config').select('data').eq('config_key', 'risk_matrix_size').single()
+      .then(({ data }) => {
+        if (data) {
+          const v = parseInt(data.data ?? '')
+          if (!isNaN(v) && v >= 2 && v <= 8) setMatrixSize(v)
+        }
+      })
   }, [])
 
   // ── Derived data ───────────────────────────────────────────
@@ -572,17 +574,16 @@ export default function PontoSituacao() {
             {planRisks.length === 0 ? (
               <p className="pds-empty pds-risks-empty">Sem riscos registados para este plano.</p>
             ) : (
-              <div className="pds-risks-split">
+              <div className="pds-risks-split" onClick={e => { if (e.target === e.currentTarget) setSelectedRiskIds([]) }}>
                 <RiskMatrix
                   risks={planRisks}
                   size={matrixSize}
-                  thresholds={thresholds}
                   selectedIds={selectedRiskIds}
                   onSelect={handleSelectRisk}
                 />
                 <RiskTable
                   risks={planRisks}
-                  thresholds={thresholds}
+                  size={matrixSize}
                   selectedIds={selectedRiskIds}
                   onSelect={handleSelectRisk}
                 />
