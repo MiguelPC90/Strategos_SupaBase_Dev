@@ -469,15 +469,18 @@
 
   .adm-threshold-list {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
     margin-bottom: 16px;
   }
 
   .adm-threshold-level {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
+    min-width: 80px;
   }
 
   .adm-level-swatch {
@@ -488,9 +491,10 @@
   }
 
   .adm-level-label {
-    font-size: 13px;
+    font-size: 11px;
     color: var(--text2);
-    min-width: 120px;
+    text-align: center;
+    white-space: nowrap;
   }
 
   .adm-level-auto {
