@@ -1,5 +1,5 @@
 import './PontoSituacao.css'
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
@@ -12,7 +12,7 @@ import { useFilters } from '../../context/FilterContext'
 import { useToast } from '../../context/ToastContext'
 import { leafStatus, leafPctPrev } from '../../lib/rollup'
 import { supabase } from '../../lib/supabase'
-import type { PdsItem, PdsEntry } from '../../types/index'
+import type { PdsItem, PdsEntry, Risk } from '../../types/index'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -103,12 +103,6 @@ function ItemList({ items, variant = 'default' }: ItemListProps) {
 // ── Risk helpers ────────────────────────────────────────────────
 type RiskBadge = 'green' | 'amber' | 'red' | 'grey'
 
-function grauVariant(grau: number): RiskBadge {
-  if (grau <= 4) return 'green'
-  if (grau <= 9) return 'amber'
-  return 'red'
-}
-
 function estadoVariant(status: string): RiskBadge {
   const s = status.toLowerCase()
   if (s === 'aberto')       return 'red'
@@ -116,6 +110,134 @@ function estadoVariant(status: string): RiskBadge {
   if (s === 'mitigado')     return 'grey'
   if (s === 'fechado')      return 'green'
   return 'grey'
+}
+
+// ── Risk matrix helpers ────────────────────────────────────────
+interface Thresholds { low: number; medium: number; high: number }
+
+function gradeStyle(grade: number, t: Thresholds): { bg: string; color: string; border: string } {
+  if (grade <= t.low)    return { bg: '#e8f5d0', color: '#3d6b0c', border: '#b5d97a' }
+  if (grade <= t.medium) return { bg: '#fef3d8', color: '#854F0B', border: '#e6c56a' }
+  if (grade <= t.high)   return { bg: '#fce8e8', color: '#A32D2D', border: '#e8a0a0' }
+  return                        { bg: '#6b1010', color: '#fff',    border: '#8B0000' }
+}
+
+// ── Risk matrix component ─────────────────────────────────────
+interface RiskMatrixProps {
+  risks: Risk[]
+  size: number
+  thresholds: Thresholds
+  selectedIds: string[]
+  onSelect: (ids: string[]) => void
+}
+
+function RiskMatrix({ risks, size, thresholds, selectedIds, onSelect }: RiskMatrixProps) {
+  const cellMap = useMemo(() => {
+    const map = new Map<string, Risk[]>()
+    for (const r of risks) {
+      const k = `${r.impact},${r.probability}`
+      map.set(k, [...(map.get(k) ?? []), r])
+    }
+    return map
+  }, [risks])
+
+  const items: ReactNode[] = []
+  const gridCols = `20px repeat(${size}, 1fr)`
+
+  for (let prob = size; prob >= 1; prob--) {
+    items.push(<span key={`y${prob}`} className="pds-risk-axis-num">{prob}</span>)
+    for (let impact = 1; impact <= size; impact++) {
+      const grade = impact * prob
+      const gs    = gradeStyle(grade, thresholds)
+      const k     = `${impact},${prob}`
+      const cellRisks = cellMap.get(k) ?? []
+      const sel   = cellRisks.some(r => selectedIds.includes(r.id))
+      items.push(
+        <div
+          key={`c${impact}${prob}`}
+          className={`pds-risk-cell${cellRisks.length ? ' has-risks' : ''}${sel ? ' selected' : ''}`}
+          style={{ background: gs.bg, border: `1px solid ${gs.border}` }}
+          onClick={() => onSelect(cellRisks.length ? cellRisks.map(r => r.id) : [])}
+          title={cellRisks.map(r => r.description).join('\n')}
+        >
+          {cellRisks.length > 0 && (
+            <span className={`pds-risk-dot${sel ? ' selected' : ''}`}>
+              {cellRisks.length > 1 ? String(cellRisks.length) : ''}
+            </span>
+          )}
+        </div>
+      )
+    }
+  }
+  items.push(<span key="xcorner" />)
+  for (let impact = 1; impact <= size; impact++) {
+    items.push(
+      <span key={`x${impact}`} className="pds-risk-axis-num pds-risk-axis-x">{impact}</span>
+    )
+  }
+
+  return (
+    <div className="pds-risk-matrix-wrap">
+      <div className="pds-risk-matrix-label">Matriz de Risco</div>
+      <div className="pds-risk-matrix-body">
+        <span className="pds-risk-axis-label pds-risk-axis-y">PROBABILIDADE</span>
+        <div className="pds-risk-matrix-right">
+          <div className="pds-risk-matrix" style={{ gridTemplateColumns: gridCols }}>
+            {items}
+          </div>
+          <span className="pds-risk-axis-label pds-risk-axis-bottom">IMPACTO</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Risk table component ──────────────────────────────────────
+interface RiskTableProps {
+  risks: Risk[]
+  thresholds: Thresholds
+  selectedIds: string[]
+  onSelect: (ids: string[]) => void
+}
+
+function RiskTable({ risks, thresholds, selectedIds, onSelect }: RiskTableProps) {
+  return (
+    <div className="pds-risk-table-wrap">
+      <div className="pds-risk-table-header">
+        <span>Descrição</span>
+        <span className="pds-tc">Impacto</span>
+        <span className="pds-tc">Prob.</span>
+        <span className="pds-tc">Grau</span>
+        <span className="pds-tc">Estado</span>
+        <span>Mitigação</span>
+      </div>
+      {risks.map(r => {
+        const grade = r.impact * r.probability
+        const gs    = gradeStyle(grade, thresholds)
+        const sel   = selectedIds.includes(r.id)
+        return (
+          <div
+            key={r.id}
+            className={`pds-risk-table-row${sel ? ' selected' : ''}`}
+            onClick={() => onSelect([r.id])}
+          >
+            <span>{r.description}</span>
+            <span className="pds-tc">{r.impact}</span>
+            <span className="pds-tc">{r.probability}</span>
+            <span className="pds-tc">
+              <span className="pds-risk-grade" style={{ background: gs.bg, color: gs.color }}>
+                {grade}
+              </span>
+            </span>
+            <span className="pds-tc">
+              <Badge variant={estadoVariant(r.status)}>{r.status}</Badge>
+            </span>
+            <span className="pds-risk-mitigation" title={r.mitigation}>{r.mitigation}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 // ── Main page ──────────────────────────────────────────────────
@@ -129,6 +251,9 @@ export default function PontoSituacao() {
   const [selectedKey,       setSelectedKey]       = useState('')
   const [hideCompletedDays, setHideCompletedDays] = useState(90)
   const [adjustedEntry,     setAdjustedEntry]     = useState<PdsEntry | null>(null)
+  const [selectedRiskIds,   setSelectedRiskIds]   = useState<string[]>([])
+  const [matrixSize,        setMatrixSize]        = useState(5)
+  const [thresholds,        setThresholds]        = useState<Thresholds>({ low: 4, medium: 9, high: 15 })
   const lastProcessedId = useRef<string | null>(null)
 
   // ── Data hooks ─────────────────────────────────────────────
@@ -154,13 +279,14 @@ export default function PontoSituacao() {
     setSelectedKey('')
   }, [selProgId])
 
-  // Reset adjusted entry + process flag when plan changes
+  // Reset adjusted entry + process flag + risk selection when plan changes
   useEffect(() => {
     setAdjustedEntry(null)
     lastProcessedId.current = null
+    setSelectedRiskIds([])
   }, [selectedKey])
 
-  // Load pds_hide_completed_days from app_config
+  // Load app_config values once
   useEffect(() => {
     supabase.from('app_config').select('data').eq('config_key', 'pds_hide_completed_days').single()
       .then(({ data }) => {
@@ -169,6 +295,18 @@ export default function PontoSituacao() {
           if (!isNaN(v)) setHideCompletedDays(v)
         }
       })
+    Promise.all([
+      supabase.from('app_config').select('data').eq('config_key', 'risk_matrix_size').single(),
+      supabase.from('app_config').select('data').eq('config_key', 'risk_thresholds').single(),
+    ]).then(([sizeRes, threshRes]) => {
+      if (sizeRes.data) {
+        const v = parseInt(sizeRes.data.data ?? '')
+        if (!isNaN(v) && v >= 2 && v <= 8) setMatrixSize(v)
+      }
+      if (threshRes.data) {
+        try { setThresholds(JSON.parse(threshRes.data.data)) } catch { /* keep defaults */ }
+      }
+    })
   }, [])
 
   // ── Derived data ───────────────────────────────────────────
@@ -270,6 +408,14 @@ export default function PontoSituacao() {
       hiddenCommitmentsCount: hidden.length,
     }
   }, [entry, hideCompletedDays])
+
+  // ── Risk selection handler ────────────────────────────────
+  const handleSelectRisk = (ids: string[]) => {
+    setSelectedRiskIds(prev => {
+      const same = prev.length === ids.length && ids.every(id => prev.includes(id))
+      return same ? [] : ids
+    })
+  }
 
   // ── Render ─────────────────────────────────────────────────
   return (
@@ -421,42 +567,28 @@ export default function PontoSituacao() {
             </Card>
           </div>
 
-          {/* Risks table — only shown when there are risks for this plan */}
-          {planRisks.length > 0 && (
-            <Card title="Riscos">
-              <table className="pds-risk-table">
-                <thead>
-                  <tr>
-                    <th>Descrição</th>
-                    <th className="pds-risk-num">Impacto</th>
-                    <th className="pds-risk-num">Probabilidade</th>
-                    <th className="pds-risk-num">Grau</th>
-                    <th className="pds-risk-status">Estado</th>
-                    <th>Mitigação</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {planRisks.map(r => {
-                    const grau = r.impact * r.probability
-                    return (
-                      <tr key={r.id}>
-                        <td>{r.description}</td>
-                        <td className="pds-risk-num">{r.impact}</td>
-                        <td className="pds-risk-num">{r.probability}</td>
-                        <td className="pds-risk-num">
-                          <Badge variant={grauVariant(grau)}>{grau}</Badge>
-                        </td>
-                        <td className="pds-risk-status">
-                          <Badge variant={estadoVariant(r.status)}>{r.status}</Badge>
-                        </td>
-                        <td className="pds-risk-mitigation">{r.mitigation}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </Card>
-          )}
+          {/* Risks — split layout: heatmap matrix + detail table */}
+          <Card title="Riscos">
+            {planRisks.length === 0 ? (
+              <p className="pds-empty pds-risks-empty">Sem riscos registados para este plano.</p>
+            ) : (
+              <div className="pds-risks-split">
+                <RiskMatrix
+                  risks={planRisks}
+                  size={matrixSize}
+                  thresholds={thresholds}
+                  selectedIds={selectedRiskIds}
+                  onSelect={handleSelectRisk}
+                />
+                <RiskTable
+                  risks={planRisks}
+                  thresholds={thresholds}
+                  selectedIds={selectedRiskIds}
+                  onSelect={handleSelectRisk}
+                />
+              </div>
+            )}
+          </Card>
         </>
       )}
     </div>
