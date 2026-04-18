@@ -38,4 +38,30 @@
     grid-template-columns: 1fr 1fr 1fr;
     gap: 8px;
   }
+
+  /* Section label + dashed group (used to stack KpiCards under a heading) */
+  .ind-section { margin-bottom: 10px; }
+  .ind-section:last-child { margin-bottom: 0; }
+  .ind-section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text3);
+  }
+  .ind-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .ind-dashed {
+    border: 1px dashed var(--border2);
+    border-radius: var(--r);
+    padding: 8px;
+  }
 }

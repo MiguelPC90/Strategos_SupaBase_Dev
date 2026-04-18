@@ -2,6 +2,7 @@ import './PontoSituacao.css'
 import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
+import KpiCard from '../../components/KpiCard/KpiCard'
 import Badge from '../../components/Badge/Badge'
 import { usePdsEntries } from '../../hooks/usePdsEntries'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -57,11 +58,12 @@ type ItemListVariant = 'default' | 'attention' | 'progress'
 interface ItemListProps {
   items: PdsItem[]
   variant?: ItemListVariant
+  emptyMessage?: string
 }
 
-function ItemList({ items, variant = 'default' }: ItemListProps) {
+function ItemList({ items, variant = 'default', emptyMessage = 'Sem itens.' }: ItemListProps) {
   if (items.length === 0) {
-    return <p className="pds-empty">Sem itens.</p>
+    return <p className="pds-empty">{emptyMessage}</p>
   }
 
   // Plain-text fallback for progress + attention: all items lack date AND status
@@ -378,16 +380,15 @@ export default function PontoSituacao() {
 
   // ── KPI computations ───────────────────────────────────────
   const kpi = useMemo(() => {
-    const total = planLeaves.length
-    if (total === 0) return null
+    const total      = planLeaves.length
     const statuses   = planLeaves.map(a => leafStatus(a, TODAY))
     const concluidas = statuses.filter(s => s === 'Concluída').length
     const emDia      = statuses.filter(s => s === 'Em dia').length
     const emAtraso   = statuses.filter(s => s === 'Em atraso').length
-    const pct        = Math.round(planLeaves.reduce((s, a) => s + a.pct, 0) / total)
-    const pctPrev    = Math.round(planLeaves.reduce((s, a) => s + leafPctPrev(a, TODAY), 0) / total)
-    const geralReal  = Math.round((concluidas / total) * 100)
-    const geralObj   = Math.round(((concluidas + emAtraso) / total) * 100)
+    const pct        = total > 0 ? Math.round(planLeaves.reduce((s, a) => s + a.pct, 0) / total) : 0
+    const pctPrev    = total > 0 ? Math.round(planLeaves.reduce((s, a) => s + leafPctPrev(a, TODAY), 0) / total) : 0
+    const geralReal  = total > 0 ? Math.round((concluidas / total) * 100) : 0
+    const geralObj   = total > 0 ? Math.round(((concluidas + emAtraso) / total) * 100) : 0
     const aDataReal  = (concluidas + emAtraso) > 0
       ? Math.round((concluidas / (concluidas + emAtraso)) * 100)
       : 0
@@ -462,94 +463,55 @@ export default function PontoSituacao() {
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
           <Spinner />
         </div>
-      ) : planEntries.length === 0 ? (
-        <div className="pds-placeholder">Sem pontos de situação para este plano.</div>
       ) : (
         <>
-          {/* Header bar — navy, plan path + latest date */}
+          {/* Header bar — navy, plan path + latest date (today if no entry) */}
           <div className="pds-header-bar">
             <span className="pds-header-path">{planLabel}</span>
-            {entry && (
-              <span className="pds-header-date">{fmtDate(entry.updated_at)}</span>
-            )}
+            <span className="pds-header-date">{fmtDate(entry?.updated_at ?? TODAY)}</span>
           </div>
 
-          {/* KPI row */}
-          {kpi && (
-            <div className="pds-kpi-row">
+          {/* KPI cards — replicated from Dashboard (Resumo Executivo) */}
+          <div className="pds-kpi-grid">
+            <Card title="Dados Gerais">
+              <div className="kpi-2col">
+                <KpiCard label="Total actividades" value={kpi.total} />
+                <KpiCard label="Concluídas" value={kpi.concluidas} color="green" />
+                <KpiCard label="Em dia"     value={kpi.emDia}      color="blue" />
+                <KpiCard label="Em atraso"  value={kpi.emAtraso}   color="red" />
+              </div>
+            </Card>
 
-              {/* Card 1 — Dados Gerais */}
-              <div className="pds-kpi-card">
-                <div className="pds-kpi-card-title">Dados Gerais</div>
-                <div className="pds-kpi-grid-2x2">
-                  <div className="pds-kpi-cell">
-                    <span className="pds-kpi-label">Total</span>
-                    <span className="pds-kpi-value pds-kpi-navy">{kpi.total}</span>
-                  </div>
-                  <div className="pds-kpi-cell">
-                    <span className="pds-kpi-label">Concluídas</span>
-                    <span className="pds-kpi-value pds-kpi-green">{kpi.concluidas}</span>
-                  </div>
-                  <div className="pds-kpi-cell">
-                    <span className="pds-kpi-label">Em dia</span>
-                    <span className="pds-kpi-value pds-kpi-green">{kpi.emDia}</span>
-                  </div>
-                  <div className="pds-kpi-cell">
-                    <span className="pds-kpi-label">Em atraso</span>
-                    <span className="pds-kpi-value pds-kpi-red">{kpi.emAtraso}</span>
-                  </div>
+            <Card title="Indicadores de Concretização">
+              <div className="ind-section">
+                <div className="ind-section-header">
+                  <span className="ind-dot" style={{ background: 'var(--navy)' }} />
+                  Realizado
+                </div>
+                <div className="kpi-3col">
+                  <KpiCard label="Grau execução" value={`${kpi.pct}%`}        color="navy" />
+                  <KpiCard label="Conc. geral"   value={`${kpi.geralReal}%`}  color="navy" />
+                  <KpiCard label="Conc. à data"  value={`${kpi.aDataReal}%`}  color="navy" />
                 </div>
               </div>
-
-              {/* Card 2 — Grau de Execução */}
-              <div className="pds-kpi-card">
-                <div className="pds-kpi-card-title">Grau de Execução</div>
-                <div className="pds-kpi-exec-row">
-                  <div className="pds-kpi-exec-cell">
-                    <span className="pds-kpi-exec-label">Realizado</span>
-                    <span className="pds-kpi-exec-value pds-kpi-navy">{kpi.pct}%</span>
-                  </div>
-                  <div className="pds-kpi-exec-cell pds-kpi-exec-dashed">
-                    <span className="pds-kpi-exec-label">Objectivo</span>
-                    <span className="pds-kpi-exec-value pds-kpi-green">{kpi.pctPrev}%</span>
-                  </div>
+              <div className="ind-section">
+                <div className="ind-section-header">
+                  <span className="ind-dot" style={{ background: 'var(--green)' }} />
+                  Objectivo
+                </div>
+                <div className="kpi-3col ind-dashed">
+                  <KpiCard label="Exec. obj."       value={`${kpi.pctPrev}%`}  color="green" />
+                  <KpiCard label="Conc. geral obj." value={`${kpi.geralObj}%`} color="green" />
+                  <KpiCard label="Conc. data obj."  value="100%"               color="green" />
                 </div>
               </div>
-
-              {/* Card 3 — Concretização */}
-              <div className="pds-kpi-card">
-                <div className="pds-kpi-card-title">Concretização</div>
-                <div className="pds-kpi-grid-2x2">
-                  <div className="pds-kpi-cell">
-                    <span className="pds-kpi-label">Geral real</span>
-                    <span className="pds-kpi-sublabel">N.º Conc. / Total</span>
-                    <span className="pds-kpi-value pds-kpi-navy">{kpi.geralReal}%</span>
-                  </div>
-                  <div className="pds-kpi-cell pds-kpi-cell-dashed">
-                    <span className="pds-kpi-label">Geral obj.</span>
-                    <span className="pds-kpi-sublabel">(Conc.+Atr.) / Total</span>
-                    <span className="pds-kpi-value pds-kpi-green">{kpi.geralObj}%</span>
-                  </div>
-                  <div className="pds-kpi-cell">
-                    <span className="pds-kpi-label">À data real</span>
-                    <span className="pds-kpi-sublabel">Conc. / (Conc.+Atr.)</span>
-                    <span className="pds-kpi-value pds-kpi-navy">{kpi.aDataReal}%</span>
-                  </div>
-                  <div className="pds-kpi-cell pds-kpi-cell-dashed">
-                    <span className="pds-kpi-label">À data obj.</span>
-                    <span className="pds-kpi-sublabel">Objectivo</span>
-                    <span className="pds-kpi-value pds-kpi-green">100%</span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          )}
+            </Card>
+          </div>
 
           {/* 2×2 card grid */}
           <div className="pds-grid">
             <Card title={<>Compromissos anteriores <span className="pds-section-count">({visibleCommitments.length})</span></>}>
-              <ItemList items={visibleCommitments} />
+              <ItemList items={visibleCommitments} emptyMessage="Sem compromissos anteriores." />
               {hiddenCommitmentsCount > 0 && (
                 <p className="pds-hidden-note">
                   {hiddenCommitmentsCount} compromisso{hiddenCommitmentsCount !== 1 ? 's' : ''}{' '}
@@ -559,20 +521,20 @@ export default function PontoSituacao() {
               )}
             </Card>
             <Card title={<>Principais avanços <span className="pds-section-count">({(entry?.progress_items ?? []).length})</span></>}>
-              <ItemList items={entry?.progress_items ?? []} variant="progress" />
+              <ItemList items={entry?.progress_items ?? []} variant="progress" emptyMessage="Sem avanços registados." />
             </Card>
             <Card title={<>Próximos passos <span className="pds-section-count">({(entry?.next_steps_items ?? []).length})</span></>}>
-              <ItemList items={entry?.next_steps_items ?? []} />
+              <ItemList items={entry?.next_steps_items ?? []} emptyMessage="Sem próximos passos definidos." />
             </Card>
             <Card title={<>Pontos de atenção <span className="pds-section-count">({(entry?.attention_items ?? []).length})</span></>} className="pds-attention-card">
-              <ItemList items={entry?.attention_items ?? []} variant="attention" />
+              <ItemList items={entry?.attention_items ?? []} variant="attention" emptyMessage="Sem pontos de atenção identificados." />
             </Card>
           </div>
 
           {/* Risks — split layout: heatmap matrix + detail table */}
           <Card title="Riscos">
             {planRisks.length === 0 ? (
-              <p className="pds-empty pds-risks-empty">Sem riscos registados para este plano.</p>
+              <p className="pds-empty">Sem riscos identificados para este plano.</p>
             ) : (
               <div className="pds-risks-split" onClick={e => { if (e.target === e.currentTarget) setSelectedRiskIds([]) }}>
                 <RiskMatrix
