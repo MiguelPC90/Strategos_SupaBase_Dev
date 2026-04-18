@@ -1,5 +1,5 @@
 import './PontoSituacao.css'
-import { useState, useMemo, useEffect, useRef, type ReactNode } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
@@ -15,6 +15,10 @@ import { leafStatus, leafPctPrev } from '../../lib/rollup'
 import { supabase } from '../../lib/supabase'
 import type { PdsItem, PdsEntry, Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
+import {
+  computeHealth, DEFAULT_HEALTH_CONFIG,
+  type HealthConfig, type HealthInput,
+} from '../../lib/healthRules'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -255,6 +259,7 @@ export default function PontoSituacao() {
   const [selectedRiskIds,   setSelectedRiskIds]   = useState<string[]>([])
   const [matrixSize,        setMatrixSize]        = useState(5)
   const [thresholds,        setThresholds]        = useState<RiskThresholds>(DEFAULT_THRESHOLDS)
+  const [healthConfig,      setHealthConfig]      = useState<HealthConfig>(DEFAULT_HEALTH_CONFIG)
   const lastProcessedId = useRef<string | null>(null)
 
   // ── Data hooks ─────────────────────────────────────────────
@@ -297,7 +302,7 @@ export default function PontoSituacao() {
         }
       })
     supabase.from('app_config').select('config_key, data')
-      .in('config_key', ['risk_matrix_size', 'risk_thresholds'])
+      .in('config_key', ['risk_matrix_size', 'risk_thresholds', 'health_rules'])
       .then(({ data }) => {
         if (!data) return
         const map: Record<string, string> = {}
@@ -308,6 +313,10 @@ export default function PontoSituacao() {
         }
         if (map['risk_thresholds']) {
           try { setThresholds({ ...DEFAULT_THRESHOLDS, ...JSON.parse(map['risk_thresholds']) }) }
+          catch { /* keep defaults */ }
+        }
+        if (map['health_rules']) {
+          try { setHealthConfig({ ...DEFAULT_HEALTH_CONFIG, ...JSON.parse(map['health_rules']) }) }
           catch { /* keep defaults */ }
         }
       })
@@ -395,6 +404,71 @@ export default function PontoSituacao() {
     return { total, concluidas, emDia, emAtraso, pct, pctPrev, geralReal, geralObj, aDataReal }
   }, [planLeaves])
 
+  // ── Plan navigation ────────────────────────────────────────
+  const planosInProgram = planos  // already sorted by sort_order from hook
+  const currentIdx = useMemo(
+    () => planosInProgram.findIndex(p => p.id === selectedKey),
+    [planosInProgram, selectedKey],
+  )
+  const goPrev = useCallback(() => {
+    if (currentIdx > 0) setSelectedKey(planosInProgram[currentIdx - 1].id)
+  }, [currentIdx, planosInProgram])
+  const goNext = useCallback(() => {
+    if (currentIdx < planosInProgram.length - 1) setSelectedKey(planosInProgram[currentIdx + 1].id)
+  }, [currentIdx, planosInProgram])
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!e.altKey) return
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); goPrev() }
+      if (e.key === 'ArrowRight') { e.preventDefault(); goNext() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [goPrev, goNext])
+
+  // ── Health indicator ───────────────────────────────────────
+  const healthInput = useMemo((): HealthInput => {
+    const total     = planLeaves.length
+    const emAtraso  = planLeaves.filter(a => leafStatus(a, TODAY) === 'Em atraso').length
+    const avgPct    = total > 0 ? planLeaves.reduce((s, a) => s + a.pct, 0) / total : 0
+    const avgPrev   = total > 0 ? planLeaves.reduce((s, a) => s + leafPctPrev(a, TODAY), 0) / total : 0
+    const attItems  = entry?.attention_items ?? []
+    const attOpen   = attItems.filter(i => {
+      const s = (i.status ?? '').toLowerCase()
+      return s !== 'concluído' && s !== 'concluída'
+    }).length
+    return {
+      execDelay:     Math.max(0, avgPrev - avgPct),
+      delayedPct:    total > 0 ? (emAtraso / total) * 100 : 0,
+      criticalRisks: planRisks.filter(r => r.impact * r.probability > thresholds.high).length,
+      highRisks:     planRisks.filter(r => {
+        const g = r.impact * r.probability
+        return g > thresholds.medium && g <= thresholds.high
+      }).length,
+      attentionOpen: attOpen,
+    }
+  }, [planLeaves, planRisks, entry, thresholds])
+
+  const health = useMemo(
+    () => computeHealth(healthInput, healthConfig),
+    [healthInput, healthConfig],
+  )
+
+  // ── Risk KPIs ──────────────────────────────────────────────
+  const riskKpis = useMemo(() => ({
+    total:     planRisks.length,
+    critical:  planRisks.filter(r => r.impact * r.probability > thresholds.high).length,
+    open:      planRisks.filter(r => {
+      const s = r.status.toLowerCase()
+      return s !== 'fechado' && s !== 'mitigado'
+    }).length,
+    mitigated: planRisks.filter(r => {
+      const s = r.status.toLowerCase()
+      return s === 'fechado' || s === 'mitigado'
+    }).length,
+  }), [planRisks, thresholds])
+
   // ── Filter old completed commitments ──────────────────────
   const { visibleCommitments, hiddenCommitmentsCount } = useMemo(() => {
     const items = entry?.commitments_items ?? []
@@ -465,9 +539,27 @@ export default function PontoSituacao() {
         </div>
       ) : (
         <>
-          {/* Header bar — navy, plan path + latest date (today if no entry) */}
+          {/* Header bar — navy, health dot + plan path + nav arrows + date */}
           <div className="pds-header-bar">
+            <span
+              className={`pds-health pds-health-${health.level}`}
+              title={health.reasons.join('\n')}
+            />
             <span className="pds-header-path">{planLabel}</span>
+            <div className="pds-nav-arrows">
+              <button
+                className="pds-nav-btn"
+                onClick={goPrev}
+                disabled={currentIdx <= 0}
+                title="Plano anterior (Alt+←)"
+              >←</button>
+              <button
+                className="pds-nav-btn"
+                onClick={goNext}
+                disabled={currentIdx >= planosInProgram.length - 1}
+                title="Plano seguinte (Alt+→)"
+              >→</button>
+            </div>
             <span className="pds-header-date">{fmtDate(entry?.updated_at ?? TODAY)}</span>
           </div>
 
@@ -536,6 +628,25 @@ export default function PontoSituacao() {
             {planRisks.length === 0 ? (
               <p className="pds-empty">Sem riscos identificados para este plano.</p>
             ) : (
+              <>
+                <div className="pds-risk-kpis">
+                  <div className="pds-risk-kpi">
+                    <div className="pds-risk-kpi-label">Total</div>
+                    <div className="pds-risk-kpi-value">{riskKpis.total}</div>
+                  </div>
+                  <div className="pds-risk-kpi">
+                    <div className="pds-risk-kpi-label">Críticos</div>
+                    <div className="pds-risk-kpi-value" style={{ color: 'var(--red)' }}>{riskKpis.critical}</div>
+                  </div>
+                  <div className="pds-risk-kpi">
+                    <div className="pds-risk-kpi-label">Abertos</div>
+                    <div className="pds-risk-kpi-value" style={{ color: 'var(--amber)' }}>{riskKpis.open}</div>
+                  </div>
+                  <div className="pds-risk-kpi">
+                    <div className="pds-risk-kpi-label">Mitigados</div>
+                    <div className="pds-risk-kpi-value" style={{ color: 'var(--green)' }}>{riskKpis.mitigated}</div>
+                  </div>
+                </div>
               <div className="pds-risks-split" onClick={e => { if (e.target === e.currentTarget) setSelectedRiskIds([]) }}>
                 <RiskMatrix
                   risks={planRisks}
@@ -552,6 +663,7 @@ export default function PontoSituacao() {
                   onSelect={handleSelectRisk}
                 />
               </div>
+              </>
             )}
           </Card>
         </>

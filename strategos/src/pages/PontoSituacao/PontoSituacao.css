@@ -44,6 +44,20 @@
     font-size: 13px;
   }
 
+  /* ── Health semaphore dot ─────────────────────────────────────── */
+  .pds-health {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    cursor: help;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.3);
+  }
+  .pds-health-green { background: #22c55e; }
+  .pds-health-amber { background: #f59e0b; }
+  .pds-health-red   { background: #ef4444; }
+
   /* ── Header bar — navy bg ────────────────────────────────────── */
   .pds-header-bar {
     display: flex;
@@ -69,6 +83,34 @@
     color: rgba(255,255,255,0.75);
     white-space: nowrap;
     flex-shrink: 0;
+  }
+
+  /* ── Plan navigation arrows ──────────────────────────────────── */
+  .pds-nav-arrows {
+    display: inline-flex;
+    gap: 4px;
+    margin-right: 4px;
+  }
+
+  .pds-nav-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    padding: 4px 10px;
+    border-radius: var(--r);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    transition: background 100ms ease;
+  }
+
+  .pds-nav-btn:hover:not(:disabled) {
+    background: rgba(255,255,255,0.2);
+  }
+
+  .pds-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
   }
 
   /* ── KPI cards top grid (2 cards side-by-side) ──────────────── */
@@ -194,6 +236,35 @@
     padding: 8px 0 2px;
     margin: 8px 0 0;
     border-top: 1px solid var(--border);
+  }
+
+  /* ── Risk KPI bar ────────────────────────────────────────────── */
+  .pds-risk-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 12px 0 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .pds-risk-kpi {
+    text-align: center;
+  }
+
+  .pds-risk-kpi-label {
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .pds-risk-kpi-value {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--navy);
   }
 
   /* ── Risks split layout ──────────────────────────────────────── */

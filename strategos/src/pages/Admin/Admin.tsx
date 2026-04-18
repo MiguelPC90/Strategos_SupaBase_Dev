@@ -8,6 +8,10 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { usePrograms } from '../../hooks/usePrograms'
 import { gradeStyle, type RiskThresholds, DEFAULT_THRESHOLDS } from '../../lib/riskColors'
+import {
+  DEFAULT_HEALTH_CONFIG, HEALTH_METRIC_LABELS,
+  type HealthConfig, type HealthBlock, type HealthMetric,
+} from '../../lib/healthRules'
 import type { Program, Eixo, Plano, Profile, Person, Snapshot, UserRole } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
@@ -39,7 +43,7 @@ const SECTIONS: Section[] = [
 ]
 
 // ── Section 1: Geral ───────────────────────────────────────────
-const CONFIG_KEYS = ['client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date', 'status_delay_threshold', 'status_delay_threshold_aggregates', 'status_delay_threshold_leaves', 'pds_hide_completed_days'] as const
+const CONFIG_KEYS = ['client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date', 'status_delay_threshold', 'status_delay_threshold_aggregates', 'status_delay_threshold_leaves', 'pds_hide_completed_days', 'health_rules'] as const
 
 function AdminGeral() {
   const { showToast } = useToast()
@@ -50,6 +54,7 @@ function AdminGeral() {
   const [delayThreshold,       setDelayThreshold]       = useState(20)
   const [delayThresholdLeaves, setDelayThresholdLeaves] = useState(0)
   const [hideCompletedDays,    setHideCompletedDays]    = useState(90)
+  const [healthConfig,         setHealthConfig]         = useState<HealthConfig>(DEFAULT_HEALTH_CONFIG)
   const [loading,    setLoading]    = useState(true)
   const [saving,     setSaving]     = useState(false)
   const [uploading,  setUploading]  = useState(false)
@@ -76,6 +81,10 @@ function AdminGeral() {
         setDelayThresholdLeaves(parseInt(map['status_delay_threshold_leaves'] ?? '0') || 0)
         const hcd = parseInt(map['pds_hide_completed_days'] ?? '')
         if (!isNaN(hcd)) setHideCompletedDays(hcd)
+        if (map['health_rules']) {
+          try { setHealthConfig({ ...DEFAULT_HEALTH_CONFIG, ...JSON.parse(map['health_rules']) }) }
+          catch { /* keep defaults */ }
+        }
       })
       .catch(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -91,6 +100,7 @@ function AdminGeral() {
         { config_key: 'status_delay_threshold_aggregates', data: String(delayThreshold) },
         { config_key: 'status_delay_threshold_leaves',     data: String(delayThresholdLeaves) },
         { config_key: 'pds_hide_completed_days',           data: String(hideCompletedDays) },
+        { config_key: 'health_rules',                      data: JSON.stringify(healthConfig) },
       ]
       await Promise.all(
         pairs.map(p => supabase.from('app_config').upsert(p, { onConflict: 'config_key' }))
@@ -271,7 +281,87 @@ function AdminGeral() {
         </div>
       </Card>
 
+      <Card title="Limiares de Saúde do Plano">
+        <p className="adm-section-desc">
+          Regras usadas para calcular o semáforo de saúde no cabeçalho do Ponto de Situação.
+        </p>
+        <div className="adm-health-blocks">
+          <HealthBlockEditor
+            color="red"
+            label="Crítico"
+            block={healthConfig.red}
+            onChange={b => setHealthConfig(c => ({ ...c, red: b }))}
+          />
+          <HealthBlockEditor
+            color="amber"
+            label="Aviso"
+            block={healthConfig.amber}
+            onChange={b => setHealthConfig(c => ({ ...c, amber: b }))}
+          />
+        </div>
+      </Card>
+
     </>
+  )
+}
+
+// ── Health block editor ────────────────────────────────────────
+interface HealthBlockEditorProps {
+  color: 'red' | 'amber'
+  label: string
+  block: HealthBlock
+  onChange: (b: HealthBlock) => void
+}
+
+function HealthBlockEditor({ color, label, block, onChange }: HealthBlockEditorProps) {
+  const dot = color === 'red' ? '🔴' : '🟡'
+
+  function setOperator(op: 'OR' | 'AND') {
+    onChange({ ...block, operator: op })
+  }
+
+  function setRule(metric: HealthMetric, patch: Partial<{ enabled: boolean; threshold: number }>) {
+    onChange({
+      ...block,
+      rules: block.rules.map(r => r.metric === metric ? { ...r, ...patch } : r),
+    })
+  }
+
+  return (
+    <div className="adm-health-block">
+      <div className="adm-health-block-header">
+        <span className="adm-health-block-title">{dot} {label}</span>
+        <div className="adm-health-op-toggle">
+          <button
+            className={`adm-health-op-btn${block.operator === 'OR' ? ' active' : ''}`}
+            onClick={() => setOperator('OR')}
+          >OU</button>
+          <button
+            className={`adm-health-op-btn${block.operator === 'AND' ? ' active' : ''}`}
+            onClick={() => setOperator('AND')}
+          >E</button>
+        </div>
+      </div>
+      {block.rules.map(rule => (
+        <div key={rule.metric} className="adm-health-rule-row">
+          <input
+            type="checkbox"
+            checked={rule.enabled}
+            onChange={e => setRule(rule.metric, { enabled: e.target.checked })}
+          />
+          <span className="adm-health-rule-label">{HEALTH_METRIC_LABELS[rule.metric]}</span>
+          <input
+            className="adm-input adm-health-threshold-input"
+            type="number"
+            min={0}
+            step={1}
+            value={rule.threshold}
+            disabled={!rule.enabled}
+            onChange={e => setRule(rule.metric, { threshold: parseInt(e.target.value) || 0 })}
+          />
+        </div>
+      ))}
+    </div>
   )
 }
 
