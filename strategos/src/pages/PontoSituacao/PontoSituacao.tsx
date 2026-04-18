@@ -539,14 +539,16 @@ export default function PontoSituacao() {
         </div>
       ) : (
         <>
-          {/* Header bar — navy, health dot + plan path + nav arrows + date */}
-          <div className="pds-header-bar">
-            <span
-              className={`pds-health pds-health-${health.level}`}
-              title={health.reasons.join('\n')}
-            />
-            <span className="pds-header-path">{planLabel}</span>
-            <div className="pds-nav-arrows">
+          {/* Header — 3-zone: left (health + name), center (nav), right (date) */}
+          <div className="pds-header">
+            <div className="pds-header-left">
+              <span
+                className={`pds-health pds-health-${health.level}`}
+                title={health.reasons.join('\n')}
+              />
+              <span className="pds-plan-name">{planLabel}</span>
+            </div>
+            <div className="pds-header-nav">
               <button
                 className="pds-nav-btn"
                 onClick={goPrev}
@@ -563,7 +565,7 @@ export default function PontoSituacao() {
             <span className="pds-header-date">{fmtDate(entry?.updated_at ?? TODAY)}</span>
           </div>
 
-          {/* KPI cards — replicated from Dashboard (Resumo Executivo) */}
+          {/* KPI cards — 3-card top row */}
           <div className="pds-kpi-grid">
             <Card title="Dados Gerais">
               <div className="kpi-2col">
@@ -598,6 +600,18 @@ export default function PontoSituacao() {
                 </div>
               </div>
             </Card>
+
+            <Card
+              title="Riscos"
+              actions={<span className="pds-kpi-risk-active">{riskKpis.open} activos</span>}
+            >
+              <div className="kpi-2col">
+                <KpiCard label="Total"     value={riskKpis.total}     />
+                <KpiCard label="Críticos"  value={riskKpis.critical}  color="red"   />
+                <KpiCard label="Abertos"   value={riskKpis.open}      color="amber" />
+                <KpiCard label="Mitigados" value={riskKpis.mitigated} color="green" />
+              </div>
+            </Card>
           </div>
 
           {/* 2×2 card grid */}
@@ -623,30 +637,11 @@ export default function PontoSituacao() {
             </Card>
           </div>
 
-          {/* Risks — split layout: heatmap matrix + detail table */}
+          {/* Risks — matrix + detail table (KPIs moved to top row card) */}
           <Card title="Riscos">
             {planRisks.length === 0 ? (
               <p className="pds-empty">Sem riscos identificados para este plano.</p>
             ) : (
-              <>
-                <div className="pds-risk-kpis">
-                  <div className="pds-risk-kpi">
-                    <div className="pds-risk-kpi-label">Total</div>
-                    <div className="pds-risk-kpi-value">{riskKpis.total}</div>
-                  </div>
-                  <div className="pds-risk-kpi">
-                    <div className="pds-risk-kpi-label">Críticos</div>
-                    <div className="pds-risk-kpi-value" style={{ color: 'var(--red)' }}>{riskKpis.critical}</div>
-                  </div>
-                  <div className="pds-risk-kpi">
-                    <div className="pds-risk-kpi-label">Abertos</div>
-                    <div className="pds-risk-kpi-value" style={{ color: 'var(--amber)' }}>{riskKpis.open}</div>
-                  </div>
-                  <div className="pds-risk-kpi">
-                    <div className="pds-risk-kpi-label">Mitigados</div>
-                    <div className="pds-risk-kpi-value" style={{ color: 'var(--green)' }}>{riskKpis.mitigated}</div>
-                  </div>
-                </div>
               <div className="pds-risks-split" onClick={e => { if (e.target === e.currentTarget) setSelectedRiskIds([]) }}>
                 <RiskMatrix
                   risks={planRisks}
@@ -663,7 +658,6 @@ export default function PontoSituacao() {
                   onSelect={handleSelectRisk}
                 />
               </div>
-              </>
             )}
           </Card>
         </>

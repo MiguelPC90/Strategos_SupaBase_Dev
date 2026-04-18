@@ -58,18 +58,26 @@
   .pds-health-amber { background: #f59e0b; }
   .pds-health-red   { background: #ef4444; }
 
-  /* ── Header bar — navy bg ────────────────────────────────────── */
-  .pds-header-bar {
+  /* ── Header — 3-zone navy bar ───────────────────────────────── */
+  .pds-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
     background: var(--navy);
-    border-radius: var(--r);
-    padding: 10px 16px;
+    border-radius: var(--rl);
+    padding: 12px 20px;
   }
 
-  .pds-header-path {
+  .pds-header-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .pds-plan-name {
     font-size: 13px;
     font-weight: 600;
     color: #fff;
@@ -78,20 +86,24 @@
     white-space: nowrap;
   }
 
+  .pds-header-nav {
+    flex: 0 0 auto;
+    width: 80px;
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+  }
+
   .pds-header-date {
+    flex: 0 0 auto;
+    width: 100px;
     font-size: 12px;
     color: rgba(255,255,255,0.75);
     white-space: nowrap;
-    flex-shrink: 0;
+    text-align: right;
   }
 
   /* ── Plan navigation arrows ──────────────────────────────────── */
-  .pds-nav-arrows {
-    display: inline-flex;
-    gap: 4px;
-    margin-right: 4px;
-  }
-
   .pds-nav-btn {
     background: rgba(255,255,255,0.1);
     border: 1px solid rgba(255,255,255,0.2);
@@ -113,11 +125,17 @@
     cursor: not-allowed;
   }
 
-  /* ── KPI cards top grid (2 cards side-by-side) ──────────────── */
+  /* ── KPI cards top grid (3 cards: Geral | Concretização | Riscos) ── */
   .pds-kpi-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1.5fr 1fr;
     gap: 14px;
+  }
+
+  .pds-kpi-risk-active {
+    font-size: 12px;
+    color: var(--text3);
+    font-weight: 400;
   }
 
   /* ── 2×2 card grid ───────────────────────────────────────────── */
@@ -236,35 +254,6 @@
     padding: 8px 0 2px;
     margin: 8px 0 0;
     border-top: 1px solid var(--border);
-  }
-
-  /* ── Risk KPI bar ────────────────────────────────────────────── */
-  .pds-risk-kpis {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    padding: 12px 0 16px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 16px;
-  }
-
-  .pds-risk-kpi {
-    text-align: center;
-  }
-
-  .pds-risk-kpi-label {
-    font-size: 10px;
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-weight: 600;
-    margin-bottom: 4px;
-  }
-
-  .pds-risk-kpi-value {
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--navy);
   }
 
   /* ── Risks split layout ──────────────────────────────────────── */
