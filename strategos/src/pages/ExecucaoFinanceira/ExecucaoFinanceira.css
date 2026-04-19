@@ -308,7 +308,6 @@
   /* ── Estado badge fixed width ───────────────────────────────── */
   .ef-badge-estado {
     display: inline-block;
-    width: 110px;
     text-align: center;
     padding: 3px 8px;
     border-radius: 100px;
@@ -408,4 +407,16 @@
   }
 
   .ef-th-sort:hover { color: var(--navy); }
+
+  /* ── Fixed-layout detail tables ──────────────────────────── */
+  .ef-detail-table {
+    table-layout: fixed;
+  }
+
+  .ef-detail-table th,
+  .ef-detail-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }

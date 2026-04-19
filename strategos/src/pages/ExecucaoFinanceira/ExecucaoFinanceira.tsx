@@ -753,7 +753,17 @@ export default function ExecucaoFinanceira() {
                 catRows.length === 0 ? (
                   <p className="ef-empty">Sem linhas orçamentais.</p>
                 ) : (
-                  <table className="ef-table">
+                  <table className="ef-table ef-detail-table">
+                    <colgroup>
+                      <col style={{ width: '22%' }} />
+                      <col style={{ width: '8%' }} />
+                      <col style={{ width: '12%' }} />
+                      <col style={{ width: '12%' }} />
+                      <col style={{ width: '12%' }} />
+                      <col style={{ width: '12%' }} />
+                      <col style={{ width: '12%' }} />
+                      <col style={{ width: '10%' }} />
+                    </colgroup>
                     <thead>
                       <tr>
                         <th>Rubrica</th>
@@ -763,13 +773,13 @@ export default function ExecucaoFinanceira() {
                         <th className="ef-th-r">Facturado</th>
                         <th className="ef-th-r">Pago</th>
                         <th className="ef-th-r">Disponível</th>
-                        <th style={{ minWidth: 130 }}>% Facturado</th>
+                        <th>% Facturado</th>
                       </tr>
                     </thead>
                     <tbody>
                       {catRows.map(r => (
                         <tr key={r.cat}>
-                          <td>{r.cat}</td>
+                          <td title={r.cat}>{r.cat}</td>
                           <td>
                             <span className={`ef-tipo-badge ${r.isCapex ? 'ef-tipo-badge--capex' : 'ef-tipo-badge--opex'}`}>
                               {r.isCapex ? 'CAPEX' : 'OPEX'}
@@ -826,7 +836,19 @@ export default function ExecucaoFinanceira() {
                   {sortedCtrRows.length === 0 ? (
                     <p className="ef-empty">Sem contratos.</p>
                   ) : (
-                    <table className="ef-table">
+                    <table className="ef-table ef-detail-table">
+                      <colgroup>
+                        <col style={{ width: '10%' }} />
+                        <col style={{ width: '14%' }} />
+                        <col style={{ width: '7%' }} />
+                        <col style={{ width: '6%' }} />
+                        <col style={{ width: '12%' }} />
+                        <col style={{ width: '12%' }} />
+                        <col style={{ width: '12%' }} />
+                        <col style={{ width: '9%' }} />
+                        <col style={{ width: '9%' }} />
+                        <col style={{ width: '9%' }} />
+                      </colgroup>
                       <thead>
                         <tr>
                           <th className="ef-th-sort" onClick={() => handleSort('supplier')}>Fornecedor{arrow('supplier')}</th>
@@ -835,10 +857,10 @@ export default function ExecucaoFinanceira() {
                           <th className="ef-th-sort" onClick={() => handleSort('currency')}>Moeda{arrow('currency')}</th>
                           <th className="ef-th-r ef-th-sort" onClick={() => handleSort('total_amount')}>Comprometido{arrow('total_amount')}</th>
                           <th className="ef-th-r ef-th-sort" onClick={() => handleSort('fact')}>Facturado{arrow('fact')}</th>
-                          <th style={{ minWidth: 130 }}>% Facturado</th>
-                          <th className="ef-th-sort" onClick={() => handleSort('award_date')}>Data Adj.{arrow('award_date')}</th>
-                          <th className="ef-th-sort" onClick={() => handleSort('end_date')}>Data Fim{arrow('end_date')}</th>
-                          <th>Estado</th>
+                          <th>% Facturado</th>
+                          <th className="ef-th-c ef-th-sort" onClick={() => handleSort('award_date')}>Data Adj.{arrow('award_date')}</th>
+                          <th className="ef-th-c ef-th-sort" onClick={() => handleSort('end_date')}>Data Fim{arrow('end_date')}</th>
+                          <th className="ef-th-c">Estado</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -846,8 +868,8 @@ export default function ExecucaoFinanceira() {
                           const { label, variant } = contractEstado(pct)
                           return (
                             <tr key={c.id}>
-                              <td>{c.supplier}</td>
-                              <td>{c.category}</td>
+                              <td title={c.supplier}>{c.supplier}</td>
+                              <td title={c.category}>{c.category}</td>
                               <td>
                                 <span className={`ef-tipo-badge ${isCapex ? 'ef-tipo-badge--capex' : 'ef-tipo-badge--opex'}`}>
                                   {isCapex ? 'CAPEX' : 'OPEX'}
@@ -857,9 +879,9 @@ export default function ExecucaoFinanceira() {
                               <td className="ef-td-r">{fmt(c.total_amount)}</td>
                               <td className="ef-td-r">{fmt(fact)}</td>
                               <td><ProgressCell pct={pct} /></td>
-                              <td>{fmtDate(c.award_date)}</td>
-                              <td>{fmtDate(c.end_date)}</td>
-                              <td>
+                              <td className="ef-td-c">{fmtDate(c.award_date)}</td>
+                              <td className="ef-td-c">{fmtDate(c.end_date)}</td>
+                              <td className="ef-td-c">
                                 <span className={`ef-badge-estado ef-badge-estado--${variant}`}>{label}</span>
                               </td>
                             </tr>
