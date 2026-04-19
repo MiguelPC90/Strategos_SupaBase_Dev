@@ -684,7 +684,7 @@ function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts
                     <td>
                       {(() => {
                         const s = invoiceStatusStyle(inv.status)
-                        return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: s.bg, color: s.color, whiteSpace: 'nowrap' }}>{s.label}</span>
+                        return <span className="status-pill" style={{ background: s.bg, color: s.color }}>{s.label}</span>
                       })()}
                     </td>
                     <td style={{ textAlign: 'center' }}>

@@ -110,5 +110,15 @@
   }
   .styled-select-sm:hover    { border-color: var(--navy); }
   .styled-select-sm:focus    { outline: none; border-color: var(--navy); box-shadow: 0 0 0 2px rgba(0,46,94,0.1); }
-  .styled-select-sm:disabled { opacity: 0.6; cursor: not-allowed; }
+  /* ── Shared status pill (invoice, contract badges) ─────────── */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 88px;
+    padding: 3px 10px;
+    border-radius: var(--r);
+    font-size: 11px;
+    font-weight: 600;
+  }
 }

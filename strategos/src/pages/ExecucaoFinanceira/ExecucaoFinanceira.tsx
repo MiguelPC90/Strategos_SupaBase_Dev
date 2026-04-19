@@ -454,7 +454,7 @@ export default function ExecucaoFinanceira() {
                         <td className="ef-td-r">{fmt(c.total_amount)}</td>
                         <td className="ef-td-r">{fmt(fact)}</td>
                         <td className="ef-td-c">{fmtPct(pct)}</td>
-                        <td><span className={`ef-badge-estado ef-badge-estado--${variant}`}>{label}</span></td>
+                        <td><span className={`status-pill ef-badge-estado ef-badge-estado--${variant}`}>{label}</span></td>
                       </tr>
                     )
                   })}
