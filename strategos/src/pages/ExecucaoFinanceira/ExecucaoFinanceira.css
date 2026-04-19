@@ -147,14 +147,6 @@
     line-height: 1.5;
   }
 
-  .ef-kpi-sub-deviation {
-    font-size: 12px;
-    font-weight: 500;
-    margin-top: 2px;
-  }
-  .ef-kpi-sub-deviation.negative { color: var(--green); }
-  .ef-kpi-sub-deviation.positive { color: var(--red); }
-
   /* ── Alert badges on Facturado card ────────────────────────── */
   .ef-alert-badges {
     position: absolute;

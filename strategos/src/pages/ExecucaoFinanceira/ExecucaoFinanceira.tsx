@@ -289,11 +289,6 @@ export default function ExecucaoFinanceira() {
     return { overdueCount, dueSoonCount }
   }, [invs, alertThresholds])
 
-  // ── Deviation for Disponível card ─────────────────────────────
-  const desvio     = kpiOrc > 0 ? (kpiAdj / kpiOrc - 1) * 100 : 0
-  const desvioStr  = (desvio > 0 ? '+' : '') + fmtPct(desvio)
-  const desvioClass = desvio > 0 ? 'positive' : 'negative'
-
   // ── CAPEX / OPEX pie ─────────────────────────────────────────
   const pieData = useMemo<PieEntry[]>(() => [
     { name: 'CAPEX', value: lines.filter(l =>  l.capex).reduce((s, l) => s + sumByYears(l.values, selectedYears), 0), fill: '#185FA5' },
@@ -431,10 +426,7 @@ export default function ExecucaoFinanceira() {
                 {fmt(kpiDisp)}
               </div>
               {kpiOrc > 0 && (
-                <>
-                  <div className="ef-kpi-sub">{fmtPct(kpiDisp / kpiOrc * 100)} do orçamento</div>
-                  <div className={`ef-kpi-sub-deviation ${desvioClass}`}>Desvio: {desvioStr}</div>
-                </>
+                <div className="ef-kpi-sub">{fmtPct(kpiDisp / kpiOrc * 100)} do orçamento</div>
               )}
             </div>
           </div>
