@@ -7,7 +7,7 @@ import {
   CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import Card from '../../components/Card/Card'
-import KpiCard from '../../components/KpiCard/KpiCard'
+import { invoiceAlert } from '../../lib/invoiceHelpers'
 import { useFinancials } from '../../hooks/useFinancials'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
@@ -123,6 +123,8 @@ export default function ExecucaoFinanceira() {
   const [tipoFilter,          setTipoFilter]          = useState<TipoFilter>('todos')
   const [currSymbol,          setCurrSymbol]          = useState('€')
   const [mgmtYears,           setMgmtYears]           = useState<string[]>([])
+  const [invoiceAlertFilter,  setInvoiceAlertFilter]  = useState<'overdue' | 'due_soon' | null>(null)
+  const [alertThresholds,     setAlertThresholds]     = useState({ overdue: 100, due_soon: 85 })
 
   // Initialise program from global filter or first program
   useEffect(() => {
@@ -143,6 +145,22 @@ export default function ExecucaoFinanceira() {
   useEffect(() => {
     supabase.from('currencies').select('symbol').eq('is_default', true).limit(1)
       .then(({ data }) => { if (data?.[0]?.symbol) setCurrSymbol(data[0].symbol) })
+  }, [])
+
+  // Load invoice alert thresholds from app_config
+  useEffect(() => {
+    supabase
+      .from('app_config')
+      .select('config_key, config_value')
+      .in('config_key', ['invoice_alert_overdue', 'invoice_alert_due_soon'])
+      .then(({ data }) => {
+        if (!data) return
+        const m = Object.fromEntries(data.map(r => [r.config_key, Number(r.config_value)]))
+        setAlertThresholds({
+          overdue:  m.invoice_alert_overdue  ?? 100,
+          due_soon: m.invoice_alert_due_soon ?? 85,
+        })
+      })
   }, [])
 
   // Fetch management years for the selected program
@@ -250,13 +268,31 @@ export default function ExecucaoFinanceira() {
   )
   const kpiAdj     = useMemo(() => ctrs.reduce((s, c) => s + c.total_amount, 0), [ctrs])
   const kpiFact    = useMemo(
-    () => invs.filter(i => i.status !== 'Rejeitada').reduce((s, i) => s + i.amount, 0),
+    () => invs
+      .filter(i => i.status === 'Recebida' || i.status === 'Aprovada' || i.status === 'Paga')
+      .reduce((s, i) => s + i.amount, 0),
     [invs]
   )
   const kpiPago    = useMemo(() => invs.filter(i => i.status === 'Paga').reduce((s, i) => s + i.amount, 0), [invs])
   const kpiPorFact = kpiAdj - kpiFact
   const kpiDisp    = kpiOrc - kpiAdj
   const fmt        = (v: number) => fmtEur(v, currSymbol)
+
+  // ── Alert counts ──────────────────────────────────────────────
+  const { overdueCount, dueSoonCount } = useMemo(() => {
+    let overdueCount = 0, dueSoonCount = 0
+    for (const inv of invs) {
+      const a = invoiceAlert(inv, alertThresholds)
+      if (a === 'overdue')  overdueCount++
+      if (a === 'due_soon') dueSoonCount++
+    }
+    return { overdueCount, dueSoonCount }
+  }, [invs, alertThresholds])
+
+  // ── Deviation for Disponível card ─────────────────────────────
+  const desvio     = kpiOrc > 0 ? (kpiAdj / kpiOrc - 1) * 100 : 0
+  const desvioStr  = (desvio > 0 ? '+' : '') + fmtPct(desvio)
+  const desvioClass = desvio > 0 ? 'positive' : 'negative'
 
   // ── CAPEX / OPEX pie ─────────────────────────────────────────
   const pieData = useMemo<PieEntry[]>(() => [
@@ -374,39 +410,80 @@ export default function ExecucaoFinanceira() {
         <div className="ef-empty-page">Sem dados financeiros carregados.</div>
       ) : (
         <>
-          {/* KPI row — 6 cards */}
-          <div className="ef-kpi-row">
-            <KpiCard label="Orçamento Total" value={fmt(kpiOrc)} color="navy" />
-            <KpiCard
-              label="Adjudicado"
-              value={fmt(kpiAdj)}
-              subtitle={kpiOrc > 0 ? fmtPct(kpiAdj / kpiOrc * 100) + ' do orçamento' : undefined}
-              color="blue"
-            />
-            <KpiCard
-              label="Facturado"
-              value={fmt(kpiFact)}
-              subtitle={kpiAdj > 0 ? fmtPct(kpiFact / kpiAdj * 100) + ' do adjudicado' : undefined}
-              color="amber"
-            />
-            <KpiCard
-              label="Pago"
-              value={fmt(kpiPago)}
-              subtitle={kpiFact > 0 ? fmtPct(kpiPago / kpiFact * 100) + ' do facturado' : undefined}
-              color="green"
-            />
-            <KpiCard
-              label="Por Facturar"
-              value={fmt(Math.max(0, kpiPorFact))}
-              subtitle={kpiAdj > 0 ? fmtPct(Math.max(0, kpiPorFact) / kpiAdj * 100) + ' do adjudicado' : undefined}
-              color="red"
-            />
-            <KpiCard
-              label="Orçamento Disponível"
-              value={fmt(Math.max(0, kpiDisp))}
-              subtitle={kpiOrc > 0 ? fmtPct(Math.max(0, kpiDisp) / kpiOrc * 100) + ' do orçamento' : undefined}
-              color="text"
-            />
+          {/* ── Row 1: Primary KPIs ──────────────────────────────── */}
+          <div className="ef-kpi-row-primary">
+            <div className="ef-kpi-card-primary">
+              <div className="ef-kpi-label">Orçamento Total</div>
+              <div className="ef-kpi-value-primary" style={{ color: 'var(--navy)' }}>{fmt(kpiOrc)}</div>
+            </div>
+
+            <div className="ef-kpi-card-primary">
+              <div className="ef-kpi-label">Comprometido</div>
+              <div className="ef-kpi-value-primary" style={{ color: 'var(--blue)' }}>{fmt(kpiAdj)}</div>
+              {kpiOrc > 0 && (
+                <div className="ef-kpi-sub">{fmtPct(kpiAdj / kpiOrc * 100)} do orçamento</div>
+              )}
+            </div>
+
+            <div className="ef-kpi-card-primary">
+              <div className="ef-kpi-label">Disponível</div>
+              <div className="ef-kpi-value-primary" style={{ color: kpiDisp >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                {fmt(kpiDisp)}
+              </div>
+              {kpiOrc > 0 && (
+                <>
+                  <div className="ef-kpi-sub">{fmtPct(kpiDisp / kpiOrc * 100)} do orçamento</div>
+                  <div className={`ef-kpi-sub-deviation ${desvioClass}`}>Desvio: {desvioStr}</div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ── Row 2: Secondary KPIs ─────────────────────────────── */}
+          <div className="ef-kpi-row-secondary">
+            <div className="ef-kpi-card-secondary">
+              {(overdueCount > 0 || dueSoonCount > 0) && (
+                <div className="ef-alert-badges">
+                  {overdueCount > 0 && (
+                    <button
+                      className={`ef-alert-badge overdue${invoiceAlertFilter === 'overdue' ? ' active' : ''}`}
+                      onClick={() => setInvoiceAlertFilter(f => f === 'overdue' ? null : 'overdue')}
+                    >
+                      {overdueCount} atrasadas
+                    </button>
+                  )}
+                  {dueSoonCount > 0 && (
+                    <button
+                      className={`ef-alert-badge due-soon${invoiceAlertFilter === 'due_soon' ? ' active' : ''}`}
+                      onClick={() => setInvoiceAlertFilter(f => f === 'due_soon' ? null : 'due_soon')}
+                    >
+                      {dueSoonCount} a vencer
+                    </button>
+                  )}
+                </div>
+              )}
+              <div className="ef-kpi-label">Facturado</div>
+              <div className="ef-kpi-value-secondary" style={{ color: 'var(--amber)' }}>{fmt(kpiFact)}</div>
+              {kpiAdj > 0 && (
+                <div className="ef-kpi-sub">{fmtPct(kpiFact / kpiAdj * 100)} do comprometido</div>
+              )}
+            </div>
+
+            <div className="ef-kpi-card-secondary">
+              <div className="ef-kpi-label">Pago</div>
+              <div className="ef-kpi-value-secondary" style={{ color: 'var(--green)' }}>{fmt(kpiPago)}</div>
+              {kpiFact > 0 && (
+                <div className="ef-kpi-sub">{fmtPct(kpiPago / kpiFact * 100)} do facturado</div>
+              )}
+            </div>
+
+            <div className="ef-kpi-card-secondary">
+              <div className="ef-kpi-label">Por Facturar</div>
+              <div className="ef-kpi-value-secondary" style={{ color: 'var(--text2)' }}>{fmt(kpiPorFact)}</div>
+              {kpiAdj > 0 && (
+                <div className="ef-kpi-sub">{fmtPct(kpiPorFact / kpiAdj * 100)} do comprometido</div>
+              )}
+            </div>
           </div>
 
           {/* Charts row */}
