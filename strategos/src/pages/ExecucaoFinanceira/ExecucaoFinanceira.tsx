@@ -210,10 +210,10 @@ export default function ExecucaoFinanceira() {
   )
   const kpiAdj  = useMemo(() => ctrs.reduce((s, c) => s + c.total_amount, 0), [ctrs])
   const kpiFact = useMemo(
-    () => invs.filter(i => i.status !== 'Anulada').reduce((s, i) => s + i.amount, 0),
+    () => invs.filter(i => i.status !== 'Rejeitada').reduce((s, i) => s + i.amount, 0),
     [invs]
   )
-  const kpiPago = useMemo(() => invs.filter(i => i.status === 'Pago').reduce((s, i) => s + i.amount, 0), [invs])
+  const kpiPago = useMemo(() => invs.filter(i => i.status === 'Paga').reduce((s, i) => s + i.amount, 0), [invs])
   const kpiPorFact = kpiAdj - kpiFact
   const kpiDisp    = kpiOrc - kpiAdj
   const fmt = (v: number) => fmtEur(v, currSymbol)
@@ -235,9 +235,9 @@ export default function ExecucaoFinanceira() {
       if (!ds) continue
       const key = ds.substring(0, 7)
       const row = map.get(key) ?? { p: 0, e: 0, o: 0 }
-      if (inv.status === 'Anulada') continue
-      if (inv.status === 'Pago') row.p += inv.amount
-      else if (inv.status === 'Recebida' || inv.status === 'Em pagamento') row.e += inv.amount
+      if (inv.status === 'Rejeitada') continue
+      if (inv.status === 'Paga') row.p += inv.amount
+      else if (inv.status === 'Recebida' || inv.status === 'Aprovada') row.e += inv.amount
       else row.o += inv.amount
       map.set(key, row)
     }
@@ -262,7 +262,7 @@ export default function ExecucaoFinanceira() {
 
   // ── Contract rows ─────────────────────────────────────────────
   const ctrRows = useMemo(() => ctrs.map(c => {
-    const fact    = invs.filter(i => (i.contract_id === c.id || i.app_contract_id === c.app_id) && i.status !== 'Anulada').reduce((s, i) => s + i.amount, 0)
+    const fact    = invs.filter(i => (i.contract_id === c.id || i.app_contract_id === c.app_id) && i.status !== 'Rejeitada').reduce((s, i) => s + i.amount, 0)
     const isCapex = catCapexMap.get(c.category) ?? false
     return { c, fact, pct: c.total_amount > 0 ? fact / c.total_amount * 100 : 0, isCapex }
   }), [ctrs, invs, catCapexMap])

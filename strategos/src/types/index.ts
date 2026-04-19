@@ -162,6 +162,13 @@ export interface FinContract {
 }
 
 // ── Financial — invoices ──────────────────────────────────────
+export type InvoiceStatus =
+  | 'Prevista'
+  | 'Recebida'
+  | 'Aprovada'
+  | 'Paga'
+  | 'Rejeitada'
+
 export interface FinInvoice {
   id: string
   pds_id: string | null
@@ -180,7 +187,7 @@ export interface FinInvoice {
   issue_date: string | null
   due_date: string | null
   payment_date: string | null
-  status: string
+  status: InvoiceStatus
   memo: string | null
   sort_order: number
 }

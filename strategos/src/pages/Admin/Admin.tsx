@@ -43,7 +43,7 @@ const SECTIONS: Section[] = [
 ]
 
 // ── Section 1: Geral ───────────────────────────────────────────
-const CONFIG_KEYS = ['client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date', 'status_delay_threshold', 'status_delay_threshold_aggregates', 'status_delay_threshold_leaves', 'pds_hide_completed_days', 'health_rules'] as const
+const CONFIG_KEYS = ['client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date', 'status_delay_threshold', 'status_delay_threshold_aggregates', 'status_delay_threshold_leaves', 'pds_hide_completed_days', 'health_rules', 'invoice_alert_overdue', 'invoice_alert_due_soon'] as const
 
 function AdminGeral() {
   const { showToast } = useToast()
@@ -55,6 +55,8 @@ function AdminGeral() {
   const [delayThresholdLeaves, setDelayThresholdLeaves] = useState(0)
   const [hideCompletedDays,    setHideCompletedDays]    = useState(90)
   const [healthConfig,         setHealthConfig]         = useState<HealthConfig>(DEFAULT_HEALTH_CONFIG)
+  const [invoiceOverdue,  setInvoiceOverdue]  = useState(100)
+  const [invoiceDueSoon,  setInvoiceDueSoon]  = useState(85)
   const [loading,    setLoading]    = useState(true)
   const [saving,     setSaving]     = useState(false)
   const [uploading,  setUploading]  = useState(false)
@@ -85,6 +87,10 @@ function AdminGeral() {
           try { setHealthConfig({ ...DEFAULT_HEALTH_CONFIG, ...JSON.parse(map['health_rules']) }) }
           catch { /* keep defaults */ }
         }
+        const iov = parseInt(map['invoice_alert_overdue']  ?? '')
+        const ids = parseInt(map['invoice_alert_due_soon'] ?? '')
+        if (!isNaN(iov)) setInvoiceOverdue(iov)
+        if (!isNaN(ids)) setInvoiceDueSoon(ids)
       })
       .catch(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -101,6 +107,8 @@ function AdminGeral() {
         { config_key: 'status_delay_threshold_leaves',     data: String(delayThresholdLeaves) },
         { config_key: 'pds_hide_completed_days',           data: String(hideCompletedDays) },
         { config_key: 'health_rules',                      data: JSON.stringify(healthConfig) },
+        { config_key: 'invoice_alert_overdue',             data: String(invoiceOverdue) },
+        { config_key: 'invoice_alert_due_soon',            data: String(invoiceDueSoon) },
       ]
       await Promise.all(
         pairs.map(p => supabase.from('app_config').upsert(p, { onConflict: 'config_key' }))
@@ -238,6 +246,46 @@ function AdminGeral() {
               />
               <span className="adm-help">
                 Compromissos anteriores concluídos há mais de X dias são ocultados no Ponto de Situação. Compromissos em aberto aparecem sempre.
+              </span>
+            </div>
+
+            <div className="adm-field">
+              <label className="adm-label">Alertas de Facturas</label>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label className="adm-label" style={{ fontWeight: 400, marginBottom: 4 }}>% atraso (ultrapassou prazo)</label>
+                  <input
+                    className="adm-input"
+                    type="number"
+                    min={50}
+                    max={200}
+                    step={5}
+                    value={invoiceOverdue}
+                    onChange={e => {
+                      const v = parseInt(e.target.value) || 100
+                      setInvoiceOverdue(v)
+                      if (invoiceDueSoon >= v) setInvoiceDueSoon(v - 5)
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="adm-label" style={{ fontWeight: 400, marginBottom: 4 }}>% a vencer (aviso)</label>
+                  <input
+                    className="adm-input"
+                    type="number"
+                    min={10}
+                    max={100}
+                    step={5}
+                    value={invoiceDueSoon}
+                    onChange={e => {
+                      const v = parseInt(e.target.value) || 85
+                      setInvoiceDueSoon(Math.min(v, invoiceOverdue - 5))
+                    }}
+                  />
+                </div>
+              </div>
+              <span className="adm-help">
+                % calculado sobre o prazo entre data de emissão e vencimento. ≥{invoiceOverdue}% = atrasada, ≥{invoiceDueSoon}% = a vencer.
               </span>
             </div>
 

@@ -13,6 +13,7 @@ import ProgressBar from '../../components/ProgressBar/ProgressBar'
 import Badge from '../../components/Badge/Badge'
 import Modal from '../../components/Modal/Modal'
 import type { FinBudgetLine, FinContract, FinInvoice } from '../../types/index'
+import { invoiceStatusStyle } from '../../lib/invoiceHelpers'
 
 // ── Types ──────────────────────────────────────────────────────────
 type Tab = 'orcamento' | 'contratos' | 'facturas'
@@ -75,7 +76,7 @@ const CURRENCY_FALLBACK: CurrencyOption[] = [
   { code: 'AOA', symbol: 'Kz' }, { code: 'MZN', symbol: 'MT' },
 ]
 const DOC_TYPES    = ['Factura', 'Recibo', 'Nota de Crédito', 'Pró-forma', 'Outro']
-const INV_STATUSES = ['Pendente', 'Aprovado', 'Paga', 'Anulada']
+const INV_STATUSES = ['Prevista', 'Recebida', 'Aprovada', 'Paga', 'Rejeitada']
 const TODAY = new Date().toISOString().slice(0, 10)
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -605,12 +606,6 @@ interface InvoicesTabProps {
   currencies: CurrencyOption[]
 }
 
-const INV_STATUS_COLOR: Record<string, string> = {
-  'Pendente':  'var(--text2)',
-  'Aprovado':  'var(--blue)',
-  'Paga':      'var(--green)',
-  'Anulada':   'var(--text3)',
-}
 
 function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts, currencies }: InvoicesTabProps) {
   const [statusFilter, setStatusFilter] = useState('Todos')
@@ -629,7 +624,7 @@ function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts
     [invoices, statusFilter])
 
   const isOverdue = (inv: FinInvoice) =>
-    !!inv.due_date && inv.due_date < TODAY && inv.status !== 'Paga' && inv.status !== 'Anulada'
+    !!inv.due_date && inv.due_date < TODAY && inv.status !== 'Paga' && inv.status !== 'Rejeitada'
 
   return (
     <div className="gf-invoices-wrap">
@@ -687,9 +682,10 @@ function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts
                     </td>
                     <td style={{ fontSize: 12, color: 'var(--text2)' }}>{fmtDate(inv.payment_date)}</td>
                     <td>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: INV_STATUS_COLOR[inv.status] ?? 'var(--text2)' }}>
-                        {inv.status}
-                      </span>
+                      {(() => {
+                        const s = invoiceStatusStyle(inv.status)
+                        return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: s.bg, color: s.color, whiteSpace: 'nowrap' }}>{s.label}</span>
+                      })()}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <InvRowMenu

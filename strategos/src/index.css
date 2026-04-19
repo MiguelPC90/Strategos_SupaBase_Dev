@@ -19,6 +19,10 @@
     --blue:    #185FA5;
     --red:     #A32D2D;
     --amber:   #854F0B;
+    --blue-bg:  #dce8f5;
+    --green-bg: #eaf2d4;
+    --amber-bg: #f5e8d0;
+    --red-bg:   #f5e0e0;
 
     /* Sidebar dimensions */
     --sidebar-w:     220px;
