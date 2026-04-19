@@ -57,8 +57,8 @@ interface MonthStatusBar {
 }
 interface BurnRatePoint {
   month: string
-  'Orçamento acumulado': number
-  'Executado acumulado': number
+  orcamento_acum: number
+  executado_acum: number
 }
 interface SupplierBar { name: string; value: number }
 
@@ -150,15 +150,15 @@ function BurnRateChart({ data, sym }: { data: BurnRatePoint[]; sym: string }) {
       <LineChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
         <XAxis dataKey="month" tickFormatter={fmtMonth} tick={{ fontSize: 10 }} />
-        <YAxis tickFormatter={(v: number) => compactNumber(v)} tick={{ fontSize: 10 }} width={44} />
+        <YAxis tickFormatter={(v: number) => compactNumber(v)} tick={{ fontSize: 10 }} width={44} domain={['auto', 'auto']} />
         <Tooltip
           formatter={(v) => fmtEur(v as number, sym)}
           labelFormatter={(l: string) => fmtMonth(l)}
           contentStyle={{ fontSize: 12 }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="top" />
-        <Line type="monotone" dataKey="Orçamento acumulado" stroke="#002E5E" strokeWidth={2} dot={false} />
-        <Line type="monotone" dataKey="Executado acumulado" stroke="#95BB42" strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="orcamento_acum" name="Orçamento acumulado" stroke="#002E5E" strokeWidth={2} connectNulls dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="executado_acum" name="Executado acumulado" stroke="#95BB42" strokeWidth={2} connectNulls dot={{ r: 3 }} />
       </LineChart>
     </ResponsiveContainer>
   )
@@ -460,7 +460,7 @@ export default function ExecucaoFinanceira() {
     return monthlyStatusData.map(({ month }) => {
       cumOrc  += monthlyBudget.get(month) ?? 0
       cumExec += monthlyExec.get(month)   ?? 0
-      return { month, 'Orçamento acumulado': Math.round(cumOrc), 'Executado acumulado': Math.round(cumExec) }
+      return { month, orcamento_acum: Math.round(cumOrc), executado_acum: Math.round(cumExec) }
     })
   }, [monthlyStatusData, lines, invs, selectedYears, yearOptions])
 
