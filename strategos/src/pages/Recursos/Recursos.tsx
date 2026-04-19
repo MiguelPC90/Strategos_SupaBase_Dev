@@ -2,8 +2,8 @@ import './Recursos.css'
 import { useState, useMemo, useEffect } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
-import KpiCard from '../../components/KpiCard/KpiCard'
 import Badge from '../../components/Badge/Badge'
+import MultiSelect from '../../components/MultiSelect/MultiSelect'
 import { useResources } from '../../hooks/useResources'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
@@ -12,7 +12,7 @@ import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import type { FteResource, Person } from '../../types/index'
 
-const WORKING_DAYS = 22
+const WORKING_DAYS = 21
 
 // ── Helpers ────────────────────────────────────────────────────
 function fmtEur(v: number, sym = '€'): string {
@@ -51,12 +51,18 @@ function heatCls(pct: number): string {
   return 'res-low'
 }
 
+function isExternal(type: string | null): boolean {
+  if (!type) return false
+  const t = type.toLowerCase()
+  return t === 'externo' || t === 'external'
+}
+
 function typeLbl(type: string | null): string {
-  return (type === 'externo' || type === 'external') ? 'Externo' : 'Interno'
+  return isExternal(type) ? 'Externo' : 'Interno'
 }
 
 function typeVar(type: string | null): 'blue' | 'grey' {
-  return (type === 'externo' || type === 'external') ? 'blue' : 'grey'
+  return isExternal(type) ? 'blue' : 'grey'
 }
 
 // ── Plan view ──────────────────────────────────────────────────
@@ -101,8 +107,8 @@ function PlanView({ resources, planoNames, expanded, onToggle, sym }: PlanViewPr
           const names   = new Set(g.items.map(r => r.name))
           const fte     = g.items.reduce((s, r) => s + (r.allocation_pct ?? 0) / 100, 0)
           const cost    = g.items.reduce((s, r) => s + (r.daily_cost ?? 0) * WORKING_DAYS * (r.allocation_pct ?? 0) / 100, 0)
-          const intern  = g.items.filter(r => r.type === 'interno' || r.type === 'internal').length
-          const ext     = g.items.filter(r => r.type === 'externo' || r.type === 'external').length
+          const intern  = g.items.filter(r => !isExternal(r.type)).length
+          const ext     = g.items.filter(r => isExternal(r.type)).length
 
           const rows = [
             <tr key={`p-${g.key}`} className="res-plan-row" onClick={() => onToggle(g.key)}>
@@ -309,17 +315,16 @@ export default function Recursos() {
   const { filters }  = useFilters()
   const { programs } = usePrograms()
 
-  const [selProgId,      setSelProgId]      = useState<string | null>(null)
-  const [view,           setView]           = useState<ViewMode>('plano')
-  const [planKey_,       setPlanKey_]       = useState('')
-  const [expandedPlans,  setExpandedPlans]  = useState(new Set<string>())
-  const [selectedRes,    setSelectedRes]    = useState<string | null>(null)
-  const [currSymbol,     setCurrSymbol]     = useState('€')
+  const [selProgId,           setSelProgId]           = useState<string | null>(null)
+  const [selectedPlanoLabels, setSelectedPlanoLabels] = useState<string[]>([])
+  const [selectedYears,       setSelectedYears]       = useState<string[]>([])
+  const [mgmtYears,           setMgmtYears]           = useState<string[]>([])
+  const [view,                setView]                = useState<ViewMode>('plano')
+  const [expandedPlans,       setExpandedPlans]       = useState(new Set<string>())
+  const [selectedRes,         setSelectedRes]         = useState<string | null>(null)
+  const [currSymbol,          setCurrSymbol]          = useState('€')
 
-  const [periodStart, setPeriodStart] = useState(() => `${new Date().getFullYear()}-01`)
-  const [periodEnd,   setPeriodEnd]   = useState(() => `${new Date().getFullYear()}-12`)
-
-  // Initialize selProgId from global filter or first program
+  // Initialise selProgId from global filter or first program
   useEffect(() => {
     if (programs.length === 0) return
     setSelProgId(prev => {
@@ -328,8 +333,11 @@ export default function Recursos() {
     })
   }, [programs, filters.programIds])
 
-  // Reset plan when program changes
-  useEffect(() => { setPlanKey_('') }, [selProgId])
+  // Reset plano/year selection when program changes
+  useEffect(() => {
+    setSelectedPlanoLabels([])
+    setSelectedYears([])
+  }, [selProgId])
 
   // Fetch default currency symbol
   useEffect(() => {
@@ -337,59 +345,154 @@ export default function Recursos() {
       .then(({ data }) => { if (data?.[0]?.symbol) setCurrSymbol(data[0].symbol) })
   }, [])
 
+  // Fetch management years for the selected program
+  useEffect(() => {
+    if (!selProgId) { setMgmtYears([]); return }
+    let cancelled = false
+    supabase
+      .from('management_years')
+      .select('year')
+      .eq('program_id', selProgId)
+      .order('year')
+      .then(({ data }) => {
+        if (cancelled) return
+        setMgmtYears(data?.map(r => String(r.year)) ?? [])
+      })
+    return () => { cancelled = true }
+  }, [selProgId])
+
   const programId = selProgId ?? undefined
 
   const { resources, loading } = useResources(programId)
   const { planos }             = usePlanos(programId)
   const { people }             = usePeople()
 
-  // ── Plano name map (plano.id → plano.name) ────────────────────
+  // ── Plano options ─────────────────────────────────────────────
+  const planoOptions = useMemo(() =>
+    planos.map(p => p.eixo?.name ? `${p.eixo.name} > ${p.name}` : p.name),
+    [planos]
+  )
+
+  const planoLabelToId = useMemo(() => {
+    const m = new Map<string, string>()
+    planos.forEach((p, i) => m.set(planoOptions[i], p.id))
+    return m
+  }, [planos, planoOptions])
+
+  const selectedPlanoIds = useMemo(() =>
+    selectedPlanoLabels.flatMap(l => {
+      const id = planoLabelToId.get(l)
+      return id ? [id] : []
+    }),
+    [selectedPlanoLabels, planoLabelToId]
+  )
+
+  // ── Year options ──────────────────────────────────────────────
+  const yearOptions = useMemo(() => {
+    if (mgmtYears.length > 0) return mgmtYears
+    const years = new Set<string>()
+    for (const r of resources) {
+      if (r.start_date) years.add(r.start_date.substring(0, 4))
+      if (r.end_date)   years.add(r.end_date.substring(0, 4))
+    }
+    return [...years].sort()
+  }, [mgmtYears, resources])
+
+  // ── Plano name map ────────────────────────────────────────────
   const planoNames = useMemo(
-    () => new Map(planos.map(p => [p.id, p.name])),
+    () => new Map(planos.map(p => [p.id, p.eixo?.name ? `${p.eixo.name} > ${p.name}` : p.name])),
     [planos]
   )
 
-  // ── Plan selector options from planos table ───────────────────
-  const planOptions = useMemo(() =>
-    planos.map(p => ({ key: p.id, label: p.name })),
-    [planos]
-  )
+  // ── Scoped resources (plano + year filtered) ──────────────────
+  const scoped = useMemo(() => {
+    let r = resources
+    if (selectedPlanoIds.length > 0) {
+      r = r.filter(res => selectedPlanoIds.includes(res.pds_id))
+    }
+    if (selectedYears.length > 0) {
+      r = r.filter(res => selectedYears.some(y => {
+        const yearStart = `${y}-01-01`
+        const yearEnd   = `${y}-12-31`
+        const s = res.start_date
+        const e = res.end_date
+        return (!s || s <= yearEnd) && (!e || e >= yearStart)
+      }))
+    }
+    return r
+  }, [resources, selectedPlanoIds, selectedYears])
 
-  // ── Scoped resources (all, or filtered to selected plano) ─────
-  const scoped = useMemo(
-    () => planKey_ ? resources.filter(r => r.pds_id === planKey_) : resources,
-    [resources, planKey_]
-  )
+  // ── Period (used by heatmap) ──────────────────────────────────
+  const { periodStart, periodEnd } = useMemo(() => {
+    if (selectedYears.length > 0) {
+      const sorted = [...selectedYears].sort()
+      return {
+        periodStart: `${sorted[0]}-01`,
+        periodEnd:   `${sorted[sorted.length - 1]}-12`,
+      }
+    }
+    const dates = scoped
+      .flatMap(r => [r.start_date, r.end_date])
+      .filter((d): d is string => !!d)
+      .map(d => d.substring(0, 7))
+      .sort()
+    if (dates.length > 0) return { periodStart: dates[0], periodEnd: dates[dates.length - 1] }
+    const y = new Date().getFullYear()
+    return { periodStart: `${y}-01`, periodEnd: `${y}-12` }
+  }, [selectedYears, scoped])
 
   // ── Months for heatmap ────────────────────────────────────────
   const months = useMemo(() => genMonths(periodStart, periodEnd), [periodStart, periodEnd])
 
-  // ── Month selector options ────────────────────────────────────
-  const allMonthOpts = useMemo(() => {
-    const y = new Date().getFullYear()
-    const opts: { value: string; label: string }[] = []
-    for (let yr = y - 2; yr <= y + 3; yr++) {
-      for (let mo = 1; mo <= 12; mo++) {
-        const v = `${yr}-${String(mo).padStart(2, '0')}`
-        opts.push({ value: v, label: fmtMo(v) })
+  // ── KPIs ─────────────────────────────────────────────────────
+  const uniqueNames = useMemo(() => new Set(scoped.map(r => r.name)), [scoped])
+
+  const kpiFteMed = useMemo(
+    () => scoped.length > 0
+      ? scoped.reduce((s, r) => s + (r.allocation_pct ?? 0), 0) / scoped.length / 100
+      : 0,
+    [scoped]
+  )
+
+  const kpiCusto = useMemo(() =>
+    scoped.reduce((s, r) => {
+      const activeMos = months.filter(mo => activeInMonth(r, mo)).length
+      return s + (r.daily_cost ?? 0) * WORKING_DAYS * activeMos * (r.allocation_pct ?? 0) / 100
+    }, 0),
+    [scoped, months]
+  )
+
+  const kpiInternos = useMemo(() => scoped.filter(r => !isExternal(r.type)).length, [scoped])
+  const kpiExternos = useMemo(() => scoped.filter(r =>  isExternal(r.type)).length, [scoped])
+
+  // Fixed: sum allocations per name+month across all plans, count name+month > 100%
+  const kpiSobrealloc = useMemo(() => {
+    const allocMap = new Map<string, number>()
+    for (const r of scoped) {
+      for (const mo of months) {
+        if (activeInMonth(r, mo)) {
+          const k = `${r.name}|${mo}`
+          allocMap.set(k, (allocMap.get(k) ?? 0) + (r.allocation_pct ?? 0))
+        }
       }
     }
-    return opts
-  }, [])
+    let count = 0
+    for (const total of allocMap.values()) { if (total > 100) count++ }
+    return count
+  }, [scoped, months])
 
-  // ── KPIs ──────────────────────────────────────────────────────
-  const uniqueNames   = useMemo(() => new Set(scoped.map(r => r.name)), [scoped])
-  const kpiFteMed     = scoped.length > 0
-    ? scoped.reduce((s, r) => s + (r.allocation_pct ?? 0), 0) / scoped.length / 100
-    : 0
-  const kpiCusto      = scoped.reduce((s, r) => s + (r.daily_cost ?? 0) * WORKING_DAYS * (r.allocation_pct ?? 0) / 100, 0)
-  const kpiInternos   = scoped.filter(r => r.type === 'interno' || r.type === 'internal').length
-  const kpiExternos   = scoped.filter(r => r.type === 'externo' || r.type === 'external').length
-  const kpiSobrealloc = scoped.filter(r => (r.allocation_pct ?? 0) > 100).length
+  const kpiExpiring = useMemo(() => {
+    const today   = new Date()
+    const in30    = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
+    const todayStr = today.toISOString().substring(0, 10)
+    const in30Str  = in30.toISOString().substring(0, 10)
+    return scoped.filter(r => r.end_date && r.end_date >= todayStr && r.end_date <= in30Str).length
+  }, [scoped])
 
   const total = kpiInternos + kpiExternos
   const iPct  = total > 0 ? Math.round(kpiInternos / total * 100) : 0
   const ePct  = total > 0 ? Math.round(kpiExternos / total * 100) : 0
+  const fmt   = (v: number) => fmtEur(v, currSymbol)
 
   // ── Side panel data ───────────────────────────────────────────
   const selectedPerson = useMemo(
@@ -411,50 +514,40 @@ export default function Recursos() {
   return (
     <div className="res-page">
 
-      {/* Controls bar: program selector + plan selector + period */}
-      <div className="res-controls-bar">
-        {programs.length > 1 && (
-          <>
-            <span className="res-selector-label">Programa</span>
-            <select
-              className="styled-select"
-              value={selProgId ?? ''}
-              onChange={e => setSelProgId(e.target.value || null)}
-            >
-              {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <div className="res-controls-sep" />
-          </>
-        )}
-        <span className="res-selector-label">Plano</span>
-        <select
-          className="styled-select"
-          value={planKey_}
-          onChange={e => setPlanKey_(e.target.value)}
-        >
-          <option value="">Todos os planos</option>
-          {planOptions.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-        </select>
+      {/* ── Filter bar ─────────────────────────────────────────── */}
+      <div className="rec-filter-bar">
+        {/* Programa — zone 1 */}
+        <div className="rec-filter-zone">
+          <select
+            className="styled-select"
+            value={selProgId ?? ''}
+            onChange={e => setSelProgId(e.target.value || null)}
+          >
+            {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
 
-        <div className="res-controls-sep" />
+        {/* Plano — zone 2 */}
+        <div className="rec-filter-zone">
+          <MultiSelect
+            label="Plano"
+            options={planoOptions}
+            placeholder="Todos os planos"
+            value={selectedPlanoLabels}
+            onChange={setSelectedPlanoLabels}
+          />
+        </div>
 
-        <span className="res-selector-label">De</span>
-        <select
-          className="styled-select res-period-select"
-          value={periodStart}
-          onChange={e => setPeriodStart(e.target.value)}
-        >
-          {allMonthOpts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-
-        <span className="res-selector-label">Até</span>
-        <select
-          className="styled-select res-period-select"
-          value={periodEnd}
-          onChange={e => setPeriodEnd(e.target.value)}
-        >
-          {allMonthOpts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        {/* Ano — zone 3 */}
+        <div className="rec-filter-zone">
+          <MultiSelect
+            label="Ano"
+            options={yearOptions}
+            placeholder="Todos os anos"
+            value={selectedYears}
+            onChange={setSelectedYears}
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -465,23 +558,63 @@ export default function Recursos() {
         <div className="res-empty-page">Nenhum recurso alocado.</div>
       ) : (
         <>
-          {/* KPI row */}
-          <div className="res-kpi-row">
-            <KpiCard label="Recursos únicos"     value={uniqueNames.size} color="navy" />
-            <KpiCard label="FTE médio"            value={kpiFteMed.toFixed(2)} subtitle="por recurso" color="blue" />
-            <KpiCard label="Custo mensal estim."  value={fmtEur(kpiCusto, currSymbol)} color="green" />
-            <KpiCard
-              label="Internos / Externos"
-              value={`${kpiInternos} / ${kpiExternos}`}
-              subtitle={`${iPct}% / ${ePct}%`}
-              color="text"
-            />
-            <KpiCard
-              label="Sobrealocações"
-              value={kpiSobrealloc}
-              subtitle="recursos > 100%"
-              color={kpiSobrealloc > 0 ? 'red' : 'text'}
-            />
+          {/* ── Row 1: Primary KPIs ──────────────────────────────── */}
+          <div className="rec-kpi-row-primary">
+            <div className="rec-kpi-card-primary">
+              <div className="rec-kpi-label">Recursos únicos</div>
+              <div className="rec-kpi-value-primary" style={{ color: 'var(--navy)' }}>
+                {uniqueNames.size}
+              </div>
+            </div>
+
+            <div className="rec-kpi-card-primary">
+              <div className="rec-kpi-label">FTE médio</div>
+              <div className="rec-kpi-value-primary" style={{ color: 'var(--blue)' }}>
+                {kpiFteMed.toFixed(2)}
+              </div>
+              <div className="rec-kpi-sub">por recurso</div>
+            </div>
+
+            <div className="rec-kpi-card-primary">
+              <div className="rec-kpi-label">Custo total</div>
+              <div className="rec-kpi-value-primary" style={{ color: 'var(--navy)' }}>
+                {fmt(kpiCusto)}
+              </div>
+              <div className="rec-kpi-sub">no período</div>
+            </div>
+          </div>
+
+          {/* ── Row 2: Secondary KPIs ────────────────────────────── */}
+          <div className="rec-kpi-row-secondary">
+            <div className="rec-kpi-card-secondary">
+              <div className="rec-kpi-label">Internos / Externos</div>
+              <div className="rec-kpi-value-secondary" style={{ color: 'var(--text)' }}>
+                {kpiInternos} / {kpiExternos}
+              </div>
+              <div className="rec-kpi-sub">{iPct}% / {ePct}%</div>
+            </div>
+
+            <div className="rec-kpi-card-secondary">
+              <div className="rec-kpi-label">Sobrealocações</div>
+              <div
+                className="rec-kpi-value-secondary"
+                style={{ color: kpiSobrealloc > 0 ? 'var(--red)' : 'var(--text3)' }}
+              >
+                {kpiSobrealloc}
+              </div>
+              <div className="rec-kpi-sub">recurso-mês &gt; 100%</div>
+            </div>
+
+            <div className="rec-kpi-card-secondary">
+              <div className="rec-kpi-label">A terminar</div>
+              <div
+                className="rec-kpi-value-secondary"
+                style={{ color: kpiExpiring > 0 ? 'var(--amber)' : 'var(--text3)' }}
+              >
+                {kpiExpiring}
+              </div>
+              <div className="rec-kpi-sub">nos próximos 30 dias</div>
+            </div>
           </div>
 
           {/* View toggle */}

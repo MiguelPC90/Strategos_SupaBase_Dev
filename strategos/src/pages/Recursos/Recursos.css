@@ -5,43 +5,99 @@
     gap: 14px;
   }
 
-  /* ── Top controls bar ───────────────────────────────────────── */
-  .res-controls-bar {
-    display: flex;
+  /* ── Filter bar ─────────────────────────────────────────────── */
+  .rec-filter-bar {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1fr;
+    gap: 16px;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    padding: 12px 16px;
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: var(--r);
-    padding: 8px 16px;
+    border-radius: var(--rl);
   }
 
-  .res-controls-sep {
-    width: 1px;
-    height: 18px;
-    background: var(--border2);
-    flex-shrink: 0;
+  .rec-filter-zone {
+    min-width: 0;
   }
 
-  .res-selector-label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text2);
-    white-space: nowrap;
+  .rec-filter-zone .styled-select {
+    width: 100%;
   }
 
-  /* Layout overrides for .styled-select inside the controls bar */
-  .res-controls-bar .styled-select { flex: 1; max-width: 420px; }
-  .res-controls-bar .res-period-select { flex: none; width: 110px; }
+  .rec-filter-zone .ms-wrap {
+    display: block;
+    width: 100%;
+  }
 
-  /* ── KPI row ────────────────────────────────────────────────── */
-  .res-kpi-row {
+  .rec-filter-zone .ms-trigger {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .rec-filter-zone .ms-value {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── KPI rows ───────────────────────────────────────────────── */
+  .rec-kpi-row-primary {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .rec-kpi-row-secondary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+
+  .rec-kpi-card-primary {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+    padding: 20px 24px;
+  }
+
+  .rec-kpi-card-secondary {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+    padding: 14px 18px;
+  }
+
+  .rec-kpi-label {
+    font-size: 11px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .rec-kpi-value-primary {
+    font-size: 28px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 6px;
+  }
+
+  .rec-kpi-value-secondary {
+    font-size: 18px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 4px;
+  }
+
+  .rec-kpi-sub {
+    font-size: 12px;
+    color: var(--text3);
+    line-height: 1.5;
   }
 
   /* ── Empty states ───────────────────────────────────────────── */
