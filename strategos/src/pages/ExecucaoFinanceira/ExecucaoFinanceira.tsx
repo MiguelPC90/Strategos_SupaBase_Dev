@@ -316,43 +316,43 @@ export default function ExecucaoFinanceira() {
 
       {/* ── Filter bar ─────────────────────────────────────────── */}
       <div className="ef-filter-bar">
-        {/* Programa */}
-        <select
-          className="styled-select ef-prog-select"
-          value={selProgId ?? ''}
-          onChange={e => setSelProgId(e.target.value || null)}
-        >
-          {programs.length > 1 && <option value="">Todos os programas</option>}
-          {programs.map(p => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
+        {/* Programa — zone 1 (1fr) */}
+        <div className="ef-filter-zone">
+          <select
+            className="styled-select"
+            value={selProgId ?? ''}
+            onChange={e => setSelProgId(e.target.value || null)}
+          >
+            {programs.length > 1 && <option value="">Todos os programas</option>}
+            {programs.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
 
-        <div className="ef-filter-sep" />
+        {/* Plano — zone 2 (1.5fr) */}
+        <div className="ef-filter-zone">
+          <MultiSelect
+            label="Plano"
+            options={planoOptions}
+            placeholder="Todos os planos"
+            value={selectedPlanoLabels}
+            onChange={setSelectedPlanoLabels}
+          />
+        </div>
 
-        {/* Plano */}
-        <MultiSelect
-          label="Plano"
-          options={planoOptions}
-          placeholder="Todos os planos"
-          value={selectedPlanoLabels}
-          onChange={setSelectedPlanoLabels}
-        />
+        {/* Ano — zone 3 (1fr) */}
+        <div className="ef-filter-zone">
+          <MultiSelect
+            label="Ano"
+            options={yearOptions}
+            placeholder="Todos os anos"
+            value={selectedYears}
+            onChange={setSelectedYears}
+          />
+        </div>
 
-        <div className="ef-filter-sep" />
-
-        {/* Ano */}
-        <MultiSelect
-          label="Ano"
-          options={yearOptions}
-          placeholder="Todos os anos"
-          value={selectedYears}
-          onChange={setSelectedYears}
-        />
-
-        <div className="ef-filter-sep" />
-
-        {/* Tipo */}
+        {/* Tipo — zone 4 (auto) */}
         <div className="ef-type-toggle">
           {(['todos', 'capex', 'opex'] as TipoFilter[]).map(t => (
             <button
