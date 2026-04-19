@@ -445,7 +445,14 @@ export default function Recursos() {
   const months = useMemo(() => genMonths(periodStart, periodEnd), [periodStart, periodEnd])
 
   // ── KPIs ─────────────────────────────────────────────────────
-  const uniqueNames = useMemo(() => new Set(scoped.map(r => r.name)), [scoped])
+  // One entry per unique name — first record wins for type/dates
+  const uniqueResources = useMemo(() => {
+    const map = new Map<string, FteResource>()
+    for (const r of scoped) {
+      if (!map.has(r.name)) map.set(r.name, r)
+    }
+    return map
+  }, [scoped])
 
   const kpiFteMed = useMemo(
     () => scoped.length > 0
@@ -462,8 +469,14 @@ export default function Recursos() {
     [scoped, months]
   )
 
-  const kpiInternos = useMemo(() => scoped.filter(r => !isExternal(r.type)).length, [scoped])
-  const kpiExternos = useMemo(() => scoped.filter(r =>  isExternal(r.type)).length, [scoped])
+  const kpiInternos = useMemo(
+    () => Array.from(uniqueResources.values()).filter(r => !isExternal(r.type)).length,
+    [uniqueResources]
+  )
+  const kpiExternos = useMemo(
+    () => Array.from(uniqueResources.values()).filter(r =>  isExternal(r.type)).length,
+    [uniqueResources]
+  )
 
   // Fixed: sum allocations per name+month across all plans, count name+month > 100%
   const kpiSobrealloc = useMemo(() => {
@@ -482,11 +495,15 @@ export default function Recursos() {
   }, [scoped, months])
 
   const kpiExpiring = useMemo(() => {
-    const today   = new Date()
-    const in30    = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
+    const today    = new Date()
+    const in30     = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
     const todayStr = today.toISOString().substring(0, 10)
     const in30Str  = in30.toISOString().substring(0, 10)
-    return scoped.filter(r => r.end_date && r.end_date >= todayStr && r.end_date <= in30Str).length
+    const seen = new Set<string>()
+    for (const r of scoped) {
+      if (r.end_date && r.end_date >= todayStr && r.end_date <= in30Str) seen.add(r.name)
+    }
+    return seen.size
   }, [scoped])
 
   const total = kpiInternos + kpiExternos
@@ -563,7 +580,7 @@ export default function Recursos() {
             <div className="rec-kpi-card-primary">
               <div className="rec-kpi-label">Recursos únicos</div>
               <div className="rec-kpi-value-primary" style={{ color: 'var(--navy)' }}>
-                {uniqueNames.size}
+                {uniqueResources.size}
               </div>
             </div>
 
