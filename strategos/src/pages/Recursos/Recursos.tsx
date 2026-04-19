@@ -11,6 +11,10 @@ import { usePeople } from '../../hooks/usePeople'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import type { FteResource, Person } from '../../types/index'
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
+} from 'recharts'
 
 const WORKING_DAYS = 21
 
@@ -311,6 +315,95 @@ function ResourcePanel({ name, resources, planoNames, person, onClose, sym }: Re
 // ── Main page ──────────────────────────────────────────────────
 type ViewMode = 'plano' | 'recurso'
 
+// ── Chart sub-components ───────────────────────────────────────
+interface FtePoint { month: string; fte: number }
+
+interface FteEvolutionChartProps { data: FtePoint[] }
+function FteEvolutionChart({ data }: FteEvolutionChartProps) {
+  if (data.length === 0)
+    return <div className="rec-chart-empty">Sem dados no período</div>
+  return (
+    <ResponsiveContainer width="100%" height={230}>
+      <LineChart data={data} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border2)" />
+        <XAxis dataKey="month" tickFormatter={fmtMo} tick={{ fontSize: 10 }} />
+        <YAxis domain={['auto', 'auto']} tick={{ fontSize: 10 }} />
+        <Tooltip
+          formatter={(v: number) => [v.toFixed(2), 'FTE']}
+          labelFormatter={fmtMo}
+          contentStyle={{ fontSize: 12 }}
+        />
+        <Line
+          type="monotone"
+          dataKey="fte"
+          stroke="var(--navy)"
+          strokeWidth={2}
+          dot={{ r: 3, fill: 'var(--navy)' }}
+          activeDot={{ r: 5 }}
+          connectNulls
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  )
+}
+
+interface InternExtDonutProps {
+  internos: number
+  externos: number
+  iPct: number
+  ePct: number
+  total: number
+}
+const DONUT_COLORS = ['var(--navy)', 'var(--blue)']
+function InternExtDonut({ internos, externos, iPct, ePct, total }: InternExtDonutProps) {
+  const pieData = [
+    { name: 'Internos', value: internos },
+    { name: 'Externos', value: externos },
+  ]
+  return (
+    <div className="rec-donut-wrap">
+      <div className="rec-donut-chart">
+        <ResponsiveContainer width="100%" height={180}>
+          <PieChart>
+            <Pie
+              data={pieData}
+              cx="50%"
+              cy="50%"
+              innerRadius={52}
+              outerRadius={76}
+              startAngle={90}
+              endAngle={-270}
+              dataKey="value"
+              stroke="none"
+            >
+              {pieData.map((_, i) => (
+                <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="rec-donut-center">
+          <div className="rec-donut-total">{total}</div>
+          <div className="rec-donut-label">total</div>
+        </div>
+      </div>
+      <div className="rec-donut-legend">
+        <div className="rec-donut-item">
+          <span className="rec-donut-swatch" style={{ background: 'var(--navy)' }} />
+          <span className="rec-donut-item-label">Internos</span>
+          <span className="rec-donut-item-val">{internos} ({iPct}%)</span>
+        </div>
+        <div className="rec-donut-item">
+          <span className="rec-donut-swatch" style={{ background: 'var(--blue)' }} />
+          <span className="rec-donut-item-label">Externos</span>
+          <span className="rec-donut-item-val">{externos} ({ePct}%)</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main page ──────────────────────────────────────────────────
 export default function Recursos() {
   const { filters }  = useFilters()
   const { programs } = usePrograms()
@@ -511,6 +604,15 @@ export default function Recursos() {
   const ePct  = total > 0 ? Math.round(kpiExternos / total * 100) : 0
   const fmt   = (v: number) => fmtEur(v, currSymbol)
 
+  const fteEvolutionData = useMemo<FtePoint[]>(() => {
+    return months.map(mo => {
+      const fte = scoped
+        .filter(r => activeInMonth(r, mo))
+        .reduce((s, r) => s + (r.allocation_pct ?? 0) / 100, 0)
+      return { month: mo, fte: Math.round(fte * 100) / 100 }
+    })
+  }, [months, scoped])
+
   // ── Side panel data ───────────────────────────────────────────
   const selectedPerson = useMemo(
     () => selectedRes
@@ -632,6 +734,22 @@ export default function Recursos() {
               </div>
               <div className="rec-kpi-sub">nos próximos 30 dias</div>
             </div>
+          </div>
+
+          {/* ── Charts row ────────────────────────────────────────── */}
+          <div className="rec-charts-row">
+            <Card title="Evolução de FTE">
+              <FteEvolutionChart data={fteEvolutionData} />
+            </Card>
+            <Card title="Internos vs Externos">
+              <InternExtDonut
+                internos={kpiInternos}
+                externos={kpiExternos}
+                iPct={iPct}
+                ePct={ePct}
+                total={total}
+              />
+            </Card>
           </div>
 
           {/* View toggle */}
