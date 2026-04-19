@@ -5,6 +5,7 @@ import MultiSelect from '../../components/MultiSelect/MultiSelect'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LabelList, LineChart, Line,
 } from 'recharts'
 import Card from '../../components/Card/Card'
 import { invoiceAlert } from '../../lib/invoiceHelpers'
@@ -32,72 +33,156 @@ function fmtPct(val: number): string {
 
 function fmtMonth(ym: string): string {
   const [y, m] = ym.split('-')
-  return new Date(Number(y), Number(m) - 1).toLocaleDateString('pt-PT', {
-    month: 'short', year: '2-digit',
-  })
+  return `${m.padStart(2, '0')}/${y.slice(2)}`
 }
 
-// ── CAPEX / OPEX donut ─────────────────────────────────────────
-interface PieEntry { name: string; value: number; fill: string }
+function compactNumber(v: number): string {
+  const abs = Math.abs(v)
+  if (abs >= 1e9) return (v / 1e9).toFixed(1) + 'B'
+  if (abs >= 1e6) return (v / 1e6).toFixed(1) + 'M'
+  if (abs >= 1e3) return (v / 1e3).toFixed(0) + 'k'
+  return v.toFixed(0)
+}
 
-function CapexOpexChart({ data, sym }: { data: PieEntry[]; sym: string }) {
+const ChartEmpty = () => (
+  <p className="ef-chart-empty">Sem dados para os filtros seleccionados.</p>
+)
+
+// ── Chart sub-components ──────────────────────────────────────
+
+interface PieEntry    { name: string; value: number; fill: string }
+interface OverviewBar { label: string; value: number; color: string }
+interface MonthStatusBar {
+  month: string; Pago: number; Aprovada: number; Recebida: number; Prevista: number
+}
+interface BurnRatePoint {
+  month: string
+  'Orçamento acumulado': number
+  'Executado acumulado': number
+}
+interface SupplierBar { name: string; value: number }
+
+function CapexOpexDonut({ data, sym }: { data: PieEntry[]; sym: string }) {
   const total = data.reduce((s, d) => s + d.value, 0)
-  if (total === 0) return <p className="ef-empty">Sem dados orçamentais.</p>
+  if (total === 0) return <ChartEmpty />
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <PieChart>
-        <Pie data={data} dataKey="value" cx="50%" cy="50%" innerRadius={56} outerRadius={90}>
-          {data.map((d, i) => <Cell key={i} fill={d.fill} />)}
-        </Pie>
+    <div className="ef-donut-wrap">
+      <ResponsiveContainer width="100%" height={280}>
+        <PieChart>
+          <Pie data={data} dataKey="value" cx="50%" cy="42%" innerRadius={60} outerRadius={95}>
+            {data.map((d, i) => <Cell key={i} fill={d.fill} />)}
+          </Pie>
+          <Tooltip
+            formatter={(v) => fmtEur(v as number, sym)}
+            contentStyle={{ fontSize: 12, border: '1px solid var(--border2)' }}
+          />
+          <Legend
+            formatter={(name: string) => {
+              const d = data.find(e => e.name === name)
+              return d
+                ? `${name}: ${compactNumber(d.value)} (${(d.value / total * 100).toFixed(1)}%)`
+                : name
+            }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="ef-donut-center">
+        <span className="ef-donut-center-label">Total</span>
+        <span className="ef-donut-center-value">{compactNumber(total)}</span>
+      </div>
+    </div>
+  )
+}
+
+function VisaoGeralChart({ data, sym }: { data: OverviewBar[]; sym: string }) {
+  if (!data.some(d => d.value !== 0)) return <ChartEmpty />
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <BarChart data={data} margin={{ top: 28, right: 16, left: 0, bottom: 4 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
+        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+        <YAxis tickFormatter={(v: number) => compactNumber(v)} tick={{ fontSize: 10 }} width={44} />
         <Tooltip
           formatter={(v) => fmtEur(v as number, sym)}
           contentStyle={{ fontSize: 12, border: '1px solid var(--border2)' }}
         />
-        <Legend
-          formatter={(name: string) => {
-            const d = data.find(e => e.name === name)
-            const pct = d && total > 0 ? ` (${(d.value / total * 100).toFixed(1)}%)` : ''
-            return name + pct
-          }}
-        />
-      </PieChart>
+        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+          {data.map((d, i) => <Cell key={i} fill={d.color} />)}
+          <LabelList
+            dataKey="value"
+            position="top"
+            formatter={(v: number) => compactNumber(v)}
+            style={{ fontSize: 10, fontWeight: 600 }}
+          />
+        </Bar>
+      </BarChart>
     </ResponsiveContainer>
   )
 }
 
-// ── Monthly stacked bar ────────────────────────────────────────
-interface MonthBar {
-  month: string
-  Pago: number
-  'Em pagamento': number
-  'Por facturar': number
-}
-
-function MonthlyChart({ data, sym }: { data: MonthBar[]; sym: string }) {
-  if (data.length === 0) return <p className="ef-empty">Sem facturas com datas.</p>
+function MonthlyStatusChart({ data, sym }: { data: MonthStatusBar[]; sym: string }) {
+  if (data.length === 0) return <ChartEmpty />
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
+    <ResponsiveContainer width="100%" height={320}>
+      <BarChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
-        <XAxis
-          dataKey="month"
-          tickFormatter={(v: string) => fmtMonth(String(v))}
-          tick={{ fontSize: 10 }}
-        />
-        <YAxis
-          tick={{ fontSize: 10 }}
-          tickFormatter={(v: number) => v >= 1000 ? `${Math.round(v / 1000)}k` : String(v)}
-          width={44}
-        />
+        <XAxis dataKey="month" tickFormatter={fmtMonth} tick={{ fontSize: 10 }} />
+        <YAxis tickFormatter={(v: number) => compactNumber(v)} tick={{ fontSize: 10 }} width={44} />
         <Tooltip
           formatter={(v) => fmtEur(v as number, sym)}
-          labelFormatter={(label: string) => fmtMonth(String(label))}
+          labelFormatter={(l: string) => fmtMonth(l)}
           contentStyle={{ fontSize: 12 }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Bar dataKey="Pago"           stackId="s" fill="#95BB42" />
-        <Bar dataKey="Em pagamento"   stackId="s" fill="#D97706" />
-        <Bar dataKey="Por facturar"   stackId="s" fill="#9c9c96" />
+        <Bar dataKey="Pago"     stackId="s" fill="#95BB42" />
+        <Bar dataKey="Aprovada" stackId="s" fill="#854F0B" />
+        <Bar dataKey="Recebida" stackId="s" fill="#185FA5" />
+        <Bar dataKey="Prevista" stackId="s" fill="#9c9c96" />
+      </BarChart>
+    </ResponsiveContainer>
+  )
+}
+
+function BurnRateChart({ data, sym }: { data: BurnRatePoint[]; sym: string }) {
+  if (data.length === 0) return <ChartEmpty />
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <LineChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
+        <XAxis dataKey="month" tickFormatter={fmtMonth} tick={{ fontSize: 10 }} />
+        <YAxis tickFormatter={(v: number) => compactNumber(v)} tick={{ fontSize: 10 }} width={44} />
+        <Tooltip
+          formatter={(v) => fmtEur(v as number, sym)}
+          labelFormatter={(l: string) => fmtMonth(l)}
+          contentStyle={{ fontSize: 12 }}
+        />
+        <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="top" />
+        <Line type="monotone" dataKey="Orçamento acumulado" stroke="#002E5E" strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="Executado acumulado" stroke="#95BB42" strokeWidth={2} dot={false} />
+      </LineChart>
+    </ResponsiveContainer>
+  )
+}
+
+function TopFornecedoresChart({ data, sym }: { data: SupplierBar[]; sym: string }) {
+  if (data.length === 0) return <ChartEmpty />
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <BarChart layout="vertical" data={data} margin={{ top: 4, right: 56, left: 0, bottom: 4 }}>
+        <XAxis type="number" tickFormatter={(v: number) => compactNumber(v)} tick={{ fontSize: 10 }} />
+        <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 10 }} />
+        <Tooltip
+          formatter={(v) => fmtEur(v as number, sym)}
+          contentStyle={{ fontSize: 12, border: '1px solid var(--border2)' }}
+        />
+        <Bar dataKey="value" fill="#002E5E" radius={[0, 4, 4, 0]}>
+          <LabelList
+            dataKey="value"
+            position="right"
+            formatter={(v: number) => compactNumber(v)}
+            style={{ fontSize: 10 }}
+          />
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   )
@@ -289,33 +374,104 @@ export default function ExecucaoFinanceira() {
     return { overdueCount, dueSoonCount }
   }, [invs, alertThresholds])
 
-  // ── CAPEX / OPEX pie ─────────────────────────────────────────
+  // ── Chart data ────────────────────────────────────────────────
+  const visaoGeralData = useMemo<OverviewBar[]>(() => [
+    { label: 'Orçamento',    value: kpiOrc,  color: '#002E5E' },
+    { label: 'Comprometido', value: kpiAdj,  color: '#185FA5' },
+    { label: 'Facturado',    value: kpiFact, color: '#854F0B' },
+    { label: 'Disponível',   value: kpiDisp, color: '#95BB42' },
+  ], [kpiOrc, kpiAdj, kpiFact, kpiDisp])
+
   const pieData = useMemo<PieEntry[]>(() => [
     { name: 'CAPEX', value: lines.filter(l =>  l.capex).reduce((s, l) => s + sumByYears(l.values, selectedYears), 0), fill: '#185FA5' },
     { name: 'OPEX',  value: lines.filter(l => !l.capex).reduce((s, l) => s + sumByYears(l.values, selectedYears), 0), fill: '#95BB42' },
   ], [lines, selectedYears])
 
-  // ── Monthly bar ───────────────────────────────────────────────
-  const monthlyData = useMemo<MonthBar[]>(() => {
+  const monthlyStatusData = useMemo<MonthStatusBar[]>(() => {
     const yearInvs = selectedYears.length > 0
       ? invs.filter(i => selectedYears.some(y => (i.issue_date ?? i.due_date ?? '').startsWith(y)))
       : invs
-    const map = new Map<string, { p: number; e: number; o: number }>()
+
+    // Determine month range
+    const curYear = new Date().getFullYear()
+    let startYM = `${curYear}-01`
+    let endYM   = `${curYear}-12`
+    if (selectedYears.length > 0) {
+      const yrs = [...selectedYears].sort()
+      startYM = `${yrs[0]}-01`
+      endYM   = `${yrs[yrs.length - 1]}-12`
+    } else {
+      const dates = yearInvs
+        .map(i => i.issue_date ?? i.due_date)
+        .filter((d): d is string => !!d)
+        .map(d => d.substring(0, 7))
+        .sort()
+      if (dates.length > 0) { startYM = dates[0]; endYM = dates[dates.length - 1] }
+    }
+
+    // Build all months in range initialised to zero
+    const map = new Map<string, MonthStatusBar>()
+    let [sy, sm] = startYM.split('-').map(Number)
+    const [ey, em] = endYM.split('-').map(Number)
+    while (sy < ey || (sy === ey && sm <= em)) {
+      const key = `${sy}-${String(sm).padStart(2, '0')}`
+      map.set(key, { month: key, Pago: 0, Aprovada: 0, Recebida: 0, Prevista: 0 })
+      if (++sm > 12) { sm = 1; sy++ }
+    }
     for (const inv of yearInvs) {
+      const ds = inv.issue_date ?? inv.due_date
+      if (!ds || inv.status === 'Rejeitada') continue
+      const key = ds.substring(0, 7)
+      const row = map.get(key)
+      if (!row) continue
+      if      (inv.status === 'Paga')     row.Pago     += inv.amount
+      else if (inv.status === 'Aprovada') row.Aprovada += inv.amount
+      else if (inv.status === 'Recebida') row.Recebida += inv.amount
+      else                                row.Prevista += inv.amount
+    }
+    return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month))
+  }, [invs, selectedYears])
+
+  const burnRateData = useMemo<BurnRatePoint[]>(() => {
+    if (monthlyStatusData.length === 0) return []
+    const yearsInView = selectedYears.length > 0 ? selectedYears : yearOptions
+
+    // Distribute each year's budget evenly across 12 months
+    const monthlyBudget = new Map<string, number>()
+    for (const line of lines) {
+      for (const year of yearsInView) {
+        const perMonth = sumByYears(line.values, [year]) / 12
+        for (let m = 1; m <= 12; m++) {
+          const key = `${year}-${String(m).padStart(2, '0')}`
+          monthlyBudget.set(key, (monthlyBudget.get(key) ?? 0) + perMonth)
+        }
+      }
+    }
+    // Monthly executed (invoiced)
+    const monthlyExec = new Map<string, number>()
+    for (const inv of invs) {
+      if (inv.status !== 'Recebida' && inv.status !== 'Aprovada' && inv.status !== 'Paga') continue
       const ds = inv.issue_date ?? inv.due_date
       if (!ds) continue
       const key = ds.substring(0, 7)
-      const row = map.get(key) ?? { p: 0, e: 0, o: 0 }
-      if (inv.status === 'Rejeitada') continue
-      if (inv.status === 'Paga') row.p += inv.amount
-      else if (inv.status === 'Recebida' || inv.status === 'Aprovada') row.e += inv.amount
-      else row.o += inv.amount
-      map.set(key, row)
+      monthlyExec.set(key, (monthlyExec.get(key) ?? 0) + inv.amount)
     }
-    return Array.from(map.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, v]) => ({ month, Pago: v.p, 'Em pagamento': v.e, 'Por facturar': v.o }))
-  }, [invs, selectedYears])
+    let cumOrc = 0, cumExec = 0
+    return monthlyStatusData.map(({ month }) => {
+      cumOrc  += monthlyBudget.get(month) ?? 0
+      cumExec += monthlyExec.get(month)   ?? 0
+      return { month, 'Orçamento acumulado': Math.round(cumOrc), 'Executado acumulado': Math.round(cumExec) }
+    })
+  }, [monthlyStatusData, lines, invs, selectedYears, yearOptions])
+
+  const topFornecedoresData = useMemo<SupplierBar[]>(() => {
+    const map = new Map<string, number>()
+    for (const c of ctrs) map.set(c.supplier, (map.get(c.supplier) ?? 0) + c.total_amount)
+    return [...map.entries()]
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([name, value]) => ({ name, value }))
+  }, [ctrs])
 
   // ── Category rows ─────────────────────────────────────────────
   const catRows = useMemo(() => {
@@ -478,13 +634,30 @@ export default function ExecucaoFinanceira() {
             </div>
           </div>
 
-          {/* Charts row */}
-          <div className="ef-charts-row">
-            <Card title="Execução mensal">
-              <MonthlyChart data={monthlyData} sym={currSymbol} />
+          {/* ── Row 1: Visão Geral + CAPEX/OPEX ────────────────── */}
+          <div className="ef-charts-row-2col">
+            <Card title="Visão Geral">
+              <VisaoGeralChart data={visaoGeralData} sym={currSymbol} />
             </Card>
-            <Card title="Execução por tipo">
-              <CapexOpexChart data={pieData} sym={currSymbol} />
+            <Card title="CAPEX / OPEX">
+              <CapexOpexDonut data={pieData} sym={currSymbol} />
+            </Card>
+          </div>
+
+          {/* ── Row 2: Execução Mensal (full width) ─────────────── */}
+          <div className="ef-charts-row-full">
+            <Card title="Execução Mensal">
+              <MonthlyStatusChart data={monthlyStatusData} sym={currSymbol} />
+            </Card>
+          </div>
+
+          {/* ── Row 3: Burn Rate + Top Fornecedores ─────────────── */}
+          <div className="ef-charts-row-2col">
+            <Card title="Burn Rate">
+              <BurnRateChart data={burnRateData} sym={currSymbol} />
+            </Card>
+            <Card title="Top Fornecedores">
+              <TopFornecedoresChart data={topFornecedoresData} sym={currSymbol} />
             </Card>
           </div>
 

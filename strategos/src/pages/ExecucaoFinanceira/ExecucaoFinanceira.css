@@ -190,11 +190,57 @@
     color: #fff;
   }
 
-  /* ── Charts row ─────────────────────────────────────────────── */
-  .ef-charts-row {
+  /* ── Charts rows ────────────────────────────────────────────── */
+  .ef-charts-row-2col {
     display: grid;
-    grid-template-columns: 1.5fr 1fr;
-    gap: 14px;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .ef-charts-row-full {
+    margin-bottom: 16px;
+  }
+
+  /* CAPEX/OPEX donut center label */
+  .ef-donut-wrap {
+    position: relative;
+  }
+
+  .ef-donut-center {
+    position: absolute;
+    top: 42%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.3;
+  }
+
+  .ef-donut-center-label {
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .ef-donut-center-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* Empty state inside chart cards */
+  .ef-chart-empty {
+    text-align: center;
+    color: var(--text3);
+    font-style: italic;
+    font-size: 13px;
+    padding: 48px 24px;
+    margin: 0;
   }
 
   /* ── Tables ─────────────────────────────────────────────────── */
