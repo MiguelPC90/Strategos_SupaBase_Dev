@@ -1608,7 +1608,7 @@ function AdminRecursos() {
 }
 
 // ── Section 5: Financeiro ─────────────────────────────────────
-type FinTab = 'moedas' | 'categorias' | 'anos'
+type FinTab = 'moedas' | 'categorias' | 'anos' | 'alertas'
 
 interface Currency     { id: string; code: string; name: string; symbol: string; is_default: boolean }
 interface CostCategory { id: string; name: string; is_capex: boolean }
@@ -2123,6 +2123,7 @@ function AdminFinanceiro() {
     ['moedas',     'Moedas'],
     ['categorias', 'Categorias de Custo'],
     ['anos',       'Anos de Gestão'],
+    ['alertas',    'Alertas'],
   ]
 
   useEffect(() => {
@@ -2169,52 +2170,52 @@ function AdminFinanceiro() {
       {tab === 'moedas'     && <MoedasTab />}
       {tab === 'categorias' && <CategoriasTab programs={programs} progsLoading={progsLoading} />}
       {tab === 'anos'       && <AnosTab      programs={programs} progsLoading={progsLoading} />}
-
-      {/* ── Alertas de Facturas ─────────────────────────────────── */}
-      <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
-        <div className="adm-section-label" style={{ marginBottom: 14 }}>Alertas de Facturas</div>
-        <div className="adm-field">
-          <div style={{ display: 'flex', gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <label className="adm-label" style={{ fontWeight: 400, marginBottom: 4 }}>% atraso (ultrapassou prazo)</label>
-              <input
-                className="adm-input"
-                type="number"
-                min={50}
-                max={200}
-                step={5}
-                value={invoiceOverdue}
-                onChange={e => {
-                  const v = parseInt(e.target.value) || 100
-                  setInvoiceOverdue(v)
-                  if (invoiceDueSoon >= v) setInvoiceDueSoon(v - 5)
-                }}
-              />
+      {tab === 'alertas'    && (
+        <div>
+          <div className="adm-field">
+            <label className="adm-label">Alertas de Facturas</label>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label className="adm-label" style={{ fontWeight: 400, marginBottom: 4 }}>% atraso (ultrapassou prazo)</label>
+                <input
+                  className="adm-input"
+                  type="number"
+                  min={50}
+                  max={200}
+                  step={5}
+                  value={invoiceOverdue}
+                  onChange={e => {
+                    const v = parseInt(e.target.value) || 100
+                    setInvoiceOverdue(v)
+                    if (invoiceDueSoon >= v) setInvoiceDueSoon(v - 5)
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="adm-label" style={{ fontWeight: 400, marginBottom: 4 }}>% a vencer (aviso)</label>
+                <input
+                  className="adm-input"
+                  type="number"
+                  min={10}
+                  max={100}
+                  step={5}
+                  value={invoiceDueSoon}
+                  onChange={e => {
+                    const v = parseInt(e.target.value) || 85
+                    setInvoiceDueSoon(Math.min(v, invoiceOverdue - 5))
+                  }}
+                />
+              </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <label className="adm-label" style={{ fontWeight: 400, marginBottom: 4 }}>% a vencer (aviso)</label>
-              <input
-                className="adm-input"
-                type="number"
-                min={10}
-                max={100}
-                step={5}
-                value={invoiceDueSoon}
-                onChange={e => {
-                  const v = parseInt(e.target.value) || 85
-                  setInvoiceDueSoon(Math.min(v, invoiceOverdue - 5))
-                }}
-              />
-            </div>
+            <span className="adm-help">
+              % calculado sobre o prazo entre data de emissão e vencimento. ≥{invoiceOverdue}% = atrasada, ≥{invoiceDueSoon}% = a vencer.
+            </span>
           </div>
-          <span className="adm-help">
-            % calculado sobre o prazo entre data de emissão e vencimento. ≥{invoiceOverdue}% = atrasada, ≥{invoiceDueSoon}% = a vencer.
-          </span>
+          <button className="adm-btn-primary" onClick={handleSaveAlerts} disabled={savingAlerts}>
+            {savingAlerts ? 'A guardar…' : 'Guardar'}
+          </button>
         </div>
-        <button className="adm-btn-primary" onClick={handleSaveAlerts} disabled={savingAlerts}>
-          {savingAlerts ? 'A guardar…' : 'Guardar'}
-        </button>
-      </div>
+      )}
     </Card>
   )
 }
