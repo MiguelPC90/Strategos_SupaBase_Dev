@@ -5,8 +5,8 @@
     gap: 14px;
   }
 
-  /* ── Controls bar ───────────────────────────────────────────── */
-  .ef-selector-bar {
+  /* ── Filter bar ─────────────────────────────────────────────── */
+  .ef-filter-bar {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -17,50 +17,36 @@
     padding: 8px 16px;
   }
 
-  .ef-selector-label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text2);
-    white-space: nowrap;
-  }
-
-  .ef-selector-sep {
+  .ef-filter-sep {
     width: 1px;
-    height: 18px;
+    height: 22px;
     background: var(--border2);
     flex-shrink: 0;
   }
 
-  /* Layout overrides for .styled-select inside the selector bar */
-  .ef-selector-bar .styled-select { flex: 1; max-width: 420px; }
+  .ef-prog-select { width: 220px; flex: none; }
 
-  /* ef-year-select: layout only — visual from .styled-select */
-  .ef-year-select { width: 110px; flex: none; }
-
-  /* ── CAPEX/OPEX chips ───────────────────────────────────────── */
-  .ef-chips {
-    display: flex;
-    gap: 4px;
-  }
-
-  .ef-chip {
-    padding: 4px 12px;
-    border-radius: 100px;
-    font-size: 12px;
-    font-weight: 500;
+  /* ── CAPEX/OPEX type toggle ─────────────────────────────────── */
+  .ef-type-toggle {
+    display: inline-flex;
+    gap: 0;
     border: 1px solid var(--border2);
-    background: var(--bg);
-    color: var(--text2);
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    border-radius: var(--r);
+    overflow: hidden;
   }
-  .ef-chip:hover { background: var(--bg3); }
-  .ef-chip.active {
+
+  .ef-type-btn {
+    padding: 6px 16px;
+    font-size: 13px;
+    background: var(--bg);
+    border: none;
+    cursor: pointer;
+    color: var(--text);
+  }
+
+  .ef-type-btn.active {
     background: var(--navy);
     color: #fff;
-    border-color: var(--navy);
   }
 
   /* ── Empty states ───────────────────────────────────────────── */

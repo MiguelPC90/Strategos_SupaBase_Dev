@@ -1,6 +1,7 @@
 import './ExecucaoFinanceira.css'
 import { useState, useMemo, useEffect } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
+import MultiSelect from '../../components/MultiSelect/MultiSelect'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -14,10 +15,10 @@ import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 
 // ── Helpers ────────────────────────────────────────────────────
-function sumValuesByYear(values: Record<string, number>, year: string): number {
-  if (!year) return Object.values(values).reduce((s, v) => s + v, 0)
+function sumByYears(values: Record<string, number>, years: string[]): number {
+  if (years.length === 0) return Object.values(values).reduce((s, v) => s + v, 0)
   return Object.entries(values)
-    .filter(([k]) => k === year || k.startsWith(year + '-'))
+    .filter(([k]) => years.some(y => k === y || k.startsWith(y + '-')))
     .reduce((s, [, v]) => s + v, 0)
 }
 
@@ -110,19 +111,20 @@ function contractEstado(pct: number): { label: string; variant: 'grey' | 'blue' 
 }
 
 // ── Main page ──────────────────────────────────────────────────
-type CapexFilter = 'all' | 'capex' | 'opex'
+type TipoFilter = 'todos' | 'capex' | 'opex'
 
 export default function ExecucaoFinanceira() {
   const { filters }  = useFilters()
   const { programs } = usePrograms()
 
-  const [selProgId,   setSelProgId]   = useState<string | null>(null)
-  const [planKey,     setPlanKey]     = useState('')
-  const [capexFilter, setCapexFilter] = useState<CapexFilter>('all')
-  const [yearFilter,  setYearFilter]  = useState('')
-  const [currSymbol,  setCurrSymbol]  = useState('€')
+  const [selProgId,           setSelProgId]           = useState<string | null>(null)
+  const [selectedPlanoLabels, setSelectedPlanoLabels] = useState<string[]>([])
+  const [selectedYears,       setSelectedYears]       = useState<string[]>([])
+  const [tipoFilter,          setTipoFilter]          = useState<TipoFilter>('todos')
+  const [currSymbol,          setCurrSymbol]          = useState('€')
+  const [mgmtYears,           setMgmtYears]           = useState<string[]>([])
 
-  // Initialize selProgId from global filter or first program
+  // Initialise program from global filter or first program
   useEffect(() => {
     if (programs.length === 0) return
     setSelProgId(prev => {
@@ -131,8 +133,11 @@ export default function ExecucaoFinanceira() {
     })
   }, [programs, filters.programIds])
 
-  // Reset plan when program changes
-  useEffect(() => { setPlanKey('') }, [selProgId])
+  // Reset plano/year selection when program changes
+  useEffect(() => {
+    setSelectedPlanoLabels([])
+    setSelectedYears([])
+  }, [selProgId])
 
   // Fetch default currency symbol
   useEffect(() => {
@@ -140,32 +145,78 @@ export default function ExecucaoFinanceira() {
       .then(({ data }) => { if (data?.[0]?.symbol) setCurrSymbol(data[0].symbol) })
   }, [])
 
+  // Fetch management years for the selected program
+  useEffect(() => {
+    if (!selProgId) { setMgmtYears([]); return }
+    let cancelled = false
+    supabase
+      .from('management_years')
+      .select('year')
+      .eq('program_id', selProgId)
+      .order('year')
+      .then(({ data }) => {
+        if (cancelled) return
+        setMgmtYears(data?.map(r => String(r.year)) ?? [])
+      })
+    return () => { cancelled = true }
+  }, [selProgId])
+
   const programId = selProgId ?? undefined
 
   const { budgetLines, contracts, invoices, loading } = useFinancials(programId)
   const { planos }                                    = usePlanos(programId)
 
-  // ── Plan selector options from planos table ──────────────────
-  const planOptions = useMemo(() =>
-    planos.map(p => ({ key: p.id, label: p.name })),
+  // ── Plano options (label → id mapping) ──────────────────────
+  const planoOptions = useMemo(() =>
+    planos.map(p => p.eixo?.name ? `${p.eixo.name} > ${p.name}` : p.name),
     [planos]
   )
 
-  // ── Step 1: plan-filtered data ───────────────────────────────
-  const planLines = useMemo(
-    () => planKey ? budgetLines.filter(l => l.plano_id === planKey) : budgetLines,
-    [budgetLines, planKey]
-  )
-  const planCtrs = useMemo(
-    () => planKey ? contracts.filter(c => c.plano_id === planKey) : contracts,
-    [contracts, planKey]
-  )
-  const planInvs = useMemo(
-    () => planKey ? invoices.filter(i => i.plano_id === planKey) : invoices,
-    [invoices, planKey]
+  const planoLabelToId = useMemo(() => {
+    const m = new Map<string, string>()
+    planos.forEach((p, i) => m.set(planoOptions[i], p.id))
+    return m
+  }, [planos, planoOptions])
+
+  const selectedPlanoIds = useMemo(() =>
+    selectedPlanoLabels.flatMap(l => {
+      const id = planoLabelToId.get(l)
+      return id ? [id] : []
+    }),
+    [selectedPlanoLabels, planoLabelToId]
   )
 
-  // Category → isCapex map (from all plan budget lines, ignoring CAPEX/OPEX chip)
+  // ── Year options (management_years, fallback to budget line keys) ─
+  const yearOptions = useMemo(() => {
+    if (mgmtYears.length > 0) return mgmtYears
+    const years = new Set<string>()
+    for (const l of budgetLines) {
+      for (const key of Object.keys(l.values)) years.add(key.split('-')[0])
+    }
+    return [...years].sort()
+  }, [mgmtYears, budgetLines])
+
+  // ── Step 1: plano-filtered data ──────────────────────────────
+  const planLines = useMemo(() =>
+    selectedPlanoIds.length > 0
+      ? budgetLines.filter(l => l.plano_id !== null && selectedPlanoIds.includes(l.plano_id))
+      : budgetLines,
+    [budgetLines, selectedPlanoIds]
+  )
+  const planCtrs = useMemo(() =>
+    selectedPlanoIds.length > 0
+      ? contracts.filter(c => c.plano_id !== null && selectedPlanoIds.includes(c.plano_id))
+      : contracts,
+    [contracts, selectedPlanoIds]
+  )
+  const planInvs = useMemo(() =>
+    selectedPlanoIds.length > 0
+      ? invoices.filter(i => i.plano_id !== null && selectedPlanoIds.includes(i.plano_id))
+      : invoices,
+    [invoices, selectedPlanoIds]
+  )
+
+  // Category → isCapex map (based on all plano lines, ignoring tipo chip)
   const catCapexMap = useMemo(() => {
     const m = new Map<string, boolean>()
     for (const l of planLines) {
@@ -176,58 +227,47 @@ export default function ExecucaoFinanceira() {
 
   // ── Step 2: CAPEX/OPEX filter ────────────────────────────────
   const lines = useMemo(() => {
-    if (capexFilter === 'all') return planLines
-    return planLines.filter(l => capexFilter === 'capex' ? l.capex : !l.capex)
-  }, [planLines, capexFilter])
+    if (tipoFilter === 'todos') return planLines
+    return planLines.filter(l => tipoFilter === 'capex' ? l.capex : !l.capex)
+  }, [planLines, tipoFilter])
 
   const ctrs = useMemo(() => {
-    if (capexFilter === 'all') return planCtrs
+    if (tipoFilter === 'todos') return planCtrs
     const catSet = new Set(lines.map(l => l.category))
     return planCtrs.filter(c => catSet.has(c.category))
-  }, [planCtrs, lines, capexFilter])
+  }, [planCtrs, lines, tipoFilter])
 
   const invs = useMemo(() => {
-    if (capexFilter === 'all') return planInvs
+    if (tipoFilter === 'todos') return planInvs
     const ctrIds = new Set(ctrs.map(c => c.id))
     return planInvs.filter(i => !i.contract_id || ctrIds.has(i.contract_id))
-  }, [planInvs, ctrs, capexFilter])
-
-  // ── Year options (stable across CAPEX/OPEX changes) ──────────
-  const yearOptions = useMemo(() => {
-    const years = new Set<string>()
-    for (const l of planLines) {
-      for (const key of Object.keys(l.values)) {
-        years.add(key.split('-')[0])
-      }
-    }
-    return [...years].sort()
-  }, [planLines])
+  }, [planInvs, ctrs, tipoFilter])
 
   // ── KPIs ─────────────────────────────────────────────────────
-  const kpiOrc  = useMemo(
-    () => lines.reduce((s, l) => s + sumValuesByYear(l.values, yearFilter), 0),
-    [lines, yearFilter]
+  const kpiOrc = useMemo(
+    () => lines.reduce((s, l) => s + sumByYears(l.values, selectedYears), 0),
+    [lines, selectedYears]
   )
-  const kpiAdj  = useMemo(() => ctrs.reduce((s, c) => s + c.total_amount, 0), [ctrs])
-  const kpiFact = useMemo(
+  const kpiAdj     = useMemo(() => ctrs.reduce((s, c) => s + c.total_amount, 0), [ctrs])
+  const kpiFact    = useMemo(
     () => invs.filter(i => i.status !== 'Rejeitada').reduce((s, i) => s + i.amount, 0),
     [invs]
   )
-  const kpiPago = useMemo(() => invs.filter(i => i.status === 'Paga').reduce((s, i) => s + i.amount, 0), [invs])
+  const kpiPago    = useMemo(() => invs.filter(i => i.status === 'Paga').reduce((s, i) => s + i.amount, 0), [invs])
   const kpiPorFact = kpiAdj - kpiFact
   const kpiDisp    = kpiOrc - kpiAdj
-  const fmt = (v: number) => fmtEur(v, currSymbol)
+  const fmt        = (v: number) => fmtEur(v, currSymbol)
 
-  // ── CAPEX / OPEX pie (year-filtered, orçamento) ──────────────
+  // ── CAPEX / OPEX pie ─────────────────────────────────────────
   const pieData = useMemo<PieEntry[]>(() => [
-    { name: 'CAPEX', value: lines.filter(l =>  l.capex).reduce((s, l) => s + sumValuesByYear(l.values, yearFilter), 0), fill: '#185FA5' },
-    { name: 'OPEX',  value: lines.filter(l => !l.capex).reduce((s, l) => s + sumValuesByYear(l.values, yearFilter), 0), fill: '#95BB42' },
-  ], [lines, yearFilter])
+    { name: 'CAPEX', value: lines.filter(l =>  l.capex).reduce((s, l) => s + sumByYears(l.values, selectedYears), 0), fill: '#185FA5' },
+    { name: 'OPEX',  value: lines.filter(l => !l.capex).reduce((s, l) => s + sumByYears(l.values, selectedYears), 0), fill: '#95BB42' },
+  ], [lines, selectedYears])
 
-  // ── Monthly bar (year-filtered invoices) ─────────────────────
+  // ── Monthly bar ───────────────────────────────────────────────
   const monthlyData = useMemo<MonthBar[]>(() => {
-    const yearInvs = yearFilter
-      ? invs.filter(i => (i.issue_date ?? i.due_date ?? '').startsWith(yearFilter))
+    const yearInvs = selectedYears.length > 0
+      ? invs.filter(i => selectedYears.some(y => (i.issue_date ?? i.due_date ?? '').startsWith(y)))
       : invs
     const map = new Map<string, { p: number; e: number; o: number }>()
     for (const inv of yearInvs) {
@@ -244,25 +284,27 @@ export default function ExecucaoFinanceira() {
     return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([month, v]) => ({ month, Pago: v.p, 'Em pagamento': v.e, 'Por facturar': v.o }))
-  }, [invs, yearFilter])
+  }, [invs, selectedYears])
 
-  // ── Category rows (Rubrica | Tipo | Orçamento | Adjudicado | % Adj. | Disponível)
+  // ── Category rows ─────────────────────────────────────────────
   const catRows = useMemo(() => {
     const cats = [...new Set(lines.map(l => l.category))].sort()
     return cats.map(cat => {
       const catLines = lines.filter(l => l.category === cat)
-      const orc      = catLines.reduce((s, l) => s + sumValuesByYear(l.values, yearFilter), 0)
+      const orc      = catLines.reduce((s, l) => s + sumByYears(l.values, selectedYears), 0)
       const isCapex  = catLines.some(l => l.capex)
       const adj      = ctrs.filter(c => c.category === cat).reduce((s, c) => s + c.total_amount, 0)
       const pctAdj   = orc > 0 ? adj / orc * 100 : 0
       const disp     = orc - adj
       return { cat, isCapex, orc, adj, pctAdj, disp }
     })
-  }, [lines, ctrs, yearFilter])
+  }, [lines, ctrs, selectedYears])
 
   // ── Contract rows ─────────────────────────────────────────────
   const ctrRows = useMemo(() => ctrs.map(c => {
-    const fact    = invs.filter(i => (i.contract_id === c.id || i.app_contract_id === c.app_id) && i.status !== 'Rejeitada').reduce((s, i) => s + i.amount, 0)
+    const fact    = invs
+      .filter(i => (i.contract_id === c.id || i.app_contract_id === c.app_id) && i.status !== 'Rejeitada')
+      .reduce((s, i) => s + i.amount, 0)
     const isCapex = catCapexMap.get(c.category) ?? false
     return { c, fact, pct: c.total_amount > 0 ? fact / c.total_amount * 100 : 0, isCapex }
   }), [ctrs, invs, catCapexMap])
@@ -272,65 +314,56 @@ export default function ExecucaoFinanceira() {
   return (
     <div className="ef-page">
 
-      {/* ── Controls bar ─────────────────────────────────────── */}
-      <div className="ef-selector-bar">
-        {programs.length > 1 && (
-          <>
-            <span className="ef-selector-label">Programa</span>
-            <select
-              className="styled-select"
-              value={selProgId ?? ''}
-              onChange={e => setSelProgId(e.target.value || null)}
+      {/* ── Filter bar ─────────────────────────────────────────── */}
+      <div className="ef-filter-bar">
+        {/* Programa */}
+        <select
+          className="styled-select ef-prog-select"
+          value={selProgId ?? ''}
+          onChange={e => setSelProgId(e.target.value || null)}
+        >
+          {programs.length > 1 && <option value="">Todos os programas</option>}
+          {programs.map(p => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+
+        <div className="ef-filter-sep" />
+
+        {/* Plano */}
+        <MultiSelect
+          label="Plano"
+          options={planoOptions}
+          placeholder="Todos os planos"
+          value={selectedPlanoLabels}
+          onChange={setSelectedPlanoLabels}
+        />
+
+        <div className="ef-filter-sep" />
+
+        {/* Ano */}
+        <MultiSelect
+          label="Ano"
+          options={yearOptions}
+          placeholder="Todos os anos"
+          value={selectedYears}
+          onChange={setSelectedYears}
+        />
+
+        <div className="ef-filter-sep" />
+
+        {/* Tipo */}
+        <div className="ef-type-toggle">
+          {(['todos', 'capex', 'opex'] as TipoFilter[]).map(t => (
+            <button
+              key={t}
+              className={`ef-type-btn${tipoFilter === t ? ' active' : ''}`}
+              onClick={() => setTipoFilter(t)}
             >
-              {programs.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-            <div className="ef-selector-sep" />
-          </>
-        )}
-        <span className="ef-selector-label">Plano</span>
-        <select
-          className="styled-select"
-          value={planKey}
-          onChange={e => setPlanKey(e.target.value)}
-        >
-          <option value="">Todos os planos</option>
-          {planOptions.map(o => (
-            <option key={o.key} value={o.key}>{o.label}</option>
+              {t === 'todos' ? 'Todos' : t.toUpperCase()}
+            </button>
           ))}
-        </select>
-
-        <div className="ef-selector-sep" />
-
-        <div className="ef-chips">
-          <button
-            className={`ef-chip${capexFilter === 'all'   ? ' active' : ''}`}
-            onClick={() => setCapexFilter('all')}
-          >Todos</button>
-          <button
-            className={`ef-chip${capexFilter === 'capex' ? ' active' : ''}`}
-            onClick={() => setCapexFilter('capex')}
-          >CAPEX</button>
-          <button
-            className={`ef-chip${capexFilter === 'opex'  ? ' active' : ''}`}
-            onClick={() => setCapexFilter('opex')}
-          >OPEX</button>
         </div>
-
-        <div className="ef-selector-sep" />
-
-        <span className="ef-selector-label">Ano</span>
-        <select
-          className="styled-select ef-year-select"
-          value={yearFilter}
-          onChange={e => setYearFilter(e.target.value)}
-        >
-          <option value="">Todos os anos</option>
-          {yearOptions.map(y => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
       </div>
 
       {loading ? (
@@ -343,7 +376,7 @@ export default function ExecucaoFinanceira() {
         <>
           {/* KPI row — 6 cards */}
           <div className="ef-kpi-row">
-            <KpiCard label="Orçamento Total"      value={fmt(kpiOrc)} color="navy" />
+            <KpiCard label="Orçamento Total" value={fmt(kpiOrc)} color="navy" />
             <KpiCard
               label="Adjudicado"
               value={fmt(kpiAdj)}
@@ -406,7 +439,11 @@ export default function ExecucaoFinanceira() {
                   {catRows.map(r => (
                     <tr key={r.cat}>
                       <td>{r.cat}</td>
-                      <td><span className={`ef-tipo-badge ${r.isCapex ? 'ef-tipo-badge--capex' : 'ef-tipo-badge--opex'}`}>{r.isCapex ? 'CAPEX' : 'OPEX'}</span></td>
+                      <td>
+                        <span className={`ef-tipo-badge ${r.isCapex ? 'ef-tipo-badge--capex' : 'ef-tipo-badge--opex'}`}>
+                          {r.isCapex ? 'CAPEX' : 'OPEX'}
+                        </span>
+                      </td>
                       <td className="ef-td-r">{fmt(r.orc)}</td>
                       <td className="ef-td-r">{fmt(r.adj)}</td>
                       <td className="ef-td-c">{fmtPct(r.pctAdj)}</td>
@@ -450,11 +487,17 @@ export default function ExecucaoFinanceira() {
                       <tr key={c.id}>
                         <td>{c.supplier}</td>
                         <td>{c.category}</td>
-                        <td><span className={`ef-tipo-badge ${isCapex ? 'ef-tipo-badge--capex' : 'ef-tipo-badge--opex'}`}>{isCapex ? 'CAPEX' : 'OPEX'}</span></td>
+                        <td>
+                          <span className={`ef-tipo-badge ${isCapex ? 'ef-tipo-badge--capex' : 'ef-tipo-badge--opex'}`}>
+                            {isCapex ? 'CAPEX' : 'OPEX'}
+                          </span>
+                        </td>
                         <td className="ef-td-r">{fmt(c.total_amount)}</td>
                         <td className="ef-td-r">{fmt(fact)}</td>
                         <td className="ef-td-c">{fmtPct(pct)}</td>
-                        <td><span className={`status-pill ef-badge-estado ef-badge-estado--${variant}`}>{label}</span></td>
+                        <td>
+                          <span className={`status-pill ef-badge-estado ef-badge-estado--${variant}`}>{label}</span>
+                        </td>
                       </tr>
                     )
                   })}
