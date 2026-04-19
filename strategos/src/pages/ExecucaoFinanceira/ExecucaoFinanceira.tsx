@@ -36,6 +36,12 @@ function fmtMonth(ym: string): string {
   return `${m.padStart(2, '0')}/${y.slice(2)}`
 }
 
+function fmtDate(d: string | null): string {
+  if (!d) return '—'
+  const [y, m, day] = d.split('-')
+  return `${day}/${m}/${y}`
+}
+
 function compactNumber(v: number): string {
   const abs = Math.abs(v)
   if (abs >= 1e9) return (v / 1e9).toFixed(1) + 'B'
@@ -47,6 +53,19 @@ function compactNumber(v: number): string {
 const ChartEmpty = () => (
   <p className="ef-chart-empty">Sem dados para os filtros seleccionados.</p>
 )
+
+function ProgressCell({ pct }: { pct: number }) {
+  const clamped = Math.min(100, Math.max(0, pct))
+  const color = clamped >= 100 ? 'var(--green)' : 'var(--blue)'
+  return (
+    <div className="ef-progress-cell">
+      <div className="ef-progress-track">
+        <div className="ef-progress-fill" style={{ width: `${clamped}%`, background: color }} />
+      </div>
+      <span className="ef-progress-label">{fmtPct(pct)}</span>
+    </div>
+  )
+}
 
 // ── Chart sub-components ──────────────────────────────────────
 
@@ -210,6 +229,9 @@ export default function ExecucaoFinanceira() {
   const [mgmtYears,           setMgmtYears]           = useState<string[]>([])
   const [invoiceAlertFilter,  setInvoiceAlertFilter]  = useState<'overdue' | 'due_soon' | null>(null)
   const [alertThresholds,     setAlertThresholds]     = useState({ overdue: 100, due_soon: 85 })
+  const [detailTab,           setDetailTab]           = useState<'rubricas' | 'contratos'>('rubricas')
+  const [sortBy,              setSortBy]              = useState('supplier')
+  const [sortDir,             setSortDir]             = useState<'asc' | 'desc'>('asc')
 
   // Initialise program from global filter or first program
   useEffect(() => {
@@ -473,28 +495,73 @@ export default function ExecucaoFinanceira() {
       .map(([name, value]) => ({ name, value }))
   }, [ctrs])
 
+  // ── Sort helpers ──────────────────────────────────────────────
+  function handleSort(col: string) {
+    if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(col); setSortDir('asc') }
+  }
+  const arrow = (col: string) => sortBy === col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''
+
   // ── Category rows ─────────────────────────────────────────────
   const catRows = useMemo(() => {
     const cats = [...new Set(lines.map(l => l.category))].sort()
     return cats.map(cat => {
-      const catLines = lines.filter(l => l.category === cat)
-      const orc      = catLines.reduce((s, l) => s + sumByYears(l.values, selectedYears), 0)
-      const isCapex  = catLines.some(l => l.capex)
-      const adj      = ctrs.filter(c => c.category === cat).reduce((s, c) => s + c.total_amount, 0)
-      const pctAdj   = orc > 0 ? adj / orc * 100 : 0
-      const disp     = orc - adj
-      return { cat, isCapex, orc, adj, pctAdj, disp }
+      const catLines    = lines.filter(l => l.category === cat)
+      const orc         = catLines.reduce((s, l) => s + sumByYears(l.values, selectedYears), 0)
+      const isCapex     = catLines.some(l => l.capex)
+      const catCtrs     = ctrs.filter(c => c.category === cat)
+      const adj         = catCtrs.reduce((s, c) => s + c.total_amount, 0)
+      const catCtrIds   = new Set(catCtrs.map(c => c.id))
+      const catCtrAppIds = new Set(catCtrs.map(c => c.app_id).filter((id): id is string => !!id))
+      const catInvs     = invs.filter(i =>
+        (i.contract_id && catCtrIds.has(i.contract_id)) ||
+        (i.app_contract_id && catCtrAppIds.has(i.app_contract_id))
+      )
+      const fact        = catInvs
+        .filter(i => i.status === 'Recebida' || i.status === 'Aprovada' || i.status === 'Paga')
+        .reduce((s, i) => s + i.amount, 0)
+      const pago        = catInvs.filter(i => i.status === 'Paga').reduce((s, i) => s + i.amount, 0)
+      const pctAdj      = orc > 0 ? adj / orc * 100 : 0
+      const pctFact     = adj > 0 ? fact / adj * 100 : 0
+      const disp        = orc - adj
+      return { cat, isCapex, orc, adj, pctAdj, fact, pago, pctFact, disp }
     })
-  }, [lines, ctrs, selectedYears])
+  }, [lines, ctrs, invs, selectedYears])
 
   // ── Contract rows ─────────────────────────────────────────────
   const ctrRows = useMemo(() => ctrs.map(c => {
-    const fact    = invs
-      .filter(i => (i.contract_id === c.id || i.app_contract_id === c.app_id) && i.status !== 'Rejeitada')
+    const cInvs      = invs.filter(i => i.contract_id === c.id || i.app_contract_id === c.app_id)
+    const fact       = cInvs
+      .filter(i => i.status === 'Recebida' || i.status === 'Aprovada' || i.status === 'Paga')
       .reduce((s, i) => s + i.amount, 0)
-    const isCapex = catCapexMap.get(c.category) ?? false
-    return { c, fact, pct: c.total_amount > 0 ? fact / c.total_amount * 100 : 0, isCapex }
-  }), [ctrs, invs, catCapexMap])
+    const isCapex    = catCapexMap.get(c.category) ?? false
+    const pct        = c.total_amount > 0 ? fact / c.total_amount * 100 : 0
+    const hasOverdue = cInvs.some(i => invoiceAlert(i, alertThresholds) === 'overdue')
+    const hasDueSoon = cInvs.some(i => invoiceAlert(i, alertThresholds) === 'due_soon')
+    return { c, fact, pct, isCapex, hasOverdue, hasDueSoon }
+  }), [ctrs, invs, catCapexMap, alertThresholds])
+
+  const sortedCtrRows = useMemo(() => {
+    let rows = ctrRows
+    if (invoiceAlertFilter === 'overdue')  rows = rows.filter(r => r.hasOverdue)
+    if (invoiceAlertFilter === 'due_soon') rows = rows.filter(r => r.hasDueSoon)
+    return [...rows].sort((a, b) => {
+      let av: string | number = '', bv: string | number = ''
+      switch (sortBy) {
+        case 'supplier':     av = a.c.supplier;         bv = b.c.supplier;         break
+        case 'category':     av = a.c.category;         bv = b.c.category;         break
+        case 'currency':     av = a.c.currency;         bv = b.c.currency;         break
+        case 'total_amount': av = a.c.total_amount;     bv = b.c.total_amount;     break
+        case 'fact':         av = a.fact;               bv = b.fact;               break
+        case 'pct':          av = a.pct;                bv = b.pct;                break
+        case 'award_date':   av = a.c.award_date ?? ''; bv = b.c.award_date ?? ''; break
+        case 'end_date':     av = a.c.end_date ?? '';   bv = b.c.end_date ?? '';   break
+        default:             av = '';                    bv = ''
+      }
+      const cmp = typeof av === 'string' ? av.localeCompare(bv as string) : (av as number) - (bv as number)
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+  }, [ctrRows, invoiceAlertFilter, sortBy, sortDir])
 
   const hasData = budgetLines.length > 0 || contracts.length > 0
 
@@ -661,92 +728,150 @@ export default function ExecucaoFinanceira() {
             </Card>
           </div>
 
-          {/* Rubricas table */}
-          <Card title="Execução por rubrica">
-            {catRows.length === 0 ? (
-              <p className="ef-empty">Sem linhas orçamentais.</p>
-            ) : (
-              <table className="ef-table">
-                <thead>
-                  <tr>
-                    <th>Rubrica</th>
-                    <th>Tipo</th>
-                    <th className="ef-th-r">Orçamento</th>
-                    <th className="ef-th-r">Adjudicado</th>
-                    <th className="ef-th-c">% Adj.</th>
-                    <th className="ef-th-r">Disponível</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {catRows.map(r => (
-                    <tr key={r.cat}>
-                      <td>{r.cat}</td>
-                      <td>
-                        <span className={`ef-tipo-badge ${r.isCapex ? 'ef-tipo-badge--capex' : 'ef-tipo-badge--opex'}`}>
-                          {r.isCapex ? 'CAPEX' : 'OPEX'}
-                        </span>
-                      </td>
-                      <td className="ef-td-r">{fmt(r.orc)}</td>
-                      <td className="ef-td-r">{fmt(r.adj)}</td>
-                      <td className="ef-td-c">{fmtPct(r.pctAdj)}</td>
-                      <td className={`ef-td-r ${r.disp < 0 ? 'ef-red' : ''}`}>{fmt(Math.max(0, r.disp))}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="ef-total">
-                    <td>Total</td>
-                    <td />
-                    <td className="ef-td-r">{fmt(catRows.reduce((s, r) => s + r.orc, 0))}</td>
-                    <td className="ef-td-r">{fmt(catRows.reduce((s, r) => s + r.adj, 0))}</td>
-                    <td className="ef-td-c">{fmtPct(kpiOrc > 0 ? kpiAdj / kpiOrc * 100 : 0)}</td>
-                    <td className="ef-td-r">{fmt(Math.max(0, catRows.reduce((s, r) => s + r.disp, 0)))}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            )}
-          </Card>
+          {/* ── Detail tabs ──────────────────────────────────────── */}
+          <Card className="ef-detail-card">
+            <div className="ef-detail-tabs">
+              <button
+                className={`ef-detail-tab${detailTab === 'rubricas' ? ' active' : ''}`}
+                onClick={() => setDetailTab('rubricas')}
+              >
+                Rubricas
+              </button>
+              <button
+                className={`ef-detail-tab${detailTab === 'contratos' ? ' active' : ''}`}
+                onClick={() => setDetailTab('contratos')}
+              >
+                Contratos
+                {ctrRows.length > 0 && (
+                  <span className="ef-tab-count">{ctrRows.length}</span>
+                )}
+              </button>
+            </div>
 
-          {/* Contracts table */}
-          {ctrRows.length > 0 && (
-            <Card title="Contratos">
-              <table className="ef-table">
-                <thead>
-                  <tr>
-                    <th>Fornecedor</th>
-                    <th>Categoria</th>
-                    <th>Tipo</th>
-                    <th className="ef-th-r">Adjudicado</th>
-                    <th className="ef-th-r">Facturado</th>
-                    <th className="ef-th-c">% Facturado</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ctrRows.map(({ c, fact, pct, isCapex }) => {
-                    const { label, variant } = contractEstado(pct)
-                    return (
-                      <tr key={c.id}>
-                        <td>{c.supplier}</td>
-                        <td>{c.category}</td>
-                        <td>
-                          <span className={`ef-tipo-badge ${isCapex ? 'ef-tipo-badge--capex' : 'ef-tipo-badge--opex'}`}>
-                            {isCapex ? 'CAPEX' : 'OPEX'}
-                          </span>
-                        </td>
-                        <td className="ef-td-r">{fmt(c.total_amount)}</td>
-                        <td className="ef-td-r">{fmt(fact)}</td>
-                        <td className="ef-td-c">{fmtPct(pct)}</td>
-                        <td>
-                          <span className={`status-pill ef-badge-estado ef-badge-estado--${variant}`}>{label}</span>
-                        </td>
+            <div className="ef-detail-body">
+              {detailTab === 'rubricas' && (
+                catRows.length === 0 ? (
+                  <p className="ef-empty">Sem linhas orçamentais.</p>
+                ) : (
+                  <table className="ef-table">
+                    <thead>
+                      <tr>
+                        <th>Rubrica</th>
+                        <th>Tipo</th>
+                        <th className="ef-th-r">Orçamento</th>
+                        <th className="ef-th-r">Comprometido</th>
+                        <th className="ef-th-r">Facturado</th>
+                        <th className="ef-th-r">Pago</th>
+                        <th className="ef-th-r">Disponível</th>
+                        <th style={{ minWidth: 130 }}>% Facturado</th>
                       </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </Card>
-          )}
+                    </thead>
+                    <tbody>
+                      {catRows.map(r => (
+                        <tr key={r.cat}>
+                          <td>{r.cat}</td>
+                          <td>
+                            <span className={`ef-tipo-badge ${r.isCapex ? 'ef-tipo-badge--capex' : 'ef-tipo-badge--opex'}`}>
+                              {r.isCapex ? 'CAPEX' : 'OPEX'}
+                            </span>
+                          </td>
+                          <td className="ef-td-r">{fmt(r.orc)}</td>
+                          <td className="ef-td-r">{fmt(r.adj)}</td>
+                          <td className="ef-td-r">{fmt(r.fact)}</td>
+                          <td className="ef-td-r">{fmt(r.pago)}</td>
+                          <td className={`ef-td-r ${r.disp < 0 ? 'ef-red' : ''}`}>{fmt(Math.max(0, r.disp))}</td>
+                          <td><ProgressCell pct={r.pctFact} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="ef-total">
+                        <td>Total</td>
+                        <td />
+                        <td className="ef-td-r">{fmt(catRows.reduce((s, r) => s + r.orc, 0))}</td>
+                        <td className="ef-td-r">{fmt(catRows.reduce((s, r) => s + r.adj, 0))}</td>
+                        <td className="ef-td-r">{fmt(catRows.reduce((s, r) => s + r.fact, 0))}</td>
+                        <td className="ef-td-r">{fmt(catRows.reduce((s, r) => s + r.pago, 0))}</td>
+                        <td className="ef-td-r">{fmt(Math.max(0, catRows.reduce((s, r) => s + r.disp, 0)))}</td>
+                        <td><ProgressCell pct={kpiAdj > 0 ? kpiFact / kpiAdj * 100 : 0} /></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                )
+              )}
+
+              {detailTab === 'contratos' && (
+                <>
+                  {(overdueCount > 0 || dueSoonCount > 0) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text3)' }}>Filtrar:</span>
+                      {overdueCount > 0 && (
+                        <button
+                          className={`ef-alert-badge overdue${invoiceAlertFilter === 'overdue' ? ' active' : ''}`}
+                          onClick={() => setInvoiceAlertFilter(f => f === 'overdue' ? null : 'overdue')}
+                        >
+                          {overdueCount} atrasadas
+                        </button>
+                      )}
+                      {dueSoonCount > 0 && (
+                        <button
+                          className={`ef-alert-badge due-soon${invoiceAlertFilter === 'due_soon' ? ' active' : ''}`}
+                          onClick={() => setInvoiceAlertFilter(f => f === 'due_soon' ? null : 'due_soon')}
+                        >
+                          {dueSoonCount} a vencer
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {sortedCtrRows.length === 0 ? (
+                    <p className="ef-empty">Sem contratos.</p>
+                  ) : (
+                    <table className="ef-table">
+                      <thead>
+                        <tr>
+                          <th className="ef-th-sort" onClick={() => handleSort('supplier')}>Fornecedor{arrow('supplier')}</th>
+                          <th className="ef-th-sort" onClick={() => handleSort('category')}>Categoria{arrow('category')}</th>
+                          <th>Tipo</th>
+                          <th className="ef-th-sort" onClick={() => handleSort('currency')}>Moeda{arrow('currency')}</th>
+                          <th className="ef-th-r ef-th-sort" onClick={() => handleSort('total_amount')}>Comprometido{arrow('total_amount')}</th>
+                          <th className="ef-th-r ef-th-sort" onClick={() => handleSort('fact')}>Facturado{arrow('fact')}</th>
+                          <th style={{ minWidth: 130 }}>% Facturado</th>
+                          <th className="ef-th-sort" onClick={() => handleSort('award_date')}>Data Adj.{arrow('award_date')}</th>
+                          <th className="ef-th-sort" onClick={() => handleSort('end_date')}>Data Fim{arrow('end_date')}</th>
+                          <th>Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedCtrRows.map(({ c, fact, pct, isCapex }) => {
+                          const { label, variant } = contractEstado(pct)
+                          return (
+                            <tr key={c.id}>
+                              <td>{c.supplier}</td>
+                              <td>{c.category}</td>
+                              <td>
+                                <span className={`ef-tipo-badge ${isCapex ? 'ef-tipo-badge--capex' : 'ef-tipo-badge--opex'}`}>
+                                  {isCapex ? 'CAPEX' : 'OPEX'}
+                                </span>
+                              </td>
+                              <td>{c.currency}</td>
+                              <td className="ef-td-r">{fmt(c.total_amount)}</td>
+                              <td className="ef-td-r">{fmt(fact)}</td>
+                              <td><ProgressCell pct={pct} /></td>
+                              <td>{fmtDate(c.award_date)}</td>
+                              <td>{fmtDate(c.end_date)}</td>
+                              <td>
+                                <span className={`ef-badge-estado ef-badge-estado--${variant}`}>{label}</span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </>
+              )}
+            </div>
+          </Card>
         </>
       )}
     </div>

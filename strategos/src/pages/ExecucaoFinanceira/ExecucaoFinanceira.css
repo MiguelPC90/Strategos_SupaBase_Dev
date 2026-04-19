@@ -318,4 +318,94 @@
   .ef-badge-estado--grey  { background: #eceef0; color: #5c5c58; }
   .ef-badge-estado--blue  { background: #e8f0fb; color: var(--blue); }
   .ef-badge-estado--green { background: #eaf3d8; color: #3B6D11; }
+
+  /* ── Detail card (tabbed) ────────────────────────────────── */
+  .ef-detail-card .card-body {
+    padding: 0;
+  }
+
+  .ef-detail-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border2);
+    padding: 0 16px;
+  }
+
+  .ef-detail-tab {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--text3);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.15s;
+  }
+
+  .ef-detail-tab:hover { color: var(--text2); }
+
+  .ef-detail-tab.active {
+    color: var(--navy);
+    border-bottom-color: var(--navy);
+  }
+
+  .ef-tab-count {
+    font-size: 10px;
+    font-weight: 700;
+    background: var(--bg3);
+    color: var(--text2);
+    border-radius: 10px;
+    padding: 1px 6px;
+  }
+
+  .ef-detail-tab.active .ef-tab-count {
+    background: var(--navy);
+    color: #fff;
+  }
+
+  .ef-detail-body {
+    padding: 16px;
+  }
+
+  /* ── Progress cell ────────────────────────────────────────── */
+  .ef-progress-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 100px;
+  }
+
+  .ef-progress-track {
+    flex: 1;
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+    min-width: 40px;
+  }
+
+  .ef-progress-fill {
+    height: 100%;
+    border-radius: 2px;
+  }
+
+  .ef-progress-label {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--text2);
+  }
+
+  /* ── Sortable header ──────────────────────────────────────── */
+  .ef-th-sort {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .ef-th-sort:hover { color: var(--navy); }
 }
