@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import Card from '../../components/Card/Card'
 import Modal from '../../components/Modal/Modal'
 import Badge from '../../components/Badge/Badge'
+import DateRangePicker from '../../components/DateRangePicker/DateRangePicker'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { usePeople } from '../../hooks/usePeople'
@@ -14,7 +15,7 @@ import { usePlanos } from '../../hooks/usePlanos'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange, leafPctPrev, leafStatus } from '../../lib/rollup'
-import type { Activity } from '../../types/index'
+import type { Activity, Person } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
 type BadgeVariant = 'green' | 'blue' | 'red' | 'grey'
@@ -33,6 +34,32 @@ function fmtDate(iso: string | null): string {
 }
 
 const TODAY = new Date().toISOString().slice(0, 10)
+
+// ── computePctPrev ─────────────────────────────────────────────
+function computePctPrev(bs: string, bf: string): number {
+  if (!bs || !bf) return 0
+  const start = new Date(bs).getTime()
+  const end   = new Date(bf).getTime()
+  const today = new Date(TODAY).getTime()
+  if (end <= start) return 0
+  return Math.min(100, Math.max(0, Math.round(((today - start) / (end - start)) * 100)))
+}
+
+// ── Collapsible ────────────────────────────────────────────────
+function Collapsible({ title, defaultOpen = false, children }: {
+  title: string; defaultOpen?: boolean; children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="gi-collapsible">
+      <button className="gi-collapsible-header" type="button" onClick={() => setOpen(o => !o)}>
+        <span className="gi-section-title gi-collapsible-title">{title}</span>
+        <span className="gi-collapsible-chevron">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && <div className="gi-collapsible-body">{children}</div>}
+    </div>
+  )
+}
 
 // ── Tree ───────────────────────────────────────────────────────
 interface N5Leaf  { key: string; n5: string; acts: Activity[] }
@@ -119,20 +146,18 @@ interface PanelProps {
   eixos: string[]
   planos: string[]
   activities: Activity[]
-  peopleNames: string[]
+  internalPeople: Person[]
+  errors: Record<string, string>
   onChange: (f: PanelForm) => void
 }
 
-function Panel({ form, eixos, planos, activities, peopleNames, onChange }: PanelProps) {
-  const [datesOpen, setDatesOpen] = useState(false)
-
+function Panel({ form, eixos, planos, activities, internalPeople, errors, onChange }: PanelProps) {
   const set = (k: keyof PanelForm) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       onChange({ ...form, [k]: e.target.value })
 
   const level = Number(form.level) || 3
 
-  // Level change → clear irrelevant context fields
   const handleLevelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLevel = Number(e.target.value)
     const updated: PanelForm = { ...form, level: e.target.value }
@@ -142,183 +167,182 @@ function Panel({ form, eixos, planos, activities, peopleNames, onChange }: Panel
     onChange(updated)
   }
 
-  // N1 change → cascade clear
   const handleN1Change = (e: React.ChangeEvent<HTMLSelectElement>) =>
     onChange({ ...form, n1: e.target.value, n2: '', n3: '', n4: '', n5: '' })
 
-  // N2 change → cascade clear
   const handleN2Change = (e: React.ChangeEvent<HTMLSelectElement>) =>
     onChange({ ...form, n2: e.target.value, n3: '', n4: '', n5: '' })
 
-  // Cascading candidates — filtered per level
   const macros   = activities.filter(a => a.n2 === form.n2 && a.level === 3)
   const actsCand = activities.filter(a => a.n2 === form.n2 && a.level === 4 && a.n3 === form.n3)
   const tasks    = activities.filter(a =>
     a.n2 === form.n2 && a.level === 5 && a.n3 === form.n3 && a.n4 === form.n4
   )
-  const listId = 'gi-people-list'
+
+  const pctPrev = computePctPrev(form.bs, form.bf)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <datalist id={listId}>
-        {peopleNames.map(n => <option key={n} value={n} />)}
-      </datalist>
-      <>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
-          {/* 1. Nome */}
-          <div className="gi-field">
-            <span className="gi-field-label">Nome *</span>
-            <input
-              className="gi-field-input"
-              value={form.name}
-              onChange={e => onChange({ ...form, name: e.target.value })}
-              placeholder="Designação da actividade"
-            />
-          </div>
+      {/* ── 1. Identificação ── */}
+      <div className="gi-section">
+        <div className="gi-section-title">Identificação</div>
+        <div className="gi-field" style={{ marginTop: 10 }}>
+          <span className={`gi-field-label${errors.name ? ' gi-label-error' : ''}`}>Nome *</span>
+          <input
+            className={`gi-field-input${errors.name ? ' gi-input-error' : ''}`}
+            value={form.name}
+            onChange={e => onChange({ ...form, name: e.target.value })}
+            placeholder="Designação da actividade"
+          />
+          {errors.name && <span className="gi-error">{errors.name}</span>}
+        </div>
+        <div className="gi-field" style={{ marginTop: 10 }}>
+          <span className="gi-field-label">Nível</span>
+          <select className="styled-select-sm" value={form.level} onChange={handleLevelChange}>
+            <option value="3">Macroactividade</option>
+            <option value="4">Actividade</option>
+            <option value="5">Tarefa</option>
+            <option value="6">Sub-tarefa</option>
+          </select>
+        </div>
+      </div>
 
-          {/* 2. Nível */}
+      {/* ── 2. Hierarquia ── */}
+      <div className="gi-section">
+        <div className="gi-section-title">Hierarquia</div>
+        <div className="gi-field-row" style={{ marginTop: 10 }}>
           <div className="gi-field">
-            <span className="gi-field-label">Nível</span>
-            <select className="styled-select-sm" value={form.level} onChange={handleLevelChange}>
-              <option value="3">Macroactividade</option>
-              <option value="4">Actividade</option>
-              <option value="5">Tarefa</option>
-              <option value="6">Sub-tarefa</option>
+            <span className="gi-field-label">Eixo</span>
+            <select className="styled-select-sm" value={form.n1} onChange={handleN1Change}>
+              <option value="">— seleccionar —</option>
+              {eixos.map(e => <option key={e} value={e}>{e}</option>)}
             </select>
           </div>
-
-          {/* 3. Eixo + Plano de Acção */}
-          <div className="gi-field-row">
-            <div className="gi-field">
-              <span className="gi-field-label">Eixo</span>
-              <select className="styled-select-sm" value={form.n1} onChange={handleN1Change}>
-                <option value="">— seleccionar —</option>
-                {eixos.map(e => <option key={e} value={e}>{e}</option>)}
-              </select>
-            </div>
-            <div className="gi-field">
-              <span className="gi-field-label">Plano de Acção</span>
-              <select className="styled-select-sm" value={form.n2} onChange={handleN2Change}>
-                <option value="">— seleccionar —</option>
-                {planos.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
+          <div className="gi-field">
+            <span className="gi-field-label">Plano de Acção</span>
+            <select className="styled-select-sm" value={form.n2} onChange={handleN2Change}>
+              <option value="">— seleccionar —</option>
+              {planos.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
           </div>
-
-          {/* 4. Macroactividade (level >= 4) */}
-          {level >= 4 && (
-            <div className="gi-context-section">
-              <div className="gi-field">
-                <span className="gi-context-label">Macroactividade</span>
-                <select
-                  className="styled-select-sm"
-                  value={form.n3}
-                  onChange={e => onChange({ ...form, n3: e.target.value, n4: '', n5: '' })}
-                >
-                  <option value="">— seleccionar —</option>
-                  {macros.map(a => <option key={a.id} value={a.n3}>{a.name}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
-
-          {/* 5. Actividade (level >= 5) */}
-          {level >= 5 && (
-            <div className="gi-context-section">
-              <div className="gi-field">
-                <span className="gi-context-label">Actividade</span>
-                <select
-                  className="styled-select-sm"
-                  value={form.n4}
-                  onChange={e => onChange({ ...form, n4: e.target.value, n5: '' })}
-                >
-                  <option value="">— seleccionar —</option>
-                  {actsCand.map(a => <option key={a.id} value={a.n4}>{a.name}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
-
-          {/* 6. Tarefa (level >= 6) */}
-          {level >= 6 && (
-            <div className="gi-context-section">
-              <div className="gi-field">
-                <span className="gi-context-label">Tarefa</span>
-                <select
-                  className="styled-select-sm"
-                  value={form.n5}
-                  onChange={e => onChange({ ...form, n5: e.target.value })}
-                >
-                  <option value="">— seleccionar —</option>
-                  {tasks.map(a => <option key={a.id} value={a.n5}>{a.name}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
-
-          {/* 7. Responsável + Sponsor */}
-          <div className="gi-field-row">
-            <div className="gi-field">
-              <span className="gi-field-label">Responsável</span>
-              <input className="gi-field-input" list={listId} value={form.owner} onChange={set('owner')} />
-            </div>
-            <div className="gi-field">
-              <span className="gi-field-label">Sponsor</span>
-              <input className="gi-field-input" list={listId} value={form.sponsor} onChange={set('sponsor')} />
-            </div>
+        </div>
+        {level >= 4 && (
+          <div className="gi-field" style={{ marginTop: 10 }}>
+            <span className="gi-context-label">Macroactividade</span>
+            <select
+              className="styled-select-sm"
+              value={form.n3}
+              onChange={e => onChange({ ...form, n3: e.target.value, n4: '', n5: '' })}
+            >
+              <option value="">— seleccionar —</option>
+              {macros.map(a => <option key={a.id} value={a.n3}>{a.name}</option>)}
+            </select>
           </div>
+        )}
+        {level >= 5 && (
+          <div className="gi-field" style={{ marginTop: 10 }}>
+            <span className="gi-context-label">Actividade</span>
+            <select
+              className="styled-select-sm"
+              value={form.n4}
+              onChange={e => onChange({ ...form, n4: e.target.value, n5: '' })}
+            >
+              <option value="">— seleccionar —</option>
+              {actsCand.map(a => <option key={a.id} value={a.n4}>{a.name}</option>)}
+            </select>
+          </div>
+        )}
+        {level >= 6 && (
+          <div className="gi-field" style={{ marginTop: 10 }}>
+            <span className="gi-context-label">Tarefa</span>
+            <select
+              className="styled-select-sm"
+              value={form.n5}
+              onChange={e => onChange({ ...form, n5: e.target.value })}
+            >
+              <option value="">— seleccionar —</option>
+              {tasks.map(a => <option key={a.id} value={a.n5}>{a.name}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
 
-          {/* 8. Datas e Progresso (colapsável) */}
-          <button className="gi-section-toggle" onClick={() => setDatesOpen(o => !o)}>
-            <span>Datas e Progresso</span>
-            <span>{datesOpen ? '▲' : '▼'}</span>
-          </button>
+      {/* ── 3. Datas ── */}
+      <div className="gi-section">
+        <div className="gi-section-title">Datas</div>
+        <div style={{ marginTop: 10 }}>
+          <DateRangePicker
+            label="Baseline"
+            startDate={form.bs || null}
+            endDate={form.bf || null}
+            onChange={(s, e) => onChange({ ...form, bs: s ?? '', bf: e ?? '' })}
+          />
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <DateRangePicker
+            label="Real"
+            startDate={form.rs || null}
+            endDate={form.rf || null}
+            onChange={(s, e) => onChange({ ...form, rs: s ?? '', rf: e ?? '' })}
+          />
+        </div>
+      </div>
 
-          {datesOpen && (
-            <>
-              <div className="gi-field-row">
-                <div className="gi-field">
-                  <span className="gi-field-label">Início baseline (BS)</span>
-                  <input className="gi-field-input" type="date" value={form.bs} onChange={set('bs')} />
-                </div>
-                <div className="gi-field">
-                  <span className="gi-field-label">Fim baseline (BF)</span>
-                  <input className="gi-field-input" type="date" value={form.bf} onChange={set('bf')} />
-                </div>
-              </div>
+      {/* ── 4. Progresso ── */}
+      <div className="gi-section">
+        <div className="gi-section-title">Progresso</div>
+        <div className="gi-field" style={{ marginTop: 10 }}>
+          <span className="gi-field-label">% Execução</span>
+          <div className="gi-slider-row">
+            <input
+              className="gi-slider"
+              type="range" min="0" max="100" step="1"
+              value={form.pct}
+              onChange={set('pct')}
+            />
+            <span className="gi-slider-val">{form.pct}%</span>
+          </div>
+        </div>
+        <div className="gi-progress-row" style={{ marginTop: 8 }}>
+          <span className="gi-field-label">% Previsto</span>
+          <span className="gi-pct-prev-value gi-readonly">{pctPrev}%</span>
+        </div>
+      </div>
 
-              <div className="gi-field-row">
-                <div className="gi-field">
-                  <span className="gi-field-label">Início real (RS)</span>
-                  <input className="gi-field-input" type="date" value={form.rs} onChange={set('rs')} />
-                </div>
-                <div className="gi-field">
-                  <span className="gi-field-label">Fim real (RF)</span>
-                  <input className="gi-field-input" type="date" value={form.rf} onChange={set('rf')} />
-                </div>
-              </div>
+      {/* ── 5. Responsável e Sponsor (collapsible) ── */}
+      <Collapsible title="Responsável e Sponsor">
+        <div className="gi-field-row">
+          <div className="gi-field">
+            <span className="gi-field-label">Responsável</span>
+            <select className="gi-field-input" value={form.owner} onChange={set('owner')}>
+              <option value="">— seleccionar —</option>
+              {internalPeople.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+            </select>
+          </div>
+          <div className="gi-field">
+            <span className="gi-field-label">Sponsor</span>
+            <select className="gi-field-input" value={form.sponsor} onChange={set('sponsor')}>
+              <option value="">— seleccionar —</option>
+              {internalPeople.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+            </select>
+          </div>
+        </div>
+      </Collapsible>
 
-              <div className="gi-field">
-                <span className="gi-field-label">% Execução</span>
-                <div className="gi-slider-row">
-                  <input
-                    className="gi-slider"
-                    type="range" min="0" max="100" step="1"
-                    value={form.pct}
-                    onChange={set('pct')}
-                  />
-                  <span className="gi-slider-val">{form.pct}%</span>
-                </div>
-              </div>
+      {/* ── 6. Notas (collapsible) ── */}
+      <Collapsible title="Notas">
+        <div className="gi-field">
+          <textarea
+            className="gi-field-textarea"
+            value={form.notes}
+            onChange={set('notes')}
+            rows={3}
+            placeholder="Observações opcionais…"
+          />
+        </div>
+      </Collapsible>
 
-              <div className="gi-field">
-                <span className="gi-field-label">Notas</span>
-                <textarea className="gi-field-textarea" value={form.notes} onChange={set('notes')} rows={3} />
-              </div>
-            </>
-          )}
-
-      </>
     </div>
   )
 }
@@ -388,8 +412,11 @@ export default function GestaoIniciativas() {
   const { eixos: dbEixos } = useEixos(selProgId ?? undefined)
   const { planos: dbPlanos } = usePlanos(selProgId ?? undefined)
 
-  const program     = useMemo(() => programs.find(p => p.id === selProgId), [programs, selProgId])
-  const peopleNames = useMemo(() => people.filter(p => p.active !== false).map(p => p.name), [people])
+  const program         = useMemo(() => programs.find(p => p.id === selProgId), [programs, selProgId])
+  const internalPeople  = useMemo(() =>
+    people.filter(p => p.active !== false && (p.type ?? '').toLowerCase() === 'interno'),
+    [people]
+  )
 
   // Filter client-side: match by program_id (new data) or by n0 name (legacy data with null program_id)
   const activities = useMemo(() => {
@@ -412,7 +439,7 @@ export default function GestaoIniciativas() {
 
   const [panelForm, setPanelForm]   = useState<PanelForm | null>(null)
   const [panelSaving, setPanelSaving] = useState(false)
-  const [panelErr, setPanelErr]     = useState('')
+  const [panelErrors, setPanelErrors] = useState<Record<string, string>>({})
 
   const [batchSaving, setBatchSaving] = useState(false)
   const [delayThreshold, setDelayThreshold] = useState(20)
@@ -506,7 +533,7 @@ export default function GestaoIniciativas() {
 
   // ── Panel ─────────────────────────────────────────────────────
   const openPanel = useCallback((a: Activity) => {
-    setPanelForm(toForm(a)); setPanelErr('')
+    setPanelForm(toForm(a)); setPanelErrors({})
   }, [])
 
   const openNew = useCallback(() => {
@@ -525,15 +552,17 @@ export default function GestaoIniciativas() {
     } else {
       setPanelForm(blankForm(program?.name ?? ''))
     }
-    setPanelErr('')
+    setPanelErrors({})
   }, [selectedId, activities, program])
 
-  const closePanel = useCallback(() => { setPanelForm(null); setPanelErr('') }, [])
+  const closePanel = useCallback(() => { setPanelForm(null); setPanelErrors({}) }, [])
 
   const handlePanelSave = useCallback(async () => {
     if (!panelForm) return
-    if (!panelForm.name.trim()) { setPanelErr('Nome obrigatório.'); return }
-    setPanelSaving(true); setPanelErr('')
+    const errs: Record<string, string> = {}
+    if (!panelForm.name.trim()) errs.name = 'Nome obrigatório.'
+    if (Object.keys(errs).length > 0) { setPanelErrors(errs); return }
+    setPanelSaving(true); setPanelErrors({})
     const pct    = Math.min(100, Math.max(0, Number(panelForm.pct) || 0))
     const status = pct >= 100 ? 'Concluída' : 'Em dia'
     const level  = Number(panelForm.level) || 3
@@ -567,7 +596,7 @@ export default function GestaoIniciativas() {
       if (error) errMsg = error.message
     }
     setPanelSaving(false)
-    if (errMsg) { setPanelErr(errMsg); return }
+    if (errMsg) { setPanelErrors({ _: errMsg }); return }
     setPanelForm(null); refetch()
   }, [panelForm, selProgId, activities.length, refetch])
 
@@ -578,7 +607,7 @@ export default function GestaoIniciativas() {
     setPanelSaving(true)
     const { error } = await supabase.from('activities').delete().eq('id', id)
     setPanelSaving(false)
-    if (error) { setPanelErr(error.message); return }
+    if (error) { setPanelErrors({ _: error.message }); return }
     setDirty(prev => { const next = new Map(prev); next.delete(id); return next })
     setPanelForm(null); refetch()
   }, [panelForm, refetch])
@@ -586,7 +615,7 @@ export default function GestaoIniciativas() {
   // ── Duplicate ─────────────────────────────────────────────────
   const handleDuplicate = useCallback((a: Activity) => {
     setPanelForm({ ...toForm(a), id: null, name: a.name + ' (cópia)', pct: '0', rs: '', rf: '' })
-    setPanelErr('')
+    setPanelErrors({})
   }, [])
 
   // ── Row delete ────────────────────────────────────────────────
@@ -964,13 +993,14 @@ export default function GestaoIniciativas() {
               <button className="gi-btn gi-btn-save" onClick={handlePanelSave} disabled={panelSaving}>
                 {panelSaving ? 'A guardar…' : 'Guardar'}
               </button>
-              {panelErr && <span style={{ fontSize: 12, color: 'var(--red)', width: '100%' }}>{panelErr}</span>}
+              {panelErrors._ && <span style={{ fontSize: 12, color: 'var(--red)', width: '100%' }}>{panelErrors._}</span>}
             </>
           }
         >
           <Panel
             form={panelForm} eixos={eixos} planos={planos} activities={activities}
-            peopleNames={peopleNames}
+            internalPeople={internalPeople}
+            errors={panelErrors}
             onChange={setPanelForm}
           />
         </Modal>
