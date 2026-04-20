@@ -71,6 +71,17 @@ function typeVar(type: string | null): 'blue' | 'grey' {
   return isExternal(type) ? 'blue' : 'grey'
 }
 
+function personKey(r: FteResource): string {
+  return r.person_id ? `pid:${r.person_id}` : `name:${r.name.toLowerCase().trim()}`
+}
+
+function monthsInRange(start: string | null, end: string | null): string[] {
+  const today = new Date()
+  const s = start ? start.substring(0, 7) : `${today.getFullYear() - 1}-01`
+  const e = end   ? end.substring(0, 7)   : `${today.getFullYear() + 1}-12`
+  return genMonths(s, e)
+}
+
 // ── Plan view ──────────────────────────────────────────────────
 interface PlanViewProps {
   resources: FteResource[]
@@ -177,21 +188,24 @@ function PlanView({ resources, planoNames, expanded, onToggle, sym }: PlanViewPr
 interface HoverCell {
   resource: string
   month: string
-  totalPct: number
   plans: Array<{ plan: string; allocation: number; daily_cost: number }>
+  localPct: number
+  globalPct: number
+  otherProgramsAllocation: number
   x: number
   y: number
 }
 
 interface HeatmapProps {
   resources: FteResource[]
+  globalAllocByPersonMonth: Map<string, Map<string, number>>
   months: string[]
   planoNames: Map<string, string>
   onSelect: (name: string) => void
   sym: string
 }
 
-function ResourceHeatmap({ resources, months, planoNames, onSelect, sym }: HeatmapProps) {
+function ResourceHeatmap({ resources, globalAllocByPersonMonth, months, planoNames, onSelect, sym }: HeatmapProps) {
   const [hoverCell, setHoverCell] = useState<HoverCell | null>(null)
 
   const uniqueNames = useMemo(() => {
@@ -203,6 +217,7 @@ function ResourceHeatmap({ resources, months, planoNames, onSelect, sym }: Heatm
     return result.sort()
   }, [resources])
 
+  // Local allocation by name|month (within filtered scope)
   const allocMap = useMemo(() => {
     const m = new Map<string, number>()
     for (const r of resources) {
@@ -216,14 +231,37 @@ function ResourceHeatmap({ resources, months, planoNames, onSelect, sym }: Heatm
     return m
   }, [resources, months])
 
-  function getPlansForResourceMonth(name: string, mo: string) {
-    return resources
+  // First personKey for each display name (within scoped resources)
+  const nameToPersonKey = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const r of resources) {
+      if (!m.has(r.name)) m.set(r.name, personKey(r))
+    }
+    return m
+  }, [resources])
+
+  function getGlobalPct(name: string, mo: string): number {
+    const pk = nameToPersonKey.get(name) ?? `name:${name.toLowerCase().trim()}`
+    return Math.round(globalAllocByPersonMonth.get(pk)?.get(mo) ?? 0)
+  }
+
+  function buildHoverData(name: string, mo: string, x: number, y: number): HoverCell {
+    const localPlans = resources
       .filter(r => r.name === name && activeInMonth(r, mo))
       .map(r => ({
         plan:       planoNames.get(r.pds_id) ?? 'Sem plano',
         allocation: r.allocation_pct ?? 0,
         daily_cost: r.daily_cost ?? 0,
       }))
+    const localPct  = Math.round(allocMap.get(`${name}|${mo}`) ?? 0)
+    const globalPct = getGlobalPct(name, mo)
+    return {
+      resource: name, month: mo,
+      plans: localPlans,
+      localPct, globalPct,
+      otherProgramsAllocation: Math.max(0, globalPct - localPct),
+      x, y,
+    }
   }
 
   if (uniqueNames.length === 0) return <p className="res-empty">Nenhum recurso alocado.</p>
@@ -247,8 +285,9 @@ function ResourceHeatmap({ resources, months, planoNames, onSelect, sym }: Heatm
               <tr key={name}>
                 <td className="res-heat-name-td" onClick={() => onSelect(name)}>{name}</td>
                 {months.map(mo => {
-                  const pct = Math.round(allocMap.get(`${name}|${mo}`) ?? 0)
-                  const { bg, color } = allocationColor(pct)
+                  const localPct  = Math.round(allocMap.get(`${name}|${mo}`) ?? 0)
+                  const globalPct = getGlobalPct(name, mo)
+                  const { bg, color } = allocationColor(globalPct)
                   return (
                     <td
                       key={mo}
@@ -256,19 +295,16 @@ function ResourceHeatmap({ resources, months, planoNames, onSelect, sym }: Heatm
                       style={{ background: bg, color }}
                       onMouseEnter={e => {
                         const rect = e.currentTarget.getBoundingClientRect()
-                        const tw = 280, th = 150
+                        const tw = 280, th = 180
                         let x = rect.right + 8
                         let y = rect.top
                         if (x + tw > window.innerWidth)  x = rect.left - tw - 8
                         if (y + th > window.innerHeight) y = rect.bottom - th
-                        setHoverCell({
-                          resource: name, month: mo, totalPct: pct,
-                          plans: getPlansForResourceMonth(name, mo), x, y,
-                        })
+                        setHoverCell(buildHoverData(name, mo, x, y))
                       }}
                       onMouseLeave={() => setHoverCell(null)}
                     >
-                      {pct > 0 ? pct : ''}
+                      {localPct > 0 ? localPct : ''}
                     </td>
                   )
                 })}
@@ -315,12 +351,16 @@ function ResourceHeatmap({ resources, months, planoNames, onSelect, sym }: Heatm
         <span className="rec-legend-item">
           <span className="rec-legend-swatch" style={{ background: '#a32d2d' }} />&gt;100% (sobrealoc.)
         </span>
+        <span className="rec-legend-global-hint">Cores baseadas em alocação global (todos os programas).</span>
       </div>
 
       {hoverCell && (
         <div className="rec-heatmap-tooltip" style={{ left: hoverCell.x, top: hoverCell.y }}>
           <div className="rec-tt-header">{hoverCell.resource} — {fmtMo(hoverCell.month)}</div>
           <div className="rec-tt-plans">
+            {hoverCell.plans.length > 0 && (
+              <div className="rec-tt-section-label">Neste programa:</div>
+            )}
             {hoverCell.plans.map((p, i) => (
               <div key={i} className="rec-tt-plan-row">
                 <span className="rec-tt-plan-name" title={p.plan}>{p.plan}</span>
@@ -330,7 +370,18 @@ function ResourceHeatmap({ resources, months, planoNames, onSelect, sym }: Heatm
               </div>
             ))}
           </div>
-          <div className="rec-tt-total">Total: {hoverCell.totalPct}%</div>
+          {hoverCell.otherProgramsAllocation > 0 && (
+            <div className="rec-tt-other-programs">
+              <div className="rec-tt-section-label">Outros programas:</div>
+              <div style={{ fontSize: 12 }}>+{hoverCell.otherProgramsAllocation}% alocação</div>
+            </div>
+          )}
+          <div className="rec-tt-total">
+            Global: {hoverCell.globalPct}%
+            {hoverCell.globalPct > 100 && (
+              <span className="rec-tt-warning"> ⚠ Sobrealocado</span>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -690,6 +741,16 @@ export default function Recursos() {
   const programId = selProgId ?? undefined
 
   const { resources, loading } = useResources(programId)
+
+  // All resources across all programs — used for global allocation overlay
+  const [allResources, setAllResources] = useState<FteResource[]>([])
+  useEffect(() => {
+    let cancelled = false
+    supabase.from('fte_resources').select('*').then(({ data }) => {
+      if (!cancelled) setAllResources((data ?? []) as FteResource[])
+    })
+    return () => { cancelled = true }
+  }, [])
   const { planos }             = usePlanos(programId)
   const { people }             = usePeople()
 
@@ -770,6 +831,20 @@ export default function Recursos() {
   // ── Months for heatmap ────────────────────────────────────────
   const months = useMemo(() => genMonths(periodStart, periodEnd), [periodStart, periodEnd])
 
+  // ── Global allocation map (all programs) ─────────────────────
+  const globalAllocByPersonMonth = useMemo(() => {
+    const map = new Map<string, Map<string, number>>()
+    for (const r of allResources) {
+      const pk = personKey(r)
+      if (!map.has(pk)) map.set(pk, new Map())
+      const pm = map.get(pk)!
+      for (const mo of monthsInRange(r.start_date, r.end_date)) {
+        pm.set(mo, (pm.get(mo) ?? 0) + (r.allocation_pct ?? 0))
+      }
+    }
+    return map
+  }, [allResources])
+
   // ── KPIs ─────────────────────────────────────────────────────
   // One entry per unique name — first record wins for type/dates
   const uniqueResources = useMemo(() => {
@@ -804,21 +879,23 @@ export default function Recursos() {
     [uniqueResources]
   )
 
-  // Fixed: sum allocations per name+month across all plans, count name+month > 100%
+  // Count person-months in scoped view that are over-allocated GLOBALLY
   const kpiSobrealloc = useMemo(() => {
-    const allocMap = new Map<string, number>()
+    const seen = new Set<string>()
+    let count = 0
     for (const r of scoped) {
+      const pk = personKey(r)
       for (const mo of months) {
-        if (activeInMonth(r, mo)) {
-          const k = `${r.name}|${mo}`
-          allocMap.set(k, (allocMap.get(k) ?? 0) + (r.allocation_pct ?? 0))
-        }
+        if (!activeInMonth(r, mo)) continue
+        const key = `${pk}|${mo}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        const globalPct = globalAllocByPersonMonth.get(pk)?.get(mo) ?? 0
+        if (globalPct > 100) count++
       }
     }
-    let count = 0
-    for (const total of allocMap.values()) { if (total > 100) count++ }
     return count
-  }, [scoped, months])
+  }, [scoped, months, globalAllocByPersonMonth])
 
   const kpiExpiring = useMemo(() => {
     const today    = new Date()
@@ -954,7 +1031,7 @@ export default function Recursos() {
               >
                 {kpiSobrealloc}
               </div>
-              <div className="rec-kpi-sub">recurso-mês &gt; 100%</div>
+              <div className="rec-kpi-sub">recurso-mês &gt; 100% (global)</div>
             </div>
 
             <div className="rec-kpi-card-secondary">
@@ -1014,6 +1091,7 @@ export default function Recursos() {
             {activeTab === 'recurso' && (
               <ResourceHeatmap
                 resources={scoped}
+                globalAllocByPersonMonth={globalAllocByPersonMonth}
                 months={months}
                 planoNames={planoNames}
                 onSelect={setSelectedRes}
