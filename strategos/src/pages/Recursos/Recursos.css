@@ -610,4 +610,69 @@
     color: var(--text);
     font-variant-numeric: tabular-nums;
   }
+
+  /* ── Lista Completa table ───────────────────────────────────── */
+  .rec-lista-table {
+    table-layout: fixed;
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .rec-lista-table th,
+  .rec-lista-table td {
+    padding: 8px 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .rec-lista-table th {
+    background: var(--bg2);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text3);
+    text-align: left;
+  }
+
+  .rec-lista-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .rec-lista-table th.sortable:hover { color: var(--text); }
+  .rec-lista-table th.num   { text-align: right; }
+  .rec-lista-table th.center { text-align: center; }
+
+  .rec-lista-table .sort-arrow {
+    margin-left: 4px;
+    opacity: 0.6;
+    font-size: 10px;
+  }
+
+  .rec-lista-table td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rec-lista-table td.center { text-align: center; }
+
+  .rec-lista-table > tbody > tr:last-child > td { border-bottom: none; }
+  .rec-lista-table > tbody > tr:hover:not(.rec-lista-totals) > td { background: var(--bg2); }
+
+  .rec-lista-totals > td {
+    background: var(--bg3);
+    border-top: 2px solid var(--border2);
+    font-size: 12px;
+  }
+
+  .rec-empty {
+    text-align: center;
+    padding: 40px 16px;
+    color: var(--text3);
+    font-style: italic;
+  }
 }

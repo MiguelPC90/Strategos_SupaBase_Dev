@@ -404,6 +404,150 @@ function ResourcePanel({ name, resources, planoNames, person, onClose, sym }: Re
   )
 }
 
+// ── Lista completa ─────────────────────────────────────────────
+type SortKey = 'name' | 'plan' | 'role' | 'type' | 'allocation' | 'daily_cost' | 'start' | 'end' | 'duration' | 'total_cost'
+
+function fmtDate(d: string | null | undefined): string {
+  if (!d) return '—'
+  const [y, mo, day] = d.split('-')
+  return `${day}/${mo}/${y}`
+}
+
+function computeDuration(r: FteResource): number {
+  if (!r.start_date) return 0
+  const start = new Date(r.start_date)
+  const end   = r.end_date ? new Date(r.end_date) : new Date()
+  return Math.max(0,
+    (end.getFullYear() - start.getFullYear()) * 12
+    + (end.getMonth() - start.getMonth()) + 1
+  )
+}
+
+function formatDuration(months: number): string {
+  if (months === 0) return '—'
+  return `${months} ${months === 1 ? 'mês' : 'meses'}`
+}
+
+function computeTotalCost(r: FteResource): number {
+  return computeDuration(r) * WORKING_DAYS * (r.daily_cost ?? 0) * (r.allocation_pct ?? 0) / 100
+}
+
+interface ListaCompletaProps {
+  resources: FteResource[]
+  planoNames: Map<string, string>
+  sym: string
+}
+
+function ListaCompleta({ resources, planoNames, sym }: ListaCompletaProps) {
+  const [sortBy,  setSortBy]  = useState<SortKey>('name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function handleSort(col: SortKey) {
+    if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(col); setSortDir('asc') }
+  }
+
+  const sorted = useMemo(() => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    return [...resources].sort((a, b) => {
+      let cmp = 0
+      switch (sortBy) {
+        case 'name':       cmp = a.name.localeCompare(b.name); break
+        case 'plan':       cmp = (planoNames.get(a.pds_id) ?? '').localeCompare(planoNames.get(b.pds_id) ?? ''); break
+        case 'role':       cmp = (a.role ?? '').localeCompare(b.role ?? ''); break
+        case 'type':       cmp = (a.type ?? '').localeCompare(b.type ?? ''); break
+        case 'allocation': cmp = (a.allocation_pct ?? 0) - (b.allocation_pct ?? 0); break
+        case 'daily_cost': cmp = (a.daily_cost ?? 0) - (b.daily_cost ?? 0); break
+        case 'start':      cmp = (a.start_date ?? '').localeCompare(b.start_date ?? ''); break
+        case 'end':        cmp = (a.end_date ?? '').localeCompare(b.end_date ?? ''); break
+        case 'duration':   cmp = computeDuration(a) - computeDuration(b); break
+        case 'total_cost': cmp = computeTotalCost(a) - computeTotalCost(b); break
+      }
+      return dir * cmp
+    })
+  }, [resources, planoNames, sortBy, sortDir])
+
+  const totalAlloc   = sorted.reduce((s, r) => s + (r.allocation_pct ?? 0), 0)
+  const totalCostSum = sorted.reduce((s, r) => s + computeTotalCost(r), 0)
+
+  function th(col: SortKey, label: string, align?: 'num' | 'center') {
+    const active = sortBy === col
+    const cls    = ['sortable', align ?? ''].join(' ').trim()
+    return (
+      <th className={cls} onClick={() => handleSort(col)}>
+        {label}
+        {active && <span className="sort-arrow">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+      </th>
+    )
+  }
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table className="rec-lista-table">
+        <colgroup>
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '20%' }} />
+          <col style={{ width: '8%' }} />
+          <col style={{ width: '8%' }} />
+          <col style={{ width: '8%' }} />
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '9%' }} />
+          <col style={{ width: '9%' }} />
+          <col style={{ width: '8%' }} />
+          <col style={{ width: '10%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            {th('name',       'Recurso')}
+            {th('plan',       'Plano')}
+            {th('role',       'Perfil')}
+            {th('type',       'Tipo')}
+            {th('allocation', 'Alocação',   'num')}
+            {th('daily_cost', 'Custo/dia',  'num')}
+            {th('start',      'Início',     'center')}
+            {th('end',        'Fim',        'center')}
+            {th('duration',   'Duração',    'center')}
+            {th('total_cost', 'Custo total','num')}
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.length === 0 ? (
+            <tr><td colSpan={10} className="rec-empty">Sem recursos para os filtros seleccionados.</td></tr>
+          ) : (
+            <>
+              {sorted.map(r => {
+                const planName = planoNames.get(r.pds_id) ?? 'Sem plano'
+                const dur      = computeDuration(r)
+                const cost     = computeTotalCost(r)
+                return (
+                  <tr key={r.id}>
+                    <td title={r.name}>{r.name}</td>
+                    <td title={planName}>{planName}</td>
+                    <td>{r.role ?? '—'}</td>
+                    <td><Badge variant={typeVar(r.type)}>{typeLbl(r.type)}</Badge></td>
+                    <td className="num">{r.allocation_pct ?? 0}%</td>
+                    <td className="num">{r.daily_cost ? fmtEur(r.daily_cost, sym) : '—'}</td>
+                    <td className="center">{fmtDate(r.start_date)}</td>
+                    <td className="center">{fmtDate(r.end_date)}</td>
+                    <td className="center">{formatDuration(dur)}</td>
+                    <td className="num">{cost > 0 ? fmtEur(cost, sym) : '—'}</td>
+                  </tr>
+                )
+              })}
+              <tr className="rec-lista-totals">
+                <td colSpan={4} style={{ fontWeight: 700 }}>Total</td>
+                <td className="num" style={{ fontWeight: 700 }}>{totalAlloc}%</td>
+                <td /><td /><td /><td />
+                <td className="num" style={{ fontWeight: 700 }}>{fmtEur(totalCostSum, sym)}</td>
+              </tr>
+            </>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 // ── Chart sub-components ───────────────────────────────────────
 interface FtePoint { month: string; fte: number }
 
@@ -877,9 +1021,11 @@ export default function Recursos() {
               />
             )}
             {activeTab === 'lista' && (
-              <div className="rec-placeholder">
-                <p>Lista completa de alocações — em desenvolvimento.</p>
-              </div>
+              <ListaCompleta
+                resources={scoped}
+                planoNames={planoNames}
+                sym={currSymbol}
+              />
             )}
           </Card>
         </>
