@@ -140,6 +140,19 @@ function blankForm(n0: string, ctx?: Partial<PanelForm>): PanelForm {
   }
 }
 
+// ── Plano form ─────────────────────────────────────────────────
+interface PlanoForm {
+  name: string; code: string; eixo_id: string
+  start_date: string | null; end_date: string | null
+  owner: string; sponsor: string; objective: string
+}
+
+const BLANK_PLANO: PlanoForm = {
+  name: '', code: '', eixo_id: '',
+  start_date: null, end_date: null,
+  owner: '', sponsor: '', objective: '',
+}
+
 // ── Panel component ────────────────────────────────────────────
 interface PanelProps {
   form: PanelForm
@@ -410,7 +423,7 @@ export default function GestaoIniciativas() {
   const { activities: rawActivities, loading, refetch } = useActivities({})
   const { people } = usePeople()
   const { eixos: dbEixos } = useEixos(selProgId ?? undefined)
-  const { planos: dbPlanos } = usePlanos(selProgId ?? undefined)
+  const { planos: dbPlanos, refetch: refetchPlanos } = usePlanos(selProgId ?? undefined)
 
   const program         = useMemo(() => programs.find(p => p.id === selProgId), [programs, selProgId])
   const internalPeople  = useMemo(() =>
@@ -440,6 +453,11 @@ export default function GestaoIniciativas() {
   const [panelForm, setPanelForm]   = useState<PanelForm | null>(null)
   const [panelSaving, setPanelSaving] = useState(false)
   const [panelErrors, setPanelErrors] = useState<Record<string, string>>({})
+
+  const [newPlanoOpen, setNewPlanoOpen] = useState(false)
+  const [planoForm, setPlanoForm]       = useState<PlanoForm>(BLANK_PLANO)
+  const [planoErrors, setPlanoErrors]   = useState<Record<string, string>>({})
+  const [planoSaving, setPlanoSaving]   = useState(false)
 
   const [batchSaving, setBatchSaving] = useState(false)
   const [delayThreshold, setDelayThreshold] = useState(20)
@@ -617,6 +635,49 @@ export default function GestaoIniciativas() {
     setPanelForm({ ...toForm(a), id: null, name: a.name + ' (cópia)', pct: '0', rs: '', rf: '' })
     setPanelErrors({})
   }, [])
+
+  // ── Novo Plano ────────────────────────────────────────────────
+  const handleSavePlano = useCallback(async () => {
+    const errs: Record<string, string> = {}
+    if (!planoForm.name.trim())   errs.name    = 'Nome obrigatório.'
+    if (!planoForm.code.trim())   errs.code    = 'Código obrigatório.'
+    if (!planoForm.eixo_id)       errs.eixo_id = 'Eixo obrigatório.'
+    if (!planoForm.start_date || !planoForm.end_date) errs.dates = 'Período previsto obrigatório.'
+    if (Object.keys(errs).length) { setPlanoErrors(errs); return }
+
+    setPlanoSaving(true); setPlanoErrors({})
+
+    const { data: maxResult } = await supabase
+      .from('planos')
+      .select('sort_order')
+      .eq('eixo_id', planoForm.eixo_id)
+      .order('sort_order', { ascending: false })
+      .limit(1)
+
+    const nextSortOrder = ((maxResult as { sort_order: number }[] | null)?.[0]?.sort_order ?? 0) + 1
+
+    const payload = {
+      name:       planoForm.name.trim(),
+      code:       planoForm.code.trim().toUpperCase(),
+      eixo_id:    planoForm.eixo_id,
+      program_id: selProgId ?? null,
+      start_date: planoForm.start_date,
+      end_date:   planoForm.end_date,
+      owner:      planoForm.owner   || null,
+      sponsor:    planoForm.sponsor || null,
+      objective:  planoForm.objective || null,
+      sort_order: nextSortOrder,
+    }
+
+    const { error } = await supabase.from('planos').insert(payload)
+    setPlanoSaving(false)
+    if (error) { setPlanoErrors({ _: error.message }); return }
+
+    showToast(`Plano "${payload.name}" criado.`)
+    setNewPlanoOpen(false)
+    setPlanoForm(BLANK_PLANO)
+    refetchPlanos()
+  }, [planoForm, selProgId, showToast, refetchPlanos])
 
   // ── Row delete ────────────────────────────────────────────────
   const handleRowDelete = useCallback(async (a: Activity) => {
@@ -921,6 +982,10 @@ export default function GestaoIniciativas() {
             <div className="gi-sep" />
           </>
         )}
+        <button className="gi-btn gi-btn-secondary" onClick={() => { setPlanoForm(BLANK_PLANO); setPlanoErrors({}); setNewPlanoOpen(true) }} disabled={!selProgId}
+          title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
+          Novo Plano
+        </button>
         <button className="gi-btn gi-btn-primary" onClick={openNew} disabled={!selProgId}
           title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
           Nova Actividade
@@ -975,6 +1040,126 @@ export default function GestaoIniciativas() {
           </div>
         )}
       </Card>
+
+      {newPlanoOpen && (
+        <Modal
+          isOpen={true}
+          onClose={() => setNewPlanoOpen(false)}
+          title="Novo Plano de Acção"
+          width={500}
+          footer={
+            <>
+              <button className="gi-btn" onClick={() => setNewPlanoOpen(false)}>Cancelar</button>
+              <button className="gi-btn gi-btn-save" onClick={handleSavePlano} disabled={planoSaving}>
+                {planoSaving ? 'A guardar…' : 'Guardar'}
+              </button>
+              {planoErrors._ && <span style={{ fontSize: 12, color: 'var(--red)', width: '100%' }}>{planoErrors._}</span>}
+            </>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+            {/* ── Identificação ── */}
+            <div className="gi-section">
+              <div className="gi-section-title">Identificação</div>
+              <div className="gi-field" style={{ marginTop: 10 }}>
+                <span className={`gi-field-label${planoErrors.name ? ' gi-label-error' : ''}`}>Nome *</span>
+                <input
+                  className={`gi-field-input${planoErrors.name ? ' gi-input-error' : ''}`}
+                  value={planoForm.name}
+                  onChange={e => setPlanoForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Nome do plano de acção"
+                />
+                {planoErrors.name && <span className="gi-error">{planoErrors.name}</span>}
+              </div>
+              <div className="gi-field-row" style={{ marginTop: 10 }}>
+                <div className="gi-field">
+                  <span className={`gi-field-label${planoErrors.code ? ' gi-label-error' : ''}`}>Código *</span>
+                  <input
+                    className={`gi-field-input${planoErrors.code ? ' gi-input-error' : ''}`}
+                    value={planoForm.code}
+                    onChange={e => setPlanoForm(f => ({ ...f, code: e.target.value }))}
+                    placeholder="Ex: RA, MSOSP"
+                    style={{ textTransform: 'uppercase' }}
+                  />
+                  {planoErrors.code && <span className="gi-error">{planoErrors.code}</span>}
+                </div>
+                <div className="gi-field">
+                  <span className={`gi-field-label${planoErrors.eixo_id ? ' gi-label-error' : ''}`}>Eixo *</span>
+                  <select
+                    className={`gi-field-input${planoErrors.eixo_id ? ' gi-input-error' : ''}`}
+                    value={planoForm.eixo_id}
+                    onChange={e => setPlanoForm(f => ({ ...f, eixo_id: e.target.value }))}
+                  >
+                    <option value="">— seleccionar —</option>
+                    {dbEixos.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                  </select>
+                  {planoErrors.eixo_id && <span className="gi-error">{planoErrors.eixo_id}</span>}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Período Previsto ── */}
+            <div className="gi-section">
+              <div className="gi-section-title">Datas</div>
+              <div style={{ marginTop: 10 }}>
+                <DateRangePicker
+                  label="Período Previsto"
+                  required
+                  startDate={planoForm.start_date}
+                  endDate={planoForm.end_date}
+                  onChange={(s, e) => setPlanoForm(f => ({ ...f, start_date: s, end_date: e }))}
+                  error={planoErrors.dates}
+                />
+              </div>
+            </div>
+
+            {/* ── Responsáveis ── */}
+            <div className="gi-section">
+              <div className="gi-section-title">Responsáveis</div>
+              <div className="gi-two-col" style={{ marginTop: 10 }}>
+                <div className="gi-field">
+                  <span className="gi-field-label">Owner</span>
+                  <select
+                    className="gi-field-input"
+                    value={planoForm.owner}
+                    onChange={e => setPlanoForm(f => ({ ...f, owner: e.target.value }))}
+                  >
+                    <option value="">— seleccionar —</option>
+                    {internalPeople.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div className="gi-field">
+                  <span className="gi-field-label">Sponsor</span>
+                  <select
+                    className="gi-field-input"
+                    value={planoForm.sponsor}
+                    onChange={e => setPlanoForm(f => ({ ...f, sponsor: e.target.value }))}
+                  >
+                    <option value="">— seleccionar —</option>
+                    {internalPeople.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Objectivo ── */}
+            <div className="gi-section">
+              <div className="gi-section-title">Objectivo</div>
+              <div className="gi-field" style={{ marginTop: 10 }}>
+                <textarea
+                  className="gi-field-textarea"
+                  rows={4}
+                  value={planoForm.objective}
+                  onChange={e => setPlanoForm(f => ({ ...f, objective: e.target.value }))}
+                  placeholder="Descreva o objectivo principal do plano…"
+                />
+              </div>
+            </div>
+
+          </div>
+        </Modal>
+      )}
 
       {panelForm && (
         <Modal

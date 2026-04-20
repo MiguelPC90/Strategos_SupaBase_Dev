@@ -81,6 +81,14 @@
   }
   .gi-btn-danger:hover:not(:disabled) { background: #fff0f0; }
 
+  .gi-btn-secondary {
+    background: white;
+    color: var(--navy);
+    border: 1px solid var(--navy);
+    font-weight: 600;
+  }
+  .gi-btn-secondary:hover:not(:disabled) { background: var(--bg2); }
+
   /* ── Table ──────────────────────────────────────────────────── */
   .gi-table {
     width: 100%;
@@ -353,6 +361,13 @@
     color: var(--navy);
     min-width: 36px;
     text-align: right;
+  }
+
+  /* ── Two-column grid ───────────────────────────────────────── */
+  .gi-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
   }
 
   /* ── Sections ───────────────────────────────────────────────── */

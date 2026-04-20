@@ -41,6 +41,9 @@ export interface Plano {
   name: string
   owner: string | null
   sponsor: string | null
+  start_date: string | null
+  end_date: string | null
+  objective: string | null
   sort_order: number
   created_at: string
   updated_at: string
