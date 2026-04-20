@@ -296,3 +296,23 @@ export interface AppConfig {
   data: Record<string, unknown>
   updated_at: string
 }
+
+// ── Activity dependencies ─────────────────────────────────────
+export type DependencyType = 'FS' | 'SS' | 'FF' | 'SF'
+
+export interface ActivityDependency {
+  id: string
+  successor_id: string
+  predecessor_id: string
+  dep_type: DependencyType
+  lag_days: number
+  created_at: string
+  created_by: string | null
+}
+
+export interface DependencyValidationError {
+  code: 'CYCLE' | 'DATE_VIOLATION' | 'NON_LEAF' | 'SELF_DEPENDENCY' | 'DUPLICATE'
+  message: string
+  predecessor_id?: string
+  successor_id?: string
+}
