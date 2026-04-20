@@ -1,7 +1,7 @@
 import './Layout.css'
 import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react'
 import SplashScreen from '../SplashScreen/SplashScreen'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import FilterBar from '../FilterBar/FilterBar'
 import Badge from '../Badge/Badge'
 import { useAuth } from '../../hooks/useAuth'
@@ -13,6 +13,7 @@ import { usePrograms } from '../../hooks/usePrograms'
 import { supabase } from '../../lib/supabase'
 import { setThresholds } from '../../lib/rollup'
 import type { PageKey } from '../../types/index'
+import Breadcrumb from '../Breadcrumb/Breadcrumb'
 
 interface NavItemConfig {
   to: string
@@ -196,6 +197,7 @@ const ROLE_LABEL: Record<string, string> = {
 }
 
 export default function Layout() {
+  const location = useLocation()
   const { signOut, user, loading: authLoading } = useAuth()
   const { profile, role, isAdmin } = useRole()
   const { hasAccess } = usePermissions()
@@ -436,6 +438,8 @@ export default function Layout() {
             <button className="filter-chip-clear-all" onClick={resetFilters}>Limpar tudo</button>
           </div>
         )}
+
+        {!location.pathname.startsWith('/admin') && <Breadcrumb />}
 
         <div className="page-body">
           <Outlet />
