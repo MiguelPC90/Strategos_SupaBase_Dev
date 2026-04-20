@@ -5,6 +5,93 @@ import { usePrograms } from '../../hooks/usePrograms'
 import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
 
+const STATUS_OPTIONS = ['Concluída', 'Em dia', 'Em atraso']
+
+function SecondaryFiltersMenu() {
+  const { filters, setFilter, ownerOptions, sponsorOptions } = useFilters()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [open])
+
+  function toggleFilter(current: string[], key: 'statuses' | 'owners' | 'sponsors', value: string) {
+    const next = current.includes(value) ? current.filter(v => v !== value) : [...current, value]
+    setFilter(key, next)
+  }
+
+  return (
+    <div className="breadcrumb-filters-menu" ref={ref}>
+      <button
+        className="breadcrumb-add-filter-btn"
+        onClick={() => setOpen(o => !o)}
+      >
+        + Filtros
+      </button>
+      {open && (
+        <div className="breadcrumb-filters-popup">
+          <div className="bfp-group">
+            <div className="bfp-group-title">Estado</div>
+            {STATUS_OPTIONS.map(s => (
+              <label key={s} className="bfp-option">
+                <input
+                  type="checkbox"
+                  checked={filters.statuses.includes(s)}
+                  onChange={() => toggleFilter(filters.statuses, 'statuses', s)}
+                />
+                <span>{s}</span>
+              </label>
+            ))}
+          </div>
+          {ownerOptions.length > 0 && (
+            <div className="bfp-group">
+              <div className="bfp-group-title">Responsável</div>
+              {ownerOptions.map(o => (
+                <label key={o} className="bfp-option">
+                  <input
+                    type="checkbox"
+                    checked={filters.owners.includes(o)}
+                    onChange={() => toggleFilter(filters.owners, 'owners', o)}
+                  />
+                  <span>{o}</span>
+                </label>
+              ))}
+            </div>
+          )}
+          {sponsorOptions.length > 0 && (
+            <div className="bfp-group">
+              <div className="bfp-group-title">Sponsor</div>
+              {sponsorOptions.map(s => (
+                <label key={s} className="bfp-option">
+                  <input
+                    type="checkbox"
+                    checked={filters.sponsors.includes(s)}
+                    onChange={() => toggleFilter(filters.sponsors, 'sponsors', s)}
+                  />
+                  <span>{s}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Sub-components ─────────────────────────────────────────────
 
 interface SegmentOption {
@@ -101,11 +188,6 @@ export default function Breadcrumb() {
   const currentProgram = programs.find(p => p.id === programId)
   const planosForEixo  = n1Name ? planos.filter(p => p.eixo?.name === n1Name) : planos
 
-  const hasChips =
-    filters.statuses.length > 0 ||
-    filters.owners.length   > 0 ||
-    filters.sponsors.length > 0
-
   return (
     <div className="breadcrumb">
       <div className="breadcrumb-main">
@@ -154,32 +236,31 @@ export default function Breadcrumb() {
         )}
       </div>
 
-      {/* Secondary filter chips */}
-      {hasChips && (
-        <div className="breadcrumb-chips">
-          {filters.statuses.map(s => (
-            <FilterChip
-              key={`status:${s}`}
-              label={`Estado: ${s}`}
-              onRemove={() => setFilter('statuses', filters.statuses.filter(x => x !== s))}
-            />
-          ))}
-          {filters.owners.map(o => (
-            <FilterChip
-              key={`owner:${o}`}
-              label={`Responsável: ${o}`}
-              onRemove={() => setFilter('owners', filters.owners.filter(x => x !== o))}
-            />
-          ))}
-          {filters.sponsors.map(s => (
-            <FilterChip
-              key={`sponsor:${s}`}
-              label={`Sponsor: ${s}`}
-              onRemove={() => setFilter('sponsors', filters.sponsors.filter(x => x !== s))}
-            />
-          ))}
-        </div>
-      )}
+      {/* Secondary filter chips + filter button */}
+      <div className="breadcrumb-chips">
+        {filters.statuses.map(s => (
+          <FilterChip
+            key={`status:${s}`}
+            label={`Estado: ${s}`}
+            onRemove={() => setFilter('statuses', filters.statuses.filter(x => x !== s))}
+          />
+        ))}
+        {filters.owners.map(o => (
+          <FilterChip
+            key={`owner:${o}`}
+            label={`Responsável: ${o}`}
+            onRemove={() => setFilter('owners', filters.owners.filter(x => x !== o))}
+          />
+        ))}
+        {filters.sponsors.map(s => (
+          <FilterChip
+            key={`sponsor:${s}`}
+            label={`Sponsor: ${s}`}
+            onRemove={() => setFilter('sponsors', filters.sponsors.filter(x => x !== s))}
+          />
+        ))}
+        <SecondaryFiltersMenu />
+      </div>
     </div>
   )
 }

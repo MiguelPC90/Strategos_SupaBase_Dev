@@ -1456,6 +1456,59 @@ export default function GestaoIniciativas() {
     }
   }
 
+  // ── Orphan planos (created without activities, not in tree) ───
+  {
+    const renderedN2s = new Set(
+      tree.flatMap(n1g => n1g.n2s.map(n2g => `${n1g.n1}|||${n2g.n2}`))
+    )
+    const renderedN1s = new Set(tree.map(n1g => n1g.n1))
+
+    for (const eixo of dbEixos) {
+      const eixoPlanos = dbPlanos.filter(p => p.eixo?.name === eixo.name)
+      const orphanPlanos = eixoPlanos.filter(p => !renderedN2s.has(`${eixo.name}|||${p.name}`))
+      if (orphanPlanos.length === 0) continue
+
+      const n1key = `n1:${eixo.name}`
+      const n1col = collapsed.has(n1key)
+
+      if (!renderedN1s.has(eixo.name)) {
+        rows.push(
+          <tr key={`orphan-eixo:${eixo.id}`} className="gi-row-n1">
+            <td>
+              <div className="gi-name-cell" style={{ paddingLeft: 4 }}>
+                <button className="gi-toggle" onClick={() => toggle(n1key)}>{n1col ? '▶' : '▼'}</button>
+                <span className="gi-name-text">{eixo.name}</span>
+              </div>
+            </td>
+            <td className="gi-td-c" /><td className="gi-td-c">—</td>
+            <td className="gi-td-r">—</td><td className="gi-td-r">—</td>
+            <td className="gi-td-c" /><td />
+          </tr>
+        )
+      }
+
+      if (n1col) continue
+
+      for (const plano of orphanPlanos) {
+        const n2key = `n2:${eixo.name}:${plano.name}`
+        rows.push(
+          <tr key={`orphan-plano:${plano.id}`} className="gi-row-n2">
+            <td>
+              <div className="gi-name-cell" style={{ paddingLeft: 20 }}>
+                <button className="gi-toggle" onClick={() => toggle(n2key)}>▼</button>
+                <span className="gi-name-text">{plano.name}</span>
+              </div>
+            </td>
+            <td className="gi-td-c" style={{ fontSize: 12 }}>{plano.owner || '—'}</td>
+            <td className="gi-td-c">{fmtDate(plano.end_date)}</td>
+            <td className="gi-td-r">—</td><td className="gi-td-r">—</td>
+            <td className="gi-td-c" /><td />
+          </tr>
+        )
+      }
+    }
+  }
+
   // ── Render ───────────────────────────────────────────────────
   return (
     <div className="gi-page">
