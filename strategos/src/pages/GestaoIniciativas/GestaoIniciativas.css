@@ -739,4 +739,109 @@
     font-size: 13px;
     font-style: italic;
   }
+
+  /* ── Dependencies editor ────────────────────────────────────── */
+  .gi-deps {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .gi-deps-empty,
+  .gi-deps-loading {
+    font-size: 12px;
+    color: var(--text3);
+    font-style: italic;
+  }
+
+  .gi-dep-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+  }
+
+  .gi-dep-type-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--navy);
+    background: rgba(0, 46, 94, 0.08);
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  .gi-dep-name {
+    flex: 1;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .gi-dep-type-sel {
+    font-size: 12px;
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 2px 4px;
+    background: var(--bg);
+    font-family: inherit;
+    flex-shrink: 0;
+  }
+
+  .gi-dep-lag-input {
+    width: 52px;
+    font-size: 12px;
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 2px 6px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    background: var(--bg);
+    font-family: inherit;
+    flex-shrink: 0;
+  }
+  .gi-dep-lag-input::-webkit-inner-spin-button,
+  .gi-dep-lag-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .gi-dep-lag-input { -moz-appearance: textfield; }
+
+  .gi-dep-lag-unit {
+    font-size: 11px;
+    color: var(--text3);
+    flex-shrink: 0;
+  }
+
+  .gi-dep-remove {
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 3px;
+    line-height: 1;
+    border-radius: 3px;
+    font-family: inherit;
+    flex-shrink: 0;
+  }
+  .gi-dep-remove:hover { color: var(--red); background: rgba(163, 45, 45, 0.08); }
+
+  .gi-dep-add-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+  }
+
+  .gi-dep-add-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
 }

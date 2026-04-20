@@ -17,7 +17,9 @@ import { usePlanos } from '../../hooks/usePlanos'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange, leafPctPrev, leafStatus } from '../../lib/rollup'
-import type { Activity, Person } from '../../types/index'
+import type { Activity, Person, ActivityDependency, DependencyType } from '../../types/index'
+import { useActivityDependencies } from '../../hooks/useActivityDependencies'
+import { validateNewDependency } from '../../lib/activityDependencies'
 
 // ── Types ──────────────────────────────────────────────────────
 type BadgeVariant = 'green' | 'blue' | 'red' | 'grey'
@@ -273,6 +275,15 @@ function downloadTemplate() {
 }
 
 // ── Panel component ────────────────────────────────────────────
+interface DependencyEditorProps {
+  predecessors: ActivityDependency[]
+  loading: boolean
+  leafActivities: Activity[]
+  onAdd: (predecessorId: string, depType: DependencyType, lagDays: number) => Promise<string | null>
+  onRemove: (id: string) => void
+  onUpdate: (id: string, patch: Partial<Pick<ActivityDependency, 'dep_type' | 'lag_days'>>) => void
+}
+
 interface PanelProps {
   form: PanelForm
   eixos: string[]
@@ -281,9 +292,10 @@ interface PanelProps {
   internalPeople: Person[]
   errors: Record<string, string>
   onChange: (f: PanelForm) => void
+  depProps?: DependencyEditorProps
 }
 
-function Panel({ form, eixos, planos, activities, internalPeople, errors, onChange }: PanelProps) {
+function Panel({ form, eixos, planos, activities, internalPeople, errors, onChange, depProps }: PanelProps) {
   const set = (k: keyof PanelForm) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       onChange({ ...form, [k]: e.target.value })
@@ -462,6 +474,21 @@ function Panel({ form, eixos, planos, activities, internalPeople, errors, onChan
         </div>
       </Collapsible>
 
+      {/* ── 5.5 Dependências (collapsible, only for saved leaf activities) ── */}
+      {form.id && level >= 4 && depProps && (
+        <Collapsible title="Dependências">
+          <DependenciesEditor
+            activityId={form.id}
+            predecessors={depProps.predecessors}
+            loading={depProps.loading}
+            leafActivities={depProps.leafActivities}
+            onAdd={depProps.onAdd}
+            onRemove={depProps.onRemove}
+            onUpdate={depProps.onUpdate}
+          />
+        </Collapsible>
+      )}
+
       {/* ── 6. Notas (collapsible) ── */}
       <Collapsible title="Notas">
         <div className="gi-field">
@@ -548,6 +575,161 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   )
 }
 
+// ── DependenciesEditor ─────────────────────────────────────────
+interface DepEditorProps {
+  activityId: string
+  predecessors: ActivityDependency[]
+  loading: boolean
+  leafActivities: Activity[]
+  onAdd: (predecessorId: string, depType: DependencyType, lagDays: number) => Promise<string | null>
+  onRemove: (id: string) => void
+  onUpdate: (id: string, patch: Partial<Pick<ActivityDependency, 'dep_type' | 'lag_days'>>) => void
+}
+
+function DependenciesEditor({
+  activityId,
+  predecessors,
+  loading,
+  leafActivities,
+  onAdd,
+  onRemove,
+  onUpdate,
+}: DepEditorProps) {
+  const [addOpen, setAddOpen]   = useState(false)
+  const [selPred, setSelPred]   = useState('')
+  const [selType, setSelType]   = useState<DependencyType>('FS')
+  const [lagDays, setLagDays]   = useState(0)
+  const [addError, setAddError] = useState<string | null>(null)
+  const [adding, setAdding]     = useState(false)
+
+  const candidates = useMemo(
+    () => leafActivities.filter(a => a.id !== activityId),
+    [leafActivities, activityId]
+  )
+
+  const actById = useMemo(
+    () => new Map(leafActivities.map(a => [a.id, a])),
+    [leafActivities]
+  )
+
+  const handleAdd = async () => {
+    if (!selPred) { setAddError('Selecciona uma actividade predecessora.'); return }
+    setAdding(true)
+    const err = await onAdd(selPred, selType, lagDays)
+    setAdding(false)
+    if (err) { setAddError(err); return }
+    setSelPred(''); setSelType('FS'); setLagDays(0); setAddError(null); setAddOpen(false)
+  }
+
+  return (
+    <div className="gi-deps">
+      {loading && predecessors.length === 0 ? (
+        <span className="gi-deps-loading">A carregar…</span>
+      ) : !loading && predecessors.length === 0 && !addOpen ? (
+        <span className="gi-deps-empty">Sem predecessores definidos.</span>
+      ) : null}
+
+      {predecessors.map(dep => {
+        const pred = actById.get(dep.predecessor_id)
+        return (
+          <div key={dep.id} className="gi-dep-row">
+            <span className="gi-dep-type-badge">{dep.dep_type}</span>
+            <span className="gi-dep-name" title={pred?.name ?? dep.predecessor_id}>
+              {pred?.name ?? dep.predecessor_id}
+            </span>
+            <select
+              className="gi-dep-type-sel"
+              value={dep.dep_type}
+              onChange={e => onUpdate(dep.id, { dep_type: e.target.value as DependencyType })}
+            >
+              <option value="FS">FS</option>
+              <option value="SS">SS</option>
+              <option value="FF">FF</option>
+              <option value="SF">SF</option>
+            </select>
+            <input
+              type="number"
+              className="gi-dep-lag-input"
+              value={dep.lag_days}
+              min={-999}
+              max={999}
+              title="Lag (dias)"
+              onChange={e => onUpdate(dep.id, { lag_days: parseInt(e.target.value, 10) || 0 })}
+            />
+            <span className="gi-dep-lag-unit">d</span>
+            <button type="button" className="gi-dep-remove" onClick={() => onRemove(dep.id)} title="Remover">×</button>
+          </div>
+        )
+      })}
+
+      {addOpen && (
+        <div className="gi-dep-add-form">
+          <select
+            className="gi-field-input"
+            value={selPred}
+            onChange={e => { setSelPred(e.target.value); setAddError(null) }}
+          >
+            <option value="">— predecessora —</option>
+            {candidates.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <div className="gi-dep-add-row">
+            <select
+              className="gi-dep-type-sel"
+              value={selType}
+              onChange={e => setSelType(e.target.value as DependencyType)}
+            >
+              <option value="FS">FS</option>
+              <option value="SS">SS</option>
+              <option value="FF">FF</option>
+              <option value="SF">SF</option>
+            </select>
+            <input
+              type="number"
+              className="gi-dep-lag-input"
+              value={lagDays}
+              min={-999}
+              max={999}
+              placeholder="0"
+              title="Lag (dias)"
+              onChange={e => setLagDays(parseInt(e.target.value, 10) || 0)}
+            />
+            <span className="gi-dep-lag-unit">d</span>
+            <button
+              type="button"
+              className="gi-btn gi-btn-primary"
+              style={{ fontSize: 12, padding: '4px 10px' }}
+              onClick={handleAdd}
+              disabled={adding}
+            >
+              {adding ? '…' : 'Adicionar'}
+            </button>
+            <button
+              type="button"
+              className="gi-btn"
+              style={{ fontSize: 12, padding: '4px 10px' }}
+              onClick={() => { setAddOpen(false); setAddError(null) }}
+            >
+              Cancelar
+            </button>
+          </div>
+          {addError && <span className="gi-error">{addError}</span>}
+        </div>
+      )}
+
+      {!addOpen && (
+        <button
+          type="button"
+          className="gi-btn"
+          style={{ alignSelf: 'flex-start', marginTop: predecessors.length > 0 ? 6 : 0 }}
+          onClick={() => setAddOpen(true)}
+        >
+          + Predecessora
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ── Main component ─────────────────────────────────────────────
 export default function GestaoIniciativas() {
   const { showToast } = useToast()
@@ -608,6 +790,20 @@ export default function GestaoIniciativas() {
   }, [])
 
   const [searchQuery, setSearchQuery] = useState('')
+
+  const {
+    dependencies,
+    loading: depsLoading,
+    createDependency,
+    deleteDependency,
+    updateDependency,
+    getPredecessors,
+  } = useActivityDependencies()
+
+  const leafActivities = useMemo(
+    () => activities.filter(a => a.level >= 4),
+    [activities]
+  )
 
   // Apply dirty overrides for display
   const localActs = useMemo(() =>
@@ -788,6 +984,56 @@ export default function GestaoIniciativas() {
     setPanelForm({ ...toForm(a), id: null, name: a.name + ' (cópia)', pct: '0', rs: '', rf: '' })
     setPanelErrors({})
   }, [])
+
+  // ── Dependency handlers ───────────────────────────────────────
+  const handleAddDependency = useCallback(async (
+    successorId: string,
+    predecessorId: string,
+    depType: DependencyType,
+    lagDays: number,
+  ): Promise<string | null> => {
+    const predecessor = activities.find(a => a.id === predecessorId)
+    const successor   = activities.find(a => a.id === successorId)
+    if (!predecessor || !successor) return 'Actividade não encontrada.'
+    const validErr = validateNewDependency(predecessor, successor, depType, lagDays, dependencies)
+    if (validErr) return validErr.message
+    const result = await createDependency({
+      successor_id: successorId, predecessor_id: predecessorId,
+      dep_type: depType, lag_days: lagDays,
+    })
+    if ('error' in result) return result.error.message
+    return null
+  }, [activities, dependencies, createDependency])
+
+  const handleRemoveDependency = useCallback((id: string) => {
+    void deleteDependency(id)
+  }, [deleteDependency])
+
+  const handleUpdateDependency = useCallback((
+    id: string,
+    patch: Partial<Pick<ActivityDependency, 'dep_type' | 'lag_days'>>,
+  ) => {
+    void updateDependency(id, patch)
+  }, [updateDependency])
+
+  const panelDepProps = useMemo<DependencyEditorProps | undefined>(() => {
+    const pid   = panelForm?.id
+    const level = Number(panelForm?.level) || 3
+    if (!pid || level < 4) return undefined
+    return {
+      predecessors: getPredecessors(pid),
+      loading: depsLoading,
+      leafActivities,
+      onAdd: (predecessorId, depType, lagDays) =>
+        handleAddDependency(pid, predecessorId, depType, lagDays),
+      onRemove: handleRemoveDependency,
+      onUpdate: handleUpdateDependency,
+    }
+  }, [
+    panelForm?.id, panelForm?.level,
+    getPredecessors, depsLoading, leafActivities,
+    handleAddDependency, handleRemoveDependency, handleUpdateDependency,
+  ])
 
   // ── Novo Plano handlers ───────────────────────────────────────
   const handleOpenPlano = useCallback(() => {
@@ -1565,6 +1811,7 @@ export default function GestaoIniciativas() {
             internalPeople={internalPeople}
             errors={panelErrors}
             onChange={setPanelForm}
+            depProps={panelDepProps}
           />
         </Modal>
       )}
