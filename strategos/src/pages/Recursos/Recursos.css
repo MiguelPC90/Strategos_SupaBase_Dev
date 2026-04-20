@@ -116,28 +116,39 @@
     margin: 0;
   }
 
-  /* ── View toggle chips ──────────────────────────────────────── */
-  .res-view-chips {
+  /* ── Tabs ───────────────────────────────────────────────────── */
+  .rec-tabs {
     display: flex;
-    gap: 4px;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
   }
 
-  .res-view-chip {
-    padding: 4px 14px;
-    border-radius: 100px;
-    font-size: 12px;
-    font-weight: 500;
-    border: 1px solid var(--border2);
-    background: var(--bg);
-    color: var(--text2);
+  .rec-tab {
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text3);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    transition: color 100ms ease, border-color 100ms ease;
   }
-  .res-view-chip:hover { background: var(--bg3); }
-  .res-view-chip.active {
-    background: var(--navy);
-    color: #fff;
-    border-color: var(--navy);
+
+  .rec-tab:hover { color: var(--text); }
+
+  .rec-tab.active {
+    color: var(--navy);
+    border-bottom-color: var(--navy);
+  }
+
+  /* ── Lista placeholder ──────────────────────────────────────── */
+  .rec-placeholder {
+    padding: 40px;
+    text-align: center;
+    color: var(--text3);
+    font-size: 13px;
   }
 
   /* ── Plan view table ────────────────────────────────────────── */

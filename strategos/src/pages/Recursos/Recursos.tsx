@@ -312,9 +312,6 @@ function ResourcePanel({ name, resources, planoNames, person, onClose, sym }: Re
   )
 }
 
-// ── Main page ──────────────────────────────────────────────────
-type ViewMode = 'plano' | 'recurso'
-
 // ── Chart sub-components ───────────────────────────────────────
 interface FtePoint { month: string; fte: number }
 
@@ -412,7 +409,7 @@ export default function Recursos() {
   const [selectedPlanoLabels, setSelectedPlanoLabels] = useState<string[]>([])
   const [selectedYears,       setSelectedYears]       = useState<string[]>([])
   const [mgmtYears,           setMgmtYears]           = useState<string[]>([])
-  const [view,                setView]                = useState<ViewMode>('plano')
+  const [activeTab,           setActiveTab]           = useState<'plano' | 'recurso' | 'lista'>('plano')
   const [expandedPlans,       setExpandedPlans]       = useState(new Set<string>())
   const [selectedRes,         setSelectedRes]         = useState<string | null>(null)
   const [currSymbol,          setCurrSymbol]          = useState('€')
@@ -752,21 +749,24 @@ export default function Recursos() {
             </Card>
           </div>
 
-          {/* View toggle */}
-          <div className="res-view-chips">
-            <button
-              className={`res-view-chip${view === 'plano' ? ' active' : ''}`}
-              onClick={() => setView('plano')}
-            >Vista por plano</button>
-            <button
-              className={`res-view-chip${view === 'recurso' ? ' active' : ''}`}
-              onClick={() => setView('recurso')}
-            >Vista por recurso</button>
-          </div>
+          {/* Main tabbed card */}
+          <Card title="Recursos">
+            <div className="rec-tabs">
+              <button
+                className={`rec-tab${activeTab === 'plano' ? ' active' : ''}`}
+                onClick={() => setActiveTab('plano')}
+              >Por Plano</button>
+              <button
+                className={`rec-tab${activeTab === 'recurso' ? ' active' : ''}`}
+                onClick={() => setActiveTab('recurso')}
+              >Por Recurso</button>
+              <button
+                className={`rec-tab${activeTab === 'lista' ? ' active' : ''}`}
+                onClick={() => setActiveTab('lista')}
+              >Lista Completa</button>
+            </div>
 
-          {/* Main card */}
-          <Card title={view === 'plano' ? 'Recursos por plano' : 'Mapa de alocação'}>
-            {view === 'plano' ? (
+            {activeTab === 'plano' && (
               <PlanView
                 resources={scoped}
                 planoNames={planoNames}
@@ -774,12 +774,18 @@ export default function Recursos() {
                 onToggle={togglePlan}
                 sym={currSymbol}
               />
-            ) : (
+            )}
+            {activeTab === 'recurso' && (
               <ResourceHeatmap
                 resources={scoped}
                 months={months}
                 onSelect={setSelectedRes}
               />
+            )}
+            {activeTab === 'lista' && (
+              <div className="rec-placeholder">
+                <p>Lista completa de alocações — em desenvolvimento.</p>
+              </div>
             )}
           </Card>
         </>
