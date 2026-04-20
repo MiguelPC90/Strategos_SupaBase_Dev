@@ -7,6 +7,7 @@ import Card from '../../components/Card/Card'
 import Modal from '../../components/Modal/Modal'
 import Badge from '../../components/Badge/Badge'
 import DateRangePicker from '../../components/DateRangePicker/DateRangePicker'
+import * as XLSX from 'xlsx'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { usePeople } from '../../hooks/usePeople'
@@ -151,6 +152,123 @@ const BLANK_PLANO: PlanoForm = {
   name: '', code: '', eixo_id: '',
   start_date: null, end_date: null,
   owner: '', sponsor: '', objective: '',
+}
+
+// ── Excel import types ─────────────────────────────────────────
+interface ParsedActivity {
+  rowNum: number
+  level: number
+  name: string
+  start_date: string | null
+  end_date: string | null
+  real_start: string | null
+  real_end: string | null
+  pct: number
+  notes: string
+  parentIndex: number | null
+}
+
+interface ParseError { row: number; message: string }
+
+function parseDate(s: string): string | null {
+  if (!s) return null
+  const t = s.trim()
+  if (!t) return null
+  const m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t
+  return null
+}
+
+async function parseExcelFile(file: File): Promise<{ activities: ParsedActivity[]; errors: ParseError[] }> {
+  const buf = await file.arrayBuffer()
+  const wb  = XLSX.read(new Uint8Array(buf), { type: 'array' })
+  const ws  = wb.Sheets[wb.SheetNames[0]]
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as unknown[][]
+
+  if (rows.length < 2) return { activities: [], errors: [{ row: 1, message: 'Ficheiro vazio ou sem dados.' }] }
+
+  const headers = (rows[0] as string[]).map(h => String(h).trim())
+  const colIdx  = (n: string) => headers.findIndex(h => h.toLowerCase() === n.toLowerCase())
+
+  const iNivel = colIdx('Nivel'); const iNome = colIdx('Nome')
+  const iInicioP = colIdx('Inicio_Planeado'); const iFimP = colIdx('Fim_Planeado')
+  const iInicioR = colIdx('Inicio_Real');    const iFimR  = colIdx('Fim_Real')
+  const iPct = colIdx('Pct_Execucao');       const iNotas = colIdx('Notas')
+
+  if (iNivel < 0 || iNome < 0 || iInicioP < 0 || iFimP < 0) {
+    return { activities: [], errors: [{ row: 1, message: 'Colunas obrigatórias em falta (Nivel, Nome, Inicio_Planeado, Fim_Planeado). Use o template.' }] }
+  }
+
+  const activities: ParsedActivity[] = []
+  const errors: ParseError[] = []
+  const lastAtLevel: Record<number, number> = {}
+
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r] as unknown[]
+    if (row.every(c => !c || String(c).trim() === '')) continue
+    const rowNum  = r + 1
+    const level   = parseInt(String(row[iNivel] ?? '').trim(), 10)
+    const name    = String(row[iNome] ?? '').trim()
+
+    if (!level || level < 3 || level > 6) {
+      errors.push({ row: rowNum, message: `Nível inválido: "${row[iNivel]}" (deve ser 3–6)` }); continue
+    }
+    if (!name) { errors.push({ row: rowNum, message: 'Nome em falta' }); continue }
+
+    const start_date = parseDate(String(row[iInicioP] ?? ''))
+    const end_date   = parseDate(String(row[iFimP] ?? ''))
+
+    if (!start_date) { errors.push({ row: rowNum, message: 'Inicio_Planeado inválido (use dd/mm/yyyy)' }); continue }
+    if (!end_date)   { errors.push({ row: rowNum, message: 'Fim_Planeado inválido (use dd/mm/yyyy)' });   continue }
+    if (end_date < start_date) { errors.push({ row: rowNum, message: 'Fim_Planeado anterior ao Inicio_Planeado' }); continue }
+
+    const real_start = iInicioR >= 0 ? parseDate(String(row[iInicioR] ?? '')) : null
+    const real_end   = iFimR   >= 0 ? parseDate(String(row[iFimR]    ?? '')) : null
+    const pct        = Math.max(0, Math.min(100, parseInt(String(iPct >= 0 ? (row[iPct] ?? '0') : '0').trim(), 10) || 0))
+    const notes      = iNotas  >= 0 ? String(row[iNotas] ?? '').trim() : ''
+
+    let parentIndex: number | null = null
+    if (level > 3) {
+      const pidx = lastAtLevel[level - 1]
+      if (pidx === undefined) { errors.push({ row: rowNum, message: `N${level} sem N${level - 1} pai acima` }); continue }
+      parentIndex = pidx
+    }
+
+    const act: ParsedActivity = { rowNum, level, name, start_date, end_date, real_start, real_end, pct, notes, parentIndex }
+    const actIdx = activities.length
+    activities.push(act)
+    lastAtLevel[level] = actIdx
+    for (const k of Object.keys(lastAtLevel).map(Number)) { if (k > level) delete lastAtLevel[k] }
+  }
+
+  return { activities, errors }
+}
+
+function buildN345(act: ParsedActivity, all: ParsedActivity[]): { n3: string; n4: string; n5: string } {
+  const chain: ParsedActivity[] = [act]
+  let pidx = act.parentIndex
+  while (pidx !== null) { chain.unshift(all[pidx]); pidx = all[pidx].parentIndex }
+  const byLevel = new Map<number, string>()
+  for (const a of chain) byLevel.set(a.level, a.name)
+  return { n3: byLevel.get(3) ?? '', n4: byLevel.get(4) ?? '', n5: byLevel.get(5) ?? '' }
+}
+
+function downloadTemplate() {
+  const headers = ['Nivel', 'Nome', 'Inicio_Planeado', 'Fim_Planeado', 'Inicio_Real', 'Fim_Real', 'Pct_Execucao', 'Notas']
+  const examples: (string | number)[][] = [
+    [3, 'M1 - Análise',     '01/04/2026', '30/04/2026', '', '', 0, 'Fase de análise'],
+    [4, 'A1 - Entrevistas', '01/04/2026', '15/04/2026', '', '', 0, ''],
+    [5, 'S1 - Preparação',  '01/04/2026', '05/04/2026', '', '', 0, ''],
+    [5, 'S2 - Execução',    '06/04/2026', '15/04/2026', '', '', 0, ''],
+    [4, 'A2 - Documentação','16/04/2026', '30/04/2026', '', '', 0, ''],
+    [3, 'M2 - Design',      '01/05/2026', '31/05/2026', '', '', 0, ''],
+  ]
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...examples])
+  ws['!cols'] = [{ wch: 7 }, { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 30 }]
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Actividades')
+  XLSX.writeFile(wb, 'template-actividades.xlsx')
 }
 
 // ── Panel component ────────────────────────────────────────────
@@ -458,6 +576,11 @@ export default function GestaoIniciativas() {
   const [planoForm, setPlanoForm]       = useState<PlanoForm>(BLANK_PLANO)
   const [planoErrors, setPlanoErrors]   = useState<Record<string, string>>({})
   const [planoSaving, setPlanoSaving]   = useState(false)
+  const [planoStep, setPlanoStep]               = useState<1 | 2>(1)
+  const [uploadedFile, setUploadedFile]         = useState<File | null>(null)
+  const [parsedActivities, setParsedActivities] = useState<ParsedActivity[]>([])
+  const [parseErrors, setParseErrors]           = useState<ParseError[]>([])
+  const fileInputRef                            = useRef<HTMLInputElement>(null)
 
   const [batchSaving, setBatchSaving] = useState(false)
   const [delayThreshold, setDelayThreshold] = useState(20)
@@ -636,48 +759,123 @@ export default function GestaoIniciativas() {
     setPanelErrors({})
   }, [])
 
-  // ── Novo Plano ────────────────────────────────────────────────
-  const handleSavePlano = useCallback(async () => {
+  // ── Novo Plano handlers ───────────────────────────────────────
+  const handleOpenPlano = useCallback(() => {
+    setPlanoForm(BLANK_PLANO); setPlanoErrors({})
+    setPlanoStep(1); setUploadedFile(null); setParsedActivities([]); setParseErrors([])
+    setNewPlanoOpen(true)
+  }, [])
+
+  const handleClosePlano = useCallback(() => {
+    setNewPlanoOpen(false); setPlanoStep(1)
+    setPlanoForm(BLANK_PLANO); setPlanoErrors({})
+    setUploadedFile(null); setParsedActivities([]); setParseErrors([])
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }, [])
+
+  const clearFile = useCallback(() => {
+    setUploadedFile(null); setParsedActivities([]); setParseErrors([])
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }, [])
+
+  const goToStep2 = useCallback(() => {
     const errs: Record<string, string> = {}
     if (!planoForm.name.trim())   errs.name    = 'Nome obrigatório.'
     if (!planoForm.code.trim())   errs.code    = 'Código obrigatório.'
     if (!planoForm.eixo_id)       errs.eixo_id = 'Eixo obrigatório.'
     if (!planoForm.start_date || !planoForm.end_date) errs.dates = 'Período previsto obrigatório.'
     if (Object.keys(errs).length) { setPlanoErrors(errs); return }
+    setPlanoStep(2)
+  }, [planoForm])
 
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadedFile(file)
+    const { activities: parsed, errors: errs } = await parseExcelFile(file)
+    setParsedActivities(parsed); setParseErrors(errs)
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault() }, [])
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault()
+    const file = e.dataTransfer.files[0]
+    if (!file) return
+    setUploadedFile(file)
+    const { activities: parsed, errors: errs } = await parseExcelFile(file)
+    setParsedActivities(parsed); setParseErrors(errs)
+  }, [])
+
+  const handleSavePlanoWithActivities = useCallback(async () => {
+    if (parseErrors.length > 0) return
     setPlanoSaving(true); setPlanoErrors({})
 
     const { data: maxResult } = await supabase
-      .from('planos')
-      .select('sort_order')
+      .from('planos').select('sort_order')
       .eq('eixo_id', planoForm.eixo_id)
-      .order('sort_order', { ascending: false })
-      .limit(1)
+      .order('sort_order', { ascending: false }).limit(1)
 
-    const nextSortOrder = ((maxResult as { sort_order: number }[] | null)?.[0]?.sort_order ?? 0) + 1
+    const nextSort = ((maxResult as { sort_order: number }[] | null)?.[0]?.sort_order ?? 0) + 1
 
-    const payload = {
+    const planoPayload = {
       name:       planoForm.name.trim(),
       code:       planoForm.code.trim().toUpperCase(),
       eixo_id:    planoForm.eixo_id,
       program_id: selProgId ?? null,
       start_date: planoForm.start_date,
       end_date:   planoForm.end_date,
-      owner:      planoForm.owner   || null,
-      sponsor:    planoForm.sponsor || null,
+      owner:      planoForm.owner    || null,
+      sponsor:    planoForm.sponsor  || null,
       objective:  planoForm.objective || null,
-      sort_order: nextSortOrder,
+      sort_order: nextSort,
     }
 
-    const { error } = await supabase.from('planos').insert(payload)
-    setPlanoSaving(false)
-    if (error) { setPlanoErrors({ _: error.message }); return }
+    const { data: newPlano, error: planoErr } = await supabase
+      .from('planos').insert(planoPayload).select().single()
 
-    showToast(`Plano "${payload.name}" criado.`)
-    setNewPlanoOpen(false)
-    setPlanoForm(BLANK_PLANO)
+    if (planoErr) { setPlanoSaving(false); setPlanoErrors({ _: planoErr.message }); return }
+
+    if (parsedActivities.length > 0) {
+      const eixoName    = dbEixos.find(e => e.id === planoForm.eixo_id)?.name ?? ''
+      const programName = program?.name ?? ''
+      const planoName   = (newPlano as { name: string }).name
+
+      const actPayloads = parsedActivities.map((a, i) => {
+        const { n3, n4, n5 } = buildN345(a, parsedActivities)
+        return {
+          program_id: selProgId ?? null, level: a.level, name: a.name,
+          n0: programName, n1: eixoName, n2: planoName, n3, n4, n5,
+          id0: programName, id1: '', id2: '',
+          bs: a.start_date, bf: a.end_date,
+          rs: a.real_start || null, rf: a.real_end || null,
+          pct: a.pct, pct_prev: 0,
+          status: a.pct >= 100 ? 'Concluída' : 'Em dia',
+          owner: '', sponsor: '', notes: a.notes || null,
+          sort_order: activities.length + i,
+        }
+      })
+
+      const { error: actErr } = await supabase.from('activities').insert(actPayloads)
+      if (actErr) {
+        setPlanoSaving(false)
+        setPlanoErrors({ _: `Plano criado mas erro ao importar actividades: ${actErr.message}` })
+        return
+      }
+      refetch()
+    }
+
+    setPlanoSaving(false)
+    showToast(parsedActivities.length > 0
+      ? `Plano "${planoPayload.name}" criado com ${parsedActivities.length} actividade(s).`
+      : `Plano "${planoPayload.name}" criado.`
+    )
+    setNewPlanoOpen(false); setPlanoStep(1)
+    setPlanoForm(BLANK_PLANO); setPlanoErrors({})
+    setUploadedFile(null); setParsedActivities([]); setParseErrors([])
+    if (fileInputRef.current) fileInputRef.current.value = ''
     refetchPlanos()
-  }, [planoForm, selProgId, showToast, refetchPlanos])
+  }, [planoForm, selProgId, parsedActivities, parseErrors, dbEixos, program, activities.length, showToast, refetchPlanos, refetch])
 
   // ── Row delete ────────────────────────────────────────────────
   const handleRowDelete = useCallback(async (a: Activity) => {
@@ -982,7 +1180,7 @@ export default function GestaoIniciativas() {
             <div className="gi-sep" />
           </>
         )}
-        <button className="gi-btn gi-btn-secondary" onClick={() => { setPlanoForm(BLANK_PLANO); setPlanoErrors({}); setNewPlanoOpen(true) }} disabled={!selProgId}
+        <button className="gi-btn gi-btn-secondary" onClick={handleOpenPlano} disabled={!selProgId}
           title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
           Novo Plano
         </button>
@@ -1044,120 +1242,233 @@ export default function GestaoIniciativas() {
       {newPlanoOpen && (
         <Modal
           isOpen={true}
-          onClose={() => setNewPlanoOpen(false)}
+          onClose={handleClosePlano}
           title="Novo Plano de Acção"
-          width={500}
+          width={560}
           footer={
             <>
-              <button className="gi-btn" onClick={() => setNewPlanoOpen(false)}>Cancelar</button>
-              <button className="gi-btn gi-btn-save" onClick={handleSavePlano} disabled={planoSaving}>
-                {planoSaving ? 'A guardar…' : 'Guardar'}
-              </button>
+              <button className="gi-btn" onClick={handleClosePlano}>Cancelar</button>
+              {planoStep === 1 ? (
+                <button className="gi-btn gi-btn-primary" onClick={goToStep2}>
+                  Continuar →
+                </button>
+              ) : (
+                <>
+                  <button className="gi-btn" onClick={() => setPlanoStep(1)}>← Anterior</button>
+                  <button
+                    className="gi-btn gi-btn-save"
+                    onClick={handleSavePlanoWithActivities}
+                    disabled={planoSaving || parseErrors.length > 0}
+                  >
+                    {planoSaving ? 'A guardar…' : parsedActivities.length > 0 ? `Guardar e importar ${parsedActivities.length}` : 'Guardar plano'}
+                  </button>
+                </>
+              )}
               {planoErrors._ && <span style={{ fontSize: 12, color: 'var(--red)', width: '100%' }}>{planoErrors._}</span>}
             </>
           }
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-
-            {/* ── Identificação ── */}
-            <div className="gi-section">
-              <div className="gi-section-title">Identificação</div>
-              <div className="gi-field" style={{ marginTop: 10 }}>
-                <span className={`gi-field-label${planoErrors.name ? ' gi-label-error' : ''}`}>Nome *</span>
-                <input
-                  className={`gi-field-input${planoErrors.name ? ' gi-input-error' : ''}`}
-                  value={planoForm.name}
-                  onChange={e => setPlanoForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="Nome do plano de acção"
-                />
-                {planoErrors.name && <span className="gi-error">{planoErrors.name}</span>}
-              </div>
-              <div className="gi-field-row" style={{ marginTop: 10 }}>
-                <div className="gi-field">
-                  <span className={`gi-field-label${planoErrors.code ? ' gi-label-error' : ''}`}>Código *</span>
-                  <input
-                    className={`gi-field-input${planoErrors.code ? ' gi-input-error' : ''}`}
-                    value={planoForm.code}
-                    onChange={e => setPlanoForm(f => ({ ...f, code: e.target.value }))}
-                    placeholder="Ex: RA, MSOSP"
-                    style={{ textTransform: 'uppercase' }}
-                  />
-                  {planoErrors.code && <span className="gi-error">{planoErrors.code}</span>}
-                </div>
-                <div className="gi-field">
-                  <span className={`gi-field-label${planoErrors.eixo_id ? ' gi-label-error' : ''}`}>Eixo *</span>
-                  <select
-                    className={`gi-field-input${planoErrors.eixo_id ? ' gi-input-error' : ''}`}
-                    value={planoForm.eixo_id}
-                    onChange={e => setPlanoForm(f => ({ ...f, eixo_id: e.target.value }))}
-                  >
-                    <option value="">— seleccionar —</option>
-                    {dbEixos.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                  </select>
-                  {planoErrors.eixo_id && <span className="gi-error">{planoErrors.eixo_id}</span>}
-                </div>
-              </div>
+          {/* ── Stepper ── */}
+          <div className="gi-stepper">
+            <div className={`gi-step${planoStep === 1 ? ' active' : ''}`}>
+              <span className="gi-step-num">1</span>
+              <span>Dados do Plano</span>
             </div>
-
-            {/* ── Período Previsto ── */}
-            <div className="gi-section">
-              <div className="gi-section-title">Datas</div>
-              <div style={{ marginTop: 10 }}>
-                <DateRangePicker
-                  label="Período Previsto"
-                  required
-                  startDate={planoForm.start_date}
-                  endDate={planoForm.end_date}
-                  onChange={(s, e) => setPlanoForm(f => ({ ...f, start_date: s, end_date: e }))}
-                  error={planoErrors.dates}
-                />
-              </div>
+            <div className="gi-step-connector" />
+            <div className={`gi-step${planoStep === 2 ? ' active' : ''}`}>
+              <span className="gi-step-num">2</span>
+              <span>Importar (opcional)</span>
             </div>
-
-            {/* ── Responsáveis ── */}
-            <div className="gi-section">
-              <div className="gi-section-title">Responsáveis</div>
-              <div className="gi-two-col" style={{ marginTop: 10 }}>
-                <div className="gi-field">
-                  <span className="gi-field-label">Owner</span>
-                  <select
-                    className="gi-field-input"
-                    value={planoForm.owner}
-                    onChange={e => setPlanoForm(f => ({ ...f, owner: e.target.value }))}
-                  >
-                    <option value="">— seleccionar —</option>
-                    {internalPeople.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                  </select>
-                </div>
-                <div className="gi-field">
-                  <span className="gi-field-label">Sponsor</span>
-                  <select
-                    className="gi-field-input"
-                    value={planoForm.sponsor}
-                    onChange={e => setPlanoForm(f => ({ ...f, sponsor: e.target.value }))}
-                  >
-                    <option value="">— seleccionar —</option>
-                    {internalPeople.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Objectivo ── */}
-            <div className="gi-section">
-              <div className="gi-section-title">Objectivo</div>
-              <div className="gi-field" style={{ marginTop: 10 }}>
-                <textarea
-                  className="gi-field-textarea"
-                  rows={4}
-                  value={planoForm.objective}
-                  onChange={e => setPlanoForm(f => ({ ...f, objective: e.target.value }))}
-                  placeholder="Descreva o objectivo principal do plano…"
-                />
-              </div>
-            </div>
-
           </div>
+
+          {/* ── Step 1: Plano form ── */}
+          {planoStep === 1 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+              <div className="gi-section">
+                <div className="gi-section-title">Identificação</div>
+                <div className="gi-field" style={{ marginTop: 10 }}>
+                  <span className={`gi-field-label${planoErrors.name ? ' gi-label-error' : ''}`}>Nome *</span>
+                  <input
+                    className={`gi-field-input${planoErrors.name ? ' gi-input-error' : ''}`}
+                    value={planoForm.name}
+                    onChange={e => setPlanoForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Nome do plano de acção"
+                  />
+                  {planoErrors.name && <span className="gi-error">{planoErrors.name}</span>}
+                </div>
+                <div className="gi-field-row" style={{ marginTop: 10 }}>
+                  <div className="gi-field">
+                    <span className={`gi-field-label${planoErrors.code ? ' gi-label-error' : ''}`}>Código *</span>
+                    <input
+                      className={`gi-field-input${planoErrors.code ? ' gi-input-error' : ''}`}
+                      value={planoForm.code}
+                      onChange={e => setPlanoForm(f => ({ ...f, code: e.target.value }))}
+                      placeholder="Ex: RA, MSOSP"
+                      style={{ textTransform: 'uppercase' }}
+                    />
+                    {planoErrors.code && <span className="gi-error">{planoErrors.code}</span>}
+                  </div>
+                  <div className="gi-field">
+                    <span className={`gi-field-label${planoErrors.eixo_id ? ' gi-label-error' : ''}`}>Eixo *</span>
+                    <select
+                      className={`gi-field-input${planoErrors.eixo_id ? ' gi-input-error' : ''}`}
+                      value={planoForm.eixo_id}
+                      onChange={e => setPlanoForm(f => ({ ...f, eixo_id: e.target.value }))}
+                    >
+                      <option value="">— seleccionar —</option>
+                      {dbEixos.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                    </select>
+                    {planoErrors.eixo_id && <span className="gi-error">{planoErrors.eixo_id}</span>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="gi-section">
+                <div className="gi-section-title">Datas</div>
+                <div style={{ marginTop: 10 }}>
+                  <DateRangePicker
+                    label="Período Previsto"
+                    required
+                    startDate={planoForm.start_date}
+                    endDate={planoForm.end_date}
+                    onChange={(s, e) => setPlanoForm(f => ({ ...f, start_date: s, end_date: e }))}
+                    error={planoErrors.dates}
+                  />
+                </div>
+              </div>
+
+              <div className="gi-section">
+                <div className="gi-section-title">Responsáveis</div>
+                <div className="gi-two-col" style={{ marginTop: 10 }}>
+                  <div className="gi-field">
+                    <span className="gi-field-label">Owner</span>
+                    <select className="gi-field-input" value={planoForm.owner}
+                      onChange={e => setPlanoForm(f => ({ ...f, owner: e.target.value }))}>
+                      <option value="">— seleccionar —</option>
+                      {internalPeople.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="gi-field">
+                    <span className="gi-field-label">Sponsor</span>
+                    <select className="gi-field-input" value={planoForm.sponsor}
+                      onChange={e => setPlanoForm(f => ({ ...f, sponsor: e.target.value }))}>
+                      <option value="">— seleccionar —</option>
+                      {internalPeople.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="gi-section">
+                <div className="gi-section-title">Objectivo</div>
+                <div className="gi-field" style={{ marginTop: 10 }}>
+                  <textarea
+                    className="gi-field-textarea" rows={3}
+                    value={planoForm.objective}
+                    onChange={e => setPlanoForm(f => ({ ...f, objective: e.target.value }))}
+                    placeholder="Descreva o objectivo principal do plano…"
+                  />
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ── Step 2: Excel import ── */}
+          {planoStep === 2 && (
+            <div className="gi-step2">
+              <div className="gi-step2-header">
+                <div className="gi-step2-help">
+                  Importa actividades em bloco a partir de um ficheiro Excel.
+                  A hierarquia é inferida pela ordem das linhas: uma N4 é filha da última N3 acima; etc.
+                </div>
+                <button className="gi-btn-link" type="button" onClick={downloadTemplate}>
+                  📥 Template
+                </button>
+              </div>
+
+              <div
+                className={`gi-upload-area${uploadedFile ? ' has-file' : ''}`}
+                onClick={() => !uploadedFile && fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              >
+                <input
+                  type="file" accept=".xlsx,.xls"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleFileSelect}
+                />
+                {!uploadedFile ? (
+                  <>
+                    <div className="gi-upload-icon">📎</div>
+                    <div className="gi-upload-text">Arrastar Excel ou clicar para seleccionar</div>
+                    <div className="gi-upload-hint">Formatos aceites: .xlsx, .xls</div>
+                  </>
+                ) : (
+                  <div className="gi-upload-selected">
+                    <span>📄 {uploadedFile.name}</span>
+                    <button type="button" className="gi-upload-clear"
+                      onClick={e => { e.stopPropagation(); clearFile() }}>×</button>
+                  </div>
+                )}
+              </div>
+
+              {(parsedActivities.length > 0 || parseErrors.length > 0) && (
+                <div className="gi-preview">
+                  <div className="gi-preview-header">
+                    <span>
+                      {parsedActivities.length > 0
+                        ? `Pré-visualização — ${parsedActivities.length} actividades`
+                        : 'Sem actividades válidas'}
+                    </span>
+                    {parseErrors.length > 0 && (
+                      <span className="gi-preview-errors-badge">⚠ {parseErrors.length} erro(s)</span>
+                    )}
+                  </div>
+
+                  {parseErrors.length > 0 && (
+                    <div className="gi-error-list">
+                      {parseErrors.map((e, i) => (
+                        <div key={i} className="gi-error-item">Linha {e.row}: {e.message}</div>
+                      ))}
+                    </div>
+                  )}
+
+                  {parsedActivities.length > 0 && (
+                    <div className="gi-preview-table-wrap">
+                      <table className="gi-preview-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: 32 }}>#</th>
+                            <th style={{ width: 44 }}>Nível</th>
+                            <th>Nome</th>
+                            <th style={{ width: 85 }}>Início</th>
+                            <th style={{ width: 85 }}>Fim</th>
+                            <th style={{ width: 52 }}>%</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {parsedActivities.map((a, i) => (
+                            <tr key={i}>
+                              <td>{i + 1}</td>
+                              <td><span className="gi-level-badge">N{a.level}</span></td>
+                              <td style={{ paddingLeft: `${(a.level - 3) * 14 + 8}px` }}>{a.name}</td>
+                              <td>{fmtDate(a.start_date)}</td>
+                              <td>{fmtDate(a.end_date)}</td>
+                              <td>{a.pct}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
         </Modal>
       )}
 
