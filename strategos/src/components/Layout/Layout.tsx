@@ -1,5 +1,6 @@
 import './Layout.css'
 import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react'
+import SplashScreen from '../SplashScreen/SplashScreen'
 import { NavLink, Outlet } from 'react-router-dom'
 import FilterBar from '../FilterBar/FilterBar'
 import Badge from '../Badge/Badge'
@@ -195,12 +196,12 @@ const ROLE_LABEL: Record<string, string> = {
 }
 
 export default function Layout() {
-  const { signOut, user } = useAuth()
+  const { signOut, user, loading: authLoading } = useAuth()
   const { profile, role, isAdmin } = useRole()
   const { hasAccess } = usePermissions()
 
   const { filters, setFilter, resetFilters } = useFilters()
-  const { programs } = usePrograms()
+  const { programs, loading: programsLoading } = usePrograms()
 
   const activeFilterCount =
     filters.programIds.length + filters.n1Values.length + filters.n2Values.length +
@@ -255,6 +256,14 @@ export default function Layout() {
   const [clientLogoUrl,  setClientLogoUrl]  = useState('')
   const [clientSubtitle, setClientSubtitle] = useState('')
 
+  const [configLoaded,          setConfigLoaded]          = useState(false)
+  const [splashMinTimeElapsed,  setSplashMinTimeElapsed]  = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSplashMinTimeElapsed(true), 500)
+    return () => clearTimeout(timer)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     supabase
@@ -265,18 +274,21 @@ export default function Layout() {
         'status_delay_threshold_aggregates', 'status_delay_threshold', 'status_delay_threshold_leaves',
       ])
       .then(({ data }) => {
-        if (cancelled || !data) return
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const map: Record<string, string> = {}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        for (const row of data as any[]) map[row.config_key] = row.data ?? ''
-        setClientTitle(map['client_title']     ?? '')
-        setClientLogoUrl(map['client_logo_url']  ?? '')
-        setClientSubtitle(map['client_subtitle'] ?? '')
-        // New keys take priority; fall back to legacy key for existing installations
-        const aggThreshold   = parseInt(map['status_delay_threshold_aggregates'] ?? map['status_delay_threshold'] ?? '20') || 20
-        const leavesThreshold = parseInt(map['status_delay_threshold_leaves'] ?? '0') || 0
-        setThresholds(aggThreshold, leavesThreshold)
+        if (cancelled) return
+        if (data) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const map: Record<string, string> = {}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          for (const row of data as any[]) map[row.config_key] = row.data ?? ''
+          setClientTitle(map['client_title']     ?? '')
+          setClientLogoUrl(map['client_logo_url']  ?? '')
+          setClientSubtitle(map['client_subtitle'] ?? '')
+          // New keys take priority; fall back to legacy key for existing installations
+          const aggThreshold   = parseInt(map['status_delay_threshold_aggregates'] ?? map['status_delay_threshold'] ?? '20') || 20
+          const leavesThreshold = parseInt(map['status_delay_threshold_leaves'] ?? '0') || 0
+          setThresholds(aggThreshold, leavesThreshold)
+        }
+        setConfigLoaded(true)
       })
     return () => { cancelled = true }
   }, [])
@@ -296,8 +308,16 @@ export default function Layout() {
   const displayEmail = user?.email ?? ''
   const roleLabel = role ? (ROLE_LABEL[role] ?? role) : null
 
+  const essentialLoaded =
+    !authLoading &&
+    (!user || (configLoaded && !programsLoading))
+
+  const showSplash = !essentialLoaded || !splashMinTimeElapsed
+
   return (
     <>
+      <SplashScreen visible={showSplash} logoUrl={clientLogoUrl || null} />
+
       {/* ── Sidebar (always collapsed, expands on hover) ── */}
       <nav className="sidebar collapsed">
         <div className="sidebar-nav">
