@@ -61,19 +61,19 @@
   .gi-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
   .gi-btn-primary {
-    background: var(--navy);
+    background: var(--stratgos-ember);
     color: #fff;
-    border-color: var(--navy);
+    border-color: var(--stratgos-ember);
   }
-  .gi-btn-primary:hover:not(:disabled) { background: #003f7a; }
+  .gi-btn-primary:hover:not(:disabled) { background: #B34B36; }
 
   .gi-btn-save {
-    background: var(--navy);
+    background: var(--stratgos-ember);
     color: #fff;
-    border-color: var(--navy);
+    border-color: var(--stratgos-ember);
     font-weight: 600;
   }
-  .gi-btn-save:hover:not(:disabled) { background: #003f7a; }
+  .gi-btn-save:hover:not(:disabled) { background: #B34B36; }
 
   .gi-btn-danger {
     color: var(--red);

@@ -61,12 +61,12 @@
   .pds-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
   .pds-btn-save {
-    background: var(--navy);
+    background: var(--stratgos-ember);
     color: #fff;
-    border-color: var(--navy);
+    border-color: var(--stratgos-ember);
     font-weight: 600;
   }
-  .pds-btn-save:hover:not(:disabled) { background: #003f7a; }
+  .pds-btn-save:hover:not(:disabled) { background: #B34B36; }
 
   /* ── Status / empty ─────────────────────────────────────────── */
   .pds-status {

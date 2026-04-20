@@ -75,20 +75,20 @@
   .gres-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
   .gres-btn-primary {
-    background: var(--navy);
+    background: var(--stratgos-ember);
     color: #fff;
-    border-color: var(--navy);
+    border-color: var(--stratgos-ember);
     font-weight: 600;
   }
-  .gres-btn-primary:hover:not(:disabled) { background: #003f7a; }
+  .gres-btn-primary:hover:not(:disabled) { background: #B34B36; }
 
   .gres-btn-save {
-    background: var(--navy);
+    background: var(--stratgos-ember);
     color: #fff;
-    border-color: var(--navy);
+    border-color: var(--stratgos-ember);
     font-weight: 600;
   }
-  .gres-btn-save:hover:not(:disabled) { background: #003f7a; }
+  .gres-btn-save:hover:not(:disabled) { background: #B34B36; }
 
   .gres-icon-btn {
     width: 26px;

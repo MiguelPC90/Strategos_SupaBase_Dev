@@ -78,20 +78,20 @@
   .gf-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
   .gf-btn-primary {
-    background: var(--navy);
+    background: var(--stratgos-ember);
     color: #fff;
-    border-color: var(--navy);
+    border-color: var(--stratgos-ember);
     font-weight: 600;
   }
-  .gf-btn-primary:hover:not(:disabled) { background: #003f7a; }
+  .gf-btn-primary:hover:not(:disabled) { background: #B34B36; }
 
   .gf-btn-save {
-    background: var(--navy);
+    background: var(--stratgos-ember);
     color: #fff;
-    border-color: var(--navy);
+    border-color: var(--stratgos-ember);
     font-weight: 600;
   }
-  .gf-btn-save:hover:not(:disabled) { background: #003f7a; }
+  .gf-btn-save:hover:not(:disabled) { background: #B34B36; }
 
   .gf-btn-danger {
     color: var(--red);

@@ -113,7 +113,7 @@
 
   .adm-btn-primary {
     padding: 8px 18px;
-    background: var(--navy);
+    background: var(--stratgos-ember);
     color: white;
     border: none;
     border-radius: var(--r);
@@ -123,7 +123,7 @@
   }
 
   .adm-btn-primary:hover:not(:disabled) {
-    background: var(--navy2, #003f7f);
+    background: #B34B36;
   }
 
   .adm-btn-primary:disabled {

@@ -52,20 +52,20 @@
   .gr-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
   .gr-btn-primary {
-    background: var(--navy);
+    background: var(--stratgos-ember);
     color: #fff;
-    border-color: var(--navy);
+    border-color: var(--stratgos-ember);
     font-weight: 600;
   }
-  .gr-btn-primary:hover:not(:disabled) { background: #003f7a; }
+  .gr-btn-primary:hover:not(:disabled) { background: #B34B36; }
 
   .gr-btn-save {
-    background: var(--navy);
+    background: var(--stratgos-ember);
     color: #fff;
-    border-color: var(--navy);
+    border-color: var(--stratgos-ember);
     font-weight: 600;
   }
-  .gr-btn-save:hover:not(:disabled) { background: #003f7a; }
+  .gr-btn-save:hover:not(:disabled) { background: #B34B36; }
 
   .gr-btn-danger {
     color: var(--red);
