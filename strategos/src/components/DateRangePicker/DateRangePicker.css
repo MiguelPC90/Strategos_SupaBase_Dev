@@ -1,0 +1,247 @@
+@layer components {
+  /* ── Container ──────────────────────────────────────────────── */
+  .drp-container {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+  }
+
+  /* ── Label ──────────────────────────────────────────────────── */
+  .drp-label {
+    display: block;
+    font-size: 11px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-bottom: 6px;
+    user-select: none;
+  }
+
+  .drp-required {
+    color: var(--red);
+    margin-left: 2px;
+  }
+
+  .drp-error {
+    display: block;
+    color: var(--red);
+    font-size: 11px;
+    margin-top: 4px;
+  }
+
+  /* ── Trigger ────────────────────────────────────────────────── */
+  .drp-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    background: white;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    min-width: 240px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 100ms ease;
+    outline: none;
+  }
+
+  .drp-trigger:hover:not(.disabled) {
+    border-color: var(--border2);
+  }
+
+  .drp-trigger:focus-visible {
+    border-color: var(--navy);
+    box-shadow: 0 0 0 2px rgba(0, 46, 94, 0.15);
+  }
+
+  .drp-trigger.error {
+    border-color: var(--red);
+  }
+
+  .drp-trigger.sm {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .drp-trigger.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* ── Icon ───────────────────────────────────────────────────── */
+  .drp-icon {
+    flex-shrink: 0;
+    color: var(--text3);
+  }
+
+  /* ── Date display ───────────────────────────────────────────── */
+  .drp-dates {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .drp-dates.empty {
+    color: var(--text3);
+  }
+
+  .drp-arrow {
+    color: var(--text3);
+    flex-shrink: 0;
+  }
+
+  .drp-placeholder {
+    color: var(--text3);
+  }
+
+  /* ── Clear button ───────────────────────────────────────────── */
+  .drp-clear {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    padding: 0;
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    font-family: inherit;
+    transition: color 100ms ease;
+  }
+
+  .drp-clear:hover {
+    color: var(--red);
+  }
+
+  /* ── Popup ──────────────────────────────────────────────────── */
+  .drp-popup {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    z-index: 1000;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 14px;
+    min-width: 320px;
+  }
+
+  /* ── Popup date fields ──────────────────────────────────────── */
+  .drp-popup-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .drp-popup-field label {
+    display: block;
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .drp-popup-field input[type="date"] {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: white;
+    box-sizing: border-box;
+  }
+
+  .drp-popup-field input[type="date"]:focus {
+    outline: none;
+    border-color: var(--navy);
+  }
+
+  /* ── Shortcuts ──────────────────────────────────────────────── */
+  .drp-shortcuts {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .drp-shortcut {
+    padding: 4px 10px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--text2);
+    font-family: inherit;
+    transition: background 100ms ease, color 100ms ease;
+  }
+
+  .drp-shortcut:hover {
+    background: var(--bg3);
+    color: var(--text);
+  }
+
+  /* ── Validation warning ─────────────────────────────────────── */
+  .drp-warn {
+    color: var(--red);
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+
+  /* ── Actions ────────────────────────────────────────────────── */
+  .drp-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  .drp-btn {
+    padding: 6px 14px;
+    border-radius: var(--r);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    border: 1px solid var(--border2);
+    background: white;
+    color: var(--text);
+    transition: background 100ms ease;
+  }
+
+  .drp-btn:hover:not(:disabled) {
+    background: var(--bg2);
+  }
+
+  .drp-btn-apply {
+    background: var(--navy);
+    color: white;
+    border-color: var(--navy);
+  }
+
+  .drp-btn-apply:hover:not(:disabled) {
+    background: #003f7a;
+  }
+
+  .drp-btn-apply:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
