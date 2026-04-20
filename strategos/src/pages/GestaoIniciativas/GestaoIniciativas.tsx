@@ -19,7 +19,7 @@ import { supabase } from '../../lib/supabase'
 import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange, leafPctPrev, leafStatus } from '../../lib/rollup'
 import type { Activity, Person, ActivityDependency, DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
-import { validateNewDependency } from '../../lib/activityDependencies'
+import { validateNewDependency, propagateDateChanges } from '../../lib/activityDependencies'
 
 // ── Types ──────────────────────────────────────────────────────
 type BadgeVariant = 'green' | 'blue' | 'red' | 'grey'
@@ -953,19 +953,36 @@ export default function GestaoIniciativas() {
     }
     let errMsg = ''
     if (panelForm.id) {
-      const { error } = await supabase.from('activities').update(payload).eq('id', panelForm.id)
-      if (error) errMsg = error.message
+      const { data: updatedRow, error } = await supabase
+        .from('activities').update(payload).eq('id', panelForm.id).select().single()
+      if (error) { errMsg = error.message }
+      else if (updatedRow) {
+        const dateChanges = propagateDateChanges(updatedRow as Activity, activities, dependencies)
+        if (dateChanges.size > 0) {
+          const batchResults = await Promise.all(
+            Array.from(dateChanges.entries()).map(([id, dates]) =>
+              supabase.from('activities').update({ bs: dates.bs, bf: dates.bf }).eq('id', id)
+            )
+          )
+          const batchErr = batchResults.find(r => r.error)
+          if (batchErr?.error) errMsg = batchErr.error.message
+          else showToast(`Guardado! ${dateChanges.size} successor${dateChanges.size === 1 ? '' : 'es'} actualizados.`)
+        } else {
+          showToast('Guardado!')
+        }
+      }
     } else {
       const { error } = await supabase.from('activities').insert({
         ...payload, id0: panelForm.n0, id1: '', id2: '', pct_prev: 0,
         sort_order: activities.length,
       })
       if (error) errMsg = error.message
+      else showToast('Guardado!')
     }
     setPanelSaving(false)
     if (errMsg) { setPanelErrors({ _: errMsg }); return }
     setPanelForm(null); refetch()
-  }, [panelForm, selProgId, activities.length, refetch])
+  }, [panelForm, selProgId, activities, dependencies, showToast, refetch])
 
   const handlePanelDelete = useCallback(async () => {
     const id = panelForm?.id

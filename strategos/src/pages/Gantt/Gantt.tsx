@@ -10,6 +10,8 @@ import { useFilters } from '../../context/FilterContext'
 import { rollupPct, rollupStatus, leafStatus, leafPctPrev, rollupPctPrev } from '../../lib/rollup'
 import { supabase } from '../../lib/supabase'
 import type { Activity, Program } from '../../types/index'
+import type { DependencyType } from '../../types/index'
+import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -234,6 +236,43 @@ function fmt(d: string | null): string {
   return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d
 }
 
+// ── Dependency arrow constants ─────────────────────────────────
+const ROW_H    = 34          // matches .gantt-sticky-cell { height: 34px }
+const STICKY_W = COL_NAME + COL_STATUS + COL_EXEC  // 420px left fixed columns
+const HEADER_H = 29          // approximate thead height (7px padding × 2 + 15px text)
+
+// ── Dependency arrow types ─────────────────────────────────────
+interface RowInfo { id: string; rowIndex: number; bs: string | null; bf: string | null }
+interface Arrow   { id: string; fromX: number; fromY: number; toX: number; toY: number; depType: DependencyType }
+
+// ── ArrowPath ─────────────────────────────────────────────────
+function ArrowPath({ arrow }: { arrow: Arrow }) {
+  const { fromX, fromY, toX, toY, depType } = arrow
+  let d: string
+  if (depType === 'FS') {
+    const pivot = Math.max(fromX + 12, (fromX + toX) / 2)
+    d = `M ${fromX} ${fromY} H ${pivot} V ${toY} H ${toX}`
+  } else if (depType === 'SS') {
+    const pivot = Math.min(fromX, toX) - 12
+    d = `M ${fromX} ${fromY} H ${pivot} V ${toY} H ${toX}`
+  } else if (depType === 'FF') {
+    const pivot = Math.max(fromX, toX) + 12
+    d = `M ${fromX} ${fromY} H ${pivot} V ${toY} H ${toX}`
+  } else {
+    const pivot = (fromX + toX) / 2
+    d = `M ${fromX} ${fromY} H ${pivot} V ${toY} H ${toX}`
+  }
+  return (
+    <path
+      d={d}
+      stroke="rgba(101,83,68,0.55)"
+      strokeWidth="1.5"
+      fill="none"
+      markerEnd="url(#dep-arrow)"
+    />
+  )
+}
+
 // ── Tooltip data ───────────────────────────────────────────────
 interface TooltipState {
   name: string
@@ -368,6 +407,7 @@ export default function Gantt() {
     cutoffDate: filters.cutoffDate,
   })
   const { programs } = usePrograms()
+  const { dependencies } = useActivityDependencies()
   const multiProg = programs.length > 1
 
   const filtered = useMemo(() => getFilteredActivities(activities), [activities, getFilteredActivities])
@@ -498,6 +538,8 @@ export default function Gantt() {
 
   // ── Build rows ─────────────────────────────────────────────────
   const rows: JSX.Element[] = []
+  const visibleActs: RowInfo[] = []
+  let rowIdx = 0
   let firstRow = true
 
   // Inner helper — pushes N1/N2/N3/N4 rows into `rows`.
@@ -529,6 +571,7 @@ export default function Gantt() {
           <td className="gantt-filler-td" />
         </tr>
       )
+      rowIdx++
       if (n1col) continue
 
       for (const n2g of n1g.n2groups) {
@@ -556,6 +599,7 @@ export default function Gantt() {
             <td className="gantt-filler-td" />
           </tr>
         )
+        rowIdx++
         if (n2col) continue
 
         for (const n3g of n2g.n3groups) {
@@ -580,6 +624,8 @@ export default function Gantt() {
                   <td className="gantt-filler-td" />
                 </tr>
               )
+              visibleActs.push({ id: a.id, rowIndex: rowIdx, bs: a.bs, bf: a.bf })
+              rowIdx++
             }
             continue
           }
@@ -612,6 +658,8 @@ export default function Gantt() {
                 <td className="gantt-filler-td" />
               </tr>
             )
+            visibleActs.push({ id: rep.id, rowIndex: rowIdx, bs: rep.bs, bf: rep.bf })
+            rowIdx++
             continue
           }
 
@@ -640,6 +688,7 @@ export default function Gantt() {
               <td className="gantt-filler-td" />
             </tr>
           )
+          rowIdx++
           if (n3col) continue
 
           // Render only the real children — the N3 representative is excluded to avoid duplicates
@@ -662,6 +711,8 @@ export default function Gantt() {
                 <td className="gantt-filler-td" />
               </tr>
             )
+            visibleActs.push({ id: a.id, rowIndex: rowIdx, bs: a.bs, bf: a.bf })
+            rowIdx++
           }
         }
       }
@@ -696,12 +747,35 @@ export default function Gantt() {
           <td className="gantt-filler-td" />
         </tr>
       )
+      rowIdx++
 
       if (!n0col) renderN1Rows(n0g.n1groups, 16)
     }
   } else {
     // Single program (or no programs): existing behaviour, no N0 header
     renderN1Rows(tree, 4)
+  }
+
+  // ── Dependency arrows ──────────────────────────────────────────
+  const xForDate = (d: string | null): number => {
+    if (!d || totalMs <= 0) return 0
+    return ((new Date(d).getTime() - rangeStart.getTime()) / totalMs) * timelineW
+  }
+
+  const rowsByActId = new Map(visibleActs.map(r => [r.id, r]))
+  const arrows: Arrow[] = []
+  for (const dep of dependencies) {
+    const pred = rowsByActId.get(dep.predecessor_id)
+    const suc  = rowsByActId.get(dep.successor_id)
+    if (!pred || !suc) continue
+    const fromDateStr = dep.dep_type === 'FS' || dep.dep_type === 'FF' ? pred.bf : pred.bs
+    const toDateStr   = dep.dep_type === 'FS' || dep.dep_type === 'SS' ? suc.bs  : suc.bf
+    if (!fromDateStr || !toDateStr) continue
+    const fromX = xForDate(fromDateStr)
+    const toX   = xForDate(toDateStr)
+    const fromY = pred.rowIndex * ROW_H + ROW_H / 2
+    const toY   = suc.rowIndex  * ROW_H + ROW_H / 2
+    arrows.push({ id: dep.id, fromX, fromY, toX, toY, depType: dep.dep_type })
   }
 
   return (
@@ -757,33 +831,57 @@ export default function Gantt() {
           </div>
         ) : (
           <div className="gantt-scroll-wrap">
-            <table
-              className="gantt-table"
-              style={{ tableLayout: 'fixed', width: '100%' }}
-            >
-              <colgroup>
-                <col style={{ width: COL_NAME + COL_STATUS + COL_EXEC }} />
-                {periods.map((_, i) => <col key={i} style={{ width: colW }} />)}
-                <col /> {/* filler: absorbs remaining card width */}
-              </colgroup>
-              <thead>
-                <tr>
-                  <th className="gantt-th gantt-sticky">
-                    <div className="gantt-sticky-cell">
-                      <div className="gantt-sticky-name" style={{ paddingLeft: 8 }}>Designação</div>
-                      <div className="gantt-sticky-status">Estado</div>
-                      <div className="gantt-sticky-exec">Exec.</div>
-                    </div>
-                  </th>
-                  {periods.map((p, i) => (
-                    <th key={i} className="gantt-th gantt-th-period">{p.label}</th>
-                  ))}
-                  {/* Issue 4: filler header — empty, navy bg extends to right edge */}
-                  <th className="gantt-th gantt-th-filler" />
-                </tr>
-              </thead>
-              <tbody>{rows}</tbody>
-            </table>
+            <div className="gantt-inner">
+              <table
+                className="gantt-table"
+                style={{ tableLayout: 'fixed', minWidth: '100%' }}
+              >
+                <colgroup>
+                  <col style={{ width: COL_NAME + COL_STATUS + COL_EXEC }} />
+                  {periods.map((_, i) => <col key={i} style={{ width: colW }} />)}
+                  <col /> {/* filler: absorbs remaining card width */}
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th className="gantt-th gantt-sticky">
+                      <div className="gantt-sticky-cell">
+                        <div className="gantt-sticky-name" style={{ paddingLeft: 8 }}>Designação</div>
+                        <div className="gantt-sticky-status">Estado</div>
+                        <div className="gantt-sticky-exec">Exec.</div>
+                      </div>
+                    </th>
+                    {periods.map((p, i) => (
+                      <th key={i} className="gantt-th gantt-th-period">{p.label}</th>
+                    ))}
+                    {/* Issue 4: filler header — empty, navy bg extends to right edge */}
+                    <th className="gantt-th gantt-th-filler" />
+                  </tr>
+                </thead>
+                <tbody>{rows}</tbody>
+              </table>
+              {arrows.length > 0 && (
+                <svg
+                  className="gantt-arrows-overlay"
+                  style={{
+                    position: 'absolute',
+                    top: HEADER_H,
+                    left: STICKY_W,
+                    width: timelineW,
+                    height: rowIdx * ROW_H,
+                    pointerEvents: 'none',
+                    zIndex: 4,
+                    overflow: 'visible',
+                  }}
+                >
+                  <defs>
+                    <marker id="dep-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                      <path d="M 0 0 L 6 3 L 0 6 z" fill="rgba(101,83,68,0.7)" />
+                    </marker>
+                  </defs>
+                  {arrows.map(a => <ArrowPath key={a.id} arrow={a} />)}
+                </svg>
+              )}
+            </div>
           </div>
         )}
       </Card>

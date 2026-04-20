@@ -92,6 +92,17 @@
     margin: 0 -16px -16px; /* bleed table to card edges for full-width fill */
   }
 
+  /* Inner wrapper — inline-block so it naturally expands to table content width,
+     making the absolutely-positioned SVG overlay scroll with the table content */
+  .gantt-inner {
+    position: relative;
+    display: inline-block;
+    min-width: 100%;
+  }
+  .gantt-arrows-overlay {
+    overflow: visible;
+  }
+
   /* Issue 4: filler column data cell */
   .gantt-filler-td {
     border-bottom: 1px solid var(--border);
