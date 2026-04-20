@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback, useEffect, useRef, useLayoutEffect } fr
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
+import EmptyState from '../../components/EmptyState/EmptyState'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
@@ -744,11 +745,15 @@ export default function Gantt() {
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
             <Spinner />
           </div>
+        ) : filtered.length === 0 && activities.length === 0 ? (
+          <EmptyState
+            icon="calendar"
+            title="Sem actividades"
+            description="Selecciona um programa nos filtros para visualizar o diagrama de Gantt."
+          />
         ) : filtered.length === 0 ? (
           <div className="gantt-empty">
-            {activities.length === 0
-              ? 'Sem actividades carregadas. Selecciona um programa nos filtros.'
-              : 'Sem actividades para os filtros seleccionados.'}
+            Sem actividades para os filtros seleccionados.
           </div>
         ) : (
           <div className="gantt-scroll-wrap">

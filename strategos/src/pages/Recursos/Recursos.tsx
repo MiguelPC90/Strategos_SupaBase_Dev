@@ -1,6 +1,7 @@
 import './Recursos.css'
 import { useState, useMemo, useEffect } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
+import EmptyState from '../../components/EmptyState/EmptyState'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import MultiSelect from '../../components/MultiSelect/MultiSelect'
@@ -984,7 +985,11 @@ export default function Recursos() {
           <Spinner />
         </div>
       ) : resources.length === 0 ? (
-        <div className="res-empty-page">Nenhum recurso alocado.</div>
+        <EmptyState
+          icon="data"
+          title="Sem recursos alocados"
+          description="Não existem recursos alocados para os filtros seleccionados."
+        />
       ) : (
         <>
           {/* ── Row 1: Primary KPIs ──────────────────────────────── */}

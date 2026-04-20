@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import Modal from '../../components/Modal/Modal'
+import EmptyState from '../../components/EmptyState/EmptyState'
 import { useRisks } from '../../hooks/useRisks'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
@@ -477,16 +478,13 @@ export default function GestaoRiscos() {
             Seleccione um plano para gerir riscos.
           </div>
         ) : planRisks.length === 0 ? (
-          <div className="gr-empty">
-            <div>Sem riscos registados para este plano.</div>
-            <button
-              className="gr-btn gr-btn-primary"
-              style={{ marginTop: 12 }}
-              onClick={openNew}
-            >
-              + Novo Risco
-            </button>
-          </div>
+          <EmptyState
+            icon="inbox"
+            title="Sem riscos registados"
+            description="Ainda não existem riscos identificados para este plano."
+            actionLabel="+ Novo Risco"
+            onAction={openNew}
+          />
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table className="gr-table">

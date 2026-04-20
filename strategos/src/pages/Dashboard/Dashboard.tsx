@@ -10,6 +10,7 @@ import {
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import Table, { type Column } from '../../components/Table/Table'
+import EmptyState from '../../components/EmptyState/EmptyState'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useEixos } from '../../hooks/useEixos'
@@ -702,6 +703,17 @@ export default function Dashboard() {
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
         <Spinner />
       </div>
+    )
+  }
+
+  if (!loading && activities.length === 0) {
+    return (
+      <EmptyState
+        icon="data"
+        title="Sem dados carregados"
+        description="Selecciona um programa nos filtros para visualizar os indicadores."
+        size="lg"
+      />
     )
   }
 

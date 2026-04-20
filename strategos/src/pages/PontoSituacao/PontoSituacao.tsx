@@ -1,6 +1,7 @@
 import './PontoSituacao.css'
 import { useState, useMemo, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
+import EmptyState from '../../components/EmptyState/EmptyState'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import Badge from '../../components/Badge/Badge'
@@ -529,7 +530,13 @@ export default function PontoSituacao() {
       </div>
 
       {/* Empty / no-selection states */}
-      {!selectedKey ? (
+      {!loading && planOptions.length === 0 ? (
+        <EmptyState
+          icon="folder"
+          title="Sem planos disponíveis"
+          description="Não existem planos de acção disponíveis para este programa."
+        />
+      ) : !selectedKey ? (
         <div className="pds-placeholder">
           Seleccione um plano para ver o ponto de situação.
         </div>

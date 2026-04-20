@@ -2,6 +2,7 @@ import './GestaoRecursos.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
+import EmptyState from '../../components/EmptyState/EmptyState'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -1030,9 +1031,13 @@ export default function GestaoRecursos() {
             </div>
 
             {draft.length === 0 ? (
-              <div className="gres-empty">
-                Sem recursos alocados. Clica em + Adicionar Recurso para começar.
-              </div>
+              <EmptyState
+                icon="list"
+                title="Sem recursos alocados"
+                description="Clica em + Adicionar Recurso para começar a alocar recursos a este plano."
+                actionLabel="+ Adicionar Recurso"
+                onAction={openNewResource}
+              />
             ) : (
               draft.map(res => (
                 <ResourceCard

@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import Modal from '../../components/Modal/Modal'
+import EmptyState from '../../components/EmptyState/EmptyState'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -506,9 +507,11 @@ export default function GestaoPDS() {
           Selecciona um programa para visualizar os PDS.
         </div>
       ) : noPlans ? (
-        <div className="pds-status">
-          Nenhum plano de acção disponível para este programa.
-        </div>
+        <EmptyState
+          icon="inbox"
+          title="Sem planos de acção"
+          description="Não existem planos de acção disponíveis para este programa."
+        />
       ) : !selectedPlan ? (
         <div className="pds-status">Selecciona um plano de acção.</div>
       ) : (

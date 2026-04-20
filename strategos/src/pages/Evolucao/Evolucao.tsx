@@ -1,6 +1,7 @@
 import './Evolucao.css'
 import { useState, useMemo } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
+import EmptyState from '../../components/EmptyState/EmptyState'
 import {
   LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -290,15 +291,16 @@ export default function Evolucao() {
 
       {/* ── Empty state ─────────────────────────────────────────── */}
       {!hasEnough && (
-        <div className="evol-empty">
-          {filtered.length === 0
-            ? 'Sem dados históricos no período selecionado.'
-            : 'São necessários pelo menos 2 snapshots para visualizar tendências.'}
-          <br />
-          <span className="evol-empty-sub">
-            Os snapshots são guardados automaticamente todos os dias às 23:59.
-          </span>
-        </div>
+        <EmptyState
+          icon="chart"
+          title="Sem histórico disponível"
+          description={
+            filtered.length === 0
+              ? 'Sem dados históricos no período selecionado. Os snapshots são guardados automaticamente todos os dias.'
+              : 'São necessários pelo menos 2 snapshots para visualizar tendências. Os snapshots são guardados automaticamente todos os dias.'
+          }
+          size="lg"
+        />
       )}
 
       {/* ── Charts + comparison table ────────────────────────────── */}

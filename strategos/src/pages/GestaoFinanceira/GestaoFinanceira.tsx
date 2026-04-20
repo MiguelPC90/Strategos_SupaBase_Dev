@@ -2,6 +2,7 @@ import './GestaoFinanceira.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
+import EmptyState from '../../components/EmptyState/EmptyState'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
@@ -1173,9 +1174,11 @@ export default function GestaoFinanceira() {
           Selecciona um programa para visualizar as finanças.
         </div>
       ) : noPlans ? (
-        <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
-          Nenhum plano de acção disponível para este programa.
-        </div>
+        <EmptyState
+          icon="data"
+          title="Sem planos de acção"
+          description="Não existem planos de acção disponíveis para este programa."
+        />
       ) : !selectedPlan ? (
         <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
           Selecciona um plano de acção.

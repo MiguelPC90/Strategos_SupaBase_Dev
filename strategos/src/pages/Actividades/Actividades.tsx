@@ -4,6 +4,7 @@ import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import KpiCard from '../../components/KpiCard/KpiCard'
+import EmptyState from '../../components/EmptyState/EmptyState'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
@@ -519,6 +520,12 @@ export default function Actividades() {
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
             <Spinner />
           </div>
+        ) : !loading && activities.length === 0 ? (
+          <EmptyState
+            icon="list"
+            title="Sem actividades"
+            description="Selecciona um programa nos filtros para visualizar as actividades."
+          />
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table className="act-table" style={{ tableLayout: 'fixed', width: '100%' }}>
@@ -542,9 +549,7 @@ export default function Actividades() {
                 {rows.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="act-empty">
-                      {filtered.length === 0 && activities.length === 0
-                        ? 'Nenhuma actividade encontrada. Selecciona um programa para visualizar.'
-                        : 'Nenhuma actividade para os filtros seleccionados.'}
+                      Nenhuma actividade para os filtros seleccionados.
                     </td>
                   </tr>
                 ) : rows}

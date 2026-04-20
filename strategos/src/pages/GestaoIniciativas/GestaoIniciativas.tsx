@@ -2,6 +2,7 @@ import './GestaoIniciativas.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
+import EmptyState from '../../components/EmptyState/EmptyState'
 import { createPortal } from 'react-dom'
 import Card from '../../components/Card/Card'
 import Modal from '../../components/Modal/Modal'
@@ -1204,6 +1205,14 @@ export default function GestaoIniciativas() {
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
             <Spinner />
           </div>
+        ) : !loading && activities.length === 0 ? (
+          <EmptyState
+            icon="list"
+            title="Sem planos ou actividades"
+            description="Cria um plano de acção para começar a gerir as actividades do programa."
+            actionLabel="+ Novo Plano"
+            onAction={handleOpenPlano}
+          />
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table className="gi-table">
@@ -1227,9 +1236,7 @@ export default function GestaoIniciativas() {
                 {rows.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="gi-empty">
-                      {activities.length === 0
-                        ? 'Sem actividades. Selecciona um programa ou cria uma nova actividade.'
-                        : 'Nenhuma actividade para os filtros seleccionados.'}
+                      Nenhuma actividade para os filtros seleccionados.
                     </td>
                   </tr>
                 ) : rows}

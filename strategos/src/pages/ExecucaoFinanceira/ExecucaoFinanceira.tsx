@@ -1,6 +1,7 @@
 import './ExecucaoFinanceira.css'
 import { useState, useMemo, useEffect } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
+import EmptyState from '../../components/EmptyState/EmptyState'
 import MultiSelect from '../../components/MultiSelect/MultiSelect'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
@@ -625,7 +626,13 @@ export default function ExecucaoFinanceira() {
           <Spinner />
         </div>
       ) : !hasData ? (
-        <div className="ef-empty-page">Sem dados financeiros carregados.</div>
+        <EmptyState
+          icon="data"
+          title="Sem dados financeiros"
+          description="Não existem dados financeiros para os filtros seleccionados."
+          actionLabel="Ir para Gestão Financeira"
+          actionHref="/gestao-financeira"
+        />
       ) : (
         <>
           {/* ── Row 1: Primary KPIs ──────────────────────────────── */}
