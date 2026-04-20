@@ -1,5 +1,5 @@
 import './GestaoRecursos.css'
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import { supabase } from '../../lib/supabase'
@@ -28,6 +28,7 @@ type DraftResource = FteResource
 
 interface ResourceForm {
   id: string | null
+  person_id: string | null
   name: string
   role: string
   org_unit: string
@@ -163,6 +164,10 @@ function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate,
           <div className="gres-field">
             <span className="gres-field-label">Nome</span>
             <strong style={{ fontSize: 13 }}>{res.name || <span style={{ color: 'var(--text3)' }}>—</span>}</strong>
+            {res.person_id
+              ? <span className="gr-person-linked-chip">🔗 Catálogo</span>
+              : <span className="gr-person-unlinked-chip">Não ligado</span>
+            }
           </div>
           <div className="gres-field">
             <span className="gres-field-label">Perfil</span>
@@ -228,6 +233,157 @@ function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate,
   )
 }
 
+// ── PersonAutocomplete ─────────────────────────────────────────
+function PersonAutocomplete({ value, personId, people, onNameChange, onSelect, onPersonCreated }: {
+  value: string
+  personId: string | null
+  people: Person[]
+  onNameChange: (name: string) => void
+  onSelect: (p: Person) => void
+  onPersonCreated: (id: string, name: string) => void
+}) {
+  const { showToast } = useToast()
+  const [open, setOpen]               = useState(false)
+  const [highlighted, setHighlighted] = useState(-1)
+  const [creating, setCreating]       = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const activePeople = useMemo(() => people.filter(p => p.active !== false), [people])
+
+  const suggestions = useMemo(() => {
+    const q = value.toLowerCase().trim()
+    return q.length === 0
+      ? activePeople.slice(0, 10)
+      : activePeople.filter(p => p.name.toLowerCase().includes(q)).slice(0, 10)
+  }, [activePeople, value])
+
+  const exactMatch = useMemo(
+    () => activePeople.find(p => p.name.toLowerCase().trim() === value.toLowerCase().trim()),
+    [activePeople, value]
+  )
+
+  const q           = value.toLowerCase().trim()
+  const showCreate  = q.length > 0 && !exactMatch
+  const showDupWarn = !personId && q.length > 0 && !exactMatch && suggestions.length > 0
+  const totalItems  = suggestions.length + (showCreate ? 1 : 0)
+
+  const closeDropdown = useCallback(() => { setOpen(false); setHighlighted(-1) }, [])
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) closeDropdown()
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [closeDropdown])
+
+  const handleCreate = useCallback(async () => {
+    const name = value.trim()
+    if (!name || creating) return
+    setCreating(true)
+    try {
+      const { data, error } = await supabase
+        .from('people')
+        .insert({ name, active: true })
+        .select('id, name')
+        .single()
+      if (error) throw error
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const row = data as any
+      onPersonCreated(row.id as string, row.name as string)
+      showToast(`"${row.name as string}" adicionado ao catálogo.`)
+      closeDropdown()
+    } catch (e) {
+      console.error('Create person:', e)
+    } finally {
+      setCreating(false)
+    }
+  }, [value, creating, onPersonCreated, showToast, closeDropdown])
+
+  const pickPerson = useCallback((p: Person) => {
+    onSelect(p)
+    closeDropdown()
+  }, [onSelect, closeDropdown])
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!open) {
+      if (e.key === 'ArrowDown') { setOpen(true); setHighlighted(0); e.preventDefault() }
+      return
+    }
+    if (e.key === 'Escape') { closeDropdown(); e.preventDefault() }
+    else if (e.key === 'ArrowDown') { setHighlighted(h => (h + 1) % totalItems); e.preventDefault() }
+    else if (e.key === 'ArrowUp')   { setHighlighted(h => (h - 1 + totalItems) % totalItems); e.preventDefault() }
+    else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (highlighted < 0) return
+      if (showCreate && highlighted === 0) { void handleCreate(); return }
+      const idx = showCreate ? highlighted - 1 : highlighted
+      if (suggestions[idx]) pickPerson(suggestions[idx])
+    }
+  }
+
+  const hasDropdown = open && (suggestions.length > 0 || showCreate)
+
+  return (
+    <div className="gr-person-autocomplete" ref={containerRef}>
+      <div style={{ position: 'relative' }}>
+        <input
+          className="gres-form-input gr-person-input"
+          value={value}
+          placeholder="Nome do recurso"
+          autoComplete="off"
+          onChange={e => { onNameChange(e.target.value); setOpen(true); setHighlighted(-1) }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={handleKeyDown}
+        />
+        {personId && <span className="gr-person-linked-icon" title="Ligado ao catálogo">🔗</span>}
+      </div>
+
+      {hasDropdown && (
+        <div className="gr-person-suggestions">
+          {showCreate && (
+            <div
+              className={`gr-person-suggestion gr-person-create${highlighted === 0 ? ' highlighted' : ''}`}
+              onMouseDown={e => { e.preventDefault(); void handleCreate() }}
+              onMouseEnter={() => setHighlighted(0)}
+            >
+              {creating ? 'A criar…' : `+ Criar "${value.trim()}" no catálogo`}
+            </div>
+          )}
+          {suggestions.map((p, i) => {
+            const idx  = showCreate ? i + 1 : i
+            const meta = [p.role, p.org_unit].filter(Boolean).join(' · ')
+            return (
+              <div
+                key={p.id}
+                className={`gr-person-suggestion${highlighted === idx ? ' highlighted' : ''}`}
+                onMouseDown={e => { e.preventDefault(); pickPerson(p) }}
+                onMouseEnter={() => setHighlighted(idx)}
+              >
+                <div className="gr-person-sug-name">{p.name}</div>
+                {(meta || p.type) && (
+                  <div className="gr-person-sug-meta">
+                    {meta && <span>{meta}</span>}
+                    {p.type && (
+                      <span className={`gr-person-badge ${p.type === 'Externo' ? 'ext' : 'int'}`}>{p.type}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {showDupWarn && (
+        <div className="gr-person-duplicate-warn">
+          ⚠ Nome semelhante encontrado — selecciona da lista para ligar ao catálogo
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── ResourceModalBody ──────────────────────────────────────────────
 function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnits, sym }: {
   form: ResourceForm
@@ -240,31 +396,23 @@ function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnit
 }) {
   const set = (patch: Partial<ResourceForm>) => setForm({ ...form, ...patch })
 
-  const handleNameChange = (val: string) => {
-    const match = people.find(p => p.name.toLowerCase().trim() === val.toLowerCase().trim())
-    if (match) {
-      set({
-        name:     val,
-        role:     form.role     || match.role     || '',
-        org_unit: form.org_unit || match.org_unit || '',
-        type:     form.type !== 'Interno' ? form.type : (match.type || 'Interno'),
-      })
-    } else {
-      set({ name: val })
-    }
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div className="gres-form-field">
         <label className="gres-form-label">Nome</label>
-        <input className="gres-form-input" list="res-modal-people-dl" value={form.name}
-          onChange={e => handleNameChange(e.target.value)} placeholder="Nome do recurso" />
-        <datalist id="res-modal-people-dl">
-          {people.filter(p => p.active !== false).map(p => (
-            <option key={p.id} value={p.name} />
-          ))}
-        </datalist>
+        <PersonAutocomplete
+          value={form.name}
+          personId={form.person_id}
+          people={people}
+          onNameChange={name => set({ name, person_id: null })}
+          onSelect={p => set({
+            name: p.name, person_id: p.id,
+            role: form.role || p.role || '',
+            org_unit: form.org_unit || p.org_unit || '',
+            type: p.type || form.type || 'Interno',
+          })}
+          onPersonCreated={(id, name) => set({ name, person_id: id })}
+        />
       </div>
       <div className="gres-form-row">
         <div className="gres-form-field">
@@ -566,7 +714,7 @@ export default function GestaoRecursos() {
     if (!selectedPlan) return
     setResModalErr(null)
     setResourceModal({
-      id: null, name: '', role: '', org_unit: '', type: 'Interno',
+      id: null, person_id: null, name: '', role: '', org_unit: '', type: 'Interno',
       allocation_pct: '100', daily_cost: '', start_date: '', end_date: '',
       status: 'Activo', contract_id: '',
     })
@@ -578,6 +726,7 @@ export default function GestaoRecursos() {
     setResModalErr(null)
     setResourceModal({
       id: r.id,
+      person_id: r.person_id ?? null,
       name: r.name ?? '',
       role: r.role ?? '',
       org_unit: r.org_unit ?? '',
@@ -599,6 +748,7 @@ export default function GestaoRecursos() {
     if (isNaN(allocPct) || allocPct < 0) { setResModalErr('% Alocação inválida.'); return }
     const patch: Partial<DraftResource> = {
       name: f.name.trim(),
+      person_id: f.person_id,
       role: f.role || null,
       org_unit: f.org_unit || null,
       type: f.type || 'Interno',
@@ -620,6 +770,7 @@ export default function GestaoRecursos() {
         type: patch.type!, daily_cost: patch.daily_cost ?? null, id2: selectedPlan.id2,
         start_date: patch.start_date ?? null, end_date: patch.end_date ?? null,
         allocation_pct: patch.allocation_pct!, contract_id: patch.contract_id ?? null,
+        person_id: patch.person_id ?? null,
         status: patch.status!, sort_order: null,
       }])
     }
@@ -705,6 +856,7 @@ export default function GestaoRecursos() {
         daily_cost: r.daily_cost, id2: r.id2 ?? pdsId,
         start_date: r.start_date, end_date: r.end_date,
         allocation_pct: r.allocation_pct, contract_id: r.contract_id,
+        person_id: r.person_id ?? null,
         status: r.status, sort_order: idx ?? r.sort_order,
       })
 

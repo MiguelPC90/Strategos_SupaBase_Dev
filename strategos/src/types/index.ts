@@ -207,6 +207,7 @@ export interface FteResource {
   start_date: string | null
   end_date: string | null
   allocation_pct: number | null
+  person_id: string | null
   contract_id: string | null
   status: string | null
   sort_order: number | null
