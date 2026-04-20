@@ -165,6 +165,46 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
   )
 }
 
+// ── DeviationBar ───────────────────────────────────────────────
+interface DeviationBarProps {
+  actual: number
+  target: number
+}
+
+function DeviationBar({ actual, target }: DeviationBarProps) {
+  const onTarget      = actual >= target
+  const displayActual = Math.min(100, Math.max(0, actual))
+  const displayTarget = Math.min(100, Math.max(0, target))
+  return (
+    <div
+      className="dev-bar-cell"
+      role="meter"
+      aria-valuenow={actual}
+      aria-valuemin={0}
+      aria-valuemax={Math.max(100, target)}
+      aria-label={`${actual.toFixed(1)}% de ${target.toFixed(1)}% (objectivo)`}
+    >
+      <div className="dev-bar-track">
+        <div
+          className={`dev-bar-fill ${onTarget ? 'on-target' : 'off-target'}`}
+          style={{ width: `${displayActual}%` }}
+        />
+        <div
+          className="dev-bar-target-marker"
+          style={{ left: `${displayTarget}%` }}
+        />
+      </div>
+      <div className="dev-bar-values">
+        <span className={onTarget ? 'dev-val-ontarget' : 'dev-val-offtarget'}>
+          {actual.toFixed(1)}%
+        </span>
+        <span className="dev-val-sep"> / </span>
+        <span className="dev-val-target">{target.toFixed(1)}% target</span>
+      </div>
+    </div>
+  )
+}
+
 function buildRow(nome: string, m: Metrics, isParent: boolean): Record<string, unknown> {
   const concGeral = safeDiv(m.concluidas, m.total) * 100
   const concData  = safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100
@@ -176,12 +216,12 @@ function buildRow(nome: string, m: Metrics, isParent: boolean): Record<string, u
     concluidas: m.concluidas,
     em_dia:     m.em_dia,
     em_atraso:  m.em_atraso,
-    grau_exec:  m.total > 0 ? fmtPct(m.grau_exec) : '—',
-    exec_obj:   m.total > 0 ? fmtPct(m.exec_obj)  : '—',
-    conc_geral: m.total > 0 ? fmtPct(concGeral)   : '—',
-    cg_obj:     m.total > 0 ? fmtPct(cgObj)       : '—',
-    conc_data:  m.concluidas + m.em_atraso > 0 ? fmtPct(concData) : '—',
-    cd_obj:     '100%',
+    grau_exec:  m.total > 0 ? m.grau_exec : null,
+    exec_obj:   m.total > 0 ? m.exec_obj  : null,
+    conc_geral: m.total > 0 ? concGeral   : null,
+    cg_obj:     m.total > 0 ? cgObj       : null,
+    conc_data:  m.concluidas + m.em_atraso > 0 ? concData : null,
+    cd_obj:     100,
   }
 }
 
@@ -214,23 +254,43 @@ const DETAIL_COLS: Column[] = [
   { key: 'concluidas', label: 'Concluídas',    sortable: true, width: '90px'  },
   { key: 'em_dia',     label: 'Em dia',        sortable: true, width: '70px'  },
   { key: 'em_atraso',  label: 'Em atraso',     sortable: true, width: '80px'  },
-  { key: 'grau_exec',  label: 'Grau Execução', sortable: true, width: '110px' },
   {
-    key: 'exec_obj',   label: 'Exec. obj.',    sortable: true, width: '90px',
-    headerColor: 'var(--green)',
-    render: (v) => <span style={{ color: 'var(--green)' }}>{v as string ?? '—'}</span>,
+    key: 'grau_exec',
+    label: 'Grau de Execução',
+    sortable: true,
+    minWidth: '140px',
+    align: 'left',
+    render: (_v, row) => {
+      const actual = row.grau_exec as number | null
+      const target = row.exec_obj as number | null
+      if (actual === null || target === null) return <span style={{ color: 'var(--text3)' }}>—</span>
+      return <DeviationBar actual={actual} target={target} />
+    },
   },
-  { key: 'conc_geral', label: 'Conc. Geral',   sortable: true, width: '100px' },
   {
-    key: 'cg_obj',     label: 'C.G.Obj.',      sortable: true, width: '80px',
-    headerColor: 'var(--green)',
-    render: (v) => <span style={{ color: 'var(--green)' }}>{v as string ?? '—'}</span>,
+    key: 'conc_geral',
+    label: 'Concretização Geral',
+    sortable: true,
+    minWidth: '140px',
+    align: 'left',
+    render: (_v, row) => {
+      const actual = row.conc_geral as number | null
+      const target = row.cg_obj as number | null
+      if (actual === null || target === null) return <span style={{ color: 'var(--text3)' }}>—</span>
+      return <DeviationBar actual={actual} target={target} />
+    },
   },
-  { key: 'conc_data',  label: 'Conc. Data',    sortable: true, width: '90px'  },
   {
-    key: 'cd_obj',     label: 'C.D.Obj.',      sortable: true, width: '80px',
-    headerColor: 'var(--green)',
-    render: (v) => <span style={{ color: 'var(--green)' }}>{v as string ?? '—'}</span>,
+    key: 'conc_data',
+    label: 'Concretização à Data',
+    sortable: true,
+    minWidth: '140px',
+    align: 'left',
+    render: (_v, row) => {
+      const actual = row.conc_data as number | null
+      if (actual === null) return <span style={{ color: 'var(--text3)' }}>—</span>
+      return <DeviationBar actual={actual} target={100} />
+    },
   },
 ]
 
@@ -674,13 +734,13 @@ export default function Dashboard() {
     concluidas: m.concluidas,
     em_dia:     m.em_dia,
     em_atraso:  m.em_atraso,
-    grau_exec:  m.total > 0 ? fmtPct(m.grau_exec) : '—',
-    exec_obj:   m.total > 0 ? fmtPct(m.exec_obj)  : '—',
-    conc_geral: m.total > 0 ? fmtPct(safeDiv(m.concluidas, m.total) * 100) : '—',
-    cg_obj:     m.total > 0 ? fmtPct(safeDiv(m.concluidas + m.em_atraso, m.total) * 100) : '—',
+    grau_exec:  m.total > 0 ? m.grau_exec : null,
+    exec_obj:   m.total > 0 ? m.exec_obj  : null,
+    conc_geral: m.total > 0 ? safeDiv(m.concluidas, m.total) * 100 : null,
+    cg_obj:     m.total > 0 ? safeDiv(m.concluidas + m.em_atraso, m.total) * 100 : null,
     conc_data:  m.concluidas + m.em_atraso > 0
-      ? fmtPct(safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100) : '—',
-    cd_obj:     '100%',
+      ? safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100 : null,
+    cd_obj:     100,
   }), [m])
 
   // ── Row click → navigate to Actividades with appropriate filter ─

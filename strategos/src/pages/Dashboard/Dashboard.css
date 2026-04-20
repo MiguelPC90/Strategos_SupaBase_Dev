@@ -83,4 +83,53 @@
     color: #fff;
     border-color: var(--navy);
   }
+
+  /* ── DeviationBar ────────────────────────────────────────── */
+  .dev-bar-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 120px;
+    padding: 2px 0;
+  }
+
+  .dev-bar-track {
+    position: relative;
+    width: 100%;
+    height: 8px;
+    background: var(--stratgos-ink-100);
+    border-radius: 4px;
+    overflow: visible;
+  }
+
+  .dev-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 200ms ease;
+  }
+
+  .dev-bar-fill.on-target  { background: var(--stratgos-moss); opacity: 0.85; }
+  .dev-bar-fill.off-target { background: var(--status-late); }
+
+  .dev-bar-target-marker {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    background: var(--stratgos-ink-700);
+    border-radius: 1px;
+    transform: translateX(-50%);
+  }
+
+  .dev-bar-values {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+
+  .dev-val-ontarget  { color: var(--stratgos-ink-900); font-weight: 600; }
+  .dev-val-offtarget { color: var(--status-late);      font-weight: 600; }
+  .dev-val-sep       { color: var(--stratgos-ink-300); }
+  .dev-val-target    { color: var(--stratgos-ink-500); font-size: 10px; }
 }
