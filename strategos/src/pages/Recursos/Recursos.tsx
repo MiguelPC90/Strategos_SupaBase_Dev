@@ -12,6 +12,7 @@ import { usePeople } from '../../hooks/usePeople'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import type { FteResource, Person } from '../../types/index'
+import { colors } from '../../lib/tokens'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -51,11 +52,11 @@ function activeInMonth(r: FteResource, mo: string): boolean {
 
 function allocationColor(pct: number): { bg: string; color: string } {
   if (pct === 0)   return { bg: 'transparent',  color: 'var(--text3)' }
-  if (pct <= 25)   return { bg: '#e8f5e4',       color: 'var(--text)'  }
-  if (pct <= 50)   return { bg: '#c8e6b8',       color: 'var(--text)'  }
-  if (pct <= 75)   return { bg: '#95bb42',       color: 'white'        }
-  if (pct <= 100)  return { bg: '#4a9e3f',       color: 'white'        }
-  return                   { bg: '#a32d2d',       color: 'white'        }
+  if (pct <= 25)   return { bg: 'rgba(74, 124, 89, 0.15)', color: 'var(--text)'  }
+  if (pct <= 50)   return { bg: 'rgba(74, 124, 89, 0.35)', color: 'var(--text)'  }
+  if (pct <= 75)   return { bg: colors.status.ontrack,     color: 'white'        }
+  if (pct <= 100)  return { bg: colors.brand.moss,         color: 'white'        }
+  return                   { bg: colors.status.late,        color: 'white'        }
 }
 
 function isExternal(type: string | null): boolean {
@@ -338,19 +339,19 @@ function ResourceHeatmap({ resources, globalAllocByPersonMonth, months, planoNam
           <span className="rec-legend-swatch" style={{ background: 'transparent', border: '1px solid var(--border)' }} />0%
         </span>
         <span className="rec-legend-item">
-          <span className="rec-legend-swatch" style={{ background: '#e8f5e4' }} />1-25%
+          <span className="rec-legend-swatch" style={{ background: 'rgba(74, 124, 89, 0.15)' }} />1-25%
         </span>
         <span className="rec-legend-item">
-          <span className="rec-legend-swatch" style={{ background: '#c8e6b8' }} />26-50%
+          <span className="rec-legend-swatch" style={{ background: 'rgba(74, 124, 89, 0.35)' }} />26-50%
         </span>
         <span className="rec-legend-item">
-          <span className="rec-legend-swatch" style={{ background: '#95bb42' }} />51-75%
+          <span className="rec-legend-swatch" style={{ background: colors.status.ontrack }} />51-75%
         </span>
         <span className="rec-legend-item">
-          <span className="rec-legend-swatch" style={{ background: '#4a9e3f' }} />76-100%
+          <span className="rec-legend-swatch" style={{ background: colors.brand.moss }} />76-100%
         </span>
         <span className="rec-legend-item">
-          <span className="rec-legend-swatch" style={{ background: '#a32d2d' }} />&gt;100% (sobrealoc.)
+          <span className="rec-legend-swatch" style={{ background: colors.status.late }} />&gt;100% (sobrealoc.)
         </span>
         <span className="rec-legend-global-hint">Cores baseadas em alocação global (todos os programas).</span>
       </div>
@@ -621,9 +622,9 @@ function FteEvolutionChart({ data }: FteEvolutionChartProps) {
         <Line
           type="monotone"
           dataKey="fte"
-          stroke="var(--navy)"
+          stroke={colors.brand.ember}
           strokeWidth={2}
-          dot={{ r: 3, fill: 'var(--navy)' }}
+          dot={{ r: 3, fill: colors.brand.ember }}
           activeDot={{ r: 5 }}
           connectNulls
         />
@@ -639,7 +640,7 @@ interface InternExtDonutProps {
   ePct: number
   total: number
 }
-const DONUT_COLORS = ['var(--navy)', 'var(--blue)']
+const DONUT_COLORS = [colors.brand.ink700, colors.brand.ember]
 function InternExtDonut({ internos, externos, iPct, ePct, total }: InternExtDonutProps) {
   const pieData = [
     { name: 'Internos', value: internos },
@@ -674,12 +675,12 @@ function InternExtDonut({ internos, externos, iPct, ePct, total }: InternExtDonu
       </div>
       <div className="rec-donut-legend">
         <div className="rec-donut-item">
-          <span className="rec-donut-swatch" style={{ background: 'var(--navy)' }} />
+          <span className="rec-donut-swatch" style={{ background: colors.brand.ink700 }} />
           <span className="rec-donut-item-label">Internos</span>
           <span className="rec-donut-item-val">{internos} ({iPct}%)</span>
         </div>
         <div className="rec-donut-item">
-          <span className="rec-donut-swatch" style={{ background: 'var(--blue)' }} />
+          <span className="rec-donut-swatch" style={{ background: colors.brand.ember }} />
           <span className="rec-donut-item-label">Externos</span>
           <span className="rec-donut-item-val">{externos} ({ePct}%)</span>
         </div>

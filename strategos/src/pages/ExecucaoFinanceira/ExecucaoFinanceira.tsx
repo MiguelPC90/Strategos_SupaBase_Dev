@@ -15,6 +15,7 @@ import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
+import { colors, chartDefaults } from '../../lib/tokens'
 
 // ── Helpers ────────────────────────────────────────────────────
 function sumByYears(values: Record<string, number>, years: string[]): number {
@@ -119,7 +120,7 @@ function VisaoGeralChart({ data, sym }: { data: OverviewBar[]; sym: string }) {
   return (
     <ResponsiveContainer width="100%" height={280}>
       <BarChart data={data} margin={{ top: 28, right: 16, left: 0, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={chartDefaults.gridStroke} vertical={false} />
         <XAxis dataKey="label" tick={{ fontSize: 11 }} />
         <YAxis tickFormatter={(v: number) => compactNumber(v)} tick={{ fontSize: 10 }} width={44} />
         <Tooltip
@@ -145,7 +146,7 @@ function MonthlyStatusChart({ data, sym }: { data: MonthStatusBar[]; sym: string
   return (
     <ResponsiveContainer width="100%" height={320}>
       <BarChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={chartDefaults.gridStroke} vertical={false} />
         <XAxis dataKey="month" tickFormatter={fmtMonth} tick={{ fontSize: 10 }} />
         <YAxis tickFormatter={(v: number) => compactNumber(v)} tick={{ fontSize: 10 }} width={44} />
         <Tooltip
@@ -154,10 +155,10 @@ function MonthlyStatusChart({ data, sym }: { data: MonthStatusBar[]; sym: string
           contentStyle={{ fontSize: 12 }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Bar dataKey="Pago"     stackId="s" fill="#95BB42" />
-        <Bar dataKey="Aprovada" stackId="s" fill="#854F0B" />
-        <Bar dataKey="Recebida" stackId="s" fill="#185FA5" />
-        <Bar dataKey="Prevista" stackId="s" fill="#9c9c96" />
+        <Bar dataKey="Pago"     stackId="s" fill={colors.status.done} />
+        <Bar dataKey="Aprovada" stackId="s" fill={colors.status.risk} />
+        <Bar dataKey="Recebida" stackId="s" fill={colors.brand.ink700} />
+        <Bar dataKey="Prevista" stackId="s" fill={colors.brand.ink300} />
       </BarChart>
     </ResponsiveContainer>
   )
@@ -168,7 +169,7 @@ function BurnRateChart({ data, sym }: { data: BurnRatePoint[]; sym: string }) {
   return (
     <ResponsiveContainer width="100%" height={280}>
       <LineChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={chartDefaults.gridStroke} vertical={false} />
         <XAxis dataKey="month" tickFormatter={fmtMonth} tick={{ fontSize: 10 }} />
         <YAxis tickFormatter={(v: number) => compactNumber(v)} tick={{ fontSize: 10 }} width={44} domain={['auto', 'auto']} />
         <Tooltip
@@ -177,8 +178,8 @@ function BurnRateChart({ data, sym }: { data: BurnRatePoint[]; sym: string }) {
           contentStyle={{ fontSize: 12 }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="top" />
-        <Line type="monotone" dataKey="orcamento_acum" name="Orçamento acumulado" stroke="#002E5E" strokeWidth={2} connectNulls dot={{ r: 3 }} />
-        <Line type="monotone" dataKey="executado_acum" name="Executado acumulado" stroke="#95BB42" strokeWidth={2} connectNulls dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="orcamento_acum" name="Orçamento acumulado" stroke={colors.brand.ink700} strokeWidth={2} connectNulls dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="executado_acum" name="Executado acumulado" stroke={colors.brand.ember} strokeWidth={2} connectNulls dot={{ r: 3 }} />
       </LineChart>
     </ResponsiveContainer>
   )
@@ -195,7 +196,7 @@ function TopFornecedoresChart({ data, sym }: { data: SupplierBar[]; sym: string 
           formatter={(v) => fmtEur(v as number, sym)}
           contentStyle={{ fontSize: 12, border: '1px solid var(--border2)' }}
         />
-        <Bar dataKey="value" fill="#002E5E" radius={[0, 4, 4, 0]}>
+        <Bar dataKey="value" fill={colors.brand.ink700} radius={[0, 4, 4, 0]}>
           <LabelList
             dataKey="value"
             position="right"
@@ -399,15 +400,15 @@ export default function ExecucaoFinanceira() {
 
   // ── Chart data ────────────────────────────────────────────────
   const visaoGeralData = useMemo<OverviewBar[]>(() => [
-    { label: 'Orçamento',    value: kpiOrc,  color: '#002E5E' },
-    { label: 'Comprometido', value: kpiAdj,  color: '#185FA5' },
-    { label: 'Facturado',    value: kpiFact, color: '#854F0B' },
-    { label: 'Disponível',   value: kpiDisp, color: '#95BB42' },
+    { label: 'Orçamento',    value: kpiOrc,  color: colors.brand.ink700 },
+    { label: 'Comprometido', value: kpiAdj,  color: colors.brand.ember },
+    { label: 'Facturado',    value: kpiFact, color: colors.status.risk },
+    { label: 'Disponível',   value: kpiDisp, color: colors.brand.moss },
   ], [kpiOrc, kpiAdj, kpiFact, kpiDisp])
 
   const pieData = useMemo<PieEntry[]>(() => [
-    { name: 'CAPEX', value: lines.filter(l =>  l.capex).reduce((s, l) => s + sumByYears(l.values, selectedYears), 0), fill: '#185FA5' },
-    { name: 'OPEX',  value: lines.filter(l => !l.capex).reduce((s, l) => s + sumByYears(l.values, selectedYears), 0), fill: '#95BB42' },
+    { name: 'CAPEX', value: lines.filter(l =>  l.capex).reduce((s, l) => s + sumByYears(l.values, selectedYears), 0), fill: colors.brand.ink700 },
+    { name: 'OPEX',  value: lines.filter(l => !l.capex).reduce((s, l) => s + sumByYears(l.values, selectedYears), 0), fill: colors.brand.ember },
   ], [lines, selectedYears])
 
   const monthlyStatusData = useMemo<MonthStatusBar[]>(() => {

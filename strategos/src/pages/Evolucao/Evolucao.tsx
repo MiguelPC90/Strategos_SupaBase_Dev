@@ -12,6 +12,7 @@ import { useSnapshots } from '../../hooks/useSnapshots'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useEixos } from '../../hooks/useEixos'
 import type { Snapshot, SnapshotKpi } from '../../types/index'
+import { colors, chartDefaults } from '../../lib/tokens'
 
 // ── Helpers ────────────────────────────────────────────────────
 const CURRENT_YEAR = new Date().getFullYear().toString()
@@ -60,8 +61,8 @@ function extractKpi(s: Snapshot, pid: string): SnapshotKpi {
 }
 
 // ── Comparison table helpers ───────────────────────────────────
-const VAR_GREEN = '#3B6D11'
-const VAR_RED   = '#A32D2D'
+const VAR_GREEN = colors.brand.moss
+const VAR_RED   = colors.status.late
 
 interface CompRow {
   label: string
@@ -94,9 +95,9 @@ function fmtVariationPct(variation: number, ref: number): string {
 }
 
 // ── Colours ────────────────────────────────────────────────────
-const NAVY  = '#002E5E'
-const GREEN = '#95BB42'
-const BLUE  = '#185FA5'
+const NAVY  = colors.brand.ember
+const GREEN = colors.brand.moss
+const BLUE  = colors.status.done
 
 // ── Component ──────────────────────────────────────────────────
 export default function Evolucao() {
@@ -313,7 +314,7 @@ export default function Evolucao() {
             <Card title="Evolução da Execução">
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={chartData} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartDefaults.gridStroke} />
                   <XAxis
                     dataKey="fullDate"
                     tickFormatter={(v) => fmtSnap(v as string)}
@@ -351,7 +352,7 @@ export default function Evolucao() {
             <Card title="Evolução da Concretização">
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={chartData} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartDefaults.gridStroke} />
                   <XAxis
                     dataKey="fullDate"
                     tickFormatter={(v) => fmtSnap(v as string)}

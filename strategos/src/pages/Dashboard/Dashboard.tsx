@@ -19,13 +19,14 @@ import { useSnapshots } from '../../hooks/useSnapshots'
 import { useFilters } from '../../context/FilterContext'
 import type { Activity, Program, Eixo, Plano } from '../../types/index'
 import { leafPctPrev, leafStatus } from '../../lib/rollup'
+import { colors, statusColor } from '../../lib/tokens'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
 // ── Chart colours ─────────────────────────────────────────────
-const CLR_CONCLUIDAS = '#95BB42'
-const CLR_EM_DIA     = '#002E5E'
-const CLR_EM_ATRASO  = '#A32D2D'
+const CLR_CONCLUIDAS = statusColor('done')
+const CLR_EM_DIA     = statusColor('ontrack')
+const CLR_EM_ATRASO  = statusColor('late')
 
 // ── Pie slice label ───────────────────────────────────────────
 interface PieLabelProps {
@@ -101,7 +102,7 @@ function mkTrend(
   const diff = current - prev
   if (diff === 0) return undefined
   const better = inverted ? diff < 0 : diff > 0
-  const color = better ? '#3B6D11' : '#A32D2D'
+  const color = better ? colors.brand.moss : colors.status.late
   return <span style={{ color }}>{diff > 0 ? '▲' : '▼'} {fmt(Math.abs(diff))}</span>
 }
 
@@ -346,11 +347,11 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
 
     return (
       <g transform={`translate(${x},${y})`}>
-        <text x={0} y={0} dy={10} transform="rotate(-35)" textAnchor="end" fontSize={11} fill="#5c5c58">
+        <text x={0} y={0} dy={10} transform="rotate(-35)" textAnchor="end" fontSize={11} fill={colors.brand.ink500}>
           {entry.name}
         </text>
         {showProgLabel && (
-          <text x={progLabelX} y={30} textAnchor="middle" fontSize={11} fontWeight={600} fill="#002E5E">
+          <text x={progLabelX} y={30} textAnchor="middle" fontSize={11} fontWeight={600} fill={colors.brand.ink700}>
             {group!.progName}
           </text>
         )}
