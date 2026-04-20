@@ -532,6 +532,22 @@ function RowMenu({ actId, openId, canUp, canDown, onOpen, onEdit, onDuplicate, o
   )
 }
 
+// ── Search helpers ─────────────────────────────────────────────
+function escapeRegex(s: string) {
+  return s.replace(/[.*+?^${}()|\[\]\\]/g, '\\$&')
+}
+
+function highlightMatch(text: string, query: string): React.ReactNode {
+  if (!query) return text
+  const regex = new RegExp(`(${escapeRegex(query)})`, 'gi')
+  const parts = text.split(regex)
+  return parts.map((part, i) =>
+    part.toLowerCase() === query.toLowerCase()
+      ? <mark key={i} className="gi-search-highlight">{part}</mark>
+      : part
+  )
+}
+
 // ── Main component ─────────────────────────────────────────────
 export default function GestaoIniciativas() {
   const { showToast } = useToast()
@@ -591,12 +607,20 @@ export default function GestaoIniciativas() {
       .then(({ data }) => { if (data) setDelayThreshold(parseInt(data.data) || 20) })
   }, [])
 
+  const [searchQuery, setSearchQuery] = useState('')
+
   // Apply dirty overrides for display
   const localActs = useMemo(() =>
     activities.map(a => { const d = dirty.get(a.id); return d ? { ...a, ...d } : a }),
     [activities, dirty])
 
-  const tree = useMemo(() => buildTree(localActs), [localActs])
+  const searchFilteredActs = useMemo(() => {
+    if (!searchQuery.trim()) return localActs
+    const q = searchQuery.toLowerCase().trim()
+    return localActs.filter(a => a.name.toLowerCase().includes(q))
+  }, [localActs, searchQuery])
+
+  const tree = useMemo(() => buildTree(searchFilteredActs), [searchFilteredActs])
 
   // Planos filtered by selected eixo (n1) in panel
   const planos = useMemo(() => {
@@ -605,6 +629,11 @@ export default function GestaoIniciativas() {
       .filter(p => !n1 || p.eixo?.name === n1)
       .map(p => p.name)
   }, [dbPlanos, panelForm?.n1])
+
+  // Auto-expand all nodes while search is active
+  useEffect(() => {
+    if (searchQuery.trim()) setCollapsed(new Set())
+  }, [searchQuery])
 
   // Close menu on outside click
   useEffect(() => {
@@ -921,7 +950,7 @@ export default function GestaoIniciativas() {
         >
           <td>
             <div className="gi-name-cell" style={{ paddingLeft: indent }}>
-              <span className="gi-name-text" title={a.name}>{a.name}</span>
+              <span className="gi-name-text" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
             </div>
           </td>
           <td className="gi-td-c" style={{ fontSize: 12, color: 'var(--text2)' }}>{a.owner || '—'}</td>
@@ -1181,6 +1210,29 @@ export default function GestaoIniciativas() {
             <div className="gi-sep" />
           </>
         )}
+        <div className="gi-search">
+          <svg className="gi-search-icon" width="14" height="14" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" strokeWidth="2"
+               strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            type="text"
+            className="gi-search-input"
+            placeholder="Pesquisar actividades..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="gi-search-clear"
+              onClick={() => setSearchQuery('')}
+              title="Limpar pesquisa"
+            >×</button>
+          )}
+        </div>
         <button className="gi-btn gi-btn-secondary" onClick={handleOpenPlano} disabled={!selProgId}
           title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
           Novo Plano
@@ -1214,14 +1266,20 @@ export default function GestaoIniciativas() {
             onAction={handleOpenPlano}
           />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="gi-table">
-              <colgroup>
-                <col /><col style={{ width: 110 }} /><col style={{ width: 100 }} />
-                <col style={{ width: 90 }} /><col style={{ width: 70 }} />
-                <col style={{ width: 90 }} /><col style={{ width: 46 }} />
-              </colgroup>
-              <thead>
+          <>
+            {searchQuery && searchFilteredActs.length === 0 ? (
+              <div className="gi-search-empty">
+                Nenhuma actividade encontrada para &ldquo;{searchQuery}&rdquo;
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table className="gi-table">
+                  <colgroup>
+                    <col /><col style={{ width: 110 }} /><col style={{ width: 100 }} />
+                    <col style={{ width: 90 }} /><col style={{ width: 70 }} />
+                    <col style={{ width: 90 }} /><col style={{ width: 46 }} />
+                  </colgroup>
+                  <thead>
                 <tr>
                   <th style={{ minWidth: 280 }}>Designação</th>
                   <th className="gi-th-c">Responsável</th>
@@ -1243,6 +1301,8 @@ export default function GestaoIniciativas() {
               </tbody>
             </table>
           </div>
+            )}
+          </>
         )}
       </Card>
 
