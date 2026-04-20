@@ -2,12 +2,10 @@ import './Layout.css'
 import { useState, useRef, useEffect, type ReactNode } from 'react'
 import SplashScreen from '../SplashScreen/SplashScreen'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import FilterBar from '../FilterBar/FilterBar'
 import Badge from '../Badge/Badge'
 import { useAuth } from '../../hooks/useAuth'
 import { useRole } from '../../hooks/useRole'
 import { usePermissions } from '../../hooks/usePermissions'
-import { useFilters } from '../../context/FilterContext'
 import { ToastList } from '../Toast/Toast'
 import { usePrograms } from '../../hooks/usePrograms'
 import { supabase } from '../../lib/supabase'
@@ -202,14 +200,8 @@ export default function Layout() {
   const { profile, role, isAdmin } = useRole()
   const { hasAccess } = usePermissions()
 
-  const { filters } = useFilters()
   const { loading: programsLoading } = usePrograms()
 
-  const activeFilterCount =
-    filters.programIds.length + filters.n1Values.length + filters.n2Values.length +
-    filters.owners.length + filters.sponsors.length + filters.statuses.length
-
-  const [filterOpen, setFilterOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
 
@@ -330,23 +322,6 @@ export default function Layout() {
 
         <div className="topbar-spacer" />
 
-        <div style={{ position: 'relative', display: 'inline-flex' }}>
-          <button
-            className={`topbar-icon-btn${filterOpen ? ' active' : ''}`}
-            onClick={() => setFilterOpen(o => !o)}
-            title="Filtros"
-          >
-            <svg viewBox="0 0 24 24">
-              <line x1="4" y1="6" x2="20" y2="6" />
-              <line x1="8" y1="12" x2="16" y2="12" />
-              <line x1="11" y1="18" x2="13" y2="18" />
-            </svg>
-          </button>
-          {activeFilterCount > 0 && (
-            <span className="filter-badge">{activeFilterCount}</span>
-          )}
-        </div>
-
         <div style={{ position: 'relative' }} ref={profileRef}>
           <button
             className="topbar-avatar"
@@ -383,8 +358,6 @@ export default function Layout() {
 
       {/* ── Main content ── */}
       <main className="main-content">
-        {filterOpen && <FilterBar />}
-
         {!location.pathname.startsWith('/admin') && <Breadcrumb />}
 
         <div className="page-body">
