@@ -48,11 +48,13 @@ function activeInMonth(r: FteResource, mo: string): boolean {
   return (!s || s <= mo) && (!e || e >= mo)
 }
 
-function heatCls(pct: number): string {
-  if (pct === 0) return ''
-  if (pct > 100) return 'res-over'
-  if (pct > 50)  return 'res-high'
-  return 'res-low'
+function allocationColor(pct: number): { bg: string; color: string } {
+  if (pct === 0)   return { bg: 'transparent',  color: 'var(--text3)' }
+  if (pct <= 25)   return { bg: '#e8f5e4',       color: 'var(--text)'  }
+  if (pct <= 50)   return { bg: '#c8e6b8',       color: 'var(--text)'  }
+  if (pct <= 75)   return { bg: '#95bb42',       color: 'white'        }
+  if (pct <= 100)  return { bg: '#4a9e3f',       color: 'white'        }
+  return                   { bg: '#a32d2d',       color: 'white'        }
 }
 
 function isExternal(type: string | null): boolean {
@@ -172,13 +174,26 @@ function PlanView({ resources, planoNames, expanded, onToggle, sym }: PlanViewPr
 }
 
 // ── Resource heatmap ───────────────────────────────────────────
+interface HoverCell {
+  resource: string
+  month: string
+  totalPct: number
+  plans: Array<{ plan: string; allocation: number; daily_cost: number }>
+  x: number
+  y: number
+}
+
 interface HeatmapProps {
   resources: FteResource[]
   months: string[]
+  planoNames: Map<string, string>
   onSelect: (name: string) => void
+  sym: string
 }
 
-function ResourceHeatmap({ resources, months, onSelect }: HeatmapProps) {
+function ResourceHeatmap({ resources, months, planoNames, onSelect, sym }: HeatmapProps) {
+  const [hoverCell, setHoverCell] = useState<HoverCell | null>(null)
+
   const uniqueNames = useMemo(() => {
     const seen = new Set<string>()
     const result: string[] = []
@@ -201,6 +216,16 @@ function ResourceHeatmap({ resources, months, onSelect }: HeatmapProps) {
     return m
   }, [resources, months])
 
+  function getPlansForResourceMonth(name: string, mo: string) {
+    return resources
+      .filter(r => r.name === name && activeInMonth(r, mo))
+      .map(r => ({
+        plan:       planoNames.get(r.pds_id) ?? 'Sem plano',
+        allocation: r.allocation_pct ?? 0,
+        daily_cost: r.daily_cost ?? 0,
+      }))
+  }
+
   if (uniqueNames.length === 0) return <p className="res-empty">Nenhum recurso alocado.</p>
   if (months.length === 0) return <p className="res-empty">Período inválido.</p>
 
@@ -211,36 +236,103 @@ function ResourceHeatmap({ resources, months, onSelect }: HeatmapProps) {
           <tr>
             <th className="res-heat-name-th">Recurso</th>
             {months.map(mo => <th key={mo} className="res-heat-mo-th">{fmtMo(mo)}</th>)}
+            <th className="res-heat-mo-th rec-heat-total-th">Total</th>
           </tr>
         </thead>
         <tbody>
-          {uniqueNames.map(name => (
-            <tr key={name}>
-              <td className="res-heat-name-td" onClick={() => onSelect(name)}>{name}</td>
-              {months.map(mo => {
-                const pct = allocMap.get(`${name}|${mo}`) ?? 0
-                return (
-                  <td key={mo} className={`res-heat-cell ${heatCls(pct)}`} title={pct > 0 ? `${pct}%` : ''}>
-                    {pct > 0 ? pct : ''}
-                  </td>
-                )
-              })}
-            </tr>
-          ))}
+          {uniqueNames.map(name => {
+            const rowTotal = months.reduce((s, mo) =>
+              s + (allocMap.get(`${name}|${mo}`) ?? 0) / 100, 0)
+            return (
+              <tr key={name}>
+                <td className="res-heat-name-td" onClick={() => onSelect(name)}>{name}</td>
+                {months.map(mo => {
+                  const pct = Math.round(allocMap.get(`${name}|${mo}`) ?? 0)
+                  const { bg, color } = allocationColor(pct)
+                  return (
+                    <td
+                      key={mo}
+                      className="res-heat-cell"
+                      style={{ background: bg, color }}
+                      onMouseEnter={e => {
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        const tw = 280, th = 150
+                        let x = rect.right + 8
+                        let y = rect.top
+                        if (x + tw > window.innerWidth)  x = rect.left - tw - 8
+                        if (y + th > window.innerHeight) y = rect.bottom - th
+                        setHoverCell({
+                          resource: name, month: mo, totalPct: pct,
+                          plans: getPlansForResourceMonth(name, mo), x, y,
+                        })
+                      }}
+                      onMouseLeave={() => setHoverCell(null)}
+                    >
+                      {pct > 0 ? pct : ''}
+                    </td>
+                  )
+                })}
+                <td className="res-heat-cell rec-heat-total-cell">
+                  {rowTotal > 0 ? rowTotal.toFixed(1) : ''}
+                </td>
+              </tr>
+            )
+          })}
+
+          {/* Totals row */}
+          <tr className="rec-heat-totals-row">
+            <td className="res-heat-name-td rec-heat-totals-label">Total</td>
+            {months.map(mo => {
+              const moTotal = uniqueNames.reduce(
+                (s, name) => s + (allocMap.get(`${name}|${mo}`) ?? 0), 0)
+              return (
+                <td key={mo} className="res-heat-cell rec-heat-totals-cell">
+                  {moTotal > 0 ? Math.round(moTotal) : ''}
+                </td>
+              )
+            })}
+            <td className="res-heat-cell rec-heat-total-cell" />
+          </tr>
         </tbody>
       </table>
 
-      <div className="res-heat-legend">
-        <span className="res-legend-item">
-          <span className="res-legend-swatch res-low" />1–50%
+      <div className="rec-heatmap-legend">
+        <span className="rec-legend-item">
+          <span className="rec-legend-swatch" style={{ background: 'transparent', border: '1px solid var(--border)' }} />0%
         </span>
-        <span className="res-legend-item">
-          <span className="res-legend-swatch res-high" />51–100%
+        <span className="rec-legend-item">
+          <span className="rec-legend-swatch" style={{ background: '#e8f5e4' }} />1-25%
         </span>
-        <span className="res-legend-item">
-          <span className="res-legend-swatch res-over" />&gt;100% (sobrealoc.)
+        <span className="rec-legend-item">
+          <span className="rec-legend-swatch" style={{ background: '#c8e6b8' }} />26-50%
+        </span>
+        <span className="rec-legend-item">
+          <span className="rec-legend-swatch" style={{ background: '#95bb42' }} />51-75%
+        </span>
+        <span className="rec-legend-item">
+          <span className="rec-legend-swatch" style={{ background: '#4a9e3f' }} />76-100%
+        </span>
+        <span className="rec-legend-item">
+          <span className="rec-legend-swatch" style={{ background: '#a32d2d' }} />&gt;100% (sobrealoc.)
         </span>
       </div>
+
+      {hoverCell && (
+        <div className="rec-heatmap-tooltip" style={{ left: hoverCell.x, top: hoverCell.y }}>
+          <div className="rec-tt-header">{hoverCell.resource} — {fmtMo(hoverCell.month)}</div>
+          <div className="rec-tt-plans">
+            {hoverCell.plans.map((p, i) => (
+              <div key={i} className="rec-tt-plan-row">
+                <span className="rec-tt-plan-name" title={p.plan}>{p.plan}</span>
+                <span className="rec-tt-plan-info">
+                  {p.allocation}% · {fmtEur(p.daily_cost, sym)}/dia
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="rec-tt-total">Total: {hoverCell.totalPct}%</div>
+        </div>
+      )}
     </div>
   )
 }
@@ -779,7 +871,9 @@ export default function Recursos() {
               <ResourceHeatmap
                 resources={scoped}
                 months={months}
+                planoNames={planoNames}
                 onSelect={setSelectedRes}
+                sym={currSymbol}
               />
             )}
             {activeTab === 'lista' && (

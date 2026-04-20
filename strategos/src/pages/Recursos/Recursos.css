@@ -311,33 +311,106 @@
     vertical-align: middle;
   }
 
-  /* Heat colors */
-  .res-low  { background: #e4f3c0; color: #3a5c06; }
-  .res-high { background: #95BB42; color: #fff; }
-  .res-over { background: #A32D2D; color: #fff; font-weight: 700; }
+  /* Totals column */
+  .rec-heat-total-th {
+    border-left: 2px solid var(--border2) !important;
+    color: var(--navy) !important;
+  }
+
+  .rec-heat-total-cell {
+    border-left: 2px solid var(--border2) !important;
+    background: var(--bg2) !important;
+    color: var(--text) !important;
+    font-weight: 600;
+  }
+
+  /* Totals row */
+  .rec-heat-totals-row > td {
+    background: var(--bg2);
+    border-top: 2px solid var(--border2);
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .rec-heat-totals-label { cursor: default !important; font-weight: 700; }
+  .rec-heat-totals-cell  { text-align: center; }
 
   /* Legend */
-  .res-heat-legend {
+  .rec-heatmap-legend {
     display: flex;
+    flex-wrap: wrap;
     gap: 16px;
-    margin-top: 10px;
-    padding-left: 2px;
-  }
-
-  .res-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
+    padding-top: 12px;
     font-size: 11px;
-    color: var(--text2);
+    color: var(--text3);
   }
 
-  .res-legend-swatch {
-    width: 18px;
-    height: 12px;
-    border-radius: 2px;
-    border: 1px solid var(--border2);
+  .rec-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .rec-legend-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    display: inline-block;
     flex-shrink: 0;
+  }
+
+  /* Tooltip */
+  .rec-heatmap-tooltip {
+    position: fixed;
+    z-index: 1000;
+    background: var(--navy);
+    color: white;
+    padding: 10px 12px;
+    border-radius: var(--r);
+    font-size: 12px;
+    min-width: 220px;
+    max-width: 320px;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .rec-tt-header {
+    font-weight: 600;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .rec-tt-plans {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+
+  .rec-tt-plan-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .rec-tt-plan-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+    opacity: 0.85;
+  }
+
+  .rec-tt-plan-info {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rec-tt-total {
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    font-weight: 600;
   }
 
   /* ── Resource side panel ────────────────────────────────────── */
