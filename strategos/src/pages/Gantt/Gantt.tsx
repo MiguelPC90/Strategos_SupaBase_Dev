@@ -1,8 +1,7 @@
 import './Gantt.css'
-import { useState, useMemo, useCallback, useEffect, useRef, useLayoutEffect } from 'react'
+import { useState, useMemo, useCallback, useRef, useLayoutEffect } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
-import Badge from '../../components/Badge/Badge'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
@@ -15,24 +14,17 @@ import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 const TODAY = new Date().toISOString().slice(0, 10)
 
 // ── Types ──────────────────────────────────────────────────────
-type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
-type Scale        = 'Semana' | 'Mês' | 'Trimestre'
+type Scale     = 'Semana' | 'Mês' | 'Trimestre'
 type LevelView    = 'todos' | 'programa' | 'eixo' | 'plano' | 'macro' | 'actividade'
 
 const SCALES: Scale[] = ['Semana', 'Mês', 'Trimestre']
 const COL_WIDTH: Record<Scale, number> = { Semana: 40, Mês: 80, Trimestre: 120 }
 const COL_NAME   = 280
-const COL_STATUS = 80
+const COL_STATUS = 96
 const COL_EXEC   = 60
 const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 // ── Status helpers ─────────────────────────────────────────────
-const BADGE_VARIANT: Record<RowState, BadgeVariant> = {
-  'Concluída': 'green', 'Em dia': 'blue', 'Em risco': 'amber', 'Em atraso': 'red',
-}
-const STATUS_LABEL: Record<RowState, string> = {
-  'Concluída': 'Concluído', 'Em dia': 'Em dia', 'Em risco': 'Em risco', 'Em atraso': 'Em atraso',
-}
 const STATE_FILL: Record<RowState, string> = {
   'Concluída': 'var(--status-done)', 'Em dia': 'var(--status-ontrack)',
   'Em risco': 'var(--status-risk)', 'Em atraso': 'var(--status-late)',
@@ -44,6 +36,14 @@ function rowStateForAct(a: Activity): RowState {
 function rowStateForGroup(acts: Activity[]): RowState {
   const leaves = acts.filter(a => a.level === 4)
   return computeRowState(rollupPct(leaves), rollupPctPrev(leaves, TODAY))
+}
+
+const PILL_CLASS: Record<RowState, string> = {
+  'Concluída': 'done', 'Em dia': 'ontrack', 'Em risco': 'risk', 'Em atraso': 'late',
+}
+
+function StatusPill({ state }: { state: RowState }) {
+  return <span className={`status-pill ${PILL_CLASS[state]}`}>{state}</span>
 }
 
 // ── Tree types ─────────────────────────────────────────────────
@@ -340,7 +340,7 @@ function GanttTooltip({ tooltip }: { tooltip: TooltipState }) {
     >
       <div className="gantt-tooltip-name">{name}</div>
       <div className="gantt-tooltip-status">
-        <Badge variant={BADGE_VARIANT[rowState]}>{STATUS_LABEL[rowState]}</Badge>
+        <StatusPill state={rowState} />
       </div>
       <div className="gantt-tooltip-grid">
         <span className="gantt-tooltip-label">Baseline</span>
@@ -551,7 +551,7 @@ export default function Gantt() {
                   <span className="gantt-name-n1" title={n1g.n1}>{n1g.n1}</span>
                 </div>
               </div>
-              <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n1st]}>{STATUS_LABEL[n1st]}</Badge></div>
+              <div className="gantt-sticky-status"><StatusPill state={n1st} /></div>
               <div className="gantt-sticky-exec">{Math.round(rollupPct(n1g.allActs.filter(a => a.level === 4)))}%</div>
             </div>
           </td>
@@ -579,7 +579,7 @@ export default function Gantt() {
                     <span className="gantt-name-n2" title={n2g.n2}>{n2g.n2}</span>
                   </div>
                 </div>
-                <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n2st]}>{STATUS_LABEL[n2st]}</Badge></div>
+                <div className="gantt-sticky-status"><StatusPill state={n2st} /></div>
                 <div className="gantt-sticky-exec">{Math.round(rollupPct(n2g.allActs.filter(a => a.level === 4)))}%</div>
               </div>
             </td>
@@ -605,7 +605,7 @@ export default function Gantt() {
                           <span className="gantt-name-n4" title={a.name}>{a.name}</span>
                         </div>
                       </div>
-                      <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge></div>
+                      <div className="gantt-sticky-status"><StatusPill state={ast} /></div>
                       <div className="gantt-sticky-exec">{a.pct}%</div>
                     </div>
                   </td>
@@ -637,9 +637,7 @@ export default function Gantt() {
                         <span className="gantt-name-n3" title={rep.name}>{rep.name}</span>
                       </div>
                     </div>
-                    <div className="gantt-sticky-status">
-                      <Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge>
-                    </div>
+                    <div className="gantt-sticky-status"><StatusPill state={ast} /></div>
                     <div className="gantt-sticky-exec">{rep.pct}%</div>
                   </div>
                 </td>
@@ -668,7 +666,7 @@ export default function Gantt() {
                       <span className="gantt-name-n3" title={n3g.n3}>{n3g.n3}</span>
                     </div>
                   </div>
-                  <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n3st]}>{STATUS_LABEL[n3st]}</Badge></div>
+                  <div className="gantt-sticky-status"><StatusPill state={n3st} /></div>
                   <div className="gantt-sticky-exec">{Math.round(rollupPct(n3ChildLeaves.filter(a => a.level === 4)))}%</div>
                 </div>
               </td>
@@ -692,7 +690,7 @@ export default function Gantt() {
                         <span className="gantt-name-n4" title={a.name}>{a.name}</span>
                       </div>
                     </div>
-                    <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge></div>
+                    <div className="gantt-sticky-status"><StatusPill state={ast} /></div>
                     <div className="gantt-sticky-exec">{a.pct}%</div>
                   </div>
                 </td>
@@ -727,7 +725,7 @@ export default function Gantt() {
                   <span className="gantt-name-n0" title={n0g.progName}>{n0g.progName}</span>
                 </div>
               </div>
-              <div className="gantt-sticky-status"><Badge variant={BADGE_VARIANT[n0st]}>{STATUS_LABEL[n0st]}</Badge></div>
+              <div className="gantt-sticky-status"><StatusPill state={n0st} /></div>
               <div className="gantt-sticky-exec">{Math.round(rollupPct(n0g.allActs.filter(a => a.level === 4)))}%</div>
             </div>
           </td>
