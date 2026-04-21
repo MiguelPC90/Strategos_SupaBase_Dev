@@ -105,17 +105,24 @@ export interface Activity {
 }
 
 // ── PDS entries ───────────────────────────────────────────────
+export interface PdsItemEdit {
+  at: string
+  by?: string
+  changes: Record<string, { from: unknown; to: unknown }>
+}
+
 export interface PdsItem {
-  /** UUID string assigned by migration 010 / client on creation */
-  id?: string
+  id: string
   text: string
-  date?: string
-  status?: string
   author?: string
-  /** ISO timestamp — set when item is created */
-  created_at?: string
-  /** ISO timestamp when hidden, or null/undefined when visible */
-  hidden_at?: string | null
+  created_at: string
+  hidden_at: string | null
+  /** Legacy date — kept for PontoSituacao backward compat; prefer target_date */
+  date?: string
+  status?: 'Pendente' | 'Em curso' | 'Concluído' | null
+  target_date?: string | null
+  completed_at?: string | null
+  edits?: PdsItemEdit[]
 }
 
 export interface PdsEntry {
