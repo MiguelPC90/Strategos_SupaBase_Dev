@@ -413,24 +413,44 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
     )
   }, [])
 
-  const SeparatorLines = useCallback((props: {
-    margin?: { top: number; right: number; bottom: number; left: number }
-    height?: number
-  }): React.ReactElement => {
-    const topY    = props.margin?.top    ?? 4
-    const bottomY = (props.height ?? 0) - (props.margin?.bottom ?? 52)
-    const data    = chartDataRef.current
+  const ProgAxisTick = useCallback((props: AxisTickProps): React.ReactElement | null => {
+    const { x, y, payload } = props
+    if (x === undefined || y === undefined || !payload) return null
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text x={0} y={14} textAnchor="middle" fontSize={12} fontWeight={600} fill={colors.brand.ink700}>
+          {truncate(payload.value, 20)}
+        </text>
+      </g>
+    )
+  }, [])
+
+  const SeparatorLines = useCallback((props: unknown): React.ReactElement => {
+    const p = props as {
+      xAxisMap?: Record<string, { scale: ((v: string) => number) & { bandwidth?: () => number } }>
+      offset?: { top: number; right: number; bottom: number; left: number; width: number; height: number }
+    }
+    const xAxis = p.xAxisMap ? Object.values(p.xAxisMap)[0] : undefined
+    const offset = p.offset
+    if (!xAxis || !offset) return <g />
+
+    const scale    = xAxis.scale
+    const bandwidth = scale.bandwidth?.() ?? 0
+    const topY     = offset.top
+    const bottomY  = offset.top + offset.height
+    const data     = chartDataRef.current
     const lines: React.ReactElement[] = []
+
     for (let i = 1; i < data.length; i++) {
       if (!data[i].isFirstOfProg) continue
-      const prevX = xCoordsRef.current[i - 1]
-      const currX = xCoordsRef.current[i]
-      if (prevX === undefined || currX === undefined) continue
-      const sepX = Math.round((prevX + currX) / 2)
+      const prevX = scale(data[i - 1].name)
+      const currX = scale(data[i].name)
+      if (Number.isNaN(prevX) || Number.isNaN(currX)) continue
+      const sepX = (prevX + bandwidth + currX) / 2
       lines.push(
         <line key={`sep-${i}`}
           x1={sepX} y1={topY} x2={sepX} y2={bottomY}
-          stroke="var(--stratgos-ink-100)" strokeWidth={1.5}
+          stroke="var(--stratgos-ink-100)" strokeWidth={1.5} strokeDasharray="2 3"
         />
       )
     }
@@ -459,13 +479,13 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
                 <Tooltip content={ChartTooltip as (props: unknown) => React.ReactElement | null} />
                 <Legend wrapperStyle={{ paddingTop: 24, fontSize: 11 }} />
                 <Customized component={SeparatorLines as (props: unknown) => React.ReactElement} />
-                <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA}>
+                <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA} maxBarSize={80}>
                   <LabelList dataKey="em_dia" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
-                <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO}>
+                <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO} maxBarSize={80}>
                   <LabelList dataKey="em_atraso" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
-                <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS} radius={[3, 3, 0, 0]}>
+                <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS} radius={[3, 3, 0, 0]} maxBarSize={80}>
                   <LabelList dataKey="concluidas" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
               </BarChart>
@@ -478,18 +498,18 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
         ) : (
           <div className="dash-chart-container">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartDataProg} margin={{ top: 4, right: 8, left: -16, bottom: 48 }}>
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-35} textAnchor="end" interval={0} />
+              <BarChart data={chartDataProg} margin={{ top: 4, right: 8, left: -16, bottom: 52 }} barCategoryGap="30%">
+                <XAxis dataKey="name" tick={ProgAxisTick as (props: unknown) => React.ReactElement | null} interval={0} tickLine={false} height={48} axisLine={{ stroke: 'var(--stratgos-ink-100)' }} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip content={ChartTooltip as (props: unknown) => React.ReactElement | null} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA}>
+                <Legend wrapperStyle={{ paddingTop: 24, fontSize: 11 }} />
+                <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA} maxBarSize={80}>
                   <LabelList dataKey="em_dia" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
-                <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO}>
+                <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO} maxBarSize={80}>
                   <LabelList dataKey="em_atraso" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
-                <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS} radius={[3, 3, 0, 0]}>
+                <Bar dataKey="concluidas" name="Concluídas" stackId="a" fill={CLR_CONCLUIDAS} radius={[3, 3, 0, 0]} maxBarSize={80}>
                   <LabelList dataKey="concluidas" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
               </BarChart>
