@@ -11,6 +11,19 @@
     grid-template-columns: 1.5fr 1fr;
     gap: 14px;
     margin-bottom: 14px;
+    align-items: stretch;
+  }
+
+  /* ── Bottom-align chart contents within the charts row ─────── */
+  .dashboard-charts-grid > .card {
+    display: flex;
+    flex-direction: column;
+  }
+  .dashboard-charts-grid > .card .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
   }
 
   /* ── Loading bar ─────────────────────────────────────────── */
