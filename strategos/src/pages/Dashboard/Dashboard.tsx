@@ -477,7 +477,7 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
           <div className="page-placeholder" style={{ minHeight: 220 }}><p>Sem dados carregados</p></div>
         ) : (
           <div className="dash-chart-container">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={340}>
               <BarChart data={chartDataEixo} margin={{ top: 4, right: 8, left: -16, bottom: 52 }} barCategoryGap="12%">
                 <XAxis dataKey="name" tick={EixoAxisTick as (props: unknown) => React.ReactElement | null} interval={0} tickLine={false} height={48} axisLine={{ stroke: 'var(--stratgos-ink-100)' }} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
@@ -502,7 +502,7 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
           <div className="page-placeholder" style={{ minHeight: 220 }}><p>Sem dados carregados</p></div>
         ) : (
           <div className="dash-chart-container">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={340}>
               <BarChart data={chartDataProg} margin={{ top: 4, right: 8, left: -16, bottom: 52 }} barCategoryGap="30%">
                 <XAxis dataKey="name" tick={ProgAxisTick as (props: unknown) => React.ReactElement | null} interval={0} tickLine={false} height={48} axisLine={{ stroke: 'var(--stratgos-ink-100)' }} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
@@ -892,7 +892,7 @@ export default function Dashboard() {
                   actividades
                 </div>
               </div>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={280}>
                 <PieChart>
                   <Pie
                     data={pieData}
@@ -958,7 +958,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="dash-chart-container">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={360}>
                 <LineChart
                   data={lineData}
                   margin={{ top: 4, right: 20, left: -16, bottom: 4 }}
