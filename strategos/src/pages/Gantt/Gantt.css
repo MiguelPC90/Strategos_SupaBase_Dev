@@ -1,20 +1,37 @@
 @layer components {
-  /* ── Toolbar — white background, standard controls ─────────── */
+  /* ── Toolbar ────────────────────────────────────────────────── */
   .gantt-toolbar {
-    padding: 4px 16px;
-    background: var(--bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    flex-wrap: wrap;
+  }
+
+  .gantt-toolbar-left {
+    flex: 1;
+    min-width: 240px;
+  }
+
+  .gantt-toolbar-right {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+  }
+
+  /* ── Legend row ─────────────────────────────────────────────── */
+  .gantt-legend-row {
+    padding: 4px 16px 10px;
     border-bottom: 1px solid var(--border);
-    margin-bottom: 0;
   }
 
   .gantt-legend {
     display: flex;
     gap: 12px;
     align-items: center;
+    flex-wrap: wrap;
   }
   .gantt-legend-item {
     display: flex;
@@ -30,45 +47,6 @@
     flex-shrink: 0;
   }
   .gantt-swatch-baseline { background: rgba(0,46,94,0.18); border: 1px solid rgba(0,46,94,0.35); }
-
-  /* Scale chips — light style, active: navy bg + white text */
-  .gantt-scale-chips { display: flex; gap: 3px; }
-  .gantt-scale-chip {
-    padding: 3px 10px;
-    border: 1px solid var(--border2);
-    border-radius: 20px;
-    background: var(--bg2);
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text2);
-    cursor: pointer;
-    transition: background 0.12s, color 0.12s, border-color 0.12s;
-  }
-  .gantt-scale-chip:hover { background: var(--bg3); }
-  .gantt-scale-chip.active { background: var(--navy); color: #fff; border-color: var(--navy); font-weight: 600; }
-
-  /* Collapse/Expand buttons — standard light style */
-  .gantt-toolbar-btn {
-    padding: 3px 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg2);
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text2);
-    cursor: pointer;
-    transition: background 0.12s;
-  }
-  .gantt-toolbar-btn:hover { background: var(--bg3); }
-
-  /* Separator between toolbar chip groups */
-  .gantt-toolbar-sep {
-    display: inline-block;
-    width: 1px;
-    height: 16px;
-    background: var(--border2);
-    flex-shrink: 0;
-  }
 
   /* Row toggle button (▶/▼) */
   .gantt-toggle {

@@ -1,5 +1,5 @@
 import './Gantt.css'
-import { useState, useMemo, useCallback, useRef, useLayoutEffect } from 'react'
+import { useState, useMemo, useCallback, useRef, useLayoutEffect, useEffect, type ReactNode } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import EmptyState from '../../components/EmptyState/EmptyState'
@@ -17,7 +17,6 @@ const TODAY = new Date().toISOString().slice(0, 10)
 type Scale     = 'Semana' | 'Mês' | 'Trimestre'
 type LevelView    = 'todos' | 'programa' | 'eixo' | 'plano' | 'macro' | 'actividade'
 
-const SCALES: Scale[] = ['Semana', 'Mês', 'Trimestre']
 const COL_WIDTH: Record<Scale, number> = { Semana: 40, Mês: 80, Trimestre: 120 }
 const COL_NAME   = 280
 const COL_STATUS = 96
@@ -44,6 +43,87 @@ const PILL_CLASS: Record<RowState, string> = {
 
 function StatusPill({ state }: { state: RowState }) {
   return <span className={`status-pill ${PILL_CLASS[state]}`}>{state}</span>
+}
+
+function highlightMatch(text: string, query: string): ReactNode {
+  if (!query.trim()) return text
+  const q = query.trim().toLowerCase()
+  const idx = text.toLowerCase().indexOf(q)
+  if (idx === -1) return text
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="gi-search-highlight">{text.slice(idx, idx + q.length)}</mark>
+      {text.slice(idx + q.length)}
+    </>
+  )
+}
+
+const ALL_FILTER_STATES: { key: RowState; icon: string; color: string }[] = [
+  { key: 'Concluída', icon: '✓', color: 'var(--status-done)' },
+  { key: 'Em dia',    icon: '◐', color: 'var(--status-ontrack)' },
+  { key: 'Em risco',  icon: '⦿', color: 'var(--status-risk)' },
+  { key: 'Em atraso', icon: '✕', color: 'var(--status-late)' },
+]
+
+function StatusFilterDropdown({
+  statusFilter,
+  setStatusFilter,
+}: {
+  statusFilter: Set<RowState>
+  setStatusFilter: (updater: (prev: Set<RowState>) => Set<RowState>) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const toggle = (key: RowState) => {
+    setStatusFilter(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const count = statusFilter.size
+  const label = count === 4 ? 'Estado: Todos'
+              : count === 0 ? 'Estado: Nenhum'
+              : `Estado: ${count}`
+
+  return (
+    <div className="act-statusfilter" ref={ref}>
+      <button type="button" className="act-statusfilter-btn" onClick={() => setOpen(o => !o)}>
+        {label}
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" strokeWidth="2.5"
+             strokeLinecap="round" strokeLinejoin="round"
+             style={{ marginLeft: 8 }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && (
+        <div className="act-statusfilter-popup">
+          {ALL_FILTER_STATES.map(s => (
+            <label key={s.key} className="act-statusfilter-option">
+              <input type="checkbox" checked={statusFilter.has(s.key)}
+                     onChange={() => toggle(s.key)} />
+              <span className="act-statusfilter-icon" style={{ color: s.color }}>{s.icon}</span>
+              <span>{s.key}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── Tree types ─────────────────────────────────────────────────
@@ -406,15 +486,35 @@ export default function Gantt() {
   const multiProg = programs.length > 1
 
   const filtered = useMemo(() => getFilteredActivities(activities), [activities, getFilteredActivities])
-  const tree     = useMemo(() => buildTree(filtered), [filtered])
-  const n0tree   = useMemo(
-    () => multiProg ? buildProgramTree(filtered, programs) : null,
-    [filtered, programs, multiProg]
+
+  const [searchQuery, setSearchQuery]   = useState('')
+  const [statusFilter, setStatusFilter] = useState<Set<RowState>>(
+    () => new Set<RowState>(['Concluída', 'Em dia', 'Em risco', 'Em atraso'])
   )
 
-  const [scale, setScale]               = useState<Scale>('Mês')
-  const [collapsed, setCollapsed]       = useState<Set<string>>(new Set())
-  const [tooltip, setTooltip]           = useState<TooltipState | null>(null)
+  const searchFilteredActs = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return filtered
+    return filtered.filter(a => a.name.toLowerCase().includes(q))
+  }, [filtered, searchQuery])
+
+  const finalActs = useMemo(() => {
+    if (statusFilter.size === 4) return searchFilteredActs
+    return searchFilteredActs.filter(a => {
+      if (a.level < 4) return true
+      return statusFilter.has(rowStateForAct(a))
+    })
+  }, [searchFilteredActs, statusFilter])
+
+  const tree  = useMemo(() => buildTree(finalActs), [finalActs])
+  const n0tree = useMemo(
+    () => multiProg ? buildProgramTree(finalActs, programs) : null,
+    [finalActs, programs, multiProg]
+  )
+
+  const [scale, setScale]         = useState<Scale>('Mês')
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [tooltip, setTooltip]     = useState<TooltipState | null>(null)
 
   const toggle = useCallback((key: string) => {
     setCollapsed(prev => {
@@ -444,6 +544,10 @@ export default function Gantt() {
   }, [n0tree, tree])
 
   const expandAll = useCallback(() => setCollapsed(new Set()), [])
+
+  useEffect(() => {
+    if (searchQuery.trim()) setCollapsed(new Set())
+  }, [searchQuery])
 
   const [levelView, setLevelView] = useState<LevelView>('todos')
   const applyLevel = useCallback((level: LevelView) => {
@@ -548,7 +652,7 @@ export default function Gantt() {
               <div className="gantt-sticky-name">
                 <div className="gantt-name-cell" style={{ paddingLeft: n1Indent }}>
                   <button className="gantt-toggle" onClick={() => toggle(n1key)}>{n1col ? '▶' : '▼'}</button>
-                  <span className="gantt-name-n1" title={n1g.n1}>{n1g.n1}</span>
+                  <span className="gantt-name-n1" title={n1g.n1}>{highlightMatch(n1g.n1, searchQuery)}</span>
                 </div>
               </div>
               <div className="gantt-sticky-status"><StatusPill state={n1st} /></div>
@@ -576,7 +680,7 @@ export default function Gantt() {
                 <div className="gantt-sticky-name">
                   <div className="gantt-name-cell" style={{ paddingLeft: n1Indent + 16 }}>
                     <button className="gantt-toggle" onClick={() => toggle(n2key)}>{n2col ? '▶' : '▼'}</button>
-                    <span className="gantt-name-n2" title={n2g.n2}>{n2g.n2}</span>
+                    <span className="gantt-name-n2" title={n2g.n2}>{highlightMatch(n2g.n2, searchQuery)}</span>
                   </div>
                 </div>
                 <div className="gantt-sticky-status"><StatusPill state={n2st} /></div>
@@ -602,7 +706,7 @@ export default function Gantt() {
                     <div className="gantt-sticky-cell">
                       <div className="gantt-sticky-name">
                         <div className="gantt-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
-                          <span className="gantt-name-n4" title={a.name}>{a.name}</span>
+                          <span className="gantt-name-n4" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
                         </div>
                       </div>
                       <div className="gantt-sticky-status"><StatusPill state={ast} /></div>
@@ -634,7 +738,7 @@ export default function Gantt() {
                   <div className="gantt-sticky-cell">
                     <div className="gantt-sticky-name">
                       <div className="gantt-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
-                        <span className="gantt-name-n3" title={rep.name}>{rep.name}</span>
+                        <span className="gantt-name-n3" title={rep.name}>{highlightMatch(rep.name, searchQuery)}</span>
                       </div>
                     </div>
                     <div className="gantt-sticky-status"><StatusPill state={ast} /></div>
@@ -663,7 +767,7 @@ export default function Gantt() {
                   <div className="gantt-sticky-name">
                     <div className="gantt-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
                       <button className="gantt-toggle" onClick={() => toggle(n3key)}>{n3col ? '▶' : '▼'}</button>
-                      <span className="gantt-name-n3" title={n3g.n3}>{n3g.n3}</span>
+                      <span className="gantt-name-n3" title={n3g.n3}>{highlightMatch(n3g.n3, searchQuery)}</span>
                     </div>
                   </div>
                   <div className="gantt-sticky-status"><StatusPill state={n3st} /></div>
@@ -687,7 +791,7 @@ export default function Gantt() {
                   <div className="gantt-sticky-cell">
                     <div className="gantt-sticky-name">
                       <div className="gantt-name-cell" style={{ paddingLeft: n1Indent + 48 }}>
-                        <span className="gantt-name-n4" title={a.name}>{a.name}</span>
+                        <span className="gantt-name-n4" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
                       </div>
                     </div>
                     <div className="gantt-sticky-status"><StatusPill state={ast} /></div>
@@ -722,7 +826,7 @@ export default function Gantt() {
               <div className="gantt-sticky-name">
                 <div className="gantt-name-cell" style={{ paddingLeft: 4 }}>
                   <button className="gantt-toggle" onClick={() => toggle(n0key)}>{n0col ? '▶' : '▼'}</button>
-                  <span className="gantt-name-n0" title={n0g.progName}>{n0g.progName}</span>
+                  <span className="gantt-name-n0" title={n0g.progName}>{highlightMatch(n0g.progName, searchQuery)}</span>
                 </div>
               </div>
               <div className="gantt-sticky-status"><StatusPill state={n0st} /></div>
@@ -770,13 +874,80 @@ export default function Gantt() {
       <Card title="GANTT">
         {/* Fix 1: Toolbar with navy background, inside card body bleeding edge-to-edge */}
         <div className="gantt-toolbar">
+          <div className="gantt-toolbar-left">
+            <div className="gi-search">
+              <svg className="gi-search-icon" width="14" height="14" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" strokeWidth="2"
+                   strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                className="gi-search-input"
+                placeholder="Pesquisar actividades..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button type="button" className="gi-search-clear"
+                        onClick={() => setSearchQuery('')}>×</button>
+              )}
+            </div>
+          </div>
+          <div className="gantt-toolbar-right">
+            <div className="act-group-wrapper">
+              <label className="act-group-label">Agrupar:</label>
+              <select className="styled-select" value={levelView}
+                      onChange={e => applyLevel(e.target.value as LevelView)}>
+                <option value="todos">Todos</option>
+                {multiProg && <option value="programa">Programa</option>}
+                <option value="eixo">Eixo</option>
+                <option value="plano">Plano</option>
+                <option value="macro">Macroactividade</option>
+                <option value="actividade">Actividade</option>
+              </select>
+            </div>
+            <StatusFilterDropdown statusFilter={statusFilter} setStatusFilter={setStatusFilter} />
+            <div className="act-group-wrapper">
+              <label className="act-group-label">Escala:</label>
+              <select className="styled-select" value={scale}
+                      onChange={e => setScale(e.target.value as Scale)}>
+                <option value="Semana">Semana</option>
+                <option value="Mês">Mês</option>
+                <option value="Trimestre">Trimestre</option>
+              </select>
+            </div>
+            <div className="act-collapse-group">
+              <button type="button" className="act-collapse-btn"
+                      onClick={collapseAll} title="Colapsar tudo">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" strokeWidth="2"
+                     strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="4 14 10 14 10 20" />
+                  <polyline points="20 10 14 10 14 4" />
+                  <line x1="14" y1="10" x2="21" y2="3" />
+                  <line x1="3" y1="21" x2="10" y2="14" />
+                </svg>
+              </button>
+              <button type="button" className="act-collapse-btn"
+                      onClick={expandAll} title="Expandir tudo">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" strokeWidth="2"
+                     strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 3 21 3 21 9" />
+                  <polyline points="9 21 3 21 3 15" />
+                  <line x1="21" y1="3" x2="14" y2="10" />
+                  <line x1="3" y1="21" x2="10" y2="14" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="gantt-legend-row">
           <div className="gantt-legend">
             <span className="gantt-legend-item">
               <span className="gantt-legend-swatch gantt-swatch-baseline" />Baseline
-            </span>
-            <span className="gantt-toolbar-sep" />
-            <span className="gantt-legend-item">
-              <span className="gantt-legend-swatch" style={{ background: 'var(--status-done)' }} />Concluída
             </span>
             <span className="gantt-legend-item">
               <span className="gantt-legend-swatch" style={{ background: 'var(--status-ontrack)' }} />Em dia
@@ -787,28 +958,9 @@ export default function Gantt() {
             <span className="gantt-legend-item">
               <span className="gantt-legend-swatch" style={{ background: 'var(--status-late)' }} />Em atraso
             </span>
-          </div>
-          <div className="gantt-scale-chips">
-            {SCALES.map(s => (
-              <button
-                key={s}
-                className={`gantt-scale-chip${scale === s ? ' active' : ''}`}
-                onClick={() => setScale(s)}
-              >{s}</button>
-            ))}
-          </div>
-          <span className="gantt-toolbar-sep" />
-          <div className="gantt-scale-chips">
-            <button className={`gantt-scale-chip${levelView === 'todos' ? ' active' : ''}`} onClick={() => applyLevel('todos')}>Todos</button>
-            {multiProg && <button className={`gantt-scale-chip${levelView === 'programa' ? ' active' : ''}`} onClick={() => applyLevel('programa')}>Programa</button>}
-            <button className={`gantt-scale-chip${levelView === 'eixo' ? ' active' : ''}`} onClick={() => applyLevel('eixo')}>Eixo</button>
-            <button className={`gantt-scale-chip${levelView === 'plano' ? ' active' : ''}`} onClick={() => applyLevel('plano')}>Plano</button>
-            <button className={`gantt-scale-chip${levelView === 'macro' ? ' active' : ''}`} onClick={() => applyLevel('macro')}>Macroactividade</button>
-            <button className={`gantt-scale-chip${levelView === 'actividade' ? ' active' : ''}`} onClick={() => applyLevel('actividade')}>Actividade</button>
-          </div>
-          <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
-            <button className="gantt-toolbar-btn" onClick={collapseAll}>Colapsar</button>
-            <button className="gantt-toolbar-btn" onClick={expandAll}>Expandir</button>
+            <span className="gantt-legend-item">
+              <span className="gantt-legend-swatch" style={{ background: 'var(--status-done)' }} />Concluída
+            </span>
           </div>
         </div>
 
@@ -822,9 +974,9 @@ export default function Gantt() {
             title="Sem actividades"
             description="Selecciona um programa nos filtros para visualizar o diagrama de Gantt."
           />
-        ) : filtered.length === 0 ? (
+        ) : finalActs.length === 0 ? (
           <div className="gantt-empty">
-            Sem actividades para os filtros seleccionados.
+            {searchQuery.trim() ? `Nenhuma actividade encontrada para "${searchQuery}"` : 'Sem actividades para os filtros seleccionados.'}
           </div>
         ) : (
           <div className="gantt-scroll-wrap">
