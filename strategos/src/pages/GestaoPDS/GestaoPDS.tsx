@@ -9,7 +9,8 @@ import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
 import { usePdsEntries, usePdsConsolidated } from '../../hooks/usePdsEntries'
-import type { PdsItem, PdsEntry } from '../../types/index'
+import type { PdsItem, PdsEntry, PdsItemEdit } from '../../types/index'
+import { SECTION_CONFIG, type PdsSection } from './sectionConfig'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey   = 'commitments' | 'progress' | 'nextSteps' | 'attention'
@@ -38,6 +39,13 @@ const SECTION_FIELDS: Record<SectionKey, PdsItemField> = {
   attention:   'attention_items',
 }
 
+const SECTION_KEY_TO_PDS: Record<SectionKey, PdsSection> = {
+  commitments: 'commitments',
+  progress:    'progress',
+  nextSteps:   'next_steps',
+  attention:   'attention',
+}
+
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -55,6 +63,22 @@ function hiddenLabel(hidden_at: string): string {
   if (days === 0) return 'Ocultado hoje'
   if (days === 1) return 'Ocultado há 1 dia'
   return `Ocultado há ${days} dias`
+}
+
+function fmtDate(iso: string): string {
+  const [y, m, d] = iso.slice(0, 10).split('-')
+  return `${d}/${m}/${y}`
+}
+
+function statusPillClass(s: string): string {
+  if (s === 'Pendente')  return 'pendente'
+  if (s === 'Em curso')  return 'em-curso'
+  if (s === 'Concluído') return 'concluido'
+  return ''
+}
+
+function normalizeForDiff(v: unknown): unknown {
+  return v == null ? null : v
 }
 
 function sortItems(items: PdsItem[], dir: SortDir): PdsItem[] {
@@ -80,17 +104,27 @@ interface PdsSectionProps {
   sectionKey:     SectionKey
   items:          PdsItem[]
   sortDir:        SortDir
-  withMeta:       boolean
+  editingId:      string | null
+  editDraft:      Partial<PdsItem>
   onSortToggle(): void
   onHide(itemId: string): void
   onRestore(itemId: string): void
   onAdd(section: SectionKey, title: string): void
+  onEditStart(item: PdsItem, section: PdsSection): void
+  onEditChange(patch: Partial<PdsItem>): void
+  onEditSave(): void
+  onEditCancel(): void
 }
 
 function PdsSection({
-  title, sectionKey, items, sortDir, withMeta,
+  title, sectionKey, items, sortDir,
+  editingId, editDraft,
   onSortToggle, onHide, onRestore, onAdd,
+  onEditStart, onEditChange, onEditSave, onEditCancel,
 }: PdsSectionProps) {
+  const pdsSection = SECTION_KEY_TO_PDS[sectionKey]
+  const cfg        = SECTION_CONFIG[pdsSection]
+
   return (
     <div className="pds-section">
       <div className="pds-section-head">
@@ -104,54 +138,122 @@ function PdsSection({
         )}
 
         {items.map((item) => {
-          const isHidden = !!item.hidden_at
+          const isHidden  = !!item.hidden_at
+          const isEditing = editingId === item.id
+
           return (
             <div
               key={item.id ?? item.text}
               className={`pds-item${isHidden ? ' pds-item--hidden' : ''}`}
-              data-status={withMeta && !isHidden ? (item.status ?? 'Pendente') : undefined}
+              data-status={!isHidden && cfg.hasStatus ? (item.status ?? 'Pendente') : undefined}
             >
-              <div className="pds-item-row">
-                <div className="pds-item-body">
-                  <div className="pds-item-text-readonly">{item.text}</div>
-                  {withMeta && (item.date || item.status) && (
-                    <div className="pds-item-meta">
-                      {item.date && (
-                        <span className="pds-item-date-badge">{item.date}</span>
-                      )}
-                      {item.status && (
-                        <span
-                          className="pds-item-status-badge"
-                          data-status={item.status}
-                        >
-                          {item.status}
-                        </span>
-                      )}
-                    </div>
+              {isEditing ? (
+                <div className="pds-item-edit">
+                  <textarea
+                    className="pds-item-edit-textarea"
+                    rows={3}
+                    value={editDraft.text ?? ''}
+                    onChange={e => onEditChange({ text: e.target.value })}
+                    autoFocus
+                  />
+                  {cfg.hasStatus && (
+                    <select
+                      className="pds-item-edit-select"
+                      value={editDraft.status ?? 'Em curso'}
+                      onChange={e => onEditChange({ status: e.target.value as PdsItem['status'] })}
+                    >
+                      <option value="Pendente">Pendente</option>
+                      <option value="Em curso">Em curso</option>
+                      <option value="Concluído">Concluído</option>
+                    </select>
                   )}
-                  {isHidden && item.hidden_at && (
-                    <span className="pds-item-hidden-label">
-                      {hiddenLabel(item.hidden_at)}
-                    </span>
+                  {cfg.hasTargetDate && (
+                    <label className="pds-item-edit-label">
+                      Data Alvo
+                      <input
+                        type="date"
+                        className="pds-item-edit-date"
+                        value={editDraft.target_date ?? ''}
+                        onChange={e => onEditChange({ target_date: e.target.value || null })}
+                      />
+                    </label>
                   )}
+                  {cfg.hasCompletedAt && (
+                    <label className="pds-item-edit-label">
+                      Data Conclusão
+                      <input
+                        type="date"
+                        className="pds-item-edit-date"
+                        value={editDraft.completed_at ?? ''}
+                        onChange={e => onEditChange({ completed_at: e.target.value || null })}
+                      />
+                    </label>
+                  )}
+                  <div className="pds-item-edit-actions">
+                    <button className="pds-btn pds-btn-save" onClick={onEditSave}>Guardar</button>
+                    <button className="pds-btn" onClick={onEditCancel}>Cancelar</button>
+                  </div>
                 </div>
+              ) : (
+                <div className="pds-item-row">
+                  <div className="pds-item-body">
+                    <div className="pds-item-text-readonly">{item.text}</div>
+                    {(item.author || item.created_at) && (
+                      <span className="pds-item-meta-created">
+                        {item.author ? `${item.author} · ` : ''}
+                        {item.created_at ? fmtDate(item.created_at.slice(0, 10)) : ''}
+                      </span>
+                    )}
+                    {cfg.hasStatus && item.status && (
+                      <span className={`pds-item-status-pill ${statusPillClass(item.status)}`}>
+                        {item.status}
+                      </span>
+                    )}
+                    {cfg.hasTargetDate && (item.target_date ?? item.date) && (
+                      <span className="pds-item-target-date">
+                        Alvo: {fmtDate((item.target_date ?? item.date)!)}
+                      </span>
+                    )}
+                    {cfg.hasCompletedAt && item.completed_at && (
+                      <span className={`pds-item-completed-date${item.status === 'Concluído' ? ' pds-item-completed-date--done' : ''}`}>
+                        Concluído em: {fmtDate(item.completed_at)}
+                      </span>
+                    )}
+                    {isHidden && item.hidden_at && (
+                      <span className="pds-item-hidden-label">{hiddenLabel(item.hidden_at)}</span>
+                    )}
+                  </div>
 
-                <div className="pds-item-actions">
-                  {isHidden ? (
-                    <button
-                      className="pds-restore-btn"
-                      onClick={() => { if (item.id) onRestore(item.id) }}
-                      title="Restaurar item"
-                    >↩</button>
-                  ) : (
-                    <button
-                      className="pds-hide-btn"
-                      onClick={() => { if (item.id) onHide(item.id) }}
-                      title="Ocultar item"
-                    >◌</button>
-                  )}
+                  <div className="pds-item-actions">
+                    {!isHidden && (
+                      <button
+                        className="pds-edit-btn"
+                        onClick={() => onEditStart(item, pdsSection)}
+                        title="Editar"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                             strokeLinejoin="round">
+                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>
+                        </svg>
+                      </button>
+                    )}
+                    {isHidden ? (
+                      <button
+                        className="pds-restore-btn"
+                        onClick={() => { if (item.id) onRestore(item.id) }}
+                        title="Restaurar"
+                      >↩</button>
+                    ) : (
+                      <button
+                        className="pds-hide-btn"
+                        onClick={() => { if (item.id) onHide(item.id) }}
+                        title="Ocultar"
+                      >◌</button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )
         })}
@@ -289,6 +391,91 @@ export default function GestaoPDS() {
     )
   }, [consolidatedItems.attention, attnSort])
 
+  // ── Inline edit state ────────────────────────────────────────
+  const [editingId,      setEditingId]      = useState<string | null>(null)
+  const [editingSection, setEditingSection] = useState<PdsSection | null>(null)
+  const [editDraft,      setEditDraft]      = useState<Partial<PdsItem>>({})
+
+  const startEdit = useCallback((item: PdsItem, section: PdsSection) => {
+    setEditingId(item.id)
+    setEditingSection(section)
+    setEditDraft({
+      text:         item.text,
+      status:       item.status,
+      target_date:  item.target_date ?? item.date ?? null,
+      completed_at: item.completed_at,
+    })
+  }, [])
+
+  const cancelEdit = useCallback(() => {
+    setEditingId(null)
+    setEditingSection(null)
+    setEditDraft({})
+  }, [])
+
+  const handleEditChange = useCallback((patch: Partial<PdsItem>) => {
+    setEditDraft(prev => ({ ...prev, ...patch }))
+  }, [])
+
+  const saveEdit = useCallback(async () => {
+    if (!editingId || !editingSection) return
+
+    const meta = entryIdMap.get(editingId)
+    if (!meta) return
+
+    const entry = entries.find(e => e.id === meta.entryId)
+    if (!entry) return
+
+    const currentItems = getEntryField(entry, meta.field)
+    const original = currentItems.find(i => i.id === editingId)
+    if (!original) return
+
+    const cfg = SECTION_CONFIG[editingSection]
+
+    const changes: Record<string, { from: unknown; to: unknown }> = {}
+    for (const key of ['text', 'status', 'target_date', 'completed_at'] as const) {
+      const dv = normalizeForDiff(editDraft[key])
+      const ov = normalizeForDiff(original[key])
+      if (dv !== ov) changes[key] = { from: ov, to: dv }
+    }
+
+    if (Object.keys(changes).length === 0) {
+      setEditingId(null); setEditingSection(null); setEditDraft({})
+      return
+    }
+
+    const { data: userData } = await supabase.auth.getUser()
+    const edit: PdsItemEdit = {
+      at: new Date().toISOString(),
+      by: userData?.user?.id,
+      changes,
+    }
+
+    const updatedItem: PdsItem = {
+      ...original,
+      text:         editDraft.text ?? original.text,
+      status:       cfg.hasStatus    ? (editDraft.status as PdsItem['status']) : original.status,
+      target_date:  cfg.hasTargetDate  ? (editDraft.target_date  ?? null)      : original.target_date,
+      date:         cfg.hasTargetDate  ? (editDraft.target_date  ?? undefined)  : original.date,
+      completed_at: cfg.hasCompletedAt ? (editDraft.completed_at ?? null)      : original.completed_at,
+      edits:        [...(original.edits ?? []), edit],
+    }
+
+    const updated = currentItems.map(i => i.id === editingId ? updatedItem : i)
+    const { error } = await supabase
+      .from('pds_entries')
+      .update({ [meta.field]: updated })
+      .eq('id', meta.entryId)
+
+    if (error) {
+      showToast(`Erro: ${error.message}`)
+    } else {
+      setEditingId(null); setEditingSection(null); setEditDraft({})
+      refetchEntries()
+      refetchConsolidated()
+    }
+  }, [editingId, editingSection, editDraft, entryIdMap, entries, refetchEntries, refetchConsolidated, showToast])
+
   // ── Hide / Restore — immediate Supabase save ────────────────
   const applyHideRestore = useCallback(async (itemId: string, hidden_at: string | null) => {
     const meta = entryIdMap.get(itemId)
@@ -323,13 +510,13 @@ export default function GestaoPDS() {
   const [addModal,      setAddModal]      = useState<AddModal | null>(null)
   const [newItemText,   setNewItemText]   = useState('')
   const [newItemDate,   setNewItemDate]   = useState('')
-  const [newItemStatus, setNewItemStatus] = useState('Pendente')
+  const [newItemStatus, setNewItemStatus] = useState<'Pendente' | 'Em curso' | 'Concluído'>('Em curso')
   const [addSaving,     setAddSaving]     = useState(false)
 
   const handleAdd = useCallback((section: SectionKey, title: string) => {
     setNewItemText('')
     setNewItemDate('')
-    setNewItemStatus('Pendente')
+    setNewItemStatus('Em curso')
     setAddModal({ section, title })
   }, [])
 
@@ -337,14 +524,20 @@ export default function GestaoPDS() {
     if (!addModal || !selectedPlan || !newItemText.trim()) return
     setAddSaving(true)
 
-    const field    = SECTION_FIELDS[addModal.section]
-    const withMeta = addModal.section === 'commitments' || addModal.section === 'nextSteps'
+    const field = SECTION_FIELDS[addModal.section]
+    const cfg   = SECTION_CONFIG[SECTION_KEY_TO_PDS[addModal.section]]
+
     const newItem: PdsItem = {
-      id:         newId(),
-      created_at: new Date().toISOString(),
-      hidden_at:  null,
-      text:       newItemText.trim(),
-      ...(withMeta ? { date: newItemDate || undefined, status: newItemStatus } : {}),
+      id:           newId(),
+      created_at:   new Date().toISOString(),
+      hidden_at:    null,
+      text:         newItemText.trim(),
+      ...(cfg.hasStatus ? {
+        status:       newItemStatus,
+        target_date:  newItemDate || null,
+        date:         newItemDate || undefined,
+        completed_at: null,
+      } : {}),
     }
 
     const planEntries = entries
@@ -393,10 +586,20 @@ export default function GestaoPDS() {
   ])
 
   // ── Render ───────────────────────────────────────────────────
-  const sharedProps = { onHide: handleHide, onRestore: handleRestore, onAdd: handleAdd }
+  const sharedProps = {
+    editingId,
+    editDraft,
+    onHide:       handleHide,
+    onRestore:    handleRestore,
+    onAdd:        handleAdd,
+    onEditStart:  startEdit,
+    onEditChange: handleEditChange,
+    onEditSave:   saveEdit,
+    onEditCancel: cancelEdit,
+  }
 
-  const noProgram     = !programId
-  const noPlans       = !noProgram && !planosLoading && planOptions.length === 0
+  const noProgram      = !programId
+  const noPlans        = !noProgram && !planosLoading && planOptions.length === 0
   const contentLoading = entriesLoading || planosLoading || (!!selectedKey && consolidatedLoading)
 
   return (
@@ -459,7 +662,6 @@ export default function GestaoPDS() {
             title="Compromissos Anteriores"
             items={visCommitments}
             sortDir={commitSort}
-            withMeta={true}
             onSortToggle={() => setCommitSort(d => d === 'asc' ? 'desc' : 'asc')}
           />
           <PdsSection
@@ -468,7 +670,6 @@ export default function GestaoPDS() {
             title="Principais Avanços"
             items={visProgress}
             sortDir={progressSort}
-            withMeta={false}
             onSortToggle={() => setProgressSort(d => d === 'asc' ? 'desc' : 'asc')}
           />
           <PdsSection
@@ -477,7 +678,6 @@ export default function GestaoPDS() {
             title="Próximos Passos"
             items={visNextSteps}
             sortDir={nextSort}
-            withMeta={true}
             onSortToggle={() => setNextSort(d => d === 'asc' ? 'desc' : 'asc')}
           />
           <PdsSection
@@ -486,7 +686,6 @@ export default function GestaoPDS() {
             title="Pontos de Atenção"
             items={visAttention}
             sortDir={attnSort}
-            withMeta={false}
             onSortToggle={() => setAttnSort(d => d === 'asc' ? 'desc' : 'asc')}
           />
         </div>
@@ -526,11 +725,11 @@ export default function GestaoPDS() {
                 autoFocus
               />
             </div>
-            {(addModal.section === 'commitments' || addModal.section === 'nextSteps') && (
+            {SECTION_CONFIG[SECTION_KEY_TO_PDS[addModal.section]].hasStatus && (
               <>
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text2)', marginBottom: 4 }}>
-                    Data
+                    Data Alvo
                   </div>
                   <input
                     type="date"
@@ -546,11 +745,11 @@ export default function GestaoPDS() {
                   <select
                     className="styled-select-sm"
                     value={newItemStatus}
-                    onChange={e => setNewItemStatus(e.target.value)}
+                    onChange={e => setNewItemStatus(e.target.value as typeof newItemStatus)}
                   >
-                    <option>Pendente</option>
-                    <option>Em curso</option>
-                    <option>Concluído</option>
+                    <option value="Pendente">Pendente</option>
+                    <option value="Em curso">Em curso</option>
+                    <option value="Concluído">Concluído</option>
                   </select>
                 </div>
               </>

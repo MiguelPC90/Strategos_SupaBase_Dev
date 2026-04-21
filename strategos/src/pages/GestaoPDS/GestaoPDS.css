@@ -379,6 +379,104 @@
     margin-top: 3px;
   }
 
+  /* ── Meta: author + created_at ──────────────────────────────── */
+  .pds-item-meta-created {
+    display: block;
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  /* ── Status pill ─────────────────────────────────────────────── */
+  .pds-item-status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 4px;
+  }
+  .pds-item-status-pill.pendente  { background: rgba(133,79,11,0.10);  color: #854F0B; }
+  .pds-item-status-pill.em-curso  { background: rgba(24,95,165,0.10);  color: #185FA5; }
+  .pds-item-status-pill.concluido { background: rgba(149,187,66,0.15); color: #4a7c1a; }
+
+  /* ── Target / completed dates ────────────────────────────────── */
+  .pds-item-target-date,
+  .pds-item-completed-date {
+    display: block;
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 3px;
+  }
+  .pds-item-completed-date--done { color: #4a7c1a; }
+
+  /* ── Pencil edit button ──────────────────────────────────────── */
+  .pds-edit-btn {
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .pds-edit-btn:hover { background: var(--bg2); color: var(--text); }
+
+  /* ── Inline edit form ────────────────────────────────────────── */
+  .pds-item-edit {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+
+  .pds-item-edit-textarea {
+    width: 100%;
+    font: inherit;
+    font-size: 13px;
+    padding: 6px 10px;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    resize: vertical;
+    box-sizing: border-box;
+    line-height: 1.5;
+  }
+  .pds-item-edit-textarea:focus { outline: none; border-color: var(--navy); }
+
+  .pds-item-edit-select,
+  .pds-item-edit-date {
+    padding: 4px 8px;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .pds-item-edit-select:focus,
+  .pds-item-edit-date:focus { outline: none; border-color: var(--navy); }
+
+  .pds-item-edit-label {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .pds-item-edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
   /* ── Sort toggle button ──────────────────────────────────────── */
   .pds-sort-btn {
     padding: 2px 8px;
