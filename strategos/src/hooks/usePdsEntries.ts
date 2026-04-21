@@ -6,12 +6,16 @@ interface UsePdsEntriesResult {
   entries: PdsEntry[]
   loading: boolean
   error: string | null
+  refetch: () => void
 }
 
 export function usePdsEntries(program_id?: string): UsePdsEntriesResult {
   const [entries, setEntries] = useState<PdsEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [tick, setTick] = useState(0)
+
+  const refetch = useCallback(() => setTick(t => t + 1), [])
 
   useEffect(() => {
     let cancelled = false
@@ -40,9 +44,9 @@ export function usePdsEntries(program_id?: string): UsePdsEntriesResult {
     })
 
     return () => { cancelled = true }
-  }, [program_id])
+  }, [program_id, tick])
 
-  return { entries, loading, error }
+  return { entries, loading, error, refetch }
 }
 
 // ── Consolidated hook ──────────────────────────────────────────

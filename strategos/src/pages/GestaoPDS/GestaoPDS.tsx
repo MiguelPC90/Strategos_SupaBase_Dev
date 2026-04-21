@@ -1,5 +1,5 @@
 import './GestaoPDS.css'
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import Modal from '../../components/Modal/Modal'
@@ -8,231 +8,153 @@ import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
-import { usePdsEntries } from '../../hooks/usePdsEntries'
-import type { PdsItem } from '../../types/index'
+import { usePdsEntries, usePdsConsolidated } from '../../hooks/usePdsEntries'
+import type { PdsItem, PdsEntry } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
-type SectionKey = 'commitments' | 'progress' | 'nextSteps' | 'attention'
-
-interface ActiveCell {
-  section: SectionKey
-  idx: number
-}
+type SectionKey   = 'commitments' | 'progress' | 'nextSteps' | 'attention'
+type SortDir      = 'asc' | 'desc'
+type PdsItemField = 'commitments_items' | 'progress_items' | 'next_steps_items' | 'attention_items'
 
 interface PlanOption {
-  key: string
-  label: string
-  n0: string
-  n1: string
-  n2: string
-  id0: string
-  id1: string
-  id2: string
+  key:        string
+  label:      string
+  n0:         string
+  n1:         string
+  n2:         string
+  id0:        string
+  id1:        string
+  id2:        string
   program_id: string | null
 }
 
-interface DraftState {
-  commitments: PdsItem[]
-  progress:    PdsItem[]
-  nextSteps:   PdsItem[]
-  attention:   PdsItem[]
+interface AddModal { section: SectionKey; title: string }
+
+// ── Constants ──────────────────────────────────────────────────
+const SECTION_FIELDS: Record<SectionKey, PdsItemField> = {
+  commitments: 'commitments_items',
+  progress:    'progress_items',
+  nextSteps:   'next_steps_items',
+  attention:   'attention_items',
 }
 
-const EMPTY_DRAFT: DraftState = {
-  commitments: [],
-  progress:    [],
-  nextSteps:   [],
-  attention:   [],
-}
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
 // ── Helpers ────────────────────────────────────────────────────
-
 function newId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
-/** Ensure every item has id/created_at/hidden_at (handles legacy DB items) */
-function upgradeItems(items: PdsItem[]): PdsItem[] {
-  const now = new Date().toISOString()
-  return items.map((item, i) => ({
-    ...item,
-    id:         item.id         ?? `legacy-${Date.now()}-${i}`,
-    created_at: item.created_at ?? now,
-    hidden_at:  item.hidden_at  ?? null,
-  }))
+function getEntryField(entry: PdsEntry, field: PdsItemField): PdsItem[] {
+  return (entry as unknown as Record<PdsItemField, PdsItem[]>)[field] ?? []
 }
 
-/** Wrap text selection (or cursor) with a markdown marker pair */
-function applyMarker(text: string, start: number, end: number, marker: string): string {
-  const selected = text.slice(start, end)
-  return selected
-    ? text.slice(0, start) + marker + selected + marker + text.slice(end)
-    : text.slice(0, start) + marker + marker + text.slice(end)
+function hiddenLabel(hidden_at: string): string {
+  const days = Math.floor((Date.now() - new Date(hidden_at).getTime()) / (24 * 60 * 60 * 1000))
+  if (days === 0) return 'Ocultado hoje'
+  if (days === 1) return 'Ocultado há 1 dia'
+  return `Ocultado há ${days} dias`
+}
+
+function sortItems(items: PdsItem[], dir: SortDir): PdsItem[] {
+  return [...items].sort((a, b) => {
+    const ca = a.created_at ?? ''
+    const cb = b.created_at ?? ''
+    return dir === 'asc' ? ca.localeCompare(cb) : cb.localeCompare(ca)
+  })
+}
+
+// ── SortBtn ────────────────────────────────────────────────────
+function SortBtn({ dir, onClick }: { dir: SortDir; onClick(): void }) {
+  return (
+    <button className="pds-sort-btn" onClick={onClick} title="Inverter ordenação">
+      {dir === 'asc' ? '↓ Mais recentes' : '↑ Mais antigos'}
+    </button>
+  )
 }
 
 // ── Section sub-component ──────────────────────────────────────
 interface PdsSectionProps {
-  sectionKey:   SectionKey
-  title:        string
-  items:        PdsItem[]
-  withMeta:     boolean
-  activeCell:   ActiveCell | null
-  activeRef:    { current: HTMLTextAreaElement | null }
-  onFocus(section: SectionKey, idx: number, el: HTMLTextAreaElement): void
-  onBlur(): void
-  onChangeItem(section: SectionKey, idx: number, patch: Partial<PdsItem>): void
-  onRemove(section: SectionKey, idx: number): void
+  title:          string
+  sectionKey:     SectionKey
+  items:          PdsItem[]
+  sortDir:        SortDir
+  withMeta:       boolean
+  onSortToggle(): void
+  onHide(itemId: string): void
+  onRestore(itemId: string): void
   onAdd(section: SectionKey, title: string): void
-  onMove(section: SectionKey, idx: number, dir: 'up' | 'down'): void
-  onHide(section: SectionKey, idx: number): void
-  onRestore(section: SectionKey, idx: number): void
 }
 
 function PdsSection({
-  sectionKey, title, items, withMeta,
-  activeCell, activeRef,
-  onFocus, onBlur, onChangeItem, onRemove, onAdd, onMove, onHide, onRestore,
+  title, sectionKey, items, sortDir, withMeta,
+  onSortToggle, onHide, onRestore, onAdd,
 }: PdsSectionProps) {
-  const isActive = (idx: number) =>
-    activeCell?.section === sectionKey && activeCell.idx === idx
-
   return (
     <div className="pds-section">
-      <div className="pds-section-head">{title}</div>
+      <div className="pds-section-head">
+        <span>{title}</span>
+        <SortBtn dir={sortDir} onClick={onSortToggle} />
+      </div>
 
       <div className="pds-items-list">
         {items.length === 0 && (
           <div className="pds-empty-items">Sem itens. Clique em + para adicionar.</div>
         )}
 
-        {items.map((item, idx) => (
-          <div
-            key={idx}
-            className={`pds-item${isActive(idx) ? ' pds-item--active' : ''}${item.hidden_at ? ' pds-item--hidden' : ''}`}
-            data-status={withMeta && !item.hidden_at ? (item.status ?? 'Pendente') : undefined}
-          >
-            {/* Mini toolbar — only visible when this item is focused */}
-            {isActive(idx) && (
-              <div className="pds-toolbar">
-                <button
-                  className="pds-toolbar-btn"
-                  title="Negrito (**texto**)"
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    const el = activeRef.current
-                    if (!el) return
-                    onChangeItem(sectionKey, idx, {
-                      text: applyMarker(
-                        item.text,
-                        el.selectionStart ?? 0,
-                        el.selectionEnd ?? 0,
-                        '**',
-                      ),
-                    })
-                  }}
-                >B</button>
-                <button
-                  className="pds-toolbar-btn pds-toolbar-btn--i"
-                  title="Itálico (*texto*)"
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    const el = activeRef.current
-                    if (!el) return
-                    onChangeItem(sectionKey, idx, {
-                      text: applyMarker(
-                        item.text,
-                        el.selectionStart ?? 0,
-                        el.selectionEnd ?? 0,
-                        '*',
-                      ),
-                    })
-                  }}
-                >I</button>
-              </div>
-            )}
+        {items.map((item) => {
+          const isHidden = !!item.hidden_at
+          return (
+            <div
+              key={item.id ?? item.text}
+              className={`pds-item${isHidden ? ' pds-item--hidden' : ''}`}
+              data-status={withMeta && !isHidden ? (item.status ?? 'Pendente') : undefined}
+            >
+              <div className="pds-item-row">
+                <div className="pds-item-body">
+                  <div className="pds-item-text-readonly">{item.text}</div>
+                  {withMeta && (item.date || item.status) && (
+                    <div className="pds-item-meta">
+                      {item.date && (
+                        <span className="pds-item-date-badge">{item.date}</span>
+                      )}
+                      {item.status && (
+                        <span
+                          className="pds-item-status-badge"
+                          data-status={item.status}
+                        >
+                          {item.status}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {isHidden && item.hidden_at && (
+                    <span className="pds-item-hidden-label">
+                      {hiddenLabel(item.hidden_at)}
+                    </span>
+                  )}
+                </div>
 
-            <div className="pds-item-row">
-              {/* Move buttons */}
-              <div className="pds-move-btns">
-                <button
-                  className="pds-move-btn"
-                  onClick={() => onMove(sectionKey, idx, 'up')}
-                  disabled={idx === 0}
-                  title="Mover acima"
-                >▲</button>
-                <button
-                  className="pds-move-btn"
-                  onClick={() => onMove(sectionKey, idx, 'down')}
-                  disabled={idx === items.length - 1}
-                  title="Mover abaixo"
-                >▼</button>
-              </div>
-
-              {/* Text + optional meta */}
-              <div className="pds-item-body">
-                <textarea
-                  className="pds-item-text"
-                  value={item.text}
-                  placeholder="Descrição… (suporta **negrito** e *itálico*)"
-                  rows={2}
-                  onChange={(e) => onChangeItem(sectionKey, idx, { text: e.target.value })}
-                  onFocus={(e) => {
-                    onFocus(sectionKey, idx, e.currentTarget)
-                    activeRef.current = e.currentTarget
-                  }}
-                  onBlur={() => setTimeout(onBlur, 150)}
-                />
-
-                {withMeta && (
-                  <div className="pds-item-meta">
-                    <input
-                      type="date"
-                      className="pds-item-date"
-                      value={item.date ?? ''}
-                      onChange={(e) =>
-                        onChangeItem(sectionKey, idx, { date: e.target.value })
-                      }
-                    />
-                    <select
-                      className="styled-select-sm"
-                      value={item.status ?? 'Pendente'}
-                      onChange={(e) =>
-                        onChangeItem(sectionKey, idx, { status: e.target.value })
-                      }
-                    >
-                      <option value="Pendente">Pendente</option>
-                      <option value="Em curso">Em curso</option>
-                      <option value="Concluído">Concluído</option>
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              {/* Actions: hide/restore + remove */}
-              <div className="pds-item-actions">
-                {item.hidden_at ? (
-                  <button
-                    className="pds-restore-btn"
-                    onClick={() => onRestore(sectionKey, idx)}
-                    title="Restaurar item"
-                  >↩</button>
-                ) : (
-                  <button
-                    className="pds-hide-btn"
-                    onClick={() => onHide(sectionKey, idx)}
-                    title="Ocultar item"
-                  >◌</button>
-                )}
-                <button
-                  className="pds-remove-btn"
-                  onClick={() => onRemove(sectionKey, idx)}
-                  title="Remover item"
-                >✕</button>
+                <div className="pds-item-actions">
+                  {isHidden ? (
+                    <button
+                      className="pds-restore-btn"
+                      onClick={() => { if (item.id) onRestore(item.id) }}
+                      title="Restaurar item"
+                    >↩</button>
+                  ) : (
+                    <button
+                      className="pds-hide-btn"
+                      onClick={() => { if (item.id) onHide(item.id) }}
+                      title="Ocultar item"
+                    >◌</button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <button className="pds-add-btn" onClick={() => onAdd(sectionKey, title)}>
@@ -249,7 +171,6 @@ export default function GestaoPDS() {
   const { programs } = usePrograms()
   const [selProgId, setSelProgId] = useState<string>('')
 
-  // Initialise from global filter or first available program (once)
   useEffect(() => {
     if (selProgId) return
     const init = filters.programIds[0] ?? programs[0]?.id
@@ -258,10 +179,13 @@ export default function GestaoPDS() {
 
   const programId = selProgId || undefined
   const { planos, loading: planosLoading } = usePlanos(programId)
-  const { entries, loading: entriesLoading } = usePdsEntries(programId)
-  const loading = entriesLoading || planosLoading
+  const {
+    entries,
+    loading:  entriesLoading,
+    refetch:  refetchEntries,
+  } = usePdsEntries(programId)
 
-  // ── Plan options from planos table ──────────────────────────
+  // ── Plan options ────────────────────────────────────────────
   const planOptions = useMemo<PlanOption[]>(() =>
     planos.map(p => {
       const eixoName = p.eixo?.name ?? ''
@@ -283,10 +207,8 @@ export default function GestaoPDS() {
 
   const [selectedKey, setSelectedKey] = useState<string>('')
 
-  // Reset plan selection when program changes
   useEffect(() => { setSelectedKey('') }, [programId])
 
-  // Auto-select first plan once options load (or when program changes)
   useEffect(() => {
     if (planOptions.length === 0) return
     if (planOptions.some(p => p.key === selectedKey)) return
@@ -299,104 +221,110 @@ export default function GestaoPDS() {
     [planOptions, selectedKey],
   )
 
-  const baseEntry = useMemo(() => {
-    if (!selectedPlan) return null
-    return (
-      entries.find(
-        e => e.plan_name === selectedPlan.n2 && e.n1 === selectedPlan.n1,
-      ) ?? null
-    )
-  }, [entries, selectedPlan])
+  // ── Consolidated items from ALL entries for selected plano ──
+  const {
+    items:   consolidatedItems,
+    loading: consolidatedLoading,
+    refetch: refetchConsolidated,
+  } = usePdsConsolidated(selectedKey || undefined)
 
-  // ── Draft state ──────────────────────────────────────────────
-  const [draft,     setDraft]     = useState<DraftState>(EMPTY_DRAFT)
-  const [committed, setCommitted] = useState<DraftState>(EMPTY_DRAFT)
-  // Tracks the id from a newly inserted row (no refetch needed)
-  const [localEntryId, setLocalEntryId] = useState<string | null>(null)
-
-  // Initialise draft + committed whenever plan/entry changes
-  useEffect(() => {
-    setLocalEntryId(null)
-    const d: DraftState = baseEntry
-      ? {
-          commitments: upgradeItems(baseEntry.commitments_items ?? []),
-          progress:    upgradeItems(baseEntry.progress_items    ?? []),
-          nextSteps:   upgradeItems(baseEntry.next_steps_items  ?? []),
-          attention:   upgradeItems(baseEntry.attention_items   ?? []),
+  // ── entryIdMap: item.id → { entryId, field } ───────────────
+  const entryIdMap = useMemo(() => {
+    const map = new Map<string, { entryId: string; field: PdsItemField }>()
+    const planEntries = entries.filter(e => e.plano_id === selectedKey)
+    for (const entry of planEntries) {
+      for (const field of Object.values(SECTION_FIELDS)) {
+        for (const item of getEntryField(entry, field)) {
+          if (item.id) map.set(item.id, { entryId: entry.id, field })
         }
-      : EMPTY_DRAFT
-    setDraft(d)
-    setCommitted(d)
-  }, [baseEntry, selectedKey])
-
-  const isDirty = useMemo(
-    () => JSON.stringify(draft) !== JSON.stringify(committed),
-    [draft, committed],
-  )
-
-  const dirtyCount = useMemo(() => {
-    if (!isDirty) return 0
-    let n = 0
-    const diff = (a: PdsItem[], b: PdsItem[]) => {
-      const len = Math.max(a.length, b.length)
-      for (let i = 0; i < len; i++) {
-        if (JSON.stringify(a[i]) !== JSON.stringify(b[i])) n++
       }
     }
-    diff(draft.commitments, committed.commitments)
-    diff(draft.progress,    committed.progress)
-    diff(draft.nextSteps,   committed.nextSteps)
-    diff(draft.attention,   committed.attention)
-    return n
-  }, [isDirty, draft, committed])
+    return map
+  }, [entries, selectedKey])
 
-  // ── Toolbar / active cell ────────────────────────────────────
-  const [activeCell, setActiveCell] = useState<ActiveCell | null>(null)
-  const activeRef = useRef<HTMLTextAreaElement | null>(null)
+  // ── Sort states ─────────────────────────────────────────────
+  const [commitSort,   setCommitSort]   = useState<SortDir>('asc')
+  const [progressSort, setProgressSort] = useState<SortDir>('asc')
+  const [nextSort,     setNextSort]     = useState<SortDir>('asc')
+  const [attnSort,     setAttnSort]     = useState<SortDir>('asc')
+
+  // ── Filtered + sorted items (7-day soft-delete window) ──────
+  const visCommitments = useMemo(() => {
+    const cutoff = Date.now() - SEVEN_DAYS_MS
+    return sortItems(
+      consolidatedItems.commitments.filter(
+        item => !item.hidden_at || new Date(item.hidden_at).getTime() > cutoff
+      ),
+      commitSort,
+    )
+  }, [consolidatedItems.commitments, commitSort])
+
+  const visProgress = useMemo(() => {
+    const cutoff = Date.now() - SEVEN_DAYS_MS
+    return sortItems(
+      consolidatedItems.progress.filter(
+        item => !item.hidden_at || new Date(item.hidden_at).getTime() > cutoff
+      ),
+      progressSort,
+    )
+  }, [consolidatedItems.progress, progressSort])
+
+  const visNextSteps = useMemo(() => {
+    const cutoff = Date.now() - SEVEN_DAYS_MS
+    return sortItems(
+      consolidatedItems.nextSteps.filter(
+        item => !item.hidden_at || new Date(item.hidden_at).getTime() > cutoff
+      ),
+      nextSort,
+    )
+  }, [consolidatedItems.nextSteps, nextSort])
+
+  const visAttention = useMemo(() => {
+    const cutoff = Date.now() - SEVEN_DAYS_MS
+    return sortItems(
+      consolidatedItems.attention.filter(
+        item => !item.hidden_at || new Date(item.hidden_at).getTime() > cutoff
+      ),
+      attnSort,
+    )
+  }, [consolidatedItems.attention, attnSort])
+
+  // ── Hide / Restore — immediate Supabase save ────────────────
+  const applyHideRestore = useCallback(async (itemId: string, hidden_at: string | null) => {
+    const meta = entryIdMap.get(itemId)
+    if (!meta) return
+
+    const entry = entries.find(e => e.id === meta.entryId)
+    if (!entry) return
+
+    const updated = getEntryField(entry, meta.field).map(item =>
+      item.id === itemId ? { ...item, hidden_at } : item
+    )
+
+    const { error } = await supabase
+      .from('pds_entries')
+      .update({ [meta.field]: updated })
+      .eq('id', meta.entryId)
+
+    if (error) {
+      showToast(`Erro: ${error.message}`)
+    } else {
+      refetchEntries()
+      refetchConsolidated()
+    }
+  }, [entryIdMap, entries, refetchEntries, refetchConsolidated, showToast])
+
+  const handleHide    = useCallback((id: string) =>
+    applyHideRestore(id, new Date().toISOString()), [applyHideRestore])
+  const handleRestore = useCallback((id: string) =>
+    applyHideRestore(id, null), [applyHideRestore])
 
   // ── Add-item modal ───────────────────────────────────────────
-  interface AddModal { section: SectionKey; title: string }
   const [addModal,      setAddModal]      = useState<AddModal | null>(null)
   const [newItemText,   setNewItemText]   = useState('')
   const [newItemDate,   setNewItemDate]   = useState('')
   const [newItemStatus, setNewItemStatus] = useState('Pendente')
-
-  // ── Save state ───────────────────────────────────────────────
-  const [saving,  setSaving]  = useState(false)
-  const [saveErr, setSaveErr] = useState<string | null>(null)
-
-  // ── Item callbacks ───────────────────────────────────────────
-  const handleFocus = useCallback(
-    (section: SectionKey, idx: number, el: HTMLTextAreaElement) => {
-      setActiveCell({ section, idx })
-      activeRef.current = el
-    },
-    [],
-  )
-
-  const handleBlur = useCallback(() => {
-    setActiveCell(null)
-  }, [])
-
-  const handleChangeItem = useCallback(
-    (section: SectionKey, idx: number, patch: Partial<PdsItem>) => {
-      setDraft(prev => {
-        const arr = [...prev[section]]
-        arr[idx] = { ...arr[idx], ...patch }
-        return { ...prev, [section]: arr }
-      })
-    },
-    [],
-  )
-
-  const handleRemove = useCallback((section: SectionKey, idx: number) => {
-    setDraft(prev => {
-      const arr = [...prev[section]]
-      arr.splice(idx, 1)
-      return { ...prev, [section]: arr }
-    })
-    setActiveCell(null)
-  }, [])
+  const [addSaving,     setAddSaving]     = useState(false)
 
   const handleAdd = useCallback((section: SectionKey, title: string) => {
     setNewItemText('')
@@ -405,104 +333,71 @@ export default function GestaoPDS() {
     setAddModal({ section, title })
   }, [])
 
-  const handleModalAdd = useCallback(() => {
-    if (!addModal) return
+  const handleModalAdd = useCallback(async () => {
+    if (!addModal || !selectedPlan || !newItemText.trim()) return
+    setAddSaving(true)
+
+    const field    = SECTION_FIELDS[addModal.section]
     const withMeta = addModal.section === 'commitments' || addModal.section === 'nextSteps'
-    const item: PdsItem = {
+    const newItem: PdsItem = {
       id:         newId(),
       created_at: new Date().toISOString(),
       hidden_at:  null,
-      text:       newItemText,
+      text:       newItemText.trim(),
       ...(withMeta ? { date: newItemDate || undefined, status: newItemStatus } : {}),
     }
-    setDraft(prev => ({ ...prev, [addModal.section]: [...prev[addModal.section], item] }))
-    setAddModal(null)
-  }, [addModal, newItemText, newItemDate, newItemStatus])
 
-  const handleHide = useCallback((section: SectionKey, idx: number) => {
-    setDraft(prev => {
-      const arr = [...prev[section]]
-      arr[idx] = { ...arr[idx], hidden_at: new Date().toISOString() }
-      return { ...prev, [section]: arr }
-    })
-  }, [])
+    const planEntries = entries
+      .filter(e => e.plano_id === selectedKey)
+      .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+    const latest = planEntries[0] ?? null
 
-  const handleRestore = useCallback((section: SectionKey, idx: number) => {
-    setDraft(prev => {
-      const arr = [...prev[section]]
-      arr[idx] = { ...arr[idx], hidden_at: null }
-      return { ...prev, [section]: arr }
-    })
-  }, [])
+    let saveErr: string | null = null
 
-  const handleMove = useCallback(
-    (section: SectionKey, idx: number, dir: 'up' | 'down') => {
-      setDraft(prev => {
-        const arr = [...prev[section]]
-        const target = dir === 'up' ? idx - 1 : idx + 1
-        if (target < 0 || target >= arr.length) return prev
-        ;[arr[idx], arr[target]] = [arr[target], arr[idx]]
-        return { ...prev, [section]: arr }
-      })
-    },
-    [],
-  )
-
-  // ── Save ─────────────────────────────────────────────────────
-  const handleSave = useCallback(async () => {
-    if (!selectedPlan || !isDirty || saving) return
-    setSaving(true)
-    setSaveErr(null)
-
-    const effectiveId = baseEntry?.id ?? localEntryId
-    const payload = {
-      ...(effectiveId ? { id: effectiveId } : {}),
-      program_id:        selProgId,
-      plano_id:          selectedPlan.key,
-      n0:                selectedPlan.n0,
-      n1:                selectedPlan.n1,
-      plan_name:         selectedPlan.n2,
-      id0:               selectedPlan.id0,
-      id1:               selectedPlan.id1,
-      id2:               selectedPlan.id2,
-      commitments_items: draft.commitments,
-      progress_items:    draft.progress,
-      next_steps_items:  draft.nextSteps,
-      attention_items:   draft.attention,
-    }
-
-    const { data, error } = await supabase
-      .from('pds_entries')
-      .upsert(payload, { onConflict: 'id' })
-      .select('id')
-      .maybeSingle()
-
-    setSaving(false)
-    if (error) {
-      setSaveErr(error.message)
+    if (latest) {
+      const current = getEntryField(latest, field)
+      const { error } = await supabase
+        .from('pds_entries')
+        .update({ [field]: [...current, newItem] })
+        .eq('id', latest.id)
+      if (error) saveErr = error.message
     } else {
-      if (data?.id) setLocalEntryId(data.id)
-      setCommitted(draft)
-      showToast('Guardado!')
+      const { error } = await supabase
+        .from('pds_entries')
+        .insert({
+          program_id: selProgId,
+          plano_id:   selectedPlan.key,
+          n0:         selectedPlan.n0,
+          n1:         selectedPlan.n1,
+          plan_name:  selectedPlan.n2,
+          id0:        selectedPlan.id0,
+          id1:        selectedPlan.id1,
+          id2:        selectedPlan.id2,
+          [field]:    [newItem],
+        })
+      if (error) saveErr = error.message
     }
-  }, [selectedPlan, isDirty, saving, baseEntry, localEntryId, draft])
 
-  // ── Shared section props ─────────────────────────────────────
-  const sectionProps = {
-    activeCell,
-    activeRef,
-    onFocus:      handleFocus,
-    onBlur:       handleBlur,
-    onChangeItem: handleChangeItem,
-    onRemove:     handleRemove,
-    onAdd:        handleAdd,
-    onMove:       handleMove,
-    onHide:       handleHide,
-    onRestore:    handleRestore,
-  }
+    setAddSaving(false)
+    if (saveErr) {
+      showToast(`Erro: ${saveErr}`)
+    } else {
+      setAddModal(null)
+      refetchEntries()
+      refetchConsolidated()
+    }
+  }, [
+    addModal, selectedPlan, selectedKey, selProgId,
+    entries, newItemText, newItemDate, newItemStatus,
+    refetchEntries, refetchConsolidated, showToast,
+  ])
 
-  const noProgram = !programId
-  const noPlans   = !noProgram && !planosLoading && planOptions.length === 0
+  // ── Render ───────────────────────────────────────────────────
+  const sharedProps = { onHide: handleHide, onRestore: handleRestore, onAdd: handleAdd }
+
+  const noProgram     = !programId
+  const noPlans       = !noProgram && !planosLoading && planOptions.length === 0
+  const contentLoading = entriesLoading || planosLoading || (!!selectedKey && consolidatedLoading)
 
   return (
     <div className="pds-page">
@@ -524,7 +419,7 @@ export default function GestaoPDS() {
         <select
           className="styled-select"
           value={selectedKey}
-          onChange={(e) => setSelectedKey(e.target.value)}
+          onChange={e => setSelectedKey(e.target.value)}
           disabled={noProgram || noPlans}
         >
           {noProgram ? (
@@ -539,27 +434,15 @@ export default function GestaoPDS() {
         </select>
 
         <div className="pds-spacer" />
-
-        {saveErr && <span className="pds-save-err">{saveErr}</span>}
-
-        <button
-          className="pds-btn pds-btn-save"
-          onClick={handleSave}
-          disabled={!selectedPlan || !isDirty || saving}
-        >
-          {saving ? 'A guardar…' : isDirty ? `Guardar (${dirtyCount})` : 'Guardar'}
-        </button>
       </div>
 
       {/* Content area */}
-      {loading ? (
+      {contentLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
           <Spinner />
         </div>
       ) : noProgram ? (
-        <div className="pds-status">
-          Selecciona um programa para visualizar os PDS.
-        </div>
+        <div className="pds-status">Selecciona um programa para visualizar os PDS.</div>
       ) : noPlans ? (
         <EmptyState
           icon="inbox"
@@ -571,36 +454,45 @@ export default function GestaoPDS() {
       ) : (
         <div className="pds-grid">
           <PdsSection
-            {...sectionProps}
+            {...sharedProps}
             sectionKey="commitments"
             title="Compromissos Anteriores"
-            items={draft.commitments}
+            items={visCommitments}
+            sortDir={commitSort}
             withMeta={true}
+            onSortToggle={() => setCommitSort(d => d === 'asc' ? 'desc' : 'asc')}
           />
           <PdsSection
-            {...sectionProps}
+            {...sharedProps}
             sectionKey="progress"
             title="Principais Avanços"
-            items={draft.progress}
+            items={visProgress}
+            sortDir={progressSort}
             withMeta={false}
+            onSortToggle={() => setProgressSort(d => d === 'asc' ? 'desc' : 'asc')}
           />
           <PdsSection
-            {...sectionProps}
+            {...sharedProps}
             sectionKey="nextSteps"
             title="Próximos Passos"
-            items={draft.nextSteps}
+            items={visNextSteps}
+            sortDir={nextSort}
             withMeta={true}
+            onSortToggle={() => setNextSort(d => d === 'asc' ? 'desc' : 'asc')}
           />
           <PdsSection
-            {...sectionProps}
+            {...sharedProps}
             sectionKey="attention"
             title="Pontos de Atenção"
-            items={draft.attention}
+            items={visAttention}
+            sortDir={attnSort}
             withMeta={false}
+            onSortToggle={() => setAttnSort(d => d === 'asc' ? 'desc' : 'asc')}
           />
         </div>
       )}
 
+      {/* Add-item modal */}
       {addModal && (
         <Modal
           isOpen={true}
@@ -610,17 +502,23 @@ export default function GestaoPDS() {
           footer={
             <>
               <button className="pds-btn" onClick={() => setAddModal(null)}>Cancelar</button>
-              <button className="pds-btn pds-btn-save" onClick={handleModalAdd}>Adicionar</button>
+              <button
+                className="pds-btn pds-btn-save"
+                onClick={handleModalAdd}
+                disabled={addSaving || !newItemText.trim()}
+              >
+                {addSaving ? 'A guardar…' : 'Adicionar'}
+              </button>
             </>
           }
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.04em', color: 'var(--text2)', marginBottom: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text2)', marginBottom: 4 }}>
                 Conteúdo
               </div>
               <textarea
-                style={{ width: '100%', border: '1px solid var(--border2)', borderRadius: 'var(--r)', padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' as const, minHeight: 80, boxSizing: 'border-box' as const }}
+                style={{ width: '100%', border: '1px solid var(--border2)', borderRadius: 'var(--r)', padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', minHeight: 80, boxSizing: 'border-box' }}
                 value={newItemText}
                 onChange={e => setNewItemText(e.target.value)}
                 placeholder="Descrição do item…"
@@ -631,18 +529,18 @@ export default function GestaoPDS() {
             {(addModal.section === 'commitments' || addModal.section === 'nextSteps') && (
               <>
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.04em', color: 'var(--text2)', marginBottom: 4 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text2)', marginBottom: 4 }}>
                     Data
                   </div>
                   <input
                     type="date"
-                    style={{ border: '1px solid var(--border2)', borderRadius: 'var(--r)', padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' as const }}
+                    style={{ border: '1px solid var(--border2)', borderRadius: 'var(--r)', padding: '6px 10px', fontSize: 13, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' }}
                     value={newItemDate}
                     onChange={e => setNewItemDate(e.target.value)}
                   />
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.04em', color: 'var(--text2)', marginBottom: 4 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text2)', marginBottom: 4 }}>
                     Estado
                   </div>
                   <select
