@@ -1,20 +1,16 @@
 import './Actividades.css'
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
-import Badge from '../../components/Badge/Badge'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
 import type { Activity, Program } from '../../types/index'
-import { leafPctPrev, leafStatus, rollupStatus } from '../../lib/rollup'
-import { supabase } from '../../lib/supabase'
+import { leafPctPrev, leafStatus, computeRowState, type RowState } from '../../lib/rollup'
 
 const TODAY = new Date().toISOString().slice(0, 10)
-
-type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
 
 // ── Status helpers ─────────────────────────────────────────────
 type StatusCls = 'concluida' | 'em_dia' | 'em_atraso'
@@ -27,21 +23,25 @@ function actStatus(a: Activity): StatusCls {
   return 'em_dia'
 }
 
-function toStatusCls(s: string): StatusCls {
-  if (s === 'Concluída') return 'concluida'
-  if (s === 'Em atraso') return 'em_atraso'
-  return 'em_dia'
+const STATE_PILL_CLASS: Record<RowState, string> = {
+  'Concluída': 'done',
+  'Em dia':    'ontrack',
+  'Em risco':  'risk',
+  'Em atraso': 'late',
 }
 
-const BADGE_VARIANT: Record<StatusCls, BadgeVariant> = {
-  concluida:  'green',
-  em_dia:     'blue',
-  em_atraso:  'red',
+const STATE_LABEL: Record<RowState, string> = {
+  'Concluída': 'Concluída',
+  'Em dia':    'Em dia',
+  'Em risco':  'Em risco',
+  'Em atraso': 'Em atraso',
 }
-const STATUS_LABEL: Record<StatusCls, string> = {
-  concluida:  'Concluído',
-  em_dia:     'Em dia',
-  em_atraso:  'Em atraso',
+
+const STATE_FILL: Record<RowState, string> = {
+  'Concluída': 'var(--status-done)',
+  'Em dia':    'var(--status-ontrack)',
+  'Em risco':  'var(--status-risk)',
+  'Em atraso': 'var(--status-late)',
 }
 
 // ── Stats computation ──────────────────────────────────────────
@@ -50,8 +50,8 @@ interface Stats {
   concluidas: number
   em_dia: number
   em_atraso: number
-  exec: number      // avg pct (0-100)
-  exec_obj: number  // avg pct_prev (0-100)
+  exec: number
+  exec_obj: number
   latest_end: string | null
 }
 
@@ -84,8 +84,6 @@ interface N1Group { n1: string; n2groups: N2Group[]; allActs: Activity[] }
 interface N0Group { progId: string; progName: string; n1groups: N1Group[]; allActs: Activity[] }
 
 // ── Level-view collapse key builder ───────────────────────────
-// Each level collapses exactly the rows AT that depth, making them the
-// visible leaf (folded ▶, no children rendered below).
 function buildLevelKeys(
   level: LevelView,
   n0tree: N0Group[] | null,
@@ -95,7 +93,6 @@ function buildLevelKeys(
   if (level === 'todos' || level === 'actividade') return keys
 
   if (level === 'programa') {
-    // Collapse N0 rows: program rows fold (▶), eixos not rendered
     if (n0tree) for (const n0g of n0tree) keys.add(`n0:${n0g.progId}`)
     return keys
   }
@@ -103,15 +100,12 @@ function buildLevelKeys(
   const n1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
 
   if (level === 'eixo') {
-    // Collapse N1 rows: eixo rows fold (▶), planos not rendered
     for (const n1g of n1groups) keys.add(`n1:${n1g.n1}`)
   } else if (level === 'plano') {
-    // Collapse N2 rows: plano rows fold (▶), macros not rendered
     for (const n1g of n1groups) {
       for (const n2g of n1g.n2groups) keys.add(`n2:${n1g.n1}:${n2g.n2}`)
     }
   } else if (level === 'macro') {
-    // Collapse N3 rows: macro rows fold (▶), activities not rendered
     for (const n1g of n1groups) {
       for (const n2g of n1g.n2groups) {
         for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
@@ -145,11 +139,8 @@ function buildTree(activities: Activity[]): N1Group[] {
       const n3groups: N3Group[] = Array.from(n3Map.entries())
         .filter(([k]) => k !== '')
         .map(([n3, acts]) => ({ n3, acts }))
-      // Activities without n3 are merged into a pseudo n3 group with no header
       const noN3 = n3Map.get('') ?? []
-      if (noN3.length > 0) {
-        n3groups.push({ n3: '', acts: noN3 })
-      }
+      if (noN3.length > 0) n3groups.push({ n3: '', acts: noN3 })
       return { n2, n3groups, allActs: n2Acts }
     })
     return { n1, n2groups, allActs }
@@ -170,7 +161,6 @@ function buildProgramTree(activities: Activity[], programs: Program[]): N0Group[
       groups.push({ progId: p.id, progName: p.name, n1groups: buildTree(acts), allActs: acts })
     }
   }
-  // Activities with no matching program_id
   const unmatched = progMap.get('')
   if (unmatched?.length) {
     groups.push({ progId: '', progName: '—', n1groups: buildTree(unmatched), allActs: unmatched })
@@ -179,40 +169,66 @@ function buildProgramTree(activities: Activity[], programs: Program[]): N0Group[
 }
 
 // ── Sub-components ─────────────────────────────────────────────
-function DualBar({ exec, execObj, statusCls }: { exec: number; execObj: number; statusCls: StatusCls }) {
+function DualBar({ exec, execObj }: { exec: number; execObj: number }) {
+  const state = computeRowState(exec, execObj)
+  const fillColor = STATE_FILL[state]
   const r = Math.min(100, Math.max(0, exec))
   const p = Math.min(100, Math.max(0, execObj))
-  const barClass = statusCls === 'em_atraso' ? 'red' : statusCls === 'concluida' ? 'green' : ''
   return (
     <div className="act-dualbar">
       <div className="act-dualbar-track">
         <div className="act-dualbar-prev" style={{ width: `${p}%` }} />
-        <div className={`act-dualbar-real ${barClass}`} style={{ width: `${r}%` }} />
+        <div className="act-dualbar-real" style={{ width: `${r}%`, background: fillColor }} />
       </div>
-      <span className="act-dualbar-label">
-        {Math.round(r)}%<span>/{Math.round(p)}%</span>
+      <span className="act-dualbar-label" style={{ color: fillColor, fontWeight: 600 }}>
+        {Math.round(r)}%<span style={{ color: 'var(--stratgos-ink-300)', fontWeight: 400 }}>/{Math.round(p)}%</span>
       </span>
     </div>
   )
 }
 
-function DeadlineCell({ date }: { date: string | null }) {
-  if (!date) return <td className="act-td-c act-deadline">—</td>
-  const d = new Date(date)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const late = d < today
-  const parts = date.split('-')
-  const label = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : date
-  return <td className={`act-td-c act-deadline${late ? ' late' : ''}`}>{label}</td>
+function DeadlineCell({ bf, rf }: { bf: string | null; rf?: string | null }) {
+  const fmt = (d: string) => {
+    const parts = d.split('-')
+    return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : d
+  }
+  if (!bf && !rf) return <td className="act-td-c act-deadline">—</td>
+  if (rf) {
+    return (
+      <td className="act-td-c act-deadline">
+        <div className={`act-prazo-bf${bf && bf < TODAY ? ' late' : ''}`}>{bf ? fmt(bf) : '—'}</div>
+        <div className={`act-prazo-rf${rf < TODAY ? ' late' : ''}`}>{fmt(rf)}</div>
+      </td>
+    )
+  }
+  return <td className={`act-td-c act-deadline${bf && bf < TODAY ? ' late' : ''}`}>{bf ? fmt(bf) : '—'}</td>
 }
 
-function CountsCell({ concluidas, em_dia, em_atraso }: { concluidas: number; em_dia: number; em_atraso: number }) {
+function CdaCell({ concluidas, em_dia, em_atraso }: { concluidas: number; em_dia: number; em_atraso: number }) {
   return (
-    <td className="act-td-c act-counts">
-      <span className="act-count-c">{concluidas}C</span>{' '}
-      <span className="act-count-d">{em_dia}D</span>{' '}
-      <span className="act-count-a">{em_atraso}A</span>
+    <td className="act-td-c act-cda">
+      <span className="act-cda-item act-cda-c">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="5.5" cy="5.5" r="4.5"/>
+          <path d="M3.5 5.5L5 7l3-3"/>
+        </svg>
+        {concluidas}
+      </span>
+      <span className="act-cda-item act-cda-d">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="5.5" cy="5.5" r="4.5"/>
+          <path d="M5.5 3.5v2.2l1.5 1"/>
+        </svg>
+        {em_dia}
+      </span>
+      <span className="act-cda-item act-cda-a">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5.5 1.5L10 9.5H1z"/>
+          <line x1="5.5" y1="4.5" x2="5.5" y2="6.5"/>
+          <circle cx="5.5" cy="7.8" r="0.4" fill="currentColor" stroke="none"/>
+        </svg>
+        {em_atraso}
+      </span>
     </td>
   )
 }
@@ -235,13 +251,6 @@ export default function Actividades() {
   )
   const summary  = useMemo(() => computeStats(filtered.filter(a => a.level === 4)), [filtered])
 
-  const [delayThreshold, setDelayThreshold] = useState(20)
-  useEffect(() => {
-    supabase.from('app_config').select('data').eq('config_key', 'status_delay_threshold').single()
-      .then(({ data }) => { if (data) setDelayThreshold(parseInt(data.data) || 20) })
-  }, [])
-
-  // Collapse state: Set of node keys that are collapsed
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   const toggle = useCallback((key: string) => {
@@ -281,15 +290,13 @@ export default function Actividades() {
 
   const rows: React.ReactNode[] = []
 
-  // Inner helper — pushes N1/N2/N3/N4 rows into `rows`.
-  // n1Indent: paddingLeft for N1; subsequent levels add 16px each.
   const renderN1Rows = (n1groups: N1Group[], n1Indent: number) => {
     for (const n1g of n1groups) {
-      const n1key   = `n1:${n1g.n1}`
-      const n1col   = collapsed.has(n1key)
+      const n1key    = `n1:${n1g.n1}`
+      const n1col    = collapsed.has(n1key)
       const n1leaves = n1g.allActs.filter(a => a.level === 4)
       const n1stats  = computeStats(n1leaves)
-      const n1st     = toStatusCls(rollupStatus(n1leaves, TODAY, delayThreshold))
+      const n1state  = computeRowState(n1stats.exec, n1stats.exec_obj)
 
       rows.push(
         <tr key={n1key} className="act-row-n1">
@@ -302,22 +309,22 @@ export default function Actividades() {
             </div>
           </td>
           <td className="act-td-c">
-            <Badge variant={BADGE_VARIANT[n1st]}>{STATUS_LABEL[n1st]}</Badge>
+            <span className={`status-pill ${STATE_PILL_CLASS[n1state]}`}>{STATE_LABEL[n1state]}</span>
           </td>
-          <CountsCell {...n1stats} />
-          <td className="act-td-c"><DualBar exec={n1stats.exec} execObj={n1stats.exec_obj} statusCls={n1st} /></td>
-          <DeadlineCell date={n1stats.latest_end} />
+          <CdaCell {...n1stats} />
+          <td className="act-td-c"><DualBar exec={n1stats.exec} execObj={n1stats.exec_obj} /></td>
+          <DeadlineCell bf={n1stats.latest_end} />
         </tr>
       )
 
       if (n1col) continue
 
       for (const n2g of n1g.n2groups) {
-        const n2key   = `n2:${n1g.n1}:${n2g.n2}`
-        const n2col   = collapsed.has(n2key)
+        const n2key    = `n2:${n1g.n1}:${n2g.n2}`
+        const n2col    = collapsed.has(n2key)
         const n2leaves = n2g.allActs.filter(a => a.level === 4)
         const n2stats  = computeStats(n2leaves)
-        const n2st     = toStatusCls(rollupStatus(n2leaves, TODAY, delayThreshold))
+        const n2state  = computeRowState(n2stats.exec, n2stats.exec_obj)
 
         rows.push(
           <tr key={n2key} className="act-row-n2">
@@ -330,22 +337,21 @@ export default function Actividades() {
               </div>
             </td>
             <td className="act-td-c">
-              <Badge variant={BADGE_VARIANT[n2st]}>{STATUS_LABEL[n2st]}</Badge>
+              <span className={`status-pill ${STATE_PILL_CLASS[n2state]}`}>{STATE_LABEL[n2state]}</span>
             </td>
-            <CountsCell {...n2stats} />
-            <td className="act-td-c"><DualBar exec={n2stats.exec} execObj={n2stats.exec_obj} statusCls={n2st} /></td>
-            <DeadlineCell date={n2stats.latest_end} />
+            <CdaCell {...n2stats} />
+            <td className="act-td-c"><DualBar exec={n2stats.exec} execObj={n2stats.exec_obj} /></td>
+            <DeadlineCell bf={n2stats.latest_end} />
           </tr>
         )
 
         if (n2col) continue
 
         for (const n3g of n2g.n3groups) {
-          // No n3 key — render all activities directly (no header)
           if (!n3g.n3) {
             for (const a of n3g.acts) {
-              const ast  = actStatus(a)
-              const aend = a.rf ?? a.bf ?? a.finish
+              const pctPrev = leafPctPrev(a, TODAY)
+              const ast     = computeRowState(a.pct, pctPrev)
               rows.push(
                 <tr key={a.id} className="act-row-n4">
                   <td>
@@ -354,26 +360,24 @@ export default function Actividades() {
                     </div>
                   </td>
                   <td className="act-td-c">
-                    <Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge>
+                    <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
                   </td>
                   <td className="act-td-c" />
-                  <td className="act-td-c"><DualBar exec={a.pct} execObj={a.pct_prev} statusCls={ast} /></td>
-                  <DeadlineCell date={aend ?? null} />
+                  <td className="act-td-c"><DualBar exec={a.pct} execObj={pctPrev} /></td>
+                  <DeadlineCell bf={a.bf ?? a.finish ?? null} rf={a.rf ?? null} />
                 </tr>
               )
             }
             continue
           }
 
-          // Non-empty n3: check for real children (exclude the level-3 representative)
           const n3ChildLeaves = n3g.acts.filter(a => a.level !== 3)
           const n3HasChildren = n3ChildLeaves.length > 0
 
           if (!n3HasChildren) {
-            // Macroactividade with no sub-activities — render as single leaf row, no header
             for (const a of n3g.acts) {
-              const ast  = actStatus(a)
-              const aend = a.rf ?? a.bf ?? a.finish
+              const pctPrev = leafPctPrev(a, TODAY)
+              const ast     = computeRowState(a.pct, pctPrev)
               rows.push(
                 <tr key={a.id} className="act-row-n4">
                   <td>
@@ -382,23 +386,22 @@ export default function Actividades() {
                     </div>
                   </td>
                   <td className="act-td-c">
-                    <Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge>
+                    <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
                   </td>
                   <td className="act-td-c" />
-                  <td className="act-td-c"><DualBar exec={a.pct} execObj={a.pct_prev} statusCls={ast} /></td>
-                  <DeadlineCell date={aend ?? null} />
+                  <td className="act-td-c"><DualBar exec={a.pct} execObj={pctPrev} /></td>
+                  <DeadlineCell bf={a.bf ?? a.finish ?? null} rf={a.rf ?? null} />
                 </tr>
               )
             }
             continue
           }
 
-          // Has real children — render N3 header row
-          const n3key   = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
-          const n3col   = collapsed.has(n3key)
+          const n3key    = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
+          const n3col    = collapsed.has(n3key)
           const n3leaves = n3g.acts.filter(a => a.level === 4)
           const n3stats  = computeStats(n3leaves)
-          const n3st     = toStatusCls(rollupStatus(n3leaves, TODAY, delayThreshold))
+          const n3state  = computeRowState(n3stats.exec, n3stats.exec_obj)
 
           rows.push(
             <tr key={n3key} className="act-row-n3">
@@ -411,20 +414,19 @@ export default function Actividades() {
                 </div>
               </td>
               <td className="act-td-c">
-                <Badge variant={BADGE_VARIANT[n3st]}>{STATUS_LABEL[n3st]}</Badge>
+                <span className={`status-pill ${STATE_PILL_CLASS[n3state]}`}>{STATE_LABEL[n3state]}</span>
               </td>
-              <CountsCell {...n3stats} />
-              <td className="act-td-c"><DualBar exec={n3stats.exec} execObj={n3stats.exec_obj} statusCls={n3st} /></td>
-              <DeadlineCell date={n3stats.latest_end} />
+              <CdaCell {...n3stats} />
+              <td className="act-td-c"><DualBar exec={n3stats.exec} execObj={n3stats.exec_obj} /></td>
+              <DeadlineCell bf={n3stats.latest_end} />
             </tr>
           )
 
           if (n3col) continue
 
-          // Render only non-representative children (representative excluded to avoid duplicate)
           for (const a of n3ChildLeaves) {
-            const ast  = actStatus(a)
-            const aend = a.rf ?? a.bf ?? a.finish
+            const pctPrev = leafPctPrev(a, TODAY)
+            const ast     = computeRowState(a.pct, pctPrev)
             rows.push(
               <tr key={a.id} className="act-row-n4">
                 <td>
@@ -433,11 +435,11 @@ export default function Actividades() {
                   </div>
                 </td>
                 <td className="act-td-c">
-                  <Badge variant={BADGE_VARIANT[ast]}>{STATUS_LABEL[ast]}</Badge>
+                  <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
                 </td>
                 <td className="act-td-c" />
-                <td className="act-td-c"><DualBar exec={a.pct} execObj={a.pct_prev} statusCls={ast} /></td>
-                <DeadlineCell date={aend ?? null} />
+                <td className="act-td-c"><DualBar exec={a.pct} execObj={pctPrev} /></td>
+                <DeadlineCell bf={a.bf ?? a.finish ?? null} rf={a.rf ?? null} />
               </tr>
             )
           }
@@ -447,13 +449,12 @@ export default function Actividades() {
   }
 
   if (n0tree) {
-    // Multi-program: N0 group header + indented N1 subtree
     for (const n0g of n0tree) {
-      const n0key   = `n0:${n0g.progId}`
-      const n0col   = collapsed.has(n0key)
+      const n0key    = `n0:${n0g.progId}`
+      const n0col    = collapsed.has(n0key)
       const n0leaves = n0g.allActs.filter(a => a.level === 4)
       const n0stats  = computeStats(n0leaves)
-      const n0st     = toStatusCls(rollupStatus(n0leaves, TODAY, delayThreshold))
+      const n0state  = computeRowState(n0stats.exec, n0stats.exec_obj)
 
       rows.push(
         <tr key={n0key} className="act-row-n0">
@@ -466,18 +467,17 @@ export default function Actividades() {
             </div>
           </td>
           <td className="act-td-c">
-            <Badge variant={BADGE_VARIANT[n0st]}>{STATUS_LABEL[n0st]}</Badge>
+            <span className={`status-pill ${STATE_PILL_CLASS[n0state]}`}>{STATE_LABEL[n0state]}</span>
           </td>
-          <CountsCell {...n0stats} />
-          <td className="act-td-c"><DualBar exec={n0stats.exec} execObj={n0stats.exec_obj} statusCls={n0st} /></td>
-          <DeadlineCell date={n0stats.latest_end} />
+          <CdaCell {...n0stats} />
+          <td className="act-td-c"><DualBar exec={n0stats.exec} execObj={n0stats.exec_obj} /></td>
+          <DeadlineCell bf={n0stats.latest_end} />
         </tr>
       )
 
       if (!n0col) renderN1Rows(n0g.n1groups, 16)
     }
   } else {
-    // Single program (or no programs): existing behaviour, no N0 header
     renderN1Rows(tree, 4)
   }
 
@@ -531,7 +531,7 @@ export default function Actividades() {
             <table className="act-table" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 <col />
-                <col style={{ width: '90px' }} />
+                <col style={{ width: '110px' }} />
                 <col style={{ width: '100px' }} />
                 <col style={{ width: '180px' }} />
                 <col style={{ width: '110px' }} />
