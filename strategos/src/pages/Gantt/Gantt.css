@@ -193,7 +193,7 @@
   .gantt-row-n4:hover .gantt-tl-td,
   .gantt-row-n0:hover .gantt-filler-td, .gantt-row-n1:hover .gantt-filler-td,
   .gantt-row-n2:hover .gantt-filler-td, .gantt-row-n3:hover .gantt-filler-td,
-  .gantt-row-n4:hover .gantt-filler-td { background: var(--stratgos-ink-100); }
+  .gantt-row-n4:hover .gantt-filler-td { background: var(--bg3); }
 
   /* ── Name cell inner layout ─────────────────────────────────── */
   .gantt-name-cell {

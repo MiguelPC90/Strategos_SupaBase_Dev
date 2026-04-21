@@ -159,7 +159,7 @@
 
   /* Row level backgrounds */
   .act-row-n0 td { background: var(--stratgos-parchment-deep); }
-  .act-row-n0:hover td { background: var(--stratgos-ink-100); }
+  .act-row-n0:hover td { background: var(--bg3); }
   .act-row-n1 td { background: var(--stratgos-parchment); }
   .act-row-n1:hover td { background: var(--bg3); }
   .act-row-n2:hover td { background: var(--bg3); }
