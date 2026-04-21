@@ -1,52 +1,54 @@
 @layer components {
-  /* ── Toolbar ────────────────────────────────────────────────── */
+  /* ── Toolbar (single row) ───────────────────────────────────── */
   .gantt-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
     padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
     flex-wrap: wrap;
   }
 
   .gantt-toolbar-left {
     flex: 1;
-    min-width: 240px;
+    min-width: 200px;
   }
 
   .gantt-toolbar-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
   }
 
-  /* ── Legend row ─────────────────────────────────────────────── */
-  .gantt-legend-row {
-    padding: 4px 16px 10px;
-    border-bottom: 1px solid var(--border);
+  .gantt-toolbar-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--stratgos-ink-100);
+    flex-shrink: 0;
   }
 
   .gantt-legend {
     display: flex;
-    gap: 12px;
     align-items: center;
-    flex-wrap: wrap;
+    gap: 12px;
   }
   .gantt-legend-item {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     font-size: 11px;
-    color: var(--text2);
+    color: var(--stratgos-ink-500);
+    white-space: nowrap;
   }
   .gantt-legend-swatch {
-    width: 22px;
+    width: 12px;
     height: 8px;
     border-radius: 2px;
     flex-shrink: 0;
   }
-  .gantt-swatch-baseline { background: rgba(0,46,94,0.18); border: 1px solid rgba(0,46,94,0.35); }
+  .gantt-swatch-baseline { background: var(--stratgos-ink-100); border: 1px solid var(--stratgos-ink-300); }
 
   /* Row toggle button (▶/▼) */
   .gantt-toggle {

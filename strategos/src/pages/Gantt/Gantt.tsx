@@ -942,25 +942,24 @@ export default function Gantt() {
                 </svg>
               </button>
             </div>
-          </div>
-        </div>
-        <div className="gantt-legend-row">
-          <div className="gantt-legend">
-            <span className="gantt-legend-item">
-              <span className="gantt-legend-swatch gantt-swatch-baseline" />Baseline
-            </span>
-            <span className="gantt-legend-item">
-              <span className="gantt-legend-swatch" style={{ background: 'var(--status-ontrack)' }} />Em dia
-            </span>
-            <span className="gantt-legend-item">
-              <span className="gantt-legend-swatch" style={{ background: 'var(--status-risk)' }} />Em risco
-            </span>
-            <span className="gantt-legend-item">
-              <span className="gantt-legend-swatch" style={{ background: 'var(--status-late)' }} />Em atraso
-            </span>
-            <span className="gantt-legend-item">
-              <span className="gantt-legend-swatch" style={{ background: 'var(--status-done)' }} />Concluída
-            </span>
+            <div className="gantt-toolbar-divider" />
+            <div className="gantt-legend">
+              <span className="gantt-legend-item">
+                <span className="gantt-legend-swatch gantt-swatch-baseline" />Baseline
+              </span>
+              <span className="gantt-legend-item">
+                <span className="gantt-legend-swatch" style={{ background: 'var(--status-ontrack)' }} />Em dia
+              </span>
+              <span className="gantt-legend-item">
+                <span className="gantt-legend-swatch" style={{ background: 'var(--status-risk)' }} />Em risco
+              </span>
+              <span className="gantt-legend-item">
+                <span className="gantt-legend-swatch" style={{ background: 'var(--status-late)' }} />Em atraso
+              </span>
+              <span className="gantt-legend-item">
+                <span className="gantt-legend-swatch" style={{ background: 'var(--status-done)' }} />Concluída
+              </span>
+            </div>
           </div>
         </div>
 
