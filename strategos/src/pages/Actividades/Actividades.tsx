@@ -662,7 +662,7 @@ export default function Actividades() {
             description="Selecciona um programa nos filtros para visualizar as actividades."
           />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="act-scroll-box">
             <table className="act-table" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 <col />

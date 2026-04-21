@@ -127,6 +127,13 @@
   .act-collapse-btn + .act-collapse-btn { border-left: 1px solid var(--border2); }
   .act-collapse-btn:hover { background: var(--bg3); color: var(--navy); }
 
+  /* Scroll box — explicit height makes position:sticky on th work */
+  .act-scroll-box {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: calc(100vh - var(--topbar-h) - 320px);
+  }
+
   /* Hierarchy table */
   .act-table {
     width: 100%;
@@ -145,8 +152,9 @@
     white-space: nowrap;
     background: var(--stratgos-cream);
     position: sticky;
-    top: var(--topbar-h); /* topbar is fixed at 52px; stick below it so header isn't hidden behind topbar */
-    z-index: 1;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 0 var(--stratgos-ink-100);
   }
   .act-table th.act-th-c { text-align: center; }
   .act-table td {
