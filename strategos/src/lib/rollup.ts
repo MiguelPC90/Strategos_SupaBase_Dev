@@ -90,6 +90,24 @@ export function rollupStatus(leaves: Activity[], today: string, threshold = THRE
   return 'Em dia'
 }
 
+export type RowState = 'Concluída' | 'Em dia' | 'Em risco' | 'Em atraso'
+
+/**
+ * 4-state status from already-computed actual vs target percentages.
+ * Uses THRESHOLD_AGGREGATES: within threshold → 'Em risco', beyond → 'Em atraso'.
+ */
+export function computeRowState(actual: number, target: number): RowState {
+  if (actual >= 100) return 'Concluída'
+  const delta = target - actual
+  if (delta <= 0) return 'Em dia'
+  if (delta <= THRESHOLD_AGGREGATES) return 'Em risco'
+  return 'Em atraso'
+}
+
+export function getThresholdAggregates(): number {
+  return THRESHOLD_AGGREGATES
+}
+
 /** Earliest bs / latest bf across activities. Pass N4 leaves only. */
 export function rollupDateRange(activities: Activity[]): { bs: string | null; bf: string | null } {
   let minBs: string | null = null

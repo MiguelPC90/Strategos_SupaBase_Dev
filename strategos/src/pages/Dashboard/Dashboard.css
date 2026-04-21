@@ -52,12 +52,17 @@
   }
 
   /* ── Table row hierarchy ─────────────────────────────────── */
-  .dash-prog-hdr td {
-    background: rgba(0, 46, 94, 0.07);  /* N0 — Programa */
-  }
+  .detail-row-0 td { background: var(--stratgos-parchment-deep); }
+  .detail-row-1 td { background: var(--stratgos-parchment); }
+  .detail-row-2 td { background: transparent; }
 
-  .dash-n1-row td {
-    background: #f0f1f2;                /* N1 — Eixo */
+  /* Footer (TOTAL) row overrides Table's default bg with parchment-deep */
+  .detail-table .tbl-footer-row td {
+    background: var(--stratgos-parchment-deep);
+    border-top: 2px solid var(--stratgos-ink-100);
+  }
+  .detail-table .tbl-footer-row:hover td {
+    background: var(--stratgos-parchment-deep);
   }
 
   /* ── Toggle chips ────────────────────────────────────────── */
@@ -105,11 +110,8 @@
   .dev-bar-fill {
     height: 100%;
     border-radius: 4px;
-    transition: width 200ms ease;
+    transition: width 200ms ease, background 200ms ease;
   }
-
-  .dev-bar-fill.on-target  { background: var(--stratgos-moss); opacity: 0.85; }
-  .dev-bar-fill.off-target { background: var(--status-late); }
 
   .dev-bar-target-marker {
     position: absolute;
@@ -128,8 +130,6 @@
     white-space: nowrap;
   }
 
-  .dev-val-ontarget  { color: var(--stratgos-ink-900); font-weight: 600; }
-  .dev-val-offtarget { color: var(--status-late);      font-weight: 600; }
-  .dev-val-sep       { color: var(--stratgos-ink-300); }
-  .dev-val-target    { color: var(--stratgos-ink-500); font-size: 10px; }
+  .dev-val-sep    { color: var(--stratgos-ink-300); }
+  .dev-val-target { color: var(--stratgos-ink-500); font-size: 10px; }
 }

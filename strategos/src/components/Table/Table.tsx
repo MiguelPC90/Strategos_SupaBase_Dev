@@ -26,29 +26,40 @@ interface TableProps {
   onRowClick?: (row: Record<string, unknown>) => void
   /** Optional extra CSS class(es) applied per data row. */
   rowClassName?: (row: Record<string, unknown>) => string | undefined
+  /** When provided, Table delegates sorting to the caller (rows rendered as-is). */
+  onSortChange?: (key: string, dir: 'asc' | 'desc') => void
+  externalSortKey?: string | null
+  externalSortDir?: 'asc' | 'desc'
 }
 
-export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dados', layout = 'auto', footerRow, onRowClick, rowClassName }: TableProps) {
-  const [sortKey, setSortKey] = useState<string | null>(null)
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dados', layout = 'auto', footerRow, onRowClick, rowClassName, onSortChange, externalSortKey, externalSortDir }: TableProps) {
+  const [intSortKey, setIntSortKey] = useState<string | null>(null)
+  const [intSortDir, setIntSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const isExternal = !!onSortChange
+  const sortKey = isExternal ? (externalSortKey ?? null) : intSortKey
+  const sortDir = isExternal ? (externalSortDir ?? 'asc') : intSortDir
 
   function handleSort(key: string) {
-    if (sortKey === key) {
-      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+    if (isExternal) {
+      const newDir = sortKey === key && sortDir === 'asc' ? 'desc' : 'asc'
+      onSortChange!(key, newDir)
     } else {
-      setSortKey(key)
-      setSortDir('asc')
+      if (intSortKey === key) setIntSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+      else { setIntSortKey(key); setIntSortDir('asc') }
     }
   }
 
-  const sorted = sortKey
-    ? [...rows].sort((a, b) => {
-        const av = a[sortKey] ?? ''
-        const bv = b[sortKey] ?? ''
-        const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true })
-        return sortDir === 'asc' ? cmp : -cmp
-      })
-    : rows
+  const sorted = isExternal
+    ? rows
+    : sortKey
+      ? [...rows].sort((a, b) => {
+          const av = a[sortKey] ?? ''
+          const bv = b[sortKey] ?? ''
+          const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true })
+          return sortDir === 'asc' ? cmp : -cmp
+        })
+      : rows
 
   return (
     <div className="tbl-wrap">

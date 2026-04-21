@@ -164,15 +164,21 @@
   }
   .styled-select-sm:hover    { border-color: var(--navy); }
   .styled-select-sm:focus    { outline: none; border-color: var(--navy); box-shadow: 0 0 0 2px rgba(0,46,94,0.1); }
-  /* ── Shared status pill (invoice, contract badges) ─────────── */
+  /* ── Shared status pill (invoice, contract badges, detail table) */
   .status-pill {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     min-width: 88px;
-    padding: 3px 10px;
-    border-radius: var(--r);
+    padding: 4px 10px;
+    border-radius: 12px;
     font-size: 11px;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
+  .status-pill.ontrack { background: rgba(74, 124, 89, 0.12);  color: var(--status-ontrack); }
+  .status-pill.late    { background: rgba(184, 74, 63, 0.12);  color: var(--status-late); }
+  .status-pill.done    { background: rgba(47, 95, 143, 0.12);  color: var(--status-done); }
+  .status-pill.risk    { background: rgba(200, 154, 60, 0.12); color: var(--status-risk); }
 }

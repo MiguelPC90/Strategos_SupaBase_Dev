@@ -19,7 +19,7 @@ import { usePlanos } from '../../hooks/usePlanos'
 import { useSnapshots } from '../../hooks/useSnapshots'
 import { useFilters } from '../../context/FilterContext'
 import type { Activity, Program, Eixo, Plano } from '../../types/index'
-import { leafPctPrev, leafStatus } from '../../lib/rollup'
+import { leafPctPrev, leafStatus, computeRowState, type RowState } from '../../lib/rollup'
 import { colors, statusColor } from '../../lib/tokens'
 
 const TODAY = new Date().toISOString().slice(0, 10)
@@ -171,13 +171,21 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 }
 
 // ── DeviationBar ───────────────────────────────────────────────
+const STATE_FILL: Record<RowState, string> = {
+  'Concluída': 'var(--status-done)',
+  'Em dia':    'var(--stratgos-moss)',
+  'Em risco':  'var(--status-risk)',
+  'Em atraso': 'var(--status-late)',
+}
+
 interface DeviationBarProps {
   actual: number
   target: number
 }
 
 function DeviationBar({ actual, target }: DeviationBarProps) {
-  const onTarget      = actual >= target
+  const state         = computeRowState(actual, target)
+  const fillColor     = STATE_FILL[state]
   const displayActual = Math.min(100, Math.max(0, actual))
   const displayTarget = Math.min(100, Math.max(0, target))
   return (
@@ -187,12 +195,12 @@ function DeviationBar({ actual, target }: DeviationBarProps) {
       aria-valuenow={actual}
       aria-valuemin={0}
       aria-valuemax={Math.max(100, target)}
-      aria-label={`${actual.toFixed(1)}% de ${target.toFixed(1)}% (objectivo)`}
+      aria-label={`${actual.toFixed(1)}% de ${target.toFixed(1)}% (${state})`}
     >
       <div className="dev-bar-track">
         <div
-          className={`dev-bar-fill ${onTarget ? 'on-target' : 'off-target'}`}
-          style={{ width: `${displayActual}%` }}
+          className="dev-bar-fill"
+          style={{ width: `${displayActual}%`, background: fillColor }}
         />
         <div
           className="dev-bar-target-marker"
@@ -200,7 +208,7 @@ function DeviationBar({ actual, target }: DeviationBarProps) {
         />
       </div>
       <div className="dev-bar-values">
-        <span className={onTarget ? 'dev-val-ontarget' : 'dev-val-offtarget'}>
+        <span style={{ color: fillColor, fontWeight: 600 }}>
           {actual.toFixed(1)}%
         </span>
         <span className="dev-val-sep"> / </span>
@@ -214,15 +222,18 @@ function buildRow(nome: string, m: Metrics, isParent: boolean): Record<string, u
   const concGeral = safeDiv(m.concluidas, m.total) * 100
   const concData  = safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100
   const cgObj     = safeDiv(m.concluidas + m.em_atraso, m.total) * 100
+  const grauExec  = m.total > 0 ? m.grau_exec : null
+  const execObj   = m.total > 0 ? m.exec_obj  : null
   return {
     _isParent: isParent,
     nome,
+    _estado: grauExec !== null && execObj !== null ? computeRowState(grauExec, execObj) : null,
     total:      m.total,
     concluidas: m.concluidas,
     em_dia:     m.em_dia,
     em_atraso:  m.em_atraso,
-    grau_exec:  m.total > 0 ? m.grau_exec : null,
-    exec_obj:   m.total > 0 ? m.exec_obj  : null,
+    grau_exec:  grauExec,
+    exec_obj:   execObj,
     conc_geral: m.total > 0 ? concGeral   : null,
     cg_obj:     m.total > 0 ? cgObj       : null,
     conc_data:  m.concluidas + m.em_atraso > 0 ? concData : null,
@@ -230,29 +241,110 @@ function buildRow(nome: string, m: Metrics, isParent: boolean): Record<string, u
   }
 }
 
+// ── Row level helpers ─────────────────────────────────────────
+function getLevel(row: Record<string, unknown>): 0 | 1 | 2 {
+  if (row._n2) return 2
+  if (row._n1 && !row._isProgHeader) return 1
+  return 0
+}
+
+type N1Group = { row: Record<string, unknown>; children: Record<string, unknown>[] }
+type N0Group = { row: Record<string, unknown>; children: N1Group[] }
+
+function sortHierarchically(
+  rows: Record<string, unknown>[],
+  key: string,
+  dir: 'asc' | 'desc',
+): Record<string, unknown>[] {
+  function cmp(a: Record<string, unknown>, b: Record<string, unknown>): number {
+    const av = a[key]
+    const bv = b[key]
+    if (av == null && bv == null) return 0
+    if (av == null) return dir === 'asc' ? -1 : 1
+    if (bv == null) return dir === 'asc' ? 1 : -1
+    const num = typeof av === 'number' && typeof bv === 'number'
+      ? av - bv
+      : String(av).localeCompare(String(bv), undefined, { numeric: true })
+    return dir === 'asc' ? num : -num
+  }
+
+  const groups: N0Group[] = []
+  for (const row of rows) {
+    const level = getLevel(row)
+    if (level === 0) {
+      groups.push({ row, children: [] })
+    } else if (level === 1) {
+      const parent = groups[groups.length - 1]
+      if (parent) parent.children.push({ row, children: [] })
+    } else {
+      const parent = groups[groups.length - 1]
+      if (parent) {
+        const n1 = parent.children[parent.children.length - 1]
+        if (n1) n1.children.push(row)
+      }
+    }
+  }
+
+  groups.sort((a, b) => cmp(a.row, b.row))
+  for (const g of groups) {
+    g.children.sort((a, b) => cmp(a.row, b.row))
+    for (const n1g of g.children) {
+      n1g.children.sort(cmp)
+    }
+  }
+
+  const result: Record<string, unknown>[] = []
+  for (const g of groups) {
+    result.push(g.row)
+    for (const n1g of g.children) {
+      result.push(n1g.row)
+      result.push(...n1g.children)
+    }
+  }
+  return result
+}
+
+const ESTADO_CLASS: Record<string, string> = {
+  'Concluída': 'done',
+  'Em dia':    'ontrack',
+  'Em risco':  'risk',
+  'Em atraso': 'late',
+}
+
 // ── Table columns ─────────────────────────────────────────────
 const DETAIL_COLS: Column[] = [
   {
     key: 'nome',
     label: 'Designação',
-    sortable: false,
-    minWidth: '250px',
+    sortable: true,
+    minWidth: '220px',
     render: (_v, row) => {
-      const isN0     = Boolean(row._isProgHeader) || (!!row._prog_id && !row._n1 && !row._isTotals)
-      const isN1     = !!row._n1 && !row._n2 && !row._isProgHeader
-      const isN2     = !!row._n2
+      const level    = getLevel(row)
       const isTotals = Boolean(row._isTotals)
-      const paddingLeft = isN1 ? '16px' : isN2 ? '28px' : undefined
+      const paddingLeft = level === 1 ? '20px' : level === 2 ? '36px' : undefined
+      const fontWeight  = (level === 0 || isTotals) ? 700 : level === 1 ? 600 : 400
+      const color       = isTotals || level === 0
+        ? 'var(--stratgos-ink-900)'
+        : level === 1
+          ? 'var(--stratgos-ink-700)'
+          : 'var(--stratgos-ink-500)'
       return (
-        <span style={{
-          fontWeight:  (isN0 || isN1 || isTotals) ? 700 : 400,
-          fontSize:    isN0 ? 13.5 : 13,
-          color:       (isN0 || isTotals) ? 'var(--navy)' : 'var(--text)',
-          paddingLeft,
-        }}>
+        <span style={{ fontWeight, fontSize: level === 0 ? 13.5 : 13, color, paddingLeft }}>
           {String(row.nome ?? '')}
         </span>
       )
+    },
+  },
+  {
+    key: '_estado',
+    label: 'Estado',
+    sortable: true,
+    width: '108px',
+    render: (_v, row) => {
+      const state = row._estado as string | null
+      if (!state) return <span style={{ color: 'var(--text3)' }}>—</span>
+      const cls = ESTADO_CLASS[state] ?? ''
+      return <span className={`status-pill ${cls}`}>{state}</span>
     },
   },
   { key: 'total',      label: 'Total',         sortable: true, width: '70px'  },
@@ -538,6 +630,13 @@ interface DetailTableCardProps {
 
 function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onRowClick }: DetailTableCardProps) {
   const [tableChip, setTableChip] = useState<'programa' | 'eixo' | 'plano'>('eixo')
+  const [sortKey, setSortKey] = useState<string | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function handleSortChange(key: string, dir: 'asc' | 'desc') {
+    setSortKey(key)
+    setSortDir(dir)
+  }
 
   const tableRows = useMemo((): Record<string, unknown>[] => {
     const sortedProgs = programs.slice().sort((a, b) => a.sort_order - b.sort_order)
@@ -613,6 +712,11 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
     return rows
   }, [tableChip, leaves, programs, allEixos, allPlanos])
 
+  const sortedTableRows = useMemo(
+    () => sortKey ? sortHierarchically(tableRows, sortKey, sortDir) : tableRows,
+    [tableRows, sortKey, sortDir],
+  )
+
   const title = tableChip === 'programa' ? 'Detalhe por Programa'
     : tableChip === 'eixo' ? 'Detalhe por Eixo'
     : 'Detalhe por Plano de Acção'
@@ -639,19 +743,26 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
           Plano de Acção
         </button>
       </div>
-      <Table
-        columns={DETAIL_COLS}
-        rows={tableRows}
-        emptyMessage="Sem dados carregados"
-        layout="fixed"
-        footerRow={totalsRow}
-        onRowClick={onRowClick}
-        rowClassName={row => {
-          if (row._prog_id && !row._n1 && !row._isTotals) return 'dash-prog-hdr'
-          if (row._n1 && !row._n2) return 'dash-n1-row'
-          return undefined
-        }}
-      />
+      <div className="detail-table">
+        <Table
+          columns={DETAIL_COLS}
+          rows={sortedTableRows}
+          emptyMessage="Sem dados carregados"
+          layout="fixed"
+          footerRow={totalsRow}
+          onRowClick={onRowClick}
+          onSortChange={handleSortChange}
+          externalSortKey={sortKey}
+          externalSortDir={sortDir}
+          rowClassName={row => {
+            const level = getLevel(row)
+            if (level === 0) return 'detail-row-0'
+            if (level === 1) return 'detail-row-1'
+            if (level === 2) return 'detail-row-2'
+            return undefined
+          }}
+        />
+      </div>
     </Card>
   )
 }
@@ -771,21 +882,26 @@ export default function Dashboard() {
   }, [snapshots])
 
   // ── Totals row ───────────────────────────────────────────────
-  const totalsRow = useMemo((): Record<string, unknown> => ({
-    _isTotals: true,
-    nome:      'TOTAL',
-    total:      m.total,
-    concluidas: m.concluidas,
-    em_dia:     m.em_dia,
-    em_atraso:  m.em_atraso,
-    grau_exec:  m.total > 0 ? m.grau_exec : null,
-    exec_obj:   m.total > 0 ? m.exec_obj  : null,
-    conc_geral: m.total > 0 ? safeDiv(m.concluidas, m.total) * 100 : null,
-    cg_obj:     m.total > 0 ? safeDiv(m.concluidas + m.em_atraso, m.total) * 100 : null,
-    conc_data:  m.concluidas + m.em_atraso > 0
-      ? safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100 : null,
-    cd_obj:     100,
-  }), [m])
+  const totalsRow = useMemo((): Record<string, unknown> => {
+    const grauExec = m.total > 0 ? m.grau_exec : null
+    const execObj  = m.total > 0 ? m.exec_obj  : null
+    return {
+      _isTotals: true,
+      nome:      'TOTAL',
+      _estado:   grauExec !== null && execObj !== null ? computeRowState(grauExec, execObj) : null,
+      total:      m.total,
+      concluidas: m.concluidas,
+      em_dia:     m.em_dia,
+      em_atraso:  m.em_atraso,
+      grau_exec:  grauExec,
+      exec_obj:   execObj,
+      conc_geral: m.total > 0 ? safeDiv(m.concluidas, m.total) * 100 : null,
+      cg_obj:     m.total > 0 ? safeDiv(m.concluidas + m.em_atraso, m.total) * 100 : null,
+      conc_data:  m.concluidas + m.em_atraso > 0
+        ? safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100 : null,
+      cd_obj:     100,
+    }
+  }, [m])
 
   // ── Row click → navigate to Actividades with appropriate filter ─
   function handleRowClick(row: Record<string, unknown>) {
