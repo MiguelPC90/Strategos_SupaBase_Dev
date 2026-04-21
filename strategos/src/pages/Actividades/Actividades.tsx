@@ -206,22 +206,22 @@ function DeadlineCell({ bf, rf }: { bf: string | null; rf?: string | null }) {
 
 function CdaCell({ concluidas, em_dia, em_atraso }: { concluidas: number; em_dia: number; em_atraso: number }) {
   return (
-    <td className="act-td-c act-cda">
-      <span className="act-cda-item act-cda-c">
+    <td className="act-td-c act-cda" title={`Concluídas: ${concluidas} · Em dia: ${em_dia} · Em atraso: ${em_atraso}`}>
+      <span className="act-cda-item act-cda-c" title={`Concluídas: ${concluidas}`}>
         <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="5.5" cy="5.5" r="4.5"/>
           <path d="M3.5 5.5L5 7l3-3"/>
         </svg>
         {concluidas}
       </span>
-      <span className="act-cda-item act-cda-d">
+      <span className="act-cda-item act-cda-d" title={`Em dia: ${em_dia}`}>
         <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="5.5" cy="5.5" r="4.5"/>
           <path d="M5.5 3.5v2.2l1.5 1"/>
         </svg>
         {em_dia}
       </span>
-      <span className="act-cda-item act-cda-a">
+      <span className="act-cda-item act-cda-a" title={`Em atraso: ${em_atraso}`}>
         <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M5.5 1.5L10 9.5H1z"/>
           <line x1="5.5" y1="4.5" x2="5.5" y2="6.5"/>
@@ -540,7 +540,7 @@ export default function Actividades() {
                 <tr>
                   <th style={{ minWidth: 300 }}>Designação</th>
                   <th className="act-th-c">Estado</th>
-                  <th className="act-th-c">C / D / A</th>
+                  <th className="act-th-c">N.º Actividades</th>
                   <th className="act-th-c">Exec. real / prev.</th>
                   <th className="act-th-c">Prazo</th>
                 </tr>
