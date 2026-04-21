@@ -86,11 +86,6 @@
   .gantt-filler-td {
     border-bottom: 1px solid var(--border);
   }
-  .gantt-row-n1 .gantt-filler-td { background: var(--bg2); }
-  .gantt-row-n1:hover .gantt-filler-td,
-  .gantt-row-n2:hover .gantt-filler-td,
-  .gantt-row-n3:hover .gantt-filler-td,
-  .gantt-row-n4:hover .gantt-filler-td { background: var(--bg3); }
 
   /* ── Table ──────────────────────────────────────────────────── */
   .gantt-table {
@@ -181,32 +176,24 @@
 
   /* ── Row levels ─────────────────────────────────────────────── */
   /* N0 — Programa: warm parchment-deep on sticky + timeline + filler */
-  .gantt-row-n0 .gantt-sticky          { background: var(--stratgos-parchment-deep); }
-  .gantt-row-n0:hover .gantt-sticky    { background: var(--stratgos-ink-100); }
-  .gantt-row-n0 .gantt-tl-td          { background: var(--stratgos-parchment-deep); }
-  .gantt-row-n0:hover .gantt-tl-td    { background: var(--stratgos-ink-100); }
-  .gantt-row-n0 .gantt-filler-td      { background: var(--stratgos-parchment-deep); }
-  .gantt-row-n0:hover .gantt-filler-td{ background: var(--stratgos-ink-100); }
+  .gantt-row-n0 .gantt-sticky     { background: var(--stratgos-parchment-deep); }
+  .gantt-row-n0 .gantt-tl-td     { background: var(--stratgos-parchment-deep); }
+  .gantt-row-n0 .gantt-filler-td { background: var(--stratgos-parchment-deep); }
 
   /* N1 — Eixo: neutral parchment */
   .gantt-row-n1 .gantt-sticky { background: var(--stratgos-parchment); }
   .gantt-row-n1               { background: var(--stratgos-parchment); }
 
-  /* Hover for N1–N4 (sticky, timeline, filler) */
-  .gantt-row-n1:hover .gantt-sticky,
-  .gantt-row-n2:hover .gantt-sticky,
-  .gantt-row-n3:hover .gantt-sticky,
-  .gantt-row-n4:hover .gantt-sticky { background: var(--bg3); }
-
-  .gantt-row-n1:hover .gantt-tl-td,
-  .gantt-row-n2:hover .gantt-tl-td,
-  .gantt-row-n3:hover .gantt-tl-td,
-  .gantt-row-n4:hover .gantt-tl-td { background: var(--bg3); }
-
-  .gantt-row-n1:hover .gantt-filler-td,
-  .gantt-row-n2:hover .gantt-filler-td,
-  .gantt-row-n3:hover .gantt-filler-td,
-  .gantt-row-n4:hover .gantt-filler-td { background: var(--bg3); }
+  /* Unified hover — all levels → same ink-100 tone */
+  .gantt-row-n0:hover .gantt-sticky, .gantt-row-n1:hover .gantt-sticky,
+  .gantt-row-n2:hover .gantt-sticky, .gantt-row-n3:hover .gantt-sticky,
+  .gantt-row-n4:hover .gantt-sticky,
+  .gantt-row-n0:hover .gantt-tl-td,  .gantt-row-n1:hover .gantt-tl-td,
+  .gantt-row-n2:hover .gantt-tl-td,  .gantt-row-n3:hover .gantt-tl-td,
+  .gantt-row-n4:hover .gantt-tl-td,
+  .gantt-row-n0:hover .gantt-filler-td, .gantt-row-n1:hover .gantt-filler-td,
+  .gantt-row-n2:hover .gantt-filler-td, .gantt-row-n3:hover .gantt-filler-td,
+  .gantt-row-n4:hover .gantt-filler-td { background: var(--stratgos-ink-100); }
 
   /* ── Name cell inner layout ─────────────────────────────────── */
   .gantt-name-cell {
