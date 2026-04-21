@@ -67,7 +67,8 @@
   /* ── Scroll wrapper ─────────────────────────────────────────── */
   .gantt-scroll-wrap {
     overflow-x: auto;
-    overflow-y: visible;
+    overflow-y: auto; /* explicit auto — CSS spec promotes visible→auto when overflow-x is auto */
+    max-height: calc(100vh - var(--topbar-h) - 240px); /* constrained height makes this a real scroll box so position:sticky on <th> works */
     margin: 0 -16px -16px; /* bleed table to card edges for full-width fill */
   }
 

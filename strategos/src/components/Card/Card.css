@@ -3,7 +3,7 @@
     background: var(--stratgos-cream);
     border-radius: var(--rl);
     border: 1px solid var(--border);
-    overflow: hidden;
+    overflow: clip; /* clip preserves border-radius clipping but does NOT create a scroll container, so position:sticky inside works */
   }
   .card-header {
     padding: 10px 16px;

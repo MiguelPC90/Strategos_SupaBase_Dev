@@ -145,7 +145,7 @@
     white-space: nowrap;
     background: var(--stratgos-cream);
     position: sticky;
-    top: 0;
+    top: var(--topbar-h); /* topbar is fixed at 52px; stick below it so header isn't hidden behind topbar */
     z-index: 1;
   }
   .act-table th.act-th-c { text-align: center; }
