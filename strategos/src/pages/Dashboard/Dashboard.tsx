@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Spinner from '../../components/Spinner/Spinner'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, LabelList,
+  PieChart, Pie, Cell, LabelList, Customized,
   LineChart, Line,
 } from 'recharts'
 import Card from '../../components/Card/Card'
@@ -123,8 +123,12 @@ interface BarEntry {
   concluidas: number
   em_dia: number
   em_atraso: number
-  isSpacer?: boolean
+  isFirstOfProg?: boolean
   program?: string
+}
+
+function truncate(s: string, n: number): string {
+  return s.length <= n ? s : s.slice(0, n - 1) + '…'
 }
 
 function barCounts(acts: Activity[]): { concluidas: number; em_dia: number; em_atraso: number } {
@@ -154,7 +158,7 @@ interface ChartTooltipItem {
 }
 
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: ChartTooltipItem[]; label?: string }) {
-  if (!active || !payload?.length || payload[0]?.payload?.isSpacer) return null
+  if (!active || !payload?.length) return null
   return (
     <div style={{ background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 6, padding: '6px 10px', fontSize: 12 }}>
       <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
@@ -313,36 +317,36 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
     }
     const sortedProgs = programs.slice().sort((a, b) => a.sort_order - b.sort_order)
     const progsWithData = sortedProgs.filter(p => leaves.some(a => a.program_id === p.id))
-    // Tag each eixo entry with its program name when there are multiple programs,
-    // so EixoAxisTick can render a centered group label below the eixo names.
     const multiProg = progsWithData.length > 1
     const result: BarEntry[] = []
+    let lastProgId: string | null = null
     for (const prog of sortedProgs) {
       const progLeaves = leaves.filter(a => a.program_id === prog.id)
       if (progLeaves.length === 0) continue
-      // Insert a narrow spacer bar between program groups to create a visual separator
-      if (result.length > 0 && multiProg) {
-        result.push({ name: '', concluidas: 0, em_dia: 0, em_atraso: 0, isSpacer: true })
-      }
       const progName = multiProg ? prog.name : undefined
       const progEixos = allEixos
         .filter(e => e.program_id === prog.id)
         .sort((a, b) => a.sort_order - b.sort_order)
       const byEixo = groupBy(progLeaves, a => a.n1 || '(sem eixo)')
+      const pushEntry = (name: string, acts: Activity[]) => {
+        const isFirstOfProg = prog.id !== lastProgId
+        if (isFirstOfProg) lastProgId = prog.id
+        result.push({ name, ...barCounts(acts), program: progName, isFirstOfProg })
+      }
       if (progEixos.length > 0) {
         const seen = new Set<string>()
         for (const e of progEixos) {
           const acts = byEixo.get(e.name)
           if (!acts) continue
           seen.add(e.name)
-          result.push({ name: e.name, ...barCounts(acts), program: progName })
+          pushEntry(e.name, acts)
         }
         for (const [n1, acts] of byEixo) {
-          if (!seen.has(n1)) result.push({ name: n1, ...barCounts(acts), program: progName })
+          if (!seen.has(n1)) pushEntry(n1, acts)
         }
       } else {
         for (const [n1, acts] of byEixo) {
-          result.push({ name: n1, ...barCounts(acts), program: progName })
+          pushEntry(n1, acts)
         }
       }
     }
@@ -369,16 +373,12 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
     if (x === undefined || y === undefined || index === undefined) return null
     const data = chartDataRef.current
     const entry = data[index]
-    // Return nothing for spacer bars — they are invisible separators
-    if (!entry || entry.isSpacer) return null
+    if (!entry) return null
 
-    // Accumulate each bar's pixel x so we can compute a true group center later
     xCoordsRef.current[index] = x
 
-    // Build consecutive program groups, skipping spacer entries
     const groups: Array<{ progName: string; start: number; end: number }> = []
     for (let i = 0; i < data.length; i++) {
-      if (data[i].isSpacer) continue
       const pn = data[i].program ?? ''
       if (groups.length === 0 || groups[groups.length - 1].progName !== pn) {
         groups.push({ progName: pn, start: i, end: i })
@@ -388,9 +388,6 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
     }
     const group = groups.find(g => index >= g.start && index <= g.end)
 
-    // Render the program label on the LAST bar of the group so all earlier
-    // x positions are already stored in xCoordsRef and we can compute the
-    // true pixel centre of the group.
     const showProgLabel = index === group?.end && !!group?.progName
     let progLabelX = 0
     if (showProgLabel && group) {
@@ -399,16 +396,13 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
         const xi = xCoordsRef.current[i]
         if (xi !== undefined) xs.push(xi)
       }
-      if (xs.length > 0) {
-        const avgX = xs.reduce((s, v) => s + v, 0) / xs.length
-        progLabelX = avgX - x
-      }
+      if (xs.length > 0) progLabelX = xs.reduce((s, v) => s + v, 0) / xs.length - x
     }
 
     return (
       <g transform={`translate(${x},${y})`}>
-        <text x={0} y={0} dy={10} transform="rotate(-35)" textAnchor="end" fontSize={11} fill={colors.brand.ink500}>
-          {entry.name}
+        <text x={0} y={14} textAnchor="middle" fontSize={11} fill={colors.brand.ink500}>
+          {truncate(entry.name, 14)}
         </text>
         {showProgLabel && (
           <text x={progLabelX} y={30} textAnchor="middle" fontSize={11} fontWeight={600} fill={colors.brand.ink700}>
@@ -417,6 +411,30 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
         )}
       </g>
     )
+  }, [])
+
+  const SeparatorLines = useCallback((props: {
+    margin?: { top: number; right: number; bottom: number; left: number }
+    height?: number
+  }): React.ReactElement => {
+    const topY    = props.margin?.top    ?? 4
+    const bottomY = (props.height ?? 0) - (props.margin?.bottom ?? 52)
+    const data    = chartDataRef.current
+    const lines: React.ReactElement[] = []
+    for (let i = 1; i < data.length; i++) {
+      if (!data[i].isFirstOfProg) continue
+      const prevX = xCoordsRef.current[i - 1]
+      const currX = xCoordsRef.current[i]
+      if (prevX === undefined || currX === undefined) continue
+      const sepX = Math.round((prevX + currX) / 2)
+      lines.push(
+        <line key={`sep-${i}`}
+          x1={sepX} y1={topY} x2={sepX} y2={bottomY}
+          stroke="var(--stratgos-ink-100)" strokeWidth={1.5}
+        />
+      )
+    }
+    return <g>{lines}</g>
   }, [])
 
   return (
@@ -435,11 +453,12 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
         ) : (
           <div className="dash-chart-container">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartDataEixo} margin={{ top: 4, right: 8, left: -16, bottom: 56 }}>
-                <XAxis dataKey="name" tick={EixoAxisTick as (props: unknown) => React.ReactElement | null} interval={0} />
+              <BarChart data={chartDataEixo} margin={{ top: 4, right: 8, left: -16, bottom: 52 }} barCategoryGap="12%">
+                <XAxis dataKey="name" tick={EixoAxisTick as (props: unknown) => React.ReactElement | null} interval={0} tickLine={false} height={48} axisLine={{ stroke: 'var(--stratgos-ink-100)' }} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip content={ChartTooltip as (props: unknown) => React.ReactElement | null} />
                 <Legend wrapperStyle={{ paddingTop: 24, fontSize: 11 }} />
+                <Customized component={SeparatorLines as (props: unknown) => React.ReactElement} />
                 <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA}>
                   <LabelList dataKey="em_dia" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
