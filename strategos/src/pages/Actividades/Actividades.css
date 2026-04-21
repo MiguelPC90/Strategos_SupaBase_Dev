@@ -1,45 +1,118 @@
 @layer components {
+  /* ── Toolbar ──────────────────────────────────────────────── */
   .act-toolbar {
     display: flex;
-    gap: 8px;
+    justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    gap: 12px;
+    padding: 10px 0 12px;
     flex-wrap: wrap;
   }
-  .act-btn {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 11px;
-    padding: 4px 10px;
-    cursor: pointer;
-    color: var(--text2);
-  }
-  .act-btn:hover { background: var(--bg3); }
 
-  /* Level-view chips */
-  .act-chip {
-    padding: 3px 10px;
-    border: 1px solid var(--border2);
-    border-radius: 20px;
-    background: var(--bg2);
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text2);
-    cursor: pointer;
-    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  .act-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 240px;
   }
-  .act-chip:hover { background: var(--bg3); }
-  .act-chip.active { background: var(--navy); color: #fff; border-color: var(--navy); font-weight: 600; }
 
-  /* Separator between button groups */
-  .act-sep {
+  .act-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .act-filter-info {
+    font-size: 11px;
+    color: var(--text3);
+    font-style: italic;
+    white-space: nowrap;
+  }
+
+  /* ── Status filter dropdown ───────────────────────────────── */
+  .act-statusfilter {
+    position: relative;
     display: inline-block;
-    width: 1px;
-    height: 16px;
-    background: var(--border2);
+  }
+
+  .act-statusfilter-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    height: 32px;
+    white-space: nowrap;
+    transition: border-color 0.12s;
+  }
+  .act-statusfilter-btn:hover { border-color: var(--navy); }
+  .act-statusfilter-btn:focus { outline: none; border-color: var(--navy); }
+
+  .act-statusfilter-popup {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 180px;
+    background: var(--stratgos-cream);
+    border: 1px solid var(--stratgos-ink-100);
+    border-radius: var(--r);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    padding: 4px;
+  }
+
+  .act-statusfilter-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    border-radius: calc(var(--r) - 2px);
+    font-size: 13px;
+    color: var(--stratgos-ink-700);
+    user-select: none;
+  }
+  .act-statusfilter-option:hover { background: var(--stratgos-parchment); }
+  .act-statusfilter-option input { margin: 0; cursor: pointer; }
+
+  .act-statusfilter-icon {
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-flex;
+    justify-content: center;
+    width: 14px;
     flex-shrink: 0;
   }
+
+  /* ── Collapse/expand segmented control ────────────────────── */
+  .act-collapse-group {
+    display: inline-flex;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    overflow: hidden;
+    height: 32px;
+  }
+
+  .act-collapse-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    background: var(--bg2);
+    border: none;
+    color: var(--text2);
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.12s, color 0.12s;
+  }
+  .act-collapse-btn + .act-collapse-btn { border-left: 1px solid var(--border2); }
+  .act-collapse-btn:hover { background: var(--bg3); color: var(--navy); }
 
   /* Hierarchy table */
   .act-table {
@@ -94,7 +167,7 @@
     vertical-align: middle;
   }
 
-  /* Name cell indentation helpers */
+  /* Name cell */
   .act-name-cell {
     display: flex;
     align-items: center;

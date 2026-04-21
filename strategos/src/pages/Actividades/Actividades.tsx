@@ -1,5 +1,5 @@
 import './Actividades.css'
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect, type ReactNode } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
@@ -11,6 +11,7 @@ import type { Activity, Program } from '../../types/index'
 import { leafPctPrev, leafStatus, computeRowState, type RowState } from '../../lib/rollup'
 
 const TODAY = new Date().toISOString().slice(0, 10)
+const ALL_STATUS_KEYS: RowState[] = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
 
 // ── Status helpers ─────────────────────────────────────────────
 type StatusCls = 'concluida' | 'em_dia' | 'em_atraso'
@@ -168,6 +169,84 @@ function buildProgramTree(activities: Activity[], programs: Program[]): N0Group[
   return groups
 }
 
+// ── Search helpers ─────────────────────────────────────────────
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|\[\]\\]/g, '\\$&')
+}
+
+function highlightMatch(text: string, query: string): ReactNode {
+  if (!query) return text
+  const regex = new RegExp(`(${escapeRegex(query)})`, 'gi')
+  const parts = text.split(regex)
+  return parts.map((part, i) =>
+    part.toLowerCase() === query.toLowerCase()
+      ? <mark key={i} className="gi-search-highlight">{part}</mark>
+      : part
+  )
+}
+
+// ── Status filter dropdown ─────────────────────────────────────
+const STATUS_FILTER_ITEMS: { key: RowState; label: string; icon: string; color: string }[] = [
+  { key: 'Concluída', label: 'Concluídas', icon: '✓', color: 'var(--status-done)' },
+  { key: 'Em dia',    label: 'Em dia',     icon: '◐', color: 'var(--status-ontrack)' },
+  { key: 'Em risco',  label: 'Em risco',   icon: '●', color: 'var(--status-risk)' },
+  { key: 'Em atraso', label: 'Em atraso',  icon: '✕', color: 'var(--status-late)' },
+]
+
+interface StatusFilterDropdownProps {
+  filter: Set<RowState>
+  setFilter: React.Dispatch<React.SetStateAction<Set<RowState>>>
+}
+
+function StatusFilterDropdown({ filter, setFilter }: StatusFilterDropdownProps) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  const toggle = (key: RowState) => {
+    setFilter(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const label = filter.size === ALL_STATUS_KEYS.length
+    ? 'Estado: Todos'
+    : filter.size === 0 ? 'Estado: Nenhum' : `Estado: ${filter.size}`
+
+  return (
+    <div className="act-statusfilter" ref={ref}>
+      <button type="button" className="act-statusfilter-btn" onClick={() => setOpen(o => !o)}>
+        {label}
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6 }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      {open && (
+        <div className="act-statusfilter-popup">
+          {STATUS_FILTER_ITEMS.map(s => (
+            <label key={s.key} className="act-statusfilter-option">
+              <input type="checkbox" checked={filter.has(s.key)} onChange={() => toggle(s.key)} />
+              <span className="act-statusfilter-icon" style={{ color: s.color }}>{s.icon}</span>
+              <span>{s.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Sub-components ─────────────────────────────────────────────
 function DualBar({ exec, execObj }: { exec: number; execObj: number }) {
   const state = computeRowState(exec, execObj)
@@ -244,14 +323,37 @@ export default function Actividades() {
   const multiProg = programs.length > 1
 
   const filtered = useMemo(() => getFilteredActivities(activities), [activities, getFilteredActivities])
-  const tree     = useMemo(() => buildTree(filtered), [filtered])
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<Set<RowState>>(() => new Set(ALL_STATUS_KEYS))
+
+  const searchFilteredActs = useMemo(() => {
+    if (!searchQuery.trim()) return filtered
+    const q = searchQuery.toLowerCase().trim()
+    return filtered.filter(a => a.name.toLowerCase().includes(q))
+  }, [filtered, searchQuery])
+
+  const finalActs = useMemo(() => {
+    if (statusFilter.size === ALL_STATUS_KEYS.length) return searchFilteredActs
+    return searchFilteredActs.filter(a => {
+      if (a.level < 4) return true
+      return statusFilter.has(computeRowState(a.pct, leafPctPrev(a, TODAY)))
+    })
+  }, [searchFilteredActs, statusFilter])
+
+  const tree     = useMemo(() => buildTree(finalActs), [finalActs])
   const n0tree   = useMemo(
-    () => multiProg ? buildProgramTree(filtered, programs) : null,
-    [filtered, programs, multiProg]
+    () => multiProg ? buildProgramTree(finalActs, programs) : null,
+    [finalActs, programs, multiProg]
   )
-  const summary  = useMemo(() => computeStats(filtered.filter(a => a.level === 4)), [filtered])
+  const summary  = useMemo(() => computeStats(finalActs.filter(a => a.level === 4)), [finalActs])
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+
+  // Auto-expand while search is active
+  useEffect(() => {
+    if (searchQuery.trim()) setCollapsed(new Set())
+  }, [searchQuery])
 
   const toggle = useCallback((key: string) => {
     setCollapsed(prev => {
@@ -288,7 +390,7 @@ export default function Actividades() {
     setCollapsed(buildLevelKeys(level, n0tree, tree))
   }, [n0tree, tree])
 
-  const rows: React.ReactNode[] = []
+  const rows: ReactNode[] = []
 
   const renderN1Rows = (n1groups: N1Group[], n1Indent: number) => {
     for (const n1g of n1groups) {
@@ -305,7 +407,7 @@ export default function Actividades() {
               <button className="act-toggle" onClick={() => toggle(n1key)}>
                 {n1col ? '▶' : '▼'}
               </button>
-              <span className="act-name-n1">{n1g.n1}</span>
+              <span className="act-name-n1">{highlightMatch(n1g.n1, searchQuery)}</span>
             </div>
           </td>
           <td className="act-td-c">
@@ -333,7 +435,7 @@ export default function Actividades() {
                 <button className="act-toggle" onClick={() => toggle(n2key)}>
                   {n2col ? '▶' : '▼'}
                 </button>
-                <span className="act-name-n2">{n2g.n2}</span>
+                <span className="act-name-n2">{highlightMatch(n2g.n2, searchQuery)}</span>
               </div>
             </td>
             <td className="act-td-c">
@@ -356,7 +458,7 @@ export default function Actividades() {
                 <tr key={a.id} className="act-row-n4">
                   <td>
                     <div className="act-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
-                      <span className="act-name-n4" title={a.name}>{a.name}</span>
+                      <span className="act-name-n4" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
                     </div>
                   </td>
                   <td className="act-td-c">
@@ -382,7 +484,7 @@ export default function Actividades() {
                 <tr key={a.id} className="act-row-n4">
                   <td>
                     <div className="act-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
-                      <span className="act-name-n4" title={a.name}>{a.name}</span>
+                      <span className="act-name-n4" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
                     </div>
                   </td>
                   <td className="act-td-c">
@@ -410,7 +512,7 @@ export default function Actividades() {
                   <button className="act-toggle" onClick={() => toggle(n3key)}>
                     {n3col ? '▶' : '▼'}
                   </button>
-                  <span className="act-name-n3">{n3g.n3}</span>
+                  <span className="act-name-n3">{highlightMatch(n3g.n3, searchQuery)}</span>
                 </div>
               </td>
               <td className="act-td-c">
@@ -431,7 +533,7 @@ export default function Actividades() {
               <tr key={a.id} className="act-row-n4">
                 <td>
                   <div className="act-name-cell" style={{ paddingLeft: n1Indent + 48 }}>
-                    <span className="act-name-n4" title={a.name}>{a.name}</span>
+                    <span className="act-name-n4" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
                   </div>
                 </td>
                 <td className="act-td-c">
@@ -463,7 +565,7 @@ export default function Actividades() {
               <button className="act-toggle" onClick={() => toggle(n0key)}>
                 {n0col ? '▶' : '▼'}
               </button>
-              <span className="act-name-n0">{n0g.progName}</span>
+              <span className="act-name-n0">{highlightMatch(n0g.progName, searchQuery)}</span>
             </div>
           </td>
           <td className="act-td-c">
@@ -495,27 +597,65 @@ export default function Actividades() {
         <KpiCard label="Exec. real"        value={`${Math.round(summary.exec)}%`} color="navy" />
       </div>
 
-      <Card
-        title="Actividades"
-        actions={
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            {filterInfo && (
-              <span style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>{filterInfo}</span>
-            )}
-            <button className="act-btn" onClick={collapseAll}>Colapsar tudo</button>
-            <button className="act-btn" onClick={expandAll}>Expandir tudo</button>
-            <span className="act-sep" />
-            <button className={`act-chip${levelView === 'todos' ? ' active' : ''}`} onClick={() => applyLevel('todos')}>Todos</button>
-            {multiProg && (
-              <button className={`act-chip${levelView === 'programa' ? ' active' : ''}`} onClick={() => applyLevel('programa')}>Programa</button>
-            )}
-            <button className={`act-chip${levelView === 'eixo' ? ' active' : ''}`} onClick={() => applyLevel('eixo')}>Eixo</button>
-            <button className={`act-chip${levelView === 'plano' ? ' active' : ''}`} onClick={() => applyLevel('plano')}>Plano</button>
-            <button className={`act-chip${levelView === 'macro' ? ' active' : ''}`} onClick={() => applyLevel('macro')}>Macroactividade</button>
-            <button className={`act-chip${levelView === 'actividade' ? ' active' : ''}`} onClick={() => applyLevel('actividade')}>Actividade</button>
+      <Card title="Actividades">
+        <div className="act-toolbar">
+          <div className="act-toolbar-left">
+            <div className="gi-search">
+              <svg className="gi-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                type="text"
+                className="gi-search-input"
+                placeholder="Pesquisar actividades..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button type="button" className="gi-search-clear" onClick={() => setSearchQuery('')} title="Limpar pesquisa">×</button>
+              )}
+            </div>
+            {filterInfo && <span className="act-filter-info">{filterInfo}</span>}
           </div>
-        }
-      >
+
+          <div className="act-toolbar-right">
+            <select
+              className="styled-select"
+              value={levelView}
+              onChange={e => applyLevel(e.target.value as LevelView)}
+            >
+              <option value="todos">Agrupar: Todos</option>
+              {multiProg && <option value="programa">Agrupar: Programa</option>}
+              <option value="eixo">Agrupar: Eixo</option>
+              <option value="plano">Agrupar: Plano</option>
+              <option value="macro">Agrupar: Macroactividade</option>
+              <option value="actividade">Agrupar: Actividade</option>
+            </select>
+
+            <StatusFilterDropdown filter={statusFilter} setFilter={setStatusFilter} />
+
+            <div className="act-collapse-group">
+              <button type="button" className="act-collapse-btn" onClick={collapseAll} title="Colapsar tudo">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="4 14 10 14 10 20"/>
+                  <polyline points="20 10 14 10 14 4"/>
+                  <line x1="14" y1="10" x2="21" y2="3"/>
+                  <line x1="3" y1="21" x2="10" y2="14"/>
+                </svg>
+              </button>
+              <button type="button" className="act-collapse-btn" onClick={expandAll} title="Expandir tudo">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 3 21 3 21 9"/>
+                  <polyline points="9 21 3 21 3 15"/>
+                  <line x1="21" y1="3" x2="14" y2="10"/>
+                  <line x1="3" y1="21" x2="10" y2="14"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
         {loading && activities.length === 0 ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
             <Spinner />
@@ -549,7 +689,9 @@ export default function Actividades() {
                 {rows.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="act-empty">
-                      Nenhuma actividade para os filtros seleccionados.
+                      {searchQuery.trim()
+                        ? `Nenhuma actividade encontrada para "${searchQuery}"`
+                        : 'Nenhuma actividade para os filtros seleccionados.'}
                     </td>
                   </tr>
                 ) : rows}
