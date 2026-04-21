@@ -1,6 +1,6 @@
 @layer components {
   .kpi-card {
-    background: var(--stratgos-parchment);
+    background: var(--stratgos-parchment-deep);
     border-radius: var(--r);
     padding: 12px 14px;
     display: flex;
