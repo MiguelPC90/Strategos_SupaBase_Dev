@@ -4,8 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import Spinner from '../../components/Spinner/Spinner'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, LabelList, Customized,
+  PieChart, Pie, Cell, LabelList,
   LineChart, Line,
+  usePlotArea, useXAxisTicks,
 } from 'recharts'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
@@ -298,6 +299,41 @@ const DETAIL_COLS: Column[] = [
   },
 ]
 
+// ── ProgramSeparators ─────────────────────────────────────────
+// Renders dashed vertical lines between program groups.
+// Must live inside a BarChart (Recharts 3.x context provides usePlotArea / useXAxisTicks).
+function ProgramSeparators({ data }: { data: BarEntry[] }) {
+  const plotArea = usePlotArea()
+  const ticks    = useXAxisTicks()
+
+  if (!plotArea || !ticks || data.length < 2) return null
+
+  const nameToX = new Map<string, number>()
+  for (const tick of ticks) {
+    nameToX.set(String(tick.value), tick.coordinate)
+  }
+
+  const topY    = plotArea.y
+  const bottomY = plotArea.y + plotArea.height
+  const lines: React.ReactElement[] = []
+
+  for (let i = 1; i < data.length; i++) {
+    if (!data[i].isFirstOfProg) continue
+    const prevX = nameToX.get(data[i - 1].name)
+    const currX = nameToX.get(data[i].name)
+    if (prevX === undefined || currX === undefined) continue
+    const sepX = (prevX + currX) / 2
+    lines.push(
+      <line key={`sep-${i}`}
+        x1={sepX} y1={topY} x2={sepX} y2={bottomY}
+        stroke="var(--stratgos-ink-300)" strokeWidth={1.5} strokeDasharray="3 3" opacity={0.8}
+      />
+    )
+  }
+
+  return <g>{lines}</g>
+}
+
 // ── BarChartCard ───────────────────────────────────────────────
 interface BarChartCardProps {
   leaves: Activity[]
@@ -425,37 +461,6 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
     )
   }, [])
 
-  const SeparatorLines = useCallback((props: unknown): React.ReactElement => {
-    const p = props as {
-      xAxisMap?: Record<string, { scale: ((v: string) => number) & { bandwidth?: () => number } }>
-      offset?: { top: number; right: number; bottom: number; left: number; width: number; height: number }
-    }
-    const xAxis = p.xAxisMap ? Object.values(p.xAxisMap)[0] : undefined
-    const offset = p.offset
-    if (!xAxis || !offset) return <g />
-
-    const scale    = xAxis.scale
-    const bandwidth = scale.bandwidth?.() ?? 0
-    const topY     = offset.top
-    const bottomY  = offset.top + offset.height
-    const data     = chartDataRef.current
-    const lines: React.ReactElement[] = []
-
-    for (let i = 1; i < data.length; i++) {
-      if (!data[i].isFirstOfProg) continue
-      const prevX = scale(data[i - 1].name)
-      const currX = scale(data[i].name)
-      if (Number.isNaN(prevX) || Number.isNaN(currX)) continue
-      const sepX = (prevX + bandwidth + currX) / 2
-      lines.push(
-        <line key={`sep-${i}`}
-          x1={sepX} y1={topY} x2={sepX} y2={bottomY}
-          stroke="var(--stratgos-ink-100)" strokeWidth={1.5} strokeDasharray="2 3"
-        />
-      )
-    }
-    return <g>{lines}</g>
-  }, [])
 
   return (
     <Card
@@ -478,7 +483,7 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip content={ChartTooltip as (props: unknown) => React.ReactElement | null} />
                 <Legend wrapperStyle={{ paddingTop: 24, fontSize: 11 }} />
-                <Customized component={SeparatorLines as (props: unknown) => React.ReactElement} />
+                <ProgramSeparators data={chartDataEixo} />
                 <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA} maxBarSize={80}>
                   <LabelList dataKey="em_dia" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
