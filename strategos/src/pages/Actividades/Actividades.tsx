@@ -189,7 +189,7 @@ function highlightMatch(text: string, query: string): ReactNode {
 const STATUS_FILTER_ITEMS: { key: RowState; label: string; icon: string; color: string }[] = [
   { key: 'Concluída', label: 'Concluídas', icon: '✓', color: 'var(--status-done)' },
   { key: 'Em dia',    label: 'Em dia',     icon: '◐', color: 'var(--status-ontrack)' },
-  { key: 'Em risco',  label: 'Em risco',   icon: '●', color: 'var(--status-risk)' },
+  { key: 'Em risco',  label: 'Em risco',   icon: '⦿', color: 'var(--status-risk)' },
   { key: 'Em atraso', label: 'Em atraso',  icon: '✕', color: 'var(--status-late)' },
 ]
 
@@ -285,29 +285,21 @@ function DeadlineCell({ bf, rf }: { bf: string | null; rf?: string | null }) {
 
 function CdaCell({ concluidas, em_dia, em_atraso }: { concluidas: number; em_dia: number; em_atraso: number }) {
   return (
-    <td className="act-td-c act-cda" title={`Concluídas: ${concluidas} · Em dia: ${em_dia} · Em atraso: ${em_atraso}`}>
-      <span className="act-cda-item act-cda-c" title={`Concluídas: ${concluidas}`}>
-        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="5.5" cy="5.5" r="4.5"/>
-          <path d="M3.5 5.5L5 7l3-3"/>
-        </svg>
-        {concluidas}
-      </span>
-      <span className="act-cda-item act-cda-d" title={`Em dia: ${em_dia}`}>
-        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="5.5" cy="5.5" r="4.5"/>
-          <path d="M5.5 3.5v2.2l1.5 1"/>
-        </svg>
-        {em_dia}
-      </span>
-      <span className="act-cda-item act-cda-a" title={`Em atraso: ${em_atraso}`}>
-        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M5.5 1.5L10 9.5H1z"/>
-          <line x1="5.5" y1="4.5" x2="5.5" y2="6.5"/>
-          <circle cx="5.5" cy="7.8" r="0.4" fill="currentColor" stroke="none"/>
-        </svg>
-        {em_atraso}
-      </span>
+    <td className="act-td-c">
+      <div className="act-cda" title={`Concluídas: ${concluidas} · Em dia: ${em_dia} · Em atraso: ${em_atraso}`}>
+        <span className="act-cda-item" style={{ color: 'var(--status-done)' }} title={`Concluídas: ${concluidas}`}>
+          <span className="act-cda-icon">✓</span>
+          <span>{concluidas}</span>
+        </span>
+        <span className="act-cda-item" style={{ color: 'var(--status-ontrack)' }} title={`Em dia: ${em_dia}`}>
+          <span className="act-cda-icon">◐</span>
+          <span>{em_dia}</span>
+        </span>
+        <span className="act-cda-item" style={{ color: 'var(--status-late)' }} title={`Em atraso: ${em_atraso}`}>
+          <span className="act-cda-icon">✕</span>
+          <span>{em_atraso}</span>
+        </span>
+      </div>
     </td>
   )
 }

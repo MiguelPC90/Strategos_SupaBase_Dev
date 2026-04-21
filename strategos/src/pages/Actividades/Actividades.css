@@ -86,7 +86,8 @@
     font-weight: 700;
     display: inline-flex;
     justify-content: center;
-    width: 14px;
+    min-width: 12px;
+    line-height: 1;
     flex-shrink: 0;
   }
 
@@ -225,18 +226,25 @@
 
   /* C/D/A cell */
   .act-cda {
-    font-size: 11px;
-    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
   }
   .act-cda-item {
     display: inline-flex;
     align-items: center;
-    gap: 2px;
-    margin: 0 2px;
+    gap: 4px;
   }
-  .act-cda-c { color: var(--status-ontrack); }
-  .act-cda-d { color: var(--status-done); }
-  .act-cda-a { color: var(--status-late); }
+  .act-cda-icon {
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-flex;
+    justify-content: center;
+    min-width: 12px;
+    line-height: 1;
+  }
 
   /* Deadline cell — two-line Prazo */
   .act-deadline {
