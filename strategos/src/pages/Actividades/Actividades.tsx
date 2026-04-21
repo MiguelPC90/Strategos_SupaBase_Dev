@@ -612,18 +612,21 @@ export default function Actividades() {
           </div>
 
           <div className="act-toolbar-right">
-            <select
-              className="styled-select"
-              value={levelView}
-              onChange={e => applyLevel(e.target.value as LevelView)}
-            >
-              <option value="todos">Agrupar: Todos</option>
-              {multiProg && <option value="programa">Agrupar: Programa</option>}
-              <option value="eixo">Agrupar: Eixo</option>
-              <option value="plano">Agrupar: Plano</option>
-              <option value="macro">Agrupar: Macroactividade</option>
-              <option value="actividade">Agrupar: Actividade</option>
-            </select>
+            <div className="act-group-wrapper">
+              <label className="act-group-label">Agrupar:</label>
+              <select
+                className="styled-select"
+                value={levelView}
+                onChange={e => applyLevel(e.target.value as LevelView)}
+              >
+                <option value="todos">Todos</option>
+                {multiProg && <option value="programa">Programa</option>}
+                <option value="eixo">Eixo</option>
+                <option value="plano">Plano</option>
+                <option value="macro">Macroactividade</option>
+                <option value="actividade">Actividade</option>
+              </select>
+            </div>
 
             <StatusFilterDropdown filter={statusFilter} setFilter={setStatusFilter} />
 

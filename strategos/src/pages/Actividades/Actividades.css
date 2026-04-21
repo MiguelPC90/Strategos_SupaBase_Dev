@@ -91,6 +91,18 @@
     flex-shrink: 0;
   }
 
+  /* ── Group-by label + select ─────────────────────────────── */
+  .act-group-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .act-group-label {
+    font-size: 13px;
+    color: var(--stratgos-ink-500);
+    white-space: nowrap;
+  }
+
   /* ── Collapse/expand segmented control ────────────────────── */
   .act-collapse-group {
     display: inline-flex;
