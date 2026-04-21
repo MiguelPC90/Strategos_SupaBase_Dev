@@ -1,6 +1,6 @@
 @layer components {
   .card {
-    background: var(--bg);
+    background: var(--stratgos-cream);
     border-radius: var(--rl);
     border: 1px solid var(--border);
     overflow: hidden;

@@ -38,7 +38,7 @@
     padding: 8px 12px;
     border: 1px solid var(--border);
     border-radius: var(--r);
-    background: white;
+    background: var(--stratgos-cream);
     font-size: 13px;
     font-family: inherit;
     cursor: pointer;
@@ -130,7 +130,7 @@
     left: 0;
     margin-top: 4px;
     z-index: 1000;
-    background: white;
+    background: var(--stratgos-cream);
     border: 1px solid var(--border);
     border-radius: var(--r);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -221,7 +221,7 @@
     font-family: inherit;
     cursor: pointer;
     border: 1px solid var(--border2);
-    background: white;
+    background: var(--stratgos-cream);
     color: var(--text);
     transition: background 100ms ease;
   }

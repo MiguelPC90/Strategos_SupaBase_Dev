@@ -16,7 +16,7 @@
   }
 
   .modal-box {
-    background: var(--bg);
+    background: var(--stratgos-cream);
     border: 1px solid var(--border2);
     border-radius: var(--rl);
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
