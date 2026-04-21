@@ -47,6 +47,22 @@ const EMPTY_DRAFT: DraftState = {
 
 // ── Helpers ────────────────────────────────────────────────────
 
+function newId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+/** Ensure every item has id/created_at/hidden_at (handles legacy DB items) */
+function upgradeItems(items: PdsItem[]): PdsItem[] {
+  const now = new Date().toISOString()
+  return items.map((item, i) => ({
+    ...item,
+    id:         item.id         ?? `legacy-${Date.now()}-${i}`,
+    created_at: item.created_at ?? now,
+    hidden_at:  item.hidden_at  ?? null,
+  }))
+}
+
 /** Wrap text selection (or cursor) with a markdown marker pair */
 function applyMarker(text: string, start: number, end: number, marker: string): string {
   const selected = text.slice(start, end)
@@ -69,12 +85,14 @@ interface PdsSectionProps {
   onRemove(section: SectionKey, idx: number): void
   onAdd(section: SectionKey, title: string): void
   onMove(section: SectionKey, idx: number, dir: 'up' | 'down'): void
+  onHide(section: SectionKey, idx: number): void
+  onRestore(section: SectionKey, idx: number): void
 }
 
 function PdsSection({
   sectionKey, title, items, withMeta,
   activeCell, activeRef,
-  onFocus, onBlur, onChangeItem, onRemove, onAdd, onMove,
+  onFocus, onBlur, onChangeItem, onRemove, onAdd, onMove, onHide, onRestore,
 }: PdsSectionProps) {
   const isActive = (idx: number) =>
     activeCell?.section === sectionKey && activeCell.idx === idx
@@ -91,8 +109,8 @@ function PdsSection({
         {items.map((item, idx) => (
           <div
             key={idx}
-            className={`pds-item${isActive(idx) ? ' pds-item--active' : ''}`}
-            data-status={withMeta ? (item.status ?? 'Pendente') : undefined}
+            className={`pds-item${isActive(idx) ? ' pds-item--active' : ''}${item.hidden_at ? ' pds-item--hidden' : ''}`}
+            data-status={withMeta && !item.hidden_at ? (item.status ?? 'Pendente') : undefined}
           >
             {/* Mini toolbar — only visible when this item is focused */}
             {isActive(idx) && (
@@ -191,12 +209,27 @@ function PdsSection({
                 )}
               </div>
 
-              {/* Remove */}
-              <button
-                className="pds-remove-btn"
-                onClick={() => onRemove(sectionKey, idx)}
-                title="Remover item"
-              >✕</button>
+              {/* Actions: hide/restore + remove */}
+              <div className="pds-item-actions">
+                {item.hidden_at ? (
+                  <button
+                    className="pds-restore-btn"
+                    onClick={() => onRestore(sectionKey, idx)}
+                    title="Restaurar item"
+                  >↩</button>
+                ) : (
+                  <button
+                    className="pds-hide-btn"
+                    onClick={() => onHide(sectionKey, idx)}
+                    title="Ocultar item"
+                  >◌</button>
+                )}
+                <button
+                  className="pds-remove-btn"
+                  onClick={() => onRemove(sectionKey, idx)}
+                  title="Remover item"
+                >✕</button>
+              </div>
             </div>
           </div>
         ))}
@@ -286,10 +319,10 @@ export default function GestaoPDS() {
     setLocalEntryId(null)
     const d: DraftState = baseEntry
       ? {
-          commitments: baseEntry.commitments_items ?? [],
-          progress:    baseEntry.progress_items    ?? [],
-          nextSteps:   baseEntry.next_steps_items  ?? [],
-          attention:   baseEntry.attention_items   ?? [],
+          commitments: upgradeItems(baseEntry.commitments_items ?? []),
+          progress:    upgradeItems(baseEntry.progress_items    ?? []),
+          nextSteps:   upgradeItems(baseEntry.next_steps_items  ?? []),
+          attention:   upgradeItems(baseEntry.attention_items   ?? []),
         }
       : EMPTY_DRAFT
     setDraft(d)
@@ -376,12 +409,31 @@ export default function GestaoPDS() {
     if (!addModal) return
     const withMeta = addModal.section === 'commitments' || addModal.section === 'nextSteps'
     const item: PdsItem = {
-      text: newItemText,
+      id:         newId(),
+      created_at: new Date().toISOString(),
+      hidden_at:  null,
+      text:       newItemText,
       ...(withMeta ? { date: newItemDate || undefined, status: newItemStatus } : {}),
     }
     setDraft(prev => ({ ...prev, [addModal.section]: [...prev[addModal.section], item] }))
     setAddModal(null)
   }, [addModal, newItemText, newItemDate, newItemStatus])
+
+  const handleHide = useCallback((section: SectionKey, idx: number) => {
+    setDraft(prev => {
+      const arr = [...prev[section]]
+      arr[idx] = { ...arr[idx], hidden_at: new Date().toISOString() }
+      return { ...prev, [section]: arr }
+    })
+  }, [])
+
+  const handleRestore = useCallback((section: SectionKey, idx: number) => {
+    setDraft(prev => {
+      const arr = [...prev[section]]
+      arr[idx] = { ...arr[idx], hidden_at: null }
+      return { ...prev, [section]: arr }
+    })
+  }, [])
 
   const handleMove = useCallback(
     (section: SectionKey, idx: number, dir: 'up' | 'down') => {
@@ -445,6 +497,8 @@ export default function GestaoPDS() {
     onRemove:     handleRemove,
     onAdd:        handleAdd,
     onMove:       handleMove,
+    onHide:       handleHide,
+    onRestore:    handleRestore,
   }
 
   const noProgram = !programId

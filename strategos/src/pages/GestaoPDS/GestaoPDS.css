@@ -296,4 +296,42 @@
     color: var(--navy);
     background: #f0f4ff;
   }
+
+  /* ── Hidden item state ──────────────────────────────────────── */
+  .pds-item--hidden {
+    opacity: 0.5;
+  }
+  .pds-item--hidden .pds-item-text {
+    text-decoration: line-through;
+    color: var(--text3);
+  }
+
+  /* ── Item actions (hide/restore + remove) ───────────────────── */
+  .pds-item-actions {
+    flex-shrink: 0;
+    align-self: flex-start;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .pds-hide-btn,
+  .pds-restore-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    padding: 0;
+    font-family: inherit;
+    line-height: 1;
+  }
+  .pds-hide-btn:hover   { background: var(--bg3); color: var(--text2); }
+  .pds-restore-btn:hover { background: #f0fff0; color: var(--green); }
 }

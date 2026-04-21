@@ -1,20 +1,20 @@
 import './PontoSituacao.css'
-import { useState, useMemo, useEffect, useCallback, useRef, type ReactNode } from 'react'
+import { useState, useMemo, useEffect, useCallback, type ReactNode } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import Badge from '../../components/Badge/Badge'
-import { usePdsEntries } from '../../hooks/usePdsEntries'
+import { usePdsEntries, usePdsConsolidated } from '../../hooks/usePdsEntries'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useRisks } from '../../hooks/useRisks'
 import { useActivities } from '../../hooks/useActivities'
 import { useFilters } from '../../context/FilterContext'
-import { useToast } from '../../context/ToastContext'
+
 import { leafStatus, leafPctPrev } from '../../lib/rollup'
 import { supabase } from '../../lib/supabase'
-import type { PdsItem, PdsEntry, Risk } from '../../types/index'
+import type { PdsItem, Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
 import {
   computeHealth, DEFAULT_HEALTH_CONFIG,
@@ -22,6 +22,27 @@ import {
 } from '../../lib/healthRules'
 
 const TODAY = new Date().toISOString().slice(0, 10)
+
+type SortDir = 'asc' | 'desc'
+function sortItems(items: PdsItem[], dir: SortDir): PdsItem[] {
+  if (!items.some(i => i.created_at)) return items
+  return [...items].sort((a, b) => {
+    const cmp = (a.created_at ?? '').localeCompare(b.created_at ?? '')
+    return dir === 'asc' ? cmp : -cmp
+  })
+}
+
+function SortBtn({ dir, onToggle }: { dir: SortDir; onToggle: () => void }) {
+  return (
+    <button
+      className="pds-sort-btn"
+      onClick={onToggle}
+      title={dir === 'asc' ? 'Ordenar: mais recente primeiro' : 'Ordenar: mais antigo primeiro'}
+    >
+      {dir === 'asc' ? '↑' : '↓'}
+    </button>
+  )
+}
 
 // ── Date formatter — always dd/mm/yyyy ────────────────────────
 function fmtDate(iso: string): string {
@@ -64,9 +85,10 @@ interface ItemListProps {
   items: PdsItem[]
   variant?: ItemListVariant
   emptyMessage?: string
+  showMeta?: boolean
 }
 
-function ItemList({ items, variant = 'default', emptyMessage = 'Sem itens.' }: ItemListProps) {
+function ItemList({ items, variant = 'default', emptyMessage = 'Sem itens.', showMeta }: ItemListProps) {
   if (items.length === 0) {
     return <p className="pds-empty">{emptyMessage}</p>
   }
@@ -76,7 +98,14 @@ function ItemList({ items, variant = 'default', emptyMessage = 'Sem itens.' }: I
     return (
       <div className="pds-progress-wrap">
         {items.map((item, i) => (
-          <p key={i} className="pds-progress-para">{renderText(item.text)}</p>
+          <p key={i} className="pds-progress-para">
+            {renderText(item.text)}
+            {showMeta && item.created_at && (
+              <span className="pds-item-created">
+                {item.author ? `${item.author} · ` : ''}{fmtDate(item.created_at.slice(0, 10))}
+              </span>
+            )}
+          </p>
         ))}
       </div>
     )
@@ -96,7 +125,14 @@ function ItemList({ items, variant = 'default', emptyMessage = 'Sem itens.' }: I
             key={i}
             className={`pds-item-row${variant === 'attention' ? ' pds-attention-row' : ''}`}
           >
-            <span className="pds-item-text">{renderText(item.text)}</span>
+            <span className="pds-item-text">
+              {renderText(item.text)}
+              {showMeta && item.created_at && (
+                <span className="pds-item-created">
+                  {item.author ? `${item.author} · ` : ''}{fmtDate(item.created_at.slice(0, 10))}
+                </span>
+              )}
+            </span>
             <span className="pds-col-date">{item.date ? fmtDate(item.date) : '—'}</span>
             <span className="pds-item-badge">
               {ds && <Badge variant={statusVariant(ds)}>{ds}</Badge>}
@@ -250,22 +286,24 @@ function RiskTable({ risks, size, thresholds, selectedIds, onSelect }: RiskTable
 export default function PontoSituacao() {
   const { filters }   = useFilters()
   const { programs }  = usePrograms()
-  const { showToast } = useToast()
-
   // ── State ──────────────────────────────────────────────────
   const [selProgId,         setSelProgId]         = useState<string | null>(null)
   const [selectedKey,       setSelectedKey]       = useState('')
   const [hideCompletedDays, setHideCompletedDays] = useState(90)
-  const [adjustedEntry,     setAdjustedEntry]     = useState<PdsEntry | null>(null)
   const [selectedRiskIds,   setSelectedRiskIds]   = useState<string[]>([])
   const [matrixSize,        setMatrixSize]        = useState(5)
   const [thresholds,        setThresholds]        = useState<RiskThresholds>(DEFAULT_THRESHOLDS)
   const [healthConfig,      setHealthConfig]      = useState<HealthConfig>(DEFAULT_HEALTH_CONFIG)
-  const lastProcessedId = useRef<string | null>(null)
+  const [commitSort,        setCommitSort]        = useState<SortDir>('asc')
+  const [progressSort,      setProgressSort]      = useState<SortDir>('asc')
+  const [nextSort,          setNextSort]          = useState<SortDir>('asc')
+  const [attnSort,          setAttnSort]          = useState<SortDir>('asc')
 
   // ── Data hooks ─────────────────────────────────────────────
   const programId = selProgId ?? undefined
-  const { entries, loading } = usePdsEntries(programId)
+  const { entries, loading: entriesLoading } = usePdsEntries(programId)
+  const { items: consolidated, loading: consLoading } = usePdsConsolidated(selectedKey || undefined)
+  const loading = entriesLoading || consLoading
   const { planos }           = usePlanos(programId)
   const { risks }            = useRisks(programId)
   const { activities }       = useActivities({ program_id: programId })
@@ -286,10 +324,8 @@ export default function PontoSituacao() {
     setSelectedKey('')
   }, [selProgId])
 
-  // Reset adjusted entry + process flag + risk selection when plan changes
+  // Reset risk selection when plan changes
   useEffect(() => {
-    setAdjustedEntry(null)
-    lastProcessedId.current = null
     setSelectedRiskIds([])
   }, [selectedKey])
 
@@ -356,37 +392,25 @@ export default function PontoSituacao() {
     return activities.filter(a => a.plano_id === selectedKey && a.level >= 4)
   }, [activities, selectedKey])
 
-  // ── Auto-transition: next_steps → commitments ─────────────
-  useEffect(() => {
-    const rawEntry = planEntries[0] ?? null
-    if (!rawEntry || lastProcessedId.current === rawEntry.id) return
-    lastProcessedId.current = rawEntry.id
-
-    const nextSteps = rawEntry.next_steps_items ?? []
-    const toMove = nextSteps.filter(item =>
-      item.status === 'Concluído' || item.status === 'Concluída' ||
-      (item.date && item.date < TODAY)
-    )
-
-    if (toMove.length === 0) return  // nothing to do; display uses planEntries[0]
-
-    const toMoveSet      = new Set(toMove)
-    const remaining      = nextSteps.filter(item => !toMoveSet.has(item))
-    const newCommitments = [...(rawEntry.commitments_items ?? []), ...toMove]
-
-    setAdjustedEntry({ ...rawEntry, next_steps_items: remaining, commitments_items: newCommitments })
-    showToast(
-      `${toMove.length} ${toMove.length === 1 ? 'item transitou' : 'itens transitaram'} para Compromissos Anteriores`
-    )
-    void supabase.from('pds_entries').update({
-      next_steps_items:  remaining,
-      commitments_items: newCommitments,
-    }).eq('id', rawEntry.id)
-  }, [planEntries, showToast])
-
-  // Latest entry, post-transition
-  const entry     = adjustedEntry ?? (planEntries[0] ?? null)
   const planLabel = planOptions.find(o => o.key === selectedKey)?.label ?? ''
+
+  // ── Consolidated visible items per section ─────────────────
+  const visCommitments = useMemo(
+    () => consolidated.commitments.filter(i => !i.hidden_at),
+    [consolidated.commitments],
+  )
+  const visProgress = useMemo(
+    () => consolidated.progress.filter(i => !i.hidden_at),
+    [consolidated.progress],
+  )
+  const visNextSteps = useMemo(
+    () => consolidated.nextSteps.filter(i => !i.hidden_at),
+    [consolidated.nextSteps],
+  )
+  const visAttention = useMemo(
+    () => consolidated.attention.filter(i => !i.hidden_at),
+    [consolidated.attention],
+  )
 
   // ── KPI computations ───────────────────────────────────────
   const kpi = useMemo(() => {
@@ -434,8 +458,7 @@ export default function PontoSituacao() {
     const emAtraso  = planLeaves.filter(a => leafStatus(a, TODAY) === 'Em atraso').length
     const avgPct    = total > 0 ? planLeaves.reduce((s, a) => s + a.pct, 0) / total : 0
     const avgPrev   = total > 0 ? planLeaves.reduce((s, a) => s + leafPctPrev(a, TODAY), 0) / total : 0
-    const attItems  = entry?.attention_items ?? []
-    const attOpen   = attItems.filter(i => {
+    const attOpen   = visAttention.filter(i => {
       const s = (i.status ?? '').toLowerCase()
       return s !== 'concluído' && s !== 'concluída'
     }).length
@@ -449,7 +472,7 @@ export default function PontoSituacao() {
       }).length,
       attentionOpen: attOpen,
     }
-  }, [planLeaves, planRisks, entry, thresholds])
+  }, [planLeaves, planRisks, visAttention, thresholds])
 
   const health = useMemo(
     () => computeHealth(healthInput, healthConfig),
@@ -472,20 +495,19 @@ export default function PontoSituacao() {
 
   // ── Filter old completed commitments ──────────────────────
   const { visibleCommitments, hiddenCommitmentsCount } = useMemo(() => {
-    const items = entry?.commitments_items ?? []
-    if (hideCompletedDays <= 0) return { visibleCommitments: items, hiddenCommitmentsCount: 0 }
+    if (hideCompletedDays <= 0) return { visibleCommitments: visCommitments, hiddenCommitmentsCount: 0 }
     const cutoff = new Date(TODAY)
     cutoff.setDate(cutoff.getDate() - hideCompletedDays)
     const cutoffStr = cutoff.toISOString().slice(0, 10)
-    const hidden = items.filter(item =>
+    const hidden = visCommitments.filter(item =>
       (item.status === 'Concluído' || item.status === 'Concluída') &&
       item.date && item.date < cutoffStr
     )
     return {
-      visibleCommitments:     items.filter(i => !hidden.includes(i)),
+      visibleCommitments:     visCommitments.filter(i => !hidden.includes(i)),
       hiddenCommitmentsCount: hidden.length,
     }
-  }, [entry, hideCompletedDays])
+  }, [visCommitments, hideCompletedDays])
 
   // ── Risk selection handler ────────────────────────────────
   const handleSelectRisk = (ids: string[]) => {
@@ -569,7 +591,7 @@ export default function PontoSituacao() {
                 title="Plano seguinte (Alt+→)"
               >→</button>
             </div>
-            <span className="pds-header-date">{fmtDate(entry?.updated_at ?? TODAY)}</span>
+            <span className="pds-header-date">{fmtDate(planEntries[0]?.updated_at ?? TODAY)}</span>
           </div>
 
           {/* KPI cards — 3-card top row */}
@@ -623,8 +645,11 @@ export default function PontoSituacao() {
 
           {/* 2×2 card grid */}
           <div className="pds-grid">
-            <Card title={<>Compromissos anteriores <span className="pds-section-count">({visibleCommitments.length})</span></>}>
-              <ItemList items={visibleCommitments} emptyMessage="Sem compromissos anteriores." />
+            <Card
+              title={<>Compromissos anteriores <span className="pds-section-count">({visibleCommitments.length})</span></>}
+              actions={<SortBtn dir={commitSort} onToggle={() => setCommitSort(d => d === 'asc' ? 'desc' : 'asc')} />}
+            >
+              <ItemList items={sortItems(visibleCommitments, commitSort)} showMeta emptyMessage="Sem compromissos anteriores." />
               {hiddenCommitmentsCount > 0 && (
                 <p className="pds-hidden-note">
                   {hiddenCommitmentsCount} compromisso{hiddenCommitmentsCount !== 1 ? 's' : ''}{' '}
@@ -633,14 +658,24 @@ export default function PontoSituacao() {
                 </p>
               )}
             </Card>
-            <Card title={<>Principais avanços <span className="pds-section-count">({(entry?.progress_items ?? []).length})</span></>}>
-              <ItemList items={entry?.progress_items ?? []} variant="progress" emptyMessage="Sem avanços registados." />
+            <Card
+              title={<>Principais avanços <span className="pds-section-count">({visProgress.length})</span></>}
+              actions={<SortBtn dir={progressSort} onToggle={() => setProgressSort(d => d === 'asc' ? 'desc' : 'asc')} />}
+            >
+              <ItemList items={sortItems(visProgress, progressSort)} variant="progress" showMeta emptyMessage="Sem avanços registados." />
             </Card>
-            <Card title={<>Próximos passos <span className="pds-section-count">({(entry?.next_steps_items ?? []).length})</span></>}>
-              <ItemList items={entry?.next_steps_items ?? []} emptyMessage="Sem próximos passos definidos." />
+            <Card
+              title={<>Próximos passos <span className="pds-section-count">({visNextSteps.length})</span></>}
+              actions={<SortBtn dir={nextSort} onToggle={() => setNextSort(d => d === 'asc' ? 'desc' : 'asc')} />}
+            >
+              <ItemList items={sortItems(visNextSteps, nextSort)} showMeta emptyMessage="Sem próximos passos definidos." />
             </Card>
-            <Card title={<>Pontos de atenção <span className="pds-section-count">({(entry?.attention_items ?? []).length})</span></>} className="pds-attention-card">
-              <ItemList items={entry?.attention_items ?? []} variant="attention" emptyMessage="Sem pontos de atenção identificados." />
+            <Card
+              title={<>Pontos de atenção <span className="pds-section-count">({visAttention.length})</span></>}
+              className="pds-attention-card"
+              actions={<SortBtn dir={attnSort} onToggle={() => setAttnSort(d => d === 'asc' ? 'desc' : 'asc')} />}
+            >
+              <ItemList items={sortItems(visAttention, attnSort)} variant="attention" showMeta emptyMessage="Sem pontos de atenção identificados." />
             </Card>
           </div>
 

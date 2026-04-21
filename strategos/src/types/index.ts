@@ -106,9 +106,16 @@ export interface Activity {
 
 // ── PDS entries ───────────────────────────────────────────────
 export interface PdsItem {
+  /** UUID string assigned by migration 010 / client on creation */
+  id?: string
   text: string
   date?: string
   status?: string
+  author?: string
+  /** ISO timestamp — set when item is created */
+  created_at?: string
+  /** ISO timestamp when hidden, or null/undefined when visible */
+  hidden_at?: string | null
 }
 
 export interface PdsEntry {
@@ -120,6 +127,7 @@ export interface PdsEntry {
   n0: string
   n1: string
   program_id: string | null
+  plano_id: string | null
   commitments_items: PdsItem[]
   progress_items: PdsItem[]
   next_steps_items: PdsItem[]
