@@ -11,28 +11,29 @@ DECLARE
   col  TEXT;
   arr  JSONB;
   item JSONB;
-  out  JSONB;
+  enriched JSONB;
   i    INT;
 BEGIN
   FOR r IN SELECT id FROM public.pds_entries LOOP
     FOREACH col IN ARRAY cols LOOP
 
+      -- INTO must come before USING in EXECUTE
       EXECUTE format('SELECT %I FROM public.pds_entries WHERE id = $1', col)
-        USING r.id INTO arr;
+        INTO arr USING r.id;
 
       CONTINUE WHEN arr IS NULL OR jsonb_array_length(arr) = 0;
 
-      out := '[]'::JSONB;
+      enriched := '[]'::JSONB;
 
       FOR i IN 0 .. jsonb_array_length(arr) - 1 LOOP
         item := arr -> i;
 
         IF item ? 'id' THEN
           -- Already enriched — preserve as-is.
-          out := out || jsonb_build_array(item);
+          enriched := enriched || jsonb_build_array(item);
         ELSE
           -- Legacy item — merge enrichment fields.
-          out := out || jsonb_build_array(
+          enriched := enriched || jsonb_build_array(
             item || jsonb_build_object(
               'id',         gen_random_uuid()::TEXT,
               'created_at', now()::TEXT,
@@ -45,7 +46,7 @@ BEGIN
       EXECUTE format(
         'UPDATE public.pds_entries SET %I = $1 WHERE id = $2',
         col
-      ) USING out, r.id;
+      ) USING enriched, r.id;
 
     END LOOP;
   END LOOP;
