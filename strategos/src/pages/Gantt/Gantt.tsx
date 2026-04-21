@@ -7,8 +7,7 @@ import EmptyState from '../../components/EmptyState/EmptyState'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
-import { rollupPct, rollupStatus, leafStatus, leafPctPrev, rollupPctPrev } from '../../lib/rollup'
-import { supabase } from '../../lib/supabase'
+import { rollupPct, leafPctPrev, rollupPctPrev, computeRowState, type RowState } from '../../lib/rollup'
 import type { Activity, Program } from '../../types/index'
 import type { DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
@@ -16,7 +15,6 @@ import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 const TODAY = new Date().toISOString().slice(0, 10)
 
 // ── Types ──────────────────────────────────────────────────────
-type StatusCls    = 'concluida' | 'em_dia' | 'em_atraso'
 type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
 type Scale        = 'Semana' | 'Mês' | 'Trimestre'
 type LevelView    = 'todos' | 'programa' | 'eixo' | 'plano' | 'macro' | 'actividade'
@@ -29,26 +27,23 @@ const COL_EXEC   = 60
 const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 // ── Status helpers ─────────────────────────────────────────────
-function actStatus(a: Activity): StatusCls {
-  const s = leafStatus(a, TODAY)
-  if (s === 'Concluída') return 'concluida'
-  if (s === 'Em atraso') return 'em_atraso'
-  return 'em_dia'
+const BADGE_VARIANT: Record<RowState, BadgeVariant> = {
+  'Concluída': 'green', 'Em dia': 'blue', 'Em risco': 'amber', 'Em atraso': 'red',
+}
+const STATUS_LABEL: Record<RowState, string> = {
+  'Concluída': 'Concluído', 'Em dia': 'Em dia', 'Em risco': 'Em risco', 'Em atraso': 'Em atraso',
+}
+const STATE_FILL: Record<RowState, string> = {
+  'Concluída': 'var(--status-done)', 'Em dia': 'var(--status-ontrack)',
+  'Em risco': 'var(--status-risk)', 'Em atraso': 'var(--status-late)',
 }
 
-function groupStatus(acts: Activity[], threshold: number): StatusCls {
+function rowStateForAct(a: Activity): RowState {
+  return computeRowState(a.pct, leafPctPrev(a, TODAY))
+}
+function rowStateForGroup(acts: Activity[]): RowState {
   const leaves = acts.filter(a => a.level === 4)
-  const s = rollupStatus(leaves, TODAY, threshold)
-  if (s === 'Concluída') return 'concluida'
-  if (s === 'Em atraso') return 'em_atraso'
-  return 'em_dia'
-}
-
-const BADGE_VARIANT: Record<StatusCls, BadgeVariant> = {
-  concluida: 'green', em_dia: 'blue', em_atraso: 'red',
-}
-const STATUS_LABEL: Record<StatusCls, string> = {
-  concluida: 'Concluído', em_dia: 'Em dia', em_atraso: 'Em atraso',
+  return computeRowState(rollupPct(leaves), rollupPctPrev(leaves, TODAY))
 }
 
 // ── Tree types ─────────────────────────────────────────────────
@@ -279,14 +274,14 @@ interface TooltipState {
   bs: string | null; bf: string | null
   rs: string | null; rf: string | null
   pct: number; pct_prev: number
-  statusCls: StatusCls
+  rowState: RowState
   childCount: number | null
   x: number; y: number
 }
 
 // ── Tooltip sub-component ─────────────────────────────────────
 function GanttTooltip({ tooltip }: { tooltip: TooltipState }) {
-  const { name, bs, bf, rs, rf, pct, pct_prev, statusCls, childCount, x, y } = tooltip
+  const { name, bs, bf, rs, rf, pct, pct_prev, rowState, childCount, x, y } = tooltip
 
   // Deviation: prefer rf−bf, fallback rs−bs
   let deviationDays: number | null = null
@@ -345,7 +340,7 @@ function GanttTooltip({ tooltip }: { tooltip: TooltipState }) {
     >
       <div className="gantt-tooltip-name">{name}</div>
       <div className="gantt-tooltip-status">
-        <Badge variant={BADGE_VARIANT[statusCls]}>{STATUS_LABEL[statusCls]}</Badge>
+        <Badge variant={BADGE_VARIANT[rowState]}>{STATUS_LABEL[rowState]}</Badge>
       </div>
       <div className="gantt-tooltip-grid">
         <span className="gantt-tooltip-label">Baseline</span>
@@ -375,7 +370,7 @@ interface BarProps {
   rangeStart: Date; totalMs: number
   variant: 'baseline' | 'real'
   lane: 'top' | 'bottom'
-  status: StatusCls
+  status: RowState
 }
 
 function GanttBar({ start, end, rangeStart, totalMs, variant, lane, status }: BarProps) {
@@ -389,7 +384,7 @@ function GanttBar({ start, end, rangeStart, totalMs, variant, lane, status }: Ba
   if (variant === 'baseline') {
     bg = 'rgba(0,46,94,0.22)'
   } else {
-    bg = status === 'concluida' ? 'var(--green)' : status === 'em_atraso' ? 'var(--red)' : 'var(--navy)'
+    bg = STATE_FILL[status]
   }
   return (
     <div
@@ -420,12 +415,6 @@ export default function Gantt() {
   const [scale, setScale]               = useState<Scale>('Mês')
   const [collapsed, setCollapsed]       = useState<Set<string>>(new Set())
   const [tooltip, setTooltip]           = useState<TooltipState | null>(null)
-  const [delayThreshold, setDelayThreshold] = useState(20)
-
-  useEffect(() => {
-    supabase.from('app_config').select('data').eq('config_key', 'status_delay_threshold').single()
-      .then(({ data }) => { if (data) setDelayThreshold(parseInt(data.data) || 20) })
-  }, [])
 
   const toggle = useCallback((key: string) => {
     setCollapsed(prev => {
@@ -480,7 +469,7 @@ export default function Gantt() {
   function makeTimeline(
     bs: string | null, bf: string | null,
     rs: string | null, rf: string | null,
-    status: StatusCls,
+    status: RowState,
     act: Activity | null,
     showTodayLabel = false,
     tooltipGroup?: { name: string; leaves: Activity[] },
@@ -490,7 +479,7 @@ export default function Gantt() {
       onEnter = (e: React.MouseEvent) => setTooltip({
         name: act.name, bs: act.bs, bf: act.bf, rs: act.rs, rf: act.rf,
         pct: act.pct, pct_prev: leafPctPrev(act, TODAY),
-        statusCls: actStatus(act),
+        rowState: rowStateForAct(act),
         childCount: null,
         x: e.clientX, y: e.clientY,
       })
@@ -500,7 +489,7 @@ export default function Gantt() {
         name, bs, bf, rs, rf,
         pct: Math.round(rollupPct(leaves)),
         pct_prev: rollupPctPrev(leaves, TODAY),
-        statusCls: status,
+        rowState: status,
         childCount: leaves.length,
         x: e.clientX, y: e.clientY,
       })
@@ -548,7 +537,7 @@ export default function Gantt() {
     for (const n1g of n1groups) {
       const n1key = `n1:${n1g.n1}`
       const n1col = collapsed.has(n1key)
-      const n1st  = groupStatus(n1g.allActs, delayThreshold)
+      const n1st  = rowStateForGroup(n1g.allActs)
       const n1dr  = groupDateRange(n1g.allActs)
       const showLabel = firstRow; firstRow = false
 
@@ -577,7 +566,7 @@ export default function Gantt() {
       for (const n2g of n1g.n2groups) {
         const n2key = `n2:${n1g.n1}:${n2g.n2}`
         const n2col = collapsed.has(n2key)
-        const n2st  = groupStatus(n2g.allActs, delayThreshold)
+        const n2st  = rowStateForGroup(n2g.allActs)
         const n2dr  = groupDateRange(n2g.allActs)
 
         rows.push(
@@ -606,7 +595,7 @@ export default function Gantt() {
           // ── No N3 name: render all acts directly as leaf rows ──
           if (!n3g.n3) {
             for (const a of n3g.acts) {
-              const ast = actStatus(a)
+              const ast = rowStateForAct(a)
               rows.push(
                 <tr key={a.id} className="gantt-row-n4">
                   <td className="gantt-sticky">
@@ -638,7 +627,7 @@ export default function Gantt() {
             // N3 has no children — render only the level-3 representative as a single leaf row
             const rep = n3g.acts.find(a => a.level === 3)
             if (!rep) continue
-            const ast = actStatus(rep)
+            const ast = rowStateForAct(rep)
             rows.push(
               <tr key={rep.id} className="gantt-row-n4">
                 <td className="gantt-sticky">
@@ -666,7 +655,7 @@ export default function Gantt() {
           // ── Has real children: render collapsible N3 header + children only ──
           const n3key = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
           const n3col = collapsed.has(n3key)
-          const n3st  = groupStatus(n3ChildLeaves, delayThreshold)
+          const n3st  = rowStateForGroup(n3ChildLeaves)
           const n3dr  = groupDateRange(n3ChildLeaves)
 
           rows.push(
@@ -693,7 +682,7 @@ export default function Gantt() {
 
           // Render only the real children — the N3 representative is excluded to avoid duplicates
           for (const a of n3ChildLeaves) {
-            const ast = actStatus(a)
+            const ast = rowStateForAct(a)
             rows.push(
               <tr key={a.id} className="gantt-row-n4">
                 <td className="gantt-sticky">
@@ -724,7 +713,7 @@ export default function Gantt() {
     for (const n0g of n0tree) {
       const n0key = `n0:${n0g.progId}`
       const n0col = collapsed.has(n0key)
-      const n0st  = groupStatus(n0g.allActs, delayThreshold)
+      const n0st  = rowStateForGroup(n0g.allActs)
       const n0dr  = groupDateRange(n0g.allActs)
       const showLabel = firstRow; firstRow = false
 
@@ -787,8 +776,18 @@ export default function Gantt() {
             <span className="gantt-legend-item">
               <span className="gantt-legend-swatch gantt-swatch-baseline" />Baseline
             </span>
+            <span className="gantt-toolbar-sep" />
             <span className="gantt-legend-item">
-              <span className="gantt-legend-swatch gantt-swatch-real" />Real
+              <span className="gantt-legend-swatch" style={{ background: 'var(--status-done)' }} />Concluída
+            </span>
+            <span className="gantt-legend-item">
+              <span className="gantt-legend-swatch" style={{ background: 'var(--status-ontrack)' }} />Em dia
+            </span>
+            <span className="gantt-legend-item">
+              <span className="gantt-legend-swatch" style={{ background: 'var(--status-risk)' }} />Em risco
+            </span>
+            <span className="gantt-legend-item">
+              <span className="gantt-legend-swatch" style={{ background: 'var(--status-late)' }} />Em atraso
             </span>
           </div>
           <div className="gantt-scale-chips">

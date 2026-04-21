@@ -30,7 +30,6 @@
     flex-shrink: 0;
   }
   .gantt-swatch-baseline { background: rgba(0,46,94,0.18); border: 1px solid rgba(0,46,94,0.35); }
-  .gantt-swatch-real     { background: var(--navy); }
 
   /* Scale chips — light style, active: navy bg + white text */
   .gantt-scale-chips { display: flex; gap: 3px; }
