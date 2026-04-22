@@ -148,12 +148,14 @@ interface ContagemKpiProps {
 }
 
 function ContagemKpi({ value, total, label, delta, variant = 'default', deltaVariant = 'neutral' }: ContagemKpiProps) {
+  const isLate = variant === 'late'
   return (
     <div className="contagem-kpi">
-      <div className="contagem-kpi-main">
-        <span className={`contagem-kpi-value${variant === 'late' ? ' late' : ''}`}>{value}</span>
-        <span className="contagem-kpi-rest">/ {total} {label}</span>
+      <div className="contagem-kpi-numbers">
+        <span className={`contagem-kpi-value${isLate ? ' late' : ''}`}>{value}</span>
+        <span className="contagem-kpi-denom">/ {total}</span>
       </div>
+      <div className={`contagem-kpi-label${isLate ? ' late' : ''}`}>{label}</div>
       {delta !== null && (
         <div className={`contagem-kpi-delta ${deltaVariant}`}>
           {delta >= 0 ? '+' : ''}{delta} últimos 7 dias

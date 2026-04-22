@@ -200,37 +200,47 @@
     gap: 12px;
   }
   .contagem-kpi {
-    padding: 10px 16px;
-    background: var(--bg2);
-    border-radius: var(--r);
     display: flex;
     flex-direction: column;
     gap: 4px;
   }
-  .contagem-kpi-main {
+  .contagem-kpi-numbers {
     display: flex;
     align-items: baseline;
-    gap: 6px;
+    gap: 8px;
   }
   .contagem-kpi-value {
-    font-size: 26px;
-    font-weight: 700;
+    font-family: var(--font-serif);
+    font-size: 36px;
+    font-weight: 400;
     color: var(--stratgos-ink-900, var(--text));
-    font-variant-numeric: tabular-nums;
     line-height: 1;
   }
   .contagem-kpi-value.late { color: var(--status-late, var(--red)); }
-  .contagem-kpi-rest {
+  .contagem-kpi-denom {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--stratgos-ink-300, #ccc);
+    line-height: 1;
+  }
+  .contagem-kpi-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    color: var(--stratgos-ink-500, var(--text2));
+    margin-top: 6px;
+  }
+  .contagem-kpi-label.late { color: var(--status-late, var(--red)); }
+  .contagem-kpi-delta {
     font-size: 12px;
+    font-weight: 500;
     color: var(--stratgos-ink-500, var(--text2));
   }
-  .contagem-kpi-delta {
-    font-size: 11px;
-    font-weight: 500;
-  }
-  .contagem-kpi-delta.good    { color: #166534; }
+  .contagem-kpi-delta.good    { color: var(--status-ontrack, #166534); }
   .contagem-kpi-delta.bad     { color: var(--status-late, var(--red)); }
-  .contagem-kpi-delta.neutral { color: var(--text3); }
+  .contagem-kpi-delta.neutral { color: var(--stratgos-ink-500, var(--text2)); }
 
   /* ── Zone 3 — Alertas ────────────────────────────────────── */
   .alert-zone {
