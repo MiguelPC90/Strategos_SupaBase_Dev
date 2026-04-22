@@ -20,7 +20,7 @@ export function useSnapshots(program_id?: string): UseSnapshotsResult {
 
     supabase
       .from('snapshots')
-      .select('id, label, snap_date, kpi, by_n1, by_n0, created_by')
+      .select('id, label, snap_date, kpi, by_n1, by_n0, by_n2, risks, financials, created_by')
       .order('snap_date', { ascending: true })
       .then(({ data, error: err }) => {
         if (cancelled) return

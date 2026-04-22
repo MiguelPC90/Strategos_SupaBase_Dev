@@ -271,6 +271,14 @@ export interface SnapshotKpi {
   conc_a_data_denom?: number
 }
 
+export interface SnapshotRiskTopItem {
+  id: string
+  planoId: string | null
+  description: string
+  grade: number
+  status: string
+}
+
 export interface Snapshot {
   id: string
   label: string
@@ -280,7 +288,46 @@ export interface Snapshot {
   by_n1: Record<string, SnapshotKpi>
   /** KPIs keyed by n0/program value */
   by_n0: Record<string, SnapshotKpi>
+  /** KPIs keyed by plano UUID — added in migration 011 */
+  by_n2?: Record<string, SnapshotKpi>
+  /** Risk aggregates — added in migration 011 */
+  risks?: {
+    totals?: {
+      total: number; abertos: number; mitigados: number
+      criticos: number; altos: number; medios: number; baixos: number
+      grade_medio: number
+    }
+    by_plano?: Record<string, {
+      total: number; abertos: number; mitigados: number
+      criticos: number; grade_medio: number
+    }>
+    top_criticos?: SnapshotRiskTopItem[]
+  }
+  /** Financial aggregates — added in migration 011 */
+  financials?: {
+    totals?: {
+      total_budget: number; capex_budget: number; opex_budget: number
+      total_executed: number; total_pct: number
+      facturas_overdue_count: number; facturas_overdue_value: number
+    }
+    by_program?: Record<string, {
+      total_budget: number; total_executed: number; total_pct: number
+    }>
+  }
   created_by: string | null
+}
+
+// ── Alert rules ───────────────────────────────────────────────
+export type AlertSeverity = 'critical' | 'high' | 'medium' | 'low'
+
+export interface AlertRule {
+  id: string
+  rule_key: string
+  enabled: boolean
+  threshold: number | null
+  severity: AlertSeverity
+  label: string
+  description: string | null
 }
 
 // ── User profile ──────────────────────────────────────────────

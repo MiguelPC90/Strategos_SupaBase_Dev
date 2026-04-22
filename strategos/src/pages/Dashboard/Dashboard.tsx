@@ -1,5 +1,5 @@
 import './Dashboard.css'
-import { useState, useMemo, useRef, useCallback } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Spinner from '../../components/Spinner/Spinner'
 import {
@@ -9,7 +9,6 @@ import {
   usePlotArea, useXAxisTicks,
 } from 'recharts'
 import Card from '../../components/Card/Card'
-import KpiCard from '../../components/KpiCard/KpiCard'
 import Table, { type Column } from '../../components/Table/Table'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { useActivities } from '../../hooks/useActivities'
@@ -18,6 +17,9 @@ import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useSnapshots } from '../../hooks/useSnapshots'
 import { useFilters } from '../../context/FilterContext'
+import { supabase } from '../../lib/supabase'
+import { generateAlerts } from '../../lib/alerts'
+import type { Alert, AlertRule } from '../../lib/alerts'
 import type { Activity, Program, Eixo, Plano } from '../../types/index'
 import { leafPctPrev, leafStatus, computeRowState, type RowState } from '../../lib/rollup'
 import { colors, statusColor } from '../../lib/tokens'
@@ -90,22 +92,8 @@ function calcMetrics(acts: Activity[]): Metrics {
   }
 }
 
-function fmtPct(n: number): string { return `${n.toFixed(1)}%` }
 function safeDiv(a: number, b: number): number { return b > 0 ? a / b : 0 }
 
-function mkTrend(
-  current: number,
-  prev: number | null | undefined,
-  fmt: (n: number) => string,
-  inverted = false,
-) {
-  if (prev == null) return undefined
-  const diff = current - prev
-  if (diff === 0) return undefined
-  const better = inverted ? diff < 0 : diff > 0
-  const color = better ? colors.brand.moss : colors.status.late
-  return <span style={{ color }}>{diff > 0 ? '▲' : '▼'} {fmt(Math.abs(diff))}</span>
-}
 
 function groupBy<T>(items: T[], keyFn: (item: T) => string): Map<string, T[]> {
   const map = new Map<string, T[]>()
@@ -116,6 +104,86 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Map<string, T[]> {
     else map.set(key, [item])
   }
   return map
+}
+
+// ── SmartKpi ───────────────────────────────────────────────────
+interface SmartKpiProps {
+  label: string
+  value: number | null
+  delta: number | null
+  target: number | null
+}
+
+function SmartKpi({ label, value, delta, target }: SmartKpiProps) {
+  const abs   = delta !== null ? Math.abs(delta) : 0
+  const cls   = delta === null || abs < 0.05 ? 'neutral' : delta > 0 ? 'positive' : 'negative'
+  return (
+    <div className="executive-kpi">
+      <div className="executive-kpi-label">{label}</div>
+      <div className="executive-kpi-value-row">
+        <span className="executive-kpi-value">
+          {value !== null ? `${value.toFixed(1)}%` : '—'}
+        </span>
+        {delta !== null && abs >= 0.05 && (
+          <span className={`executive-kpi-delta ${cls}`}>
+            {delta > 0 ? '▲' : '▼'}{abs.toFixed(1)}pp
+          </span>
+        )}
+      </div>
+      {target !== null && (
+        <div className="executive-kpi-target">Target: {target.toFixed(1)}%</div>
+      )}
+    </div>
+  )
+}
+
+// ── ContagemKpi ────────────────────────────────────────────────
+interface ContagemKpiProps {
+  value: number
+  total: number
+  label: string
+  delta: number | null
+  variant?: 'default' | 'late'
+  deltaVariant?: 'good' | 'bad' | 'neutral'
+}
+
+function ContagemKpi({ value, total, label, delta, variant = 'default', deltaVariant = 'neutral' }: ContagemKpiProps) {
+  return (
+    <div className="contagem-kpi">
+      <div className="contagem-kpi-main">
+        <span className={`contagem-kpi-value${variant === 'late' ? ' late' : ''}`}>{value}</span>
+        <span className="contagem-kpi-rest">/ {total} {label}</span>
+      </div>
+      {delta !== null && (
+        <div className={`contagem-kpi-delta ${deltaVariant}`}>
+          {delta >= 0 ? '+' : ''}{delta} últimos 7 dias
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── AlertsZone ─────────────────────────────────────────────────
+function AlertsZone({ alerts }: { alerts: Alert[] }) {
+  return (
+    <div className="alert-zone">
+      <div className="alert-zone-title">Alertas</div>
+      {alerts.length === 0 ? (
+        <div className="alert-zone-empty">Nenhum alerta activo</div>
+      ) : (
+        alerts.map(a => (
+          <div key={a.id} className={`alert-card severity-${a.severity}`}>
+            <div className="alert-card-icon">⚠</div>
+            <div className="alert-card-body">
+              <div className="alert-card-title">{a.title}</div>
+              <div className="alert-card-desc">{a.description}</div>
+            </div>
+            {a.href && <a href={a.href} className="alert-card-link">→</a>}
+          </div>
+        ))
+      )}
+    </div>
+  )
 }
 
 // ── Bar chart types & helpers ──────────────────────────────────
@@ -788,33 +856,19 @@ export default function Dashboard() {
   const leaves = useMemo(() => filtered.filter(a => a.level === 4), [filtered])
   const m      = useMemo(() => calcMetrics(leaves), [leaves])
 
-  // Program scope label (uses programs list)
-  const activeProgramCount = useMemo(() => {
-    const ids = new Set(
-      leaves.map(a => a.program_id).filter((id): id is string => id !== null),
-    )
-    return ids.size
-  }, [leaves])
-  const programLabel = programs.length > 0
-    ? `${activeProgramCount} / ${programs.length} prog.`
-    : undefined
+  // ── Snapshot references ──────────────────────────────────────
+  const currentSnapshot = useMemo(
+    () => snapshots.length > 0 ? snapshots[snapshots.length - 1] : null,
+    [snapshots],
+  )
 
-  // ── Derived KPI strings ──────────────────────────────────────
-  const kpiGrauExec  = m.total > 0 ? fmtPct(m.grau_exec) : '—'
-  const kpiConcGeral = m.total > 0
-    ? fmtPct(safeDiv(m.concluidas, m.total) * 100) : '—'
-  const kpiConcData  = m.concluidas + m.em_atraso > 0
-    ? fmtPct(safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100) : '—'
-  const kpiExecObj   = m.total > 0 ? fmtPct(m.exec_obj) : '—'
-  const kpiCgObj     = m.total > 0
-    ? fmtPct(safeDiv(m.concluidas + m.em_atraso, m.total) * 100) : '—'
-
-  // ── Previous snapshot KPI (for trend arrows) ──────────────────
-  const prevKpi = useMemo(() => {
+  const kpi7dAgo = useMemo(() => {
     if (snapshots.length === 0) return null
-    const today = new Date().toISOString().slice(0, 10)
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - 7)
+    const cutoffStr = cutoff.toISOString().slice(0, 10)
     for (let i = snapshots.length - 1; i >= 0; i--) {
-      if (snapshots[i].snap_date.slice(0, 10) < today) {
+      if (snapshots[i].snap_date.slice(0, 10) <= cutoffStr) {
         const snap = snapshots[i]
         const pid = snapshotProgramId
         return (pid !== undefined && pid in snap.by_n0) ? snap.by_n0[pid] : snap.kpi
@@ -823,26 +877,60 @@ export default function Dashboard() {
     return null
   }, [snapshots, snapshotProgramId])
 
-  // ── Trend indicators ─────────────────────────────────────────
-  const fmtN   = (n: number) => String(Math.round(n))
-  const fmtPct1 = (n: number) => `${n.toFixed(1)}%`
-  const trendTotal    = mkTrend(m.total,     prevKpi?.total,     fmtN)
-  const trendConc     = mkTrend(m.concluidas, prevKpi?.concluidas, fmtN)
-  const trendEmDia    = mkTrend(m.em_dia,    prevKpi?.em_dia,    fmtN)
-  const trendEmAtraso = mkTrend(m.em_atraso, prevKpi?.em_atraso, fmtN, true)
-  const trendGrauExec = mkTrend(m.grau_exec, prevKpi?.exec_media, fmtPct1)
-  const trendConcGeral = mkTrend(
-    m.total > 0 ? safeDiv(m.concluidas, m.total) * 100 : 0,
-    prevKpi && prevKpi.total > 0 ? safeDiv(prevKpi.concluidas, prevKpi.total) * 100 : null,
-    fmtPct1,
+  const snap14dAgo = useMemo(() => {
+    if (snapshots.length === 0) return null
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - 14)
+    const cutoffStr = cutoff.toISOString().slice(0, 10)
+    for (let i = snapshots.length - 1; i >= 0; i--) {
+      if (snapshots[i].snap_date.slice(0, 10) <= cutoffStr) return snapshots[i]
+    }
+    return null
+  }, [snapshots])
+
+  // ── Alert rules ──────────────────────────────────────────────
+  const [alertRules, setAlertRules] = useState<AlertRule[]>([])
+  useEffect(() => {
+    supabase.from('alert_rules').select('*').then(({ data }) => {
+      if (data) setAlertRules(data as AlertRule[])
+    })
+  }, [])
+
+  const planoRefs = useMemo(
+    () => allPlanos.map(p => ({ id: p.id, name: p.name, program_id: p.program_id })),
+    [allPlanos],
   )
-  const trendConcData = mkTrend(
-    m.concluidas + m.em_atraso > 0 ? safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100 : 0,
-    prevKpi && prevKpi.concluidas + prevKpi.em_atraso > 0
-      ? safeDiv(prevKpi.concluidas, prevKpi.concluidas + prevKpi.em_atraso) * 100
-      : null,
-    fmtPct1,
-  )
+
+  const alerts = useMemo(() => generateAlerts({
+    rules: alertRules,
+    currentSnapshot,
+    snapshot14daysAgo: snap14dAgo,
+    planos: planoRefs,
+    programIdFilter: snapshotProgramId,
+  }), [alertRules, currentSnapshot, snap14dAgo, planoRefs, snapshotProgramId])
+
+  // ── Zone 1 — Smart KPI values & deltas ──────────────────────
+  const grauExecVal    = m.total > 0 ? m.grau_exec : null
+  const grauExecTarget = m.total > 0 ? m.exec_obj : null
+  const grauExecDelta  = (grauExecVal !== null && kpi7dAgo && kpi7dAgo.total > 0)
+    ? grauExecVal - kpi7dAgo.exec_media : null
+
+  const concGeralVal    = m.total > 0 ? safeDiv(m.concluidas, m.total) * 100 : null
+  const concGeralTarget = m.total > 0 ? safeDiv(m.concluidas + m.em_atraso, m.total) * 100 : null
+  const concGeralDelta  = (concGeralVal !== null && kpi7dAgo && kpi7dAgo.total > 0)
+    ? concGeralVal - safeDiv(kpi7dAgo.concluidas, kpi7dAgo.total) * 100 : null
+
+  const concDataVal   = m.concluidas + m.em_atraso > 0
+    ? safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100 : null
+  const concDataDelta = (concDataVal !== null && kpi7dAgo &&
+    kpi7dAgo.concluidas + kpi7dAgo.em_atraso > 0)
+    ? concDataVal - safeDiv(kpi7dAgo.concluidas, kpi7dAgo.concluidas + kpi7dAgo.em_atraso) * 100
+    : null
+
+  // ── Zone 2 — Contagem KPI deltas ────────────────────────────
+  const delta7Conc     = kpi7dAgo !== null ? m.concluidas - kpi7dAgo.concluidas : null
+  const delta7EmDia    = kpi7dAgo !== null ? m.em_dia - kpi7dAgo.em_dia : null
+  const delta7EmAtraso = kpi7dAgo !== null ? m.em_atraso - kpi7dAgo.em_atraso : null
 
   // ── Pie chart data ───────────────────────────────────────────
   const pieData = useMemo(() => [
@@ -940,47 +1028,19 @@ export default function Dashboard() {
 
   return (
     <>
-      {/* ── Row 1: KPI cards ──────────────────────────────────── */}
-      <div className="dashboard-top-grid">
-
-        <Card
-          title="Dados Gerais"
-          actions={programLabel
-            ? <span className="dash-prog-label">{programLabel}</span>
-            : undefined}
-        >
-          <div className="kpi-2col">
-            <KpiCard label="Total actividades" value={m.total}     trend={trendTotal} />
-            <KpiCard label="Concluídas"  value={m.concluidas} color="green" trend={trendConc} />
-            <KpiCard label="Em dia"      value={m.em_dia}     color="blue"  trend={trendEmDia} />
-            <KpiCard label="Em atraso"   value={m.em_atraso}  color="red"   trend={trendEmAtraso} />
-          </div>
-        </Card>
-
-        <Card title="Indicadores de Concretização">
-          <div className="ind-section">
-            <div className="ind-section-header">
-              <span className="ind-dot" style={{ background: 'var(--navy)' }} />
-              Realizado
-            </div>
-            <div className="kpi-3col">
-              <KpiCard label="Grau execução" value={kpiGrauExec}  color="navy" trend={trendGrauExec} />
-              <KpiCard label="Conc. geral"   value={kpiConcGeral} color="navy" trend={trendConcGeral} />
-              <KpiCard label="Conc. à data"  value={kpiConcData}  color="navy" trend={trendConcData} />
-            </div>
-          </div>
-          <div className="ind-section">
-            <div className="ind-section-header">
-              <span className="ind-dot" style={{ background: 'var(--green)' }} />
-              Objectivo
-            </div>
-            <div className="kpi-3col ind-dashed">
-              <KpiCard label="Exec. obj."       value={kpiExecObj} color="green" />
-              <KpiCard label="Conc. geral obj." value={kpiCgObj}   color="green" />
-              <KpiCard label="Conc. data obj."  value="100%"       color="green" />
-            </div>
-          </div>
-        </Card>
+      {/* ── Executive Brief ───────────────────────────────────── */}
+      <div className="executive-brief">
+        <div className="executive-kpi-grid">
+          <SmartKpi label="Grau de Execução"    value={grauExecVal}  delta={grauExecDelta}  target={grauExecTarget} />
+          <SmartKpi label="Concretização Geral" value={concGeralVal} delta={concGeralDelta} target={concGeralTarget} />
+          <SmartKpi label="Conc. à Data"        value={concDataVal}  delta={concDataDelta}  target={100} />
+        </div>
+        <div className="contagem-kpi-grid">
+          <ContagemKpi value={m.concluidas} total={m.total} label="concluídas" delta={delta7Conc}     deltaVariant="good" />
+          <ContagemKpi value={m.em_dia}     total={m.total} label="em dia"     delta={delta7EmDia}    deltaVariant="neutral" />
+          <ContagemKpi value={m.em_atraso}  total={m.total} label="em atraso"  delta={delta7EmAtraso} variant="late" deltaVariant="bad" />
+        </div>
+        <AlertsZone alerts={alerts} />
       </div>
 
       {/* ── Row 2: Charts ─────────────────────────────────────── */}

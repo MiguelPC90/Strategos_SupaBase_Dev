@@ -12,7 +12,7 @@ import {
   DEFAULT_HEALTH_CONFIG, HEALTH_METRIC_LABELS,
   type HealthConfig, type HealthBlock, type HealthMetric,
 } from '../../lib/healthRules'
-import type { Program, Eixo, Plano, Profile, Person, Snapshot, UserRole } from '../../types/index'
+import type { Program, Eixo, Plano, Profile, Person, Snapshot, UserRole, AlertRule, AlertSeverity } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -24,6 +24,7 @@ type SectionKey =
   | 'risco'
   | 'historico'
   | 'dados'
+  | 'alertas'
 
 interface Section {
   key: SectionKey
@@ -40,6 +41,7 @@ const SECTIONS: Section[] = [
   { key: 'risco',        label: 'Risco',                     desc: 'Dimensão da matriz, limiares e estados' },
   { key: 'historico',    label: 'Histórico',                 desc: 'Snapshots automáticos e registo de alterações' },
   { key: 'dados',        label: 'Dados e Importação',        desc: 'Importar/exportar Excel e rótulos de filtros' },
+  { key: 'alertas',     label: 'Alertas',                   desc: 'Regras de alerta exibidas no Dashboard Executivo' },
 ]
 
 // ── Section 1: Geral ───────────────────────────────────────────
@@ -2996,6 +2998,92 @@ function AdminDados() {
   )
 }
 
+// ── Section 9: Alertas ─────────────────────────────────────────
+const SEVERITY_OPTS: AlertSeverity[] = ['critical', 'high', 'medium', 'low']
+const SEVERITY_LABELS: Record<AlertSeverity, string> = {
+  critical: 'Crítico', high: 'Alto', medium: 'Médio', low: 'Baixo',
+}
+
+function AdminAlertas() {
+  const [rules, setRules]   = useState<AlertRule[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving]   = useState<string | null>(null)
+  const { showToast }         = useToast()
+
+  useEffect(() => {
+    supabase.from('alert_rules').select('*').order('severity').then(({ data, error }) => {
+      if (data) setRules(data as AlertRule[])
+      if (error) console.error(error)
+      setLoading(false)
+    })
+  }, [])
+
+  async function handleUpdate(rule: AlertRule, field: keyof AlertRule, value: unknown) {
+    setSaving(rule.id)
+    const patch = { [field]: value }
+    const { error } = await supabase.from('alert_rules').update(patch).eq('id', rule.id)
+    if (error) {
+      showToast(error.message, 'error')
+    } else {
+      setRules(prev => prev.map(r => r.id === rule.id ? { ...r, ...patch } as AlertRule : r))
+    }
+    setSaving(null)
+  }
+
+  return (
+    <Card title="Alertas">
+      <p className="adm-section-desc">Regras de alerta exibidas no briefing executivo do Dashboard. Edite directamente na tabela — as alterações são guardadas imediatamente.</p>
+      {loading ? (
+        <div className="page-placeholder"><p>A carregar...</p></div>
+      ) : (
+        <table className="adm-panel-table">
+          <thead>
+            <tr>
+              <th>Regra</th>
+              <th>Descrição</th>
+              <th style={{ width: 76, textAlign: 'center' }}>Activo</th>
+              <th style={{ width: 96 }}>Threshold</th>
+              <th style={{ width: 110 }}>Severidade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rules.map(rule => (
+              <tr key={rule.id} style={{ opacity: saving === rule.id ? 0.5 : 1 }}>
+                <td>
+                  <code style={{ fontSize: 11, background: 'var(--bg3)', padding: '1px 4px', borderRadius: 3 }}>{rule.rule_key}</code>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginTop: 3 }}>{rule.label}</div>
+                </td>
+                <td style={{ fontSize: 12, color: 'var(--text2)' }}>{rule.description ?? '—'}</td>
+                <td style={{ textAlign: 'center' }}>
+                  <input type="checkbox" checked={rule.enabled}
+                    onChange={e => handleUpdate(rule, 'enabled', e.target.checked)} />
+                </td>
+                <td>
+                  <input type="number" className="adm-row-input"
+                    style={{ width: 72 }}
+                    value={rule.threshold ?? ''}
+                    min={0}
+                    onChange={e => handleUpdate(rule, 'threshold',
+                      e.target.value === '' ? null : Number(e.target.value))} />
+                </td>
+                <td>
+                  <select className="adm-row-input"
+                    value={rule.severity}
+                    onChange={e => handleUpdate(rule, 'severity', e.target.value as AlertSeverity)}>
+                    {SEVERITY_OPTS.map(s => (
+                      <option key={s} value={s}>{SEVERITY_LABELS[s]}</option>
+                    ))}
+                  </select>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Card>
+  )
+}
+
 // ── Main Admin component ───────────────────────────────────────
 export default function Admin() {
   const [active, setActive] = useState<SectionKey>('geral')
@@ -3027,7 +3115,8 @@ export default function Admin() {
          active === 'financeiro'    ? <AdminFinanceiro />    :
          active === 'risco'         ? <AdminRisco />         :
          active === 'historico'     ? <AdminHistorico />     :
-         active === 'dados'         ? <AdminDados />         : (
+         active === 'dados'         ? <AdminDados />         :
+         active === 'alertas'       ? <AdminAlertas />       : (
           <Card title={section.label}>
             <p className="adm-section-desc">{section.desc}</p>
             <div className="page-placeholder adm-placeholder">

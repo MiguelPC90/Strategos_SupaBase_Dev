@@ -132,4 +132,162 @@
 
   .dev-val-sep    { color: var(--stratgos-ink-300); }
   .dev-val-target { color: var(--stratgos-ink-500); font-size: 10px; }
+
+  /* ── Executive Brief container ───────────────────────────── */
+  .executive-brief {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+    padding: 20px 24px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ── Zone 1 — Smart KPIs ─────────────────────────────────── */
+  .executive-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .executive-kpi {
+    padding: 14px 16px;
+    background: var(--stratgos-parchment, #faf9f7);
+    border-radius: var(--r);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .executive-kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--stratgos-ink-500, var(--text2));
+  }
+  .executive-kpi-value-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .executive-kpi-value {
+    font-family: var(--font-serif, Georgia, serif);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--stratgos-ink-900, var(--text));
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .executive-kpi-delta {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .executive-kpi-delta.positive { background: #dcfce7; color: #166534; }
+  .executive-kpi-delta.negative { background: #fee2e2; color: #991b1b; }
+  .executive-kpi-delta.neutral  { background: var(--bg3); color: var(--text3); }
+  .executive-kpi-target {
+    font-size: 11px;
+    color: var(--stratgos-ink-400, var(--text3));
+  }
+
+  /* ── Zone 2 — Contagem KPIs ──────────────────────────────── */
+  .contagem-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .contagem-kpi {
+    padding: 10px 16px;
+    background: var(--bg2);
+    border-radius: var(--r);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .contagem-kpi-main {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .contagem-kpi-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--stratgos-ink-900, var(--text));
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .contagem-kpi-value.late { color: var(--status-late, var(--red)); }
+  .contagem-kpi-rest {
+    font-size: 12px;
+    color: var(--stratgos-ink-500, var(--text2));
+  }
+  .contagem-kpi-delta {
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .contagem-kpi-delta.good    { color: #166534; }
+  .contagem-kpi-delta.bad     { color: var(--status-late, var(--red)); }
+  .contagem-kpi-delta.neutral { color: var(--text3); }
+
+  /* ── Zone 3 — Alertas ────────────────────────────────────── */
+  .alert-zone {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .alert-zone-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--stratgos-ink-500, var(--text2));
+    margin-bottom: 2px;
+  }
+  .alert-zone-empty {
+    font-size: 13px;
+    color: var(--text3);
+    padding: 4px 0;
+  }
+  .alert-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: var(--r);
+    border-left: 3px solid transparent;
+    background: var(--bg2);
+  }
+  .alert-card.severity-critical { border-left-color: var(--red, #A32D2D); background: #fff5f5; }
+  .alert-card.severity-high     { border-left-color: var(--amber, #854F0B); background: #fffbf0; }
+  .alert-card.severity-medium   { border-left-color: var(--blue, #185FA5); background: #f0f6ff; }
+  .alert-card.severity-low      { border-left-color: var(--stratgos-ink-300, #ccc); background: var(--bg2); }
+  .alert-card-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .alert-card-body { flex: 1; min-width: 0; }
+  .alert-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .alert-card-desc {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+  .alert-card-link {
+    font-size: 14px;
+    color: var(--text3);
+    text-decoration: none;
+    flex-shrink: 0;
+    align-self: center;
+    padding: 0 4px;
+    transition: color 0.15s;
+  }
+  .alert-card-link:hover { color: var(--navy); }
 }
