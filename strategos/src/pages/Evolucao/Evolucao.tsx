@@ -1,5 +1,5 @@
 import './Evolucao.css'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import {
@@ -17,14 +17,20 @@ import { colors, chartDefaults } from '../../lib/tokens'
 // ── Helpers ────────────────────────────────────────────────────
 const CURRENT_YEAR = new Date().getFullYear().toString()
 
-function defaultFrom(): string {
-  const d = new Date()
-  d.setMonth(d.getMonth() - 6)
-  return d.toISOString().slice(0, 10)
-}
+type PeriodOption = '7d' | '30d' | '3m' | '6m' | '12m' | 'custom'
 
-function defaultTo(): string {
-  return new Date().toISOString().slice(0, 10)
+function computePeriodDates(period: Exclude<PeriodOption, 'custom'>): { from: string; to: string } {
+  const now  = new Date()
+  const to   = now.toISOString().slice(0, 10)
+  const from = new Date(now)
+  switch (period) {
+    case '7d':  from.setDate(from.getDate() - 7);          break
+    case '30d': from.setDate(from.getDate() - 30);         break
+    case '3m':  from.setMonth(from.getMonth() - 3);        break
+    case '6m':  from.setMonth(from.getMonth() - 6);        break
+    case '12m': from.setFullYear(from.getFullYear() - 1);  break
+  }
+  return { from: from.toISOString().slice(0, 10), to }
 }
 
 /** X-axis tick: DD/MM (same year) or DD/MM/YY (different year) */
@@ -101,9 +107,17 @@ const BLUE  = colors.status.done
 
 // ── Component ──────────────────────────────────────────────────
 export default function Evolucao() {
-  const [programId, setProgramId] = useState('')
-  const [dateFrom,  setDateFrom]  = useState(defaultFrom)
-  const [dateTo,    setDateTo]    = useState(defaultTo)
+  const [programId,    setProgramId]    = useState('')
+  const [periodOption, setPeriodOption] = useState<PeriodOption>('6m')
+  const [dateFrom,     setDateFrom]     = useState(() => computePeriodDates('6m').from)
+  const [dateTo,       setDateTo]       = useState(() => computePeriodDates('6m').to)
+
+  useEffect(() => {
+    if (periodOption === 'custom') return
+    const { from, to } = computePeriodDates(periodOption)
+    setDateFrom(from)
+    setDateTo(to)
+  }, [periodOption])
 
   const { programs }                  = usePrograms()
   const { snapshots, loading, error } = useSnapshots(programId || undefined)
@@ -240,20 +254,38 @@ export default function Evolucao() {
 
         <div className="evol-ctrl-sep" />
 
-        <span className="evol-ctrl-label">De</span>
-        <input
-          type="date"
-          className="evol-date-input"
-          value={dateFrom}
-          onChange={e => setDateFrom(e.target.value)}
-        />
-        <span className="evol-ctrl-label">Até</span>
-        <input
-          type="date"
-          className="evol-date-input"
-          value={dateTo}
-          onChange={e => setDateTo(e.target.value)}
-        />
+        <span className="evol-ctrl-label">Período</span>
+        <select
+          className="styled-select"
+          value={periodOption}
+          onChange={e => setPeriodOption(e.target.value as PeriodOption)}
+        >
+          <option value="7d">Últimos 7 dias</option>
+          <option value="30d">Últimos 30 dias</option>
+          <option value="3m">Últimos 3 meses</option>
+          <option value="6m">Últimos 6 meses</option>
+          <option value="12m">Último ano</option>
+          <option value="custom">Personalizado</option>
+        </select>
+
+        {periodOption === 'custom' && (
+          <>
+            <span className="evol-ctrl-label">De</span>
+            <input
+              type="date"
+              className="evol-date-input"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+            />
+            <span className="evol-ctrl-label">Até</span>
+            <input
+              type="date"
+              className="evol-date-input"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+            />
+          </>
+        )}
 
         <span className="evol-ctrl-info">
           {filtered.length} snapshot{filtered.length !== 1 ? 's' : ''}
