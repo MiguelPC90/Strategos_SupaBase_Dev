@@ -131,7 +131,7 @@ function SmartKpi({ label, value, delta, target }: SmartKpiProps) {
         )}
       </div>
       {target !== null && (
-        <div className="executive-kpi-target">Target: {target.toFixed(1)}%</div>
+        <div className="executive-kpi-target">Objectivo: {target.toFixed(1)}%</div>
       )}
     </div>
   )
@@ -169,7 +169,6 @@ function ContagemKpi({ value, total, label, delta, variant = 'default', deltaVar
 function AlertsZone({ alerts }: { alerts: Alert[] }) {
   return (
     <div className="alert-zone">
-      <div className="alert-zone-title">Alertas</div>
       {alerts.length === 0 ? (
         <div className="alert-zone-empty">Nenhum alerta activo</div>
       ) : (
@@ -282,7 +281,7 @@ function DeviationBar({ actual, target }: DeviationBarProps) {
           {actual.toFixed(1)}%
         </span>
         <span className="dev-val-sep"> / </span>
-        <span className="dev-val-target">{target.toFixed(1)}% target</span>
+        <span className="dev-val-target">{target.toFixed(1)}%</span>
       </div>
     </div>
   )
@@ -1032,26 +1031,32 @@ export default function Dashboard() {
     <>
       {/* ── Executive Brief ───────────────────────────────────── */}
       <div className="executive-brief">
-        <div className="executive-brief-header">
-          <h2 className="executive-brief-title">Resumo Executivo · Visão Semanal</h2>
-        </div>
-
         <div className="executive-brief-grid">
-          <div className="executive-brief-card kpis-card">
-            <div className="executive-kpi-grid">
-              <SmartKpi label="Grau de Execução"    value={grauExecVal}  delta={grauExecDelta}  target={grauExecTarget} />
-              <SmartKpi label="Concretização Geral" value={concGeralVal} delta={concGeralDelta} target={concGeralTarget} />
-              <SmartKpi label="Conc. à Data"        value={concDataVal}  delta={concDataDelta}  target={100} />
+          <div className="executive-brief-column">
+            <div className="executive-brief-header">
+              <h2 className="executive-brief-title">Resumo Executivo · Visão Semanal</h2>
             </div>
-            <div className="contagem-kpi-grid">
-              <ContagemKpi value={m.concluidas} total={m.total} label="concluídas" delta={delta7Conc}     deltaVariant="good" />
-              <ContagemKpi value={m.em_dia}     total={m.total} label="em dia"     delta={delta7EmDia}    deltaVariant="neutral" />
-              <ContagemKpi value={m.em_atraso}  total={m.total} label="em atraso"  delta={delta7EmAtraso} variant="late" deltaVariant="bad" />
+            <div className="executive-brief-card kpis-card">
+              <div className="executive-kpi-grid">
+                <SmartKpi label="Grau de Execução"    value={grauExecVal}  delta={grauExecDelta}  target={grauExecTarget} />
+                <SmartKpi label="Concretização Geral" value={concGeralVal} delta={concGeralDelta} target={concGeralTarget} />
+                <SmartKpi label="Conc. à Data"        value={concDataVal}  delta={concDataDelta}  target={100} />
+              </div>
+              <div className="contagem-kpi-grid">
+                <ContagemKpi value={m.concluidas} total={m.total} label="concluídas" delta={delta7Conc}     deltaVariant="good" />
+                <ContagemKpi value={m.em_dia}     total={m.total} label="em dia"     delta={delta7EmDia}    deltaVariant="neutral" />
+                <ContagemKpi value={m.em_atraso}  total={m.total} label="em atraso"  delta={delta7EmAtraso} variant="late" deltaVariant="bad" />
+              </div>
             </div>
           </div>
 
-          <div className="executive-brief-card alertas-card">
-            <AlertsZone alerts={alerts} />
+          <div className="executive-brief-column">
+            <div className="executive-brief-header">
+              <h2 className="executive-brief-title">Pontos de Atenção</h2>
+            </div>
+            <div className="executive-brief-card alertas-card">
+              <AlertsZone alerts={alerts} />
+            </div>
           </div>
         </div>
       </div>

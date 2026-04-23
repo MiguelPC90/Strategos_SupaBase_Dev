@@ -161,6 +161,11 @@
     gap: 16px;
   }
 
+  .executive-brief-column {
+    display: flex;
+    flex-direction: column;
+  }
+
   .executive-brief-card {
     background: var(--stratgos-cream, var(--bg));
     border: 1px solid var(--stratgos-ink-100, var(--border));
