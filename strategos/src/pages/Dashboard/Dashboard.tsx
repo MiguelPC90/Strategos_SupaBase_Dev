@@ -170,7 +170,7 @@ function AlertsZone({ alerts }: { alerts: Alert[] }) {
   return (
     <div className="alert-zone">
       {alerts.length === 0 ? (
-        <div className="alert-zone-empty">Nenhum alerta activo</div>
+        <div className="alert-zone-empty">Sem pontos de atenção abertos</div>
       ) : (
         alerts.map(a => (
           <div key={a.id} className={`alert-card severity-${a.severity}`}>
@@ -902,13 +902,29 @@ export default function Dashboard() {
     [allPlanos],
   )
 
+  // Pre-compute the set of plano IDs that match the active breadcrumb filter.
+  // null = no filter (show all alerts); empty Set = filter active but no planos match.
+  const alertPlanoFilter = useMemo((): Set<string> | null => {
+    const { programIds, n1Values, n2Values } = filters
+    if (n2Values.length > 0) {
+      return new Set(allPlanos.filter(p => n2Values.includes(p.name)).map(p => p.id))
+    }
+    if (n1Values.length > 0) {
+      return new Set(allPlanos.filter(p => p.eixo && n1Values.includes(p.eixo.name)).map(p => p.id))
+    }
+    if (programIds.length > 0) {
+      return new Set(allPlanos.filter(p => p.program_id && programIds.includes(p.program_id)).map(p => p.id))
+    }
+    return null
+  }, [filters, allPlanos])
+
   const alerts = useMemo(() => generateAlerts({
     rules: alertRules,
     currentSnapshot,
     snapshot14daysAgo: snap14dAgo,
     planos: planoRefs,
-    programIdFilter: snapshotProgramId,
-  }), [alertRules, currentSnapshot, snap14dAgo, planoRefs, snapshotProgramId])
+    planoFilter: alertPlanoFilter,
+  }), [alertRules, currentSnapshot, snap14dAgo, planoRefs, alertPlanoFilter])
 
   // ── Zone 1 — Smart KPI values & deltas ──────────────────────
   const grauExecVal    = m.total > 0 ? m.grau_exec : null

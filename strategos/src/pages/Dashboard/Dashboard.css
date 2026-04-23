@@ -296,8 +296,10 @@
   }
   .alert-zone-empty {
     font-size: 13px;
-    color: var(--text3);
-    padding: 4px 0;
+    font-style: italic;
+    color: var(--stratgos-ink-300, var(--text3));
+    text-align: center;
+    padding: 24px 0;
   }
   .alert-card {
     display: flex;

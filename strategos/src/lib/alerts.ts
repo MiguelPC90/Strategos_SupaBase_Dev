@@ -33,23 +33,14 @@ export function generateAlerts(opts: {
   currentSnapshot: Snapshot | null
   snapshot14daysAgo: Snapshot | null
   planos: PlanoRef[]
-  programIdFilter?: string
+  planoFilter: Set<string> | null  // null = no filter; empty Set = filter active, nothing matches
 }): Alert[] {
-  const { rules, currentSnapshot, snapshot14daysAgo, planos, programIdFilter } = opts
+  const { rules, currentSnapshot, snapshot14daysAgo, planos, planoFilter } = opts
   if (!currentSnapshot) return []
 
-  // Build lookup maps
   const planoNameById = new Map(planos.map(p => [p.id, p.name]))
-  const planosByProgram = new Map<string, Set<string>>()
-  for (const p of planos) {
-    if (!p.program_id) continue
-    const s = planosByProgram.get(p.program_id) ?? new Set()
-    s.add(p.id)
-    planosByProgram.set(p.program_id, s)
-  }
-  const scopedPlanoIds: Set<string> | null = programIdFilter
-    ? (planosByProgram.get(programIdFilter) ?? new Set())
-    : null  // null = global (no filter)
+  // planoFilter: null → show all; Set → only include planos whose id is in the Set
+  const scopedPlanoIds = planoFilter
 
   const alerts: Alert[] = []
 
