@@ -900,7 +900,7 @@ export default function Dashboard() {
   }, [])
 
   const planoRefs = useMemo(
-    () => allPlanos.map(p => ({ id: p.id, name: p.name, program_id: p.program_id })),
+    () => allPlanos.map(p => ({ id: p.id, name: p.name, program_id: p.program_id, start_date: p.start_date })),
     [allPlanos],
   )
 

@@ -27,6 +27,7 @@ interface PlanoRef {
   id: string
   name: string
   program_id: string | null
+  start_date?: string | null
 }
 
 export async function generateAlerts(opts: {
@@ -43,6 +44,17 @@ export async function generateAlerts(opts: {
   // planoFilter: null → show all; Set → only include planos whose id is in the Set
   const scopedPlanoIds = planoFilter
 
+  // Eligible planos: already started AND not concluded
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const eligiblePlanoIds = new Set<string>()
+  for (const plano of planos) {
+    if (plano.start_date && new Date(plano.start_date) > today) continue
+    const execMedia = currentSnapshot.by_n2?.[plano.id]?.exec_media ?? 0
+    if (execMedia >= 100) continue
+    eligiblePlanoIds.add(plano.id)
+  }
+
   const alerts: Alert[] = []
 
   for (const rule of rules) {
@@ -55,6 +67,7 @@ export async function generateAlerts(opts: {
       for (const risk of top) {
         if (risk.grade < threshold) continue
         if (scopedPlanoIds !== null && risk.planoId && !scopedPlanoIds.has(risk.planoId)) continue
+        if (risk.planoId && !eligiblePlanoIds.has(risk.planoId)) continue
         const planoName = risk.planoId ? (planoNameById.get(risk.planoId) ?? 'Plano desconhecido') : '—'
         alerts.push({
           id:          `risk_${risk.id}`,
@@ -118,6 +131,7 @@ export async function generateAlerts(opts: {
       for (const [planoId, kpi] of Object.entries(byN2)) {
         if (kpi.total === 0) continue
         if (scopedPlanoIds !== null && !scopedPlanoIds.has(planoId)) continue
+        if (!eligiblePlanoIds.has(planoId)) continue
         const prevKpi = prevByN2[planoId]
         if (!prevKpi || prevKpi.total === 0) continue
         if (Math.abs(kpi.exec_media - prevKpi.exec_media) > 1) continue  // moved enough
@@ -150,6 +164,7 @@ export async function generateAlerts(opts: {
         const today = new Date()
         for (const act of acts) {
           if (scopedPlanoIds !== null && (!act.plano_id || !scopedPlanoIds.has(act.plano_id))) continue
+          if (act.plano_id && !eligiblePlanoIds.has(act.plano_id)) continue
           const daysLate  = Math.floor((today.getTime() - new Date(act.bf).getTime()) / 86_400_000)
           const planoName = act.plano_id ? (planoNameById.get(act.plano_id) ?? act.n2 ?? '—') : (act.n2 ?? '—')
           alerts.push({
@@ -226,6 +241,7 @@ export async function generateAlerts(opts: {
       }
       for (const [planoId, count] of countByPlano) {
         if (scopedPlanoIds !== null && !scopedPlanoIds.has(planoId)) continue
+        if (!eligiblePlanoIds.has(planoId)) continue
         if (count <= threshold) continue
         const planoName = planoNameById.get(planoId) ?? planoId.slice(0, 8)
         alerts.push({
@@ -260,6 +276,7 @@ export async function generateAlerts(opts: {
         const grade = (r.probability ?? 0) * (r.impact ?? 0)
         if (grade < criticalGrade) continue
         if (scopedPlanoIds !== null && r.plano_id && !scopedPlanoIds.has(r.plano_id)) continue
+        if (r.plano_id && !eligiblePlanoIds.has(r.plano_id)) continue
         const planoName = r.plano_id ? (planoNameById.get(r.plano_id) ?? '—') : '—'
         alerts.push({
           id:          `risk-new-critical-${r.id}`,
@@ -279,6 +296,7 @@ export async function generateAlerts(opts: {
         const pastByN2    = snapshot14daysAgo.by_n2 ?? {}
         for (const [planoId, currentKpi] of Object.entries(currentByN2)) {
           if (scopedPlanoIds !== null && !scopedPlanoIds.has(planoId)) continue
+          if (!eligiblePlanoIds.has(planoId)) continue
           const pastKpi = pastByN2[planoId]
           if (!pastKpi) continue
           const delta = currentKpi.exec_media - pastKpi.exec_media
@@ -313,6 +331,7 @@ export async function generateAlerts(opts: {
       const now = Date.now()
       for (const [planoId, lastCreated] of latestByPlano) {
         if (scopedPlanoIds !== null && !scopedPlanoIds.has(planoId)) continue
+        if (!eligiblePlanoIds.has(planoId)) continue
         const ageMs = now - new Date(lastCreated).getTime()
         if (ageMs < staleMs) continue
         const ageDays = Math.floor(ageMs / 86_400_000)
@@ -344,6 +363,7 @@ export async function generateAlerts(opts: {
       const now = Date.now()
       for (const [planoId, lastUpdated] of latestByPlano) {
         if (scopedPlanoIds !== null && !scopedPlanoIds.has(planoId)) continue
+        if (!eligiblePlanoIds.has(planoId)) continue
         const ageMs = now - new Date(lastUpdated).getTime()
         if (ageMs < staleMs) continue
         const ageDays = Math.floor(ageMs / 86_400_000)
