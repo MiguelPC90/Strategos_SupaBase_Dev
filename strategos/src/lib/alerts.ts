@@ -132,6 +132,86 @@ export async function generateAlerts(opts: {
         })
       }
     }
+
+    // ── activity_late_chronic ──────────────────────────────────
+    if (rule.rule_key === 'activity_late_chronic') {
+      const cutoff = new Date()
+      cutoff.setDate(cutoff.getDate() - threshold)
+      const cutoffStr = cutoff.toISOString().split('T')[0]
+      const { data: acts, error: actErr } = await supabase
+        .from('activities')
+        .select('id, name, bf, pct, plano_id, n2')
+        .lt('bf', cutoffStr)
+        .lt('pct', 100)
+        .eq('level', 4)
+        .order('bf', { ascending: true })
+        .limit(5)
+      if (!actErr && acts) {
+        const today = new Date()
+        for (const act of acts) {
+          if (scopedPlanoIds !== null && (!act.plano_id || !scopedPlanoIds.has(act.plano_id))) continue
+          const daysLate  = Math.floor((today.getTime() - new Date(act.bf).getTime()) / 86_400_000)
+          const planoName = act.plano_id ? (planoNameById.get(act.plano_id) ?? act.n2 ?? '—') : (act.n2 ?? '—')
+          alerts.push({
+            id:          `activity_late_chronic_${act.id}`,
+            ruleKey:     rule.rule_key,
+            severity:    rule.severity,
+            title:       `Actividade "${act.name}" em atraso crónico`,
+            description: `${daysLate} dias em atraso — ${planoName}`,
+            href:        act.plano_id ? `/actividades?plano=${act.plano_id}` : '/actividades',
+          })
+        }
+      }
+    }
+
+    // ── budget_exceeded ────────────────────────────────────────
+    if (rule.rule_key === 'budget_exceeded') {
+      if (scopedPlanoIds === null) {
+        const totals = currentSnapshot.financials?.totals
+        if (totals && totals.total_budget > 0) {
+          const pct = (totals.total_executed / totals.total_budget) * 100
+          if (pct > threshold) {
+            alerts.push({
+              id:          'budget_exceeded',
+              ruleKey:     rule.rule_key,
+              severity:    rule.severity,
+              title:       'Orçamento ultrapassado',
+              description: `Executado ${pct.toFixed(1)}% do total (${fmtCurrency(totals.total_executed)} de ${fmtCurrency(totals.total_budget)})`,
+              href:        '/exec-financeira',
+            })
+          }
+        }
+      }
+    }
+
+    // ── invoice_overdue_long ───────────────────────────────────
+    if (rule.rule_key === 'invoice_overdue_long') {
+      const cutoff = new Date()
+      cutoff.setDate(cutoff.getDate() - threshold)
+      const cutoffStr = cutoff.toISOString().split('T')[0]
+      const { data: invoices, error: invErr } = await supabase
+        .from('fin_invoices')
+        .select('id, amount, plano_id, due_date, supplier, ref')
+        .in('status', ['Recebida', 'Aprovada'])
+        .lt('due_date', cutoffStr)
+        .order('due_date', { ascending: true })
+        .limit(5)
+      if (!invErr && invoices) {
+        const today = new Date()
+        for (const inv of invoices) {
+          if (scopedPlanoIds !== null && (!inv.plano_id || !scopedPlanoIds.has(inv.plano_id))) continue
+          const daysOverdue = Math.floor((today.getTime() - new Date(inv.due_date).getTime()) / 86_400_000)
+          alerts.push({
+            id:          `invoice_overdue_long_${inv.id}`,
+            ruleKey:     rule.rule_key,
+            severity:    rule.severity,
+            title:       `Factura em atraso há ${daysOverdue} dias`,
+            description: `${inv.supplier ?? 'Fornecedor'} — ${fmtCurrency(Number(inv.amount ?? 0))} (ref ${inv.ref ?? '—'})`,
+            href:        '/exec-financeira',
+          })
+        }
+      }
+    }
   }
 
   alerts.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity])
