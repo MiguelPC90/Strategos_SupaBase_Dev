@@ -1,4 +1,5 @@
 import type { AlertRule, AlertSeverity, Snapshot } from '../types/index'
+import { supabase } from './supabase'
 
 export type { AlertSeverity }
 export type { AlertRule }
@@ -28,13 +29,13 @@ interface PlanoRef {
   program_id: string | null
 }
 
-export function generateAlerts(opts: {
+export async function generateAlerts(opts: {
   rules: AlertRule[]
   currentSnapshot: Snapshot | null
   snapshot14daysAgo: Snapshot | null
   planos: PlanoRef[]
   planoFilter: Set<string> | null  // null = no filter; empty Set = filter active, nothing matches
-}): Alert[] {
+}): Promise<Alert[]> {
   const { rules, currentSnapshot, snapshot14daysAgo, planos, planoFilter } = opts
   if (!currentSnapshot) return []
 
@@ -68,8 +69,33 @@ export function generateAlerts(opts: {
 
     // ── invoice_overdue ────────────────────────────────────────
     if (rule.rule_key === 'invoice_overdue') {
-      // program-scoped overdue not available in snapshot — show global only
-      if (scopedPlanoIds === null || scopedPlanoIds.size > 0) {
+      if (scopedPlanoIds !== null) {
+        // Filter active — query fin_invoices scoped to the selected planos
+        const today = new Date().toISOString().split('T')[0]
+        const { data: invoices, error } = await supabase
+          .from('fin_invoices')
+          .select('id, amount, plano_id')
+          .in('status', ['Recebida', 'Aprovada'])
+          .lt('due_date', today)
+        if (!error && invoices) {
+          const scoped = invoices.filter(
+            inv => inv.plano_id && scopedPlanoIds.has(inv.plano_id),
+          )
+          if (scoped.length > 0) {
+            const count      = scoped.length
+            const totalValue = scoped.reduce((s, inv) => s + Number(inv.amount ?? 0), 0)
+            alerts.push({
+              id:          'invoice_overdue',
+              ruleKey:     rule.rule_key,
+              severity:    rule.severity,
+              title:       `${count} factura${count !== 1 ? 's' : ''} em atraso`,
+              description: `Total ${fmtCurrency(totalValue)} por regularizar`,
+              href:        '/exec-financeira',
+            })
+          }
+        }
+      } else {
+        // No filter — use snapshot totals (global)
         const count = currentSnapshot.financials?.totals?.facturas_overdue_count ?? 0
         const value = currentSnapshot.financials?.totals?.facturas_overdue_value ?? 0
         if (count > 0) {

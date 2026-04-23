@@ -918,13 +918,18 @@ export default function Dashboard() {
     return null
   }, [filters, allPlanos])
 
-  const alerts = useMemo(() => generateAlerts({
-    rules: alertRules,
-    currentSnapshot,
-    snapshot14daysAgo: snap14dAgo,
-    planos: planoRefs,
-    planoFilter: alertPlanoFilter,
-  }), [alertRules, currentSnapshot, snap14dAgo, planoRefs, alertPlanoFilter])
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  useEffect(() => {
+    let cancelled = false
+    generateAlerts({
+      rules: alertRules,
+      currentSnapshot,
+      snapshot14daysAgo: snap14dAgo,
+      planos: planoRefs,
+      planoFilter: alertPlanoFilter,
+    }).then(result => { if (!cancelled) setAlerts(result) })
+    return () => { cancelled = true }
+  }, [alertRules, currentSnapshot, snap14dAgo, planoRefs, alertPlanoFilter])
 
   // ── Zone 1 — Smart KPI values & deltas ──────────────────────
   const grauExecVal    = m.total > 0 ? m.grau_exec : null
