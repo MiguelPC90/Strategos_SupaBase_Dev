@@ -17,6 +17,8 @@ import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useSnapshots } from '../../hooks/useSnapshots'
 import { useFilters } from '../../context/FilterContext'
+import { useAuth } from '../../hooks/useAuth'
+import { useRole } from '../../hooks/useRole'
 import { supabase } from '../../lib/supabase'
 import { generateAlerts } from '../../lib/alerts'
 import type { Alert, AlertRule } from '../../lib/alerts'
@@ -844,6 +846,8 @@ export default function Dashboard() {
 
   const navigate = useNavigate()
   const { filters, setFilter, getFilteredActivities } = useFilters()
+  const { permissions }                    = useAuth()
+  const { isAdmin }                        = useRole()
   const { activities, loading }            = useActivities({ cutoffDate: filters.cutoffDate })
   const { programs }                       = usePrograms()
   const { eixos: allEixos }                = useEixos()
@@ -904,9 +908,24 @@ export default function Dashboard() {
     [allPlanos],
   )
 
-  // Pre-compute the set of plano IDs that match the active breadcrumb filter.
-  // null = no filter (show all alerts); empty Set = filter active but no planos match.
-  const alertPlanoFilter = useMemo((): Set<string> | null => {
+  // Plano IDs the current user is permitted to see (null = unrestricted).
+  // Admins bypass; non-admins with no scoped program rows also see everything.
+  const permissionPlanoIds = useMemo((): Set<string> | null => {
+    if (isAdmin) return null
+    if (!permissions || permissions.length === 0) return null
+    const allowedPrograms = new Set(
+      permissions.filter(p => p.program_id).map(p => p.program_id!),
+    )
+    if (allowedPrograms.size === 0) return null
+    const ids = new Set<string>()
+    for (const plano of allPlanos) {
+      if (plano.program_id && allowedPrograms.has(plano.program_id)) ids.add(plano.id)
+    }
+    return ids
+  }, [isAdmin, permissions, allPlanos])
+
+  // Breadcrumb filter: null = no breadcrumb active.
+  const breadcrumbFilter = useMemo((): Set<string> | null => {
     const { programIds, n1Values, n2Values } = filters
     if (n2Values.length > 0) {
       return new Set(allPlanos.filter(p => n2Values.includes(p.name)).map(p => p.id))
@@ -919,6 +938,19 @@ export default function Dashboard() {
     }
     return null
   }, [filters, allPlanos])
+
+  // Final alert filter = intersection of breadcrumb and permissions.
+  // null means "unrestricted"; a Set means "only these plano IDs".
+  const alertPlanoFilter = useMemo((): Set<string> | null => {
+    if (!breadcrumbFilter && !permissionPlanoIds) return null
+    if (!breadcrumbFilter) return permissionPlanoIds
+    if (!permissionPlanoIds) return breadcrumbFilter
+    const intersection = new Set<string>()
+    for (const id of breadcrumbFilter) {
+      if (permissionPlanoIds.has(id)) intersection.add(id)
+    }
+    return intersection
+  }, [breadcrumbFilter, permissionPlanoIds])
 
   const [alerts, setAlerts] = useState<Alert[]>([])
   useEffect(() => {
