@@ -159,6 +159,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
+    align-items: stretch;
   }
 
   .executive-brief-column {
@@ -167,6 +168,7 @@
   }
 
   .executive-brief-card {
+    flex: 1;
     background: var(--stratgos-cream, var(--bg));
     border: 1px solid var(--stratgos-ink-100, var(--border));
     border-radius: 8px;
