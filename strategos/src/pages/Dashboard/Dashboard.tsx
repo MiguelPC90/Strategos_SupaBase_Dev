@@ -155,7 +155,7 @@ function ContagemKpi({ value, total, label, delta, variant = 'default', deltaVar
         <span className={`contagem-kpi-value${isLate ? ' late' : ''}`}>{value}</span>
         <span className="contagem-kpi-denom">/ {total}</span>
       </div>
-      <div className={`contagem-kpi-label${isLate ? ' late' : ''}`}>{label}</div>
+      <div className="contagem-kpi-label">{label}</div>
       {delta !== null && (
         <div className={`contagem-kpi-delta ${deltaVariant}`}>
           {delta >= 0 ? '+' : ''}{delta} últimos 7 dias
@@ -1032,17 +1032,28 @@ export default function Dashboard() {
     <>
       {/* ── Executive Brief ───────────────────────────────────── */}
       <div className="executive-brief">
-        <div className="executive-kpi-grid">
-          <SmartKpi label="Grau de Execução"    value={grauExecVal}  delta={grauExecDelta}  target={grauExecTarget} />
-          <SmartKpi label="Concretização Geral" value={concGeralVal} delta={concGeralDelta} target={concGeralTarget} />
-          <SmartKpi label="Conc. à Data"        value={concDataVal}  delta={concDataDelta}  target={100} />
+        <div className="executive-brief-header">
+          <h2 className="executive-brief-title">Resumo Executivo · Visão Semanal</h2>
         </div>
-        <div className="contagem-kpi-grid">
-          <ContagemKpi value={m.concluidas} total={m.total} label="concluídas" delta={delta7Conc}     deltaVariant="good" />
-          <ContagemKpi value={m.em_dia}     total={m.total} label="em dia"     delta={delta7EmDia}    deltaVariant="neutral" />
-          <ContagemKpi value={m.em_atraso}  total={m.total} label="em atraso"  delta={delta7EmAtraso} variant="late" deltaVariant="bad" />
+
+        <div className="executive-brief-grid">
+          <div className="executive-brief-card kpis-card">
+            <div className="executive-kpi-grid">
+              <SmartKpi label="Grau de Execução"    value={grauExecVal}  delta={grauExecDelta}  target={grauExecTarget} />
+              <SmartKpi label="Concretização Geral" value={concGeralVal} delta={concGeralDelta} target={concGeralTarget} />
+              <SmartKpi label="Conc. à Data"        value={concDataVal}  delta={concDataDelta}  target={100} />
+            </div>
+            <div className="contagem-kpi-grid">
+              <ContagemKpi value={m.concluidas} total={m.total} label="concluídas" delta={delta7Conc}     deltaVariant="good" />
+              <ContagemKpi value={m.em_dia}     total={m.total} label="em dia"     delta={delta7EmDia}    deltaVariant="neutral" />
+              <ContagemKpi value={m.em_atraso}  total={m.total} label="em atraso"  delta={delta7EmAtraso} variant="late" deltaVariant="bad" />
+            </div>
+          </div>
+
+          <div className="executive-brief-card alertas-card">
+            <AlertsZone alerts={alerts} />
+          </div>
         </div>
-        <AlertsZone alerts={alerts} />
       </div>
 
       {/* ── Row 2: Charts ─────────────────────────────────────── */}

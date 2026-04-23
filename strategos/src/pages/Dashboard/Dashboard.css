@@ -135,14 +135,46 @@
 
   /* ── Executive Brief container ───────────────────────────── */
   .executive-brief {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--rl);
+    margin-bottom: 24px;
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+
+  .executive-brief-header {
+    margin-bottom: 12px;
+  }
+
+  .executive-brief-title {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--stratgos-ink-700, var(--text2));
+    margin: 0;
+  }
+
+  .executive-brief-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .executive-brief-card {
+    background: var(--stratgos-cream, var(--bg));
+    border: 1px solid var(--stratgos-ink-100, var(--border));
+    border-radius: 8px;
     padding: 20px 24px;
-    margin-bottom: 14px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 20px;
+  }
+
+  @media (max-width: 900px) {
+    .executive-brief-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   /* ── Zone 1 — Smart KPIs ─────────────────────────────────── */
@@ -232,7 +264,6 @@
     color: var(--stratgos-ink-500, var(--text2));
     margin-top: 6px;
   }
-  .contagem-kpi-label.late { color: var(--status-late, var(--red)); }
   .contagem-kpi-delta {
     font-size: 12px;
     font-weight: 500;
