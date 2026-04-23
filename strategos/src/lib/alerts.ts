@@ -212,6 +212,152 @@ export async function generateAlerts(opts: {
         }
       }
     }
+
+    // ── risks_many_in_plan ────────────────────────────────────
+    if (rule.rule_key === 'risks_many_in_plan') {
+      const { data: riskRows } = await supabase
+        .from('risks')
+        .select('plano_id, status')
+        .in('status', ['Aberto', 'Em mitigação', 'Open'])
+      const countByPlano = new Map<string, number>()
+      for (const r of riskRows ?? []) {
+        if (!r.plano_id) continue
+        countByPlano.set(r.plano_id, (countByPlano.get(r.plano_id) ?? 0) + 1)
+      }
+      for (const [planoId, count] of countByPlano) {
+        if (scopedPlanoIds !== null && !scopedPlanoIds.has(planoId)) continue
+        if (count <= threshold) continue
+        const planoName = planoNameById.get(planoId) ?? planoId.slice(0, 8)
+        alerts.push({
+          id:          `risks-many-${planoId}`,
+          ruleKey:     rule.rule_key,
+          severity:    rule.severity,
+          title:       `${count} riscos abertos no plano "${planoName}"`,
+          description: `Mais que ${threshold} riscos requerem gestão`,
+          href:        `/ponto-situacao?plano=${planoId}`,
+        })
+      }
+    }
+
+    // ── risk_new_critical ──────────────────────────────────────
+    if (rule.rule_key === 'risk_new_critical') {
+      const { data: cfg } = await supabase
+        .from('app_config')
+        .select('value')
+        .eq('key', 'risk_thresholds')
+        .maybeSingle()
+      const thresholds = cfg?.value as { high?: number } | null
+      const criticalGrade = thresholds?.high ?? 15
+      const cutoff = new Date()
+      cutoff.setDate(cutoff.getDate() - threshold)
+      const { data: riskRows } = await supabase
+        .from('risks')
+        .select('id, plano_id, description, probability, impact, status, created_at')
+        .gte('created_at', cutoff.toISOString())
+        .limit(20)
+      for (const r of riskRows ?? []) {
+        if (r.status === 'Mitigado' || r.status === 'Closed') continue
+        const grade = (r.probability ?? 0) * (r.impact ?? 0)
+        if (grade < criticalGrade) continue
+        if (scopedPlanoIds !== null && r.plano_id && !scopedPlanoIds.has(r.plano_id)) continue
+        const planoName = r.plano_id ? (planoNameById.get(r.plano_id) ?? '—') : '—'
+        alerts.push({
+          id:          `risk-new-critical-${r.id}`,
+          ruleKey:     rule.rule_key,
+          severity:    rule.severity,
+          title:       `Novo risco crítico: "${r.description}"`,
+          description: `${planoName} — grade ${grade}`,
+          href:        r.plano_id ? `/ponto-situacao?plano=${r.plano_id}` : '/ponto-situacao',
+        })
+      }
+    }
+
+    // ── plan_declining ─────────────────────────────────────────
+    if (rule.rule_key === 'plan_declining') {
+      if (snapshot14daysAgo) {
+        const currentByN2 = currentSnapshot.by_n2 ?? {}
+        const pastByN2    = snapshot14daysAgo.by_n2 ?? {}
+        for (const [planoId, currentKpi] of Object.entries(currentByN2)) {
+          if (scopedPlanoIds !== null && !scopedPlanoIds.has(planoId)) continue
+          const pastKpi = pastByN2[planoId]
+          if (!pastKpi) continue
+          const delta = currentKpi.exec_media - pastKpi.exec_media
+          if (delta >= 0) continue
+          if (Math.abs(delta) < threshold) continue
+          const planoName = planoNameById.get(planoId) ?? planoId.slice(0, 8)
+          alerts.push({
+            id:          `plan-declining-${planoId}`,
+            ruleKey:     rule.rule_key,
+            severity:    rule.severity,
+            title:       `Plano "${planoName}" em declínio`,
+            description: `Concretização caiu ${Math.abs(delta).toFixed(1)}pp nos últimos 14 dias`,
+            href:        `/ponto-situacao?plano=${planoId}`,
+          })
+        }
+      }
+    }
+
+    // ── plan_pds_stale ─────────────────────────────────────────
+    if (rule.rule_key === 'plan_pds_stale') {
+      const { data: entries } = await supabase
+        .from('pds_entries')
+        .select('plano_id, created_at')
+        .not('plano_id', 'is', null)
+        .order('created_at', { ascending: false })
+      const latestByPlano = new Map<string, string>()
+      for (const e of entries ?? []) {
+        if (!e.plano_id) continue
+        if (!latestByPlano.has(e.plano_id)) latestByPlano.set(e.plano_id, e.created_at)
+      }
+      const staleMs = threshold * 86_400_000
+      const now = Date.now()
+      for (const [planoId, lastCreated] of latestByPlano) {
+        if (scopedPlanoIds !== null && !scopedPlanoIds.has(planoId)) continue
+        const ageMs = now - new Date(lastCreated).getTime()
+        if (ageMs < staleMs) continue
+        const ageDays = Math.floor(ageMs / 86_400_000)
+        const planoName = planoNameById.get(planoId) ?? planoId.slice(0, 8)
+        alerts.push({
+          id:          `plan-pds-stale-${planoId}`,
+          ruleKey:     rule.rule_key,
+          severity:    rule.severity,
+          title:       `PDS desactualizado em "${planoName}"`,
+          description: `Último PDS criado há ${ageDays} dias`,
+          href:        `/ponto-situacao?plano=${planoId}`,
+        })
+      }
+    }
+
+    // ── plan_activities_stale ──────────────────────────────────
+    if (rule.rule_key === 'plan_activities_stale') {
+      const { data: acts } = await supabase
+        .from('activities')
+        .select('plano_id, updated_at')
+        .not('plano_id', 'is', null)
+        .order('updated_at', { ascending: false })
+      const latestByPlano = new Map<string, string>()
+      for (const a of acts ?? []) {
+        if (!a.plano_id) continue
+        if (!latestByPlano.has(a.plano_id)) latestByPlano.set(a.plano_id, a.updated_at)
+      }
+      const staleMs = threshold * 86_400_000
+      const now = Date.now()
+      for (const [planoId, lastUpdated] of latestByPlano) {
+        if (scopedPlanoIds !== null && !scopedPlanoIds.has(planoId)) continue
+        const ageMs = now - new Date(lastUpdated).getTime()
+        if (ageMs < staleMs) continue
+        const ageDays = Math.floor(ageMs / 86_400_000)
+        const planoName = planoNameById.get(planoId) ?? planoId.slice(0, 8)
+        alerts.push({
+          id:          `plan-activities-stale-${planoId}`,
+          ruleKey:     rule.rule_key,
+          severity:    rule.severity,
+          title:       `Actividades paradas em "${planoName}"`,
+          description: `Sem actualização há ${ageDays} dias`,
+          href:        `/ponto-situacao?plano=${planoId}`,
+        })
+      }
+    }
   }
 
   alerts.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity])
