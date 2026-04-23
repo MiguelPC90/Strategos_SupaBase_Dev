@@ -70,7 +70,7 @@ export function generateAlerts(opts: {
           severity:    rule.severity,
           title:       `Risco crítico: "${risk.description}"`,
           description: `${planoName} — grade ${risk.grade}`,
-          href:        '/gestao-pds',
+          href:        risk.planoId ? `/ponto-situacao?plano=${risk.planoId}` : '/ponto-situacao',
         })
       }
     }
@@ -88,7 +88,7 @@ export function generateAlerts(opts: {
             severity:    rule.severity,
             title:       `${count} factura${count !== 1 ? 's' : ''} em atraso`,
             description: `Total ${fmtCurrency(value)} por regularizar`,
-            href:        '/gestao-financeira',
+            href:        '/exec-financeira',
           })
         }
       }
@@ -111,7 +111,7 @@ export function generateAlerts(opts: {
           severity:    rule.severity,
           title:       `Plano "${planoName}" sem progresso`,
           description: `Concretização inalterada há ${threshold} dias`,
-          href:        '/gestao-pds',
+          href:        `/ponto-situacao?plano=${planoId}`,
         })
       }
     }
