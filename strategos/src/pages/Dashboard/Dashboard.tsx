@@ -172,16 +172,18 @@ function AlertsZone({ alerts }: { alerts: Alert[] }) {
       {alerts.length === 0 ? (
         <div className="alert-zone-empty">Sem pontos de atenção abertos</div>
       ) : (
-        alerts.map(a => (
-          <div key={a.id} className={`alert-card severity-${a.severity}`}>
-            <div className="alert-card-icon">⚠</div>
-            <div className="alert-card-body">
-              <div className="alert-card-title">{a.title}</div>
-              <div className="alert-card-desc">{a.description}</div>
+        <div className="alerts-list">
+          {alerts.map(a => (
+            <div key={a.id} className={`alert-card severity-${a.severity}`}>
+              <div className="alert-card-icon">⚠</div>
+              <div className="alert-card-body">
+                <div className="alert-card-title">{a.title}</div>
+                <div className="alert-card-desc">{a.description}</div>
+              </div>
+              {a.href && <a href={a.href} className="alert-card-link">→</a>}
             </div>
-            {a.href && <a href={a.href} className="alert-card-link">→</a>}
-          </div>
-        ))
+          ))}
+        </div>
       )}
     </div>
   )
@@ -1073,7 +1075,9 @@ export default function Dashboard() {
 
           <div className="executive-brief-column">
             <div className="executive-brief-header">
-              <h2 className="executive-brief-title">Pontos de Atenção</h2>
+              <h2 className="executive-brief-title">
+                Pontos de Atenção{alerts.length > 0 && ` · ${alerts.length}`}
+              </h2>
             </div>
             <div className="executive-brief-card alertas-card">
               <AlertsZone alerts={alerts} />
