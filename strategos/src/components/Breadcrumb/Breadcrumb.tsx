@@ -1,5 +1,5 @@
 import './Breadcrumb.css'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useFilters } from '../../context/FilterContext'
 import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
@@ -208,16 +208,22 @@ export default function Breadcrumb() {
   const canEditPage = useCanEditCurrent(isGestaoCurrent ? pageKey : 'gestao-pds')
   const showReadOnly = isGestaoCurrent && !canEditPage
 
-  // Cascade-restricted dropdown options
-  const eixoOptions = programId
-    ? allEixos.filter(e => e.program_id === programId)
-    : allEixos
+  const accessibleProgramIds = useMemo(
+    () => new Set(accessiblePrograms.map(p => p.id)),
+    [accessiblePrograms],
+  )
 
-  const planoOptions = n1Name
-    ? allPlanos.filter(p => p.eixo?.name === n1Name)
-    : programId
-      ? allPlanos.filter(p => p.program_id === programId)
-      : allPlanos
+  // Cascade-restricted dropdown options, always bounded by accessible programs
+  const eixoOptions = useMemo(() => {
+    if (programId) return allEixos.filter(e => e.program_id === programId)
+    return allEixos.filter(e => e.program_id !== null && accessibleProgramIds.has(e.program_id))
+  }, [allEixos, programId, accessibleProgramIds])
+
+  const planoOptions = useMemo(() => {
+    if (n1Name) return allPlanos.filter(p => p.eixo?.name === n1Name)
+    if (programId) return allPlanos.filter(p => p.program_id === programId)
+    return allPlanos.filter(p => p.program_id !== null && accessibleProgramIds.has(p.program_id))
+  }, [allPlanos, n1Name, programId, accessibleProgramIds])
 
   // Programmatic selection guard — blocks inaccessible programs and shows feedback
   function trySetProgram(id: string | null) {
