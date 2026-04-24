@@ -11,6 +11,7 @@ import { usePrograms } from '../../hooks/usePrograms'
 import { usePdsEntries, usePdsConsolidated } from '../../hooks/usePdsEntries'
 import type { PdsItem, PdsEntry, PdsItemEdit } from '../../types/index'
 import { SECTION_CONFIG, type PdsSection } from './sectionConfig'
+import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey   = 'commitments' | 'progress' | 'nextSteps' | 'attention'
@@ -106,6 +107,7 @@ interface PdsSectionProps {
   sortDir:        SortDir
   editingId:      string | null
   editDraft:      Partial<PdsItem>
+  readOnly:       boolean
   onSortToggle(): void
   onHide(itemId: string): void
   onRestore(itemId: string): void
@@ -118,7 +120,7 @@ interface PdsSectionProps {
 
 function PdsSection({
   title, sectionKey, items, sortDir,
-  editingId, editDraft,
+  editingId, editDraft, readOnly,
   onSortToggle, onHide, onRestore, onAdd,
   onEditStart, onEditChange, onEditSave, onEditCancel,
 }: PdsSectionProps) {
@@ -224,34 +226,36 @@ function PdsSection({
                     )}
                   </div>
 
-                  <div className="pds-item-actions">
-                    {!isHidden && (
-                      <button
-                        className="pds-edit-btn"
-                        onClick={() => onEditStart(item, pdsSection)}
-                        title="Editar"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                             strokeLinejoin="round">
-                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>
-                        </svg>
-                      </button>
-                    )}
-                    {isHidden ? (
-                      <button
-                        className="pds-restore-btn"
-                        onClick={() => { if (item.id) onRestore(item.id) }}
-                        title="Restaurar"
-                      >↩</button>
-                    ) : (
-                      <button
-                        className="pds-hide-btn"
-                        onClick={() => { if (item.id) onHide(item.id) }}
-                        title="Ocultar"
-                      >◌</button>
-                    )}
-                  </div>
+                  {!readOnly && (
+                    <div className="pds-item-actions">
+                      {!isHidden && (
+                        <button
+                          className="pds-edit-btn"
+                          onClick={() => onEditStart(item, pdsSection)}
+                          title="Editar"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                               stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                               strokeLinejoin="round">
+                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>
+                          </svg>
+                        </button>
+                      )}
+                      {isHidden ? (
+                        <button
+                          className="pds-restore-btn"
+                          onClick={() => { if (item.id) onRestore(item.id) }}
+                          title="Restaurar"
+                        >↩</button>
+                      ) : (
+                        <button
+                          className="pds-hide-btn"
+                          onClick={() => { if (item.id) onHide(item.id) }}
+                          title="Ocultar"
+                        >◌</button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -259,9 +263,11 @@ function PdsSection({
         })}
       </div>
 
-      <button className="pds-add-btn" onClick={() => onAdd(sectionKey, title)}>
-        + Novo Item
-      </button>
+      {!readOnly && (
+        <button className="pds-add-btn" onClick={() => onAdd(sectionKey, title)}>
+          + Novo Item
+        </button>
+      )}
     </div>
   )
 }
@@ -271,6 +277,7 @@ export default function GestaoPDS() {
   const { showToast } = useToast()
   const { filters }  = useFilters()
   const { programs } = usePrograms()
+  const readOnly = !useCanEditCurrent('gestao-pds')
   const [selProgId, setSelProgId] = useState<string>('')
 
   useEffect(() => {
@@ -589,6 +596,7 @@ export default function GestaoPDS() {
   const sharedProps = {
     editingId,
     editDraft,
+    readOnly,
     onHide:       handleHide,
     onRestore:    handleRestore,
     onAdd:        handleAdd,

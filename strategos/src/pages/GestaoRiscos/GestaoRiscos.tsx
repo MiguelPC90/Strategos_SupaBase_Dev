@@ -14,6 +14,7 @@ import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import type { Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
+import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 
 // ── Types ──────────────────────────────────────────────────────
 type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
@@ -221,6 +222,7 @@ export default function GestaoRiscos() {
   const { filters }  = useFilters()
   const { programs } = usePrograms()
   const { showToast } = useToast()
+  const readOnly = !useCanEditCurrent('gestao-riscos')
   const [selProgId,   setSelProgId]   = useState<string>('')
   const [matrixSize,  setMatrixSize]  = useState(5)
   const [thresholds,  setThresholds]  = useState<RiskThresholds>(DEFAULT_THRESHOLDS)
@@ -450,13 +452,15 @@ export default function GestaoRiscos() {
 
         <div className="gr-spacer" />
 
-        <button
-          className="gr-btn gr-btn-primary"
-          onClick={openNew}
-          disabled={!selectedPlan}
-        >
-          Novo Risco
-        </button>
+        {!readOnly && (
+          <button
+            className="gr-btn gr-btn-primary"
+            onClick={openNew}
+            disabled={!selectedPlan}
+          >
+            Novo Risco
+          </button>
+        )}
       </div>
 
       {/* Risk table */}
@@ -482,8 +486,7 @@ export default function GestaoRiscos() {
             icon="inbox"
             title="Sem riscos registados"
             description="Ainda não existem riscos identificados para este plano."
-            actionLabel="+ Novo Risco"
-            onAction={openNew}
+            {...(!readOnly && { actionLabel: '+ Novo Risco', onAction: openNew })}
           />
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -516,7 +519,7 @@ export default function GestaoRiscos() {
                     <tr
                       key={r.id}
                       className="gr-row"
-                      onDoubleClick={() => openEdit(r)}
+                      onDoubleClick={readOnly ? undefined : () => openEdit(r)}
                     >
                       <td className="gr-td-wrap" title={r.description}>
                         {r.description}
@@ -539,14 +542,16 @@ export default function GestaoRiscos() {
                         {r.mitigation || '—'}
                       </td>
                       <td className="gr-td-c">
-                        <RowMenu
-                          riskId={r.id}
-                          openId={menuId}
-                          onOpen={setMenuId}
-                          onEdit={() => openEdit(r)}
-                          onDuplicate={() => openDuplicate(r)}
-                          onDelete={() => handleRowDelete(r)}
-                        />
+                        {!readOnly && (
+                          <RowMenu
+                            riskId={r.id}
+                            openId={menuId}
+                            onOpen={setMenuId}
+                            onEdit={() => openEdit(r)}
+                            onDuplicate={() => openDuplicate(r)}
+                            onDelete={() => handleRowDelete(r)}
+                          />
+                        )}
                       </td>
                     </tr>
                   )

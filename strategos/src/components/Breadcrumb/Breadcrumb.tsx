@@ -1,9 +1,20 @@
 import './Breadcrumb.css'
 import { useState, useRef, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useFilters } from '../../context/FilterContext'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
+import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
+import type { PageKey } from '../../types/index'
+
+const GESTAO_PAGES: PageKey[] = [
+  'gestao-iniciativas',
+  'gestao-pds',
+  'gestao-riscos',
+  'gestao-financeira',
+  'gestao-recursos',
+]
 
 const STATUS_OPTIONS = ['Concluída', 'Em dia', 'Em atraso']
 
@@ -177,6 +188,7 @@ function FilterChip({ label, onRemove }: FilterChipProps) {
 export default function Breadcrumb() {
   const { filters, setFilter } = useFilters()
   const { programs } = usePrograms()
+  const location = useLocation()
 
   const programId = filters.programIds[0] ?? null
   const n1Name    = filters.n1Values[0]   ?? null
@@ -187,6 +199,12 @@ export default function Breadcrumb() {
 
   const currentProgram = programs.find(p => p.id === programId)
   const planosForEixo  = n1Name ? planos.filter(p => p.eixo?.name === n1Name) : planos
+
+  const pageKey = location.pathname.slice(1) as PageKey
+  const isGestaoCurrent = GESTAO_PAGES.includes(pageKey)
+  // useCanEditCurrent is always called (hook rules); result only used when isGestaoCurrent
+  const canEditPage = useCanEditCurrent(isGestaoCurrent ? pageKey : 'gestao-pds')
+  const showReadOnly = isGestaoCurrent && !canEditPage
 
   return (
     <div className="breadcrumb">
@@ -235,6 +253,10 @@ export default function Breadcrumb() {
           </>
         )}
       </div>
+
+      {showReadOnly && (
+        <span className="breadcrumb-readonly-badge">Só leitura</span>
+      )}
 
       {/* Secondary filter chips + filter button */}
       <div className="breadcrumb-chips">

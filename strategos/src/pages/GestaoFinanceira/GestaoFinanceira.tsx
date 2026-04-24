@@ -15,6 +15,7 @@ import Badge from '../../components/Badge/Badge'
 import Modal from '../../components/Modal/Modal'
 import type { FinBudgetLine, FinContract, FinInvoice } from '../../types/index'
 import { invoiceStatusStyle } from '../../lib/invoiceHelpers'
+import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 
 // ── Types ──────────────────────────────────────────────────────────
 type Tab = 'orcamento' | 'contratos' | 'facturas'
@@ -105,6 +106,7 @@ interface BudgetTabProps {
   onDelete: (id: string) => void
   onSaveLine: (b: FinBudgetLine) => void
   savedRows: Set<string>
+  readOnly: boolean
   /** Categories (with is_capex) configured in Admin → Financeiro for this program */
   categories: CategoryOption[]
   /** Currencies (with symbol) from the currencies table */
@@ -115,7 +117,7 @@ interface BudgetTabProps {
   managementYears: string[]
 }
 
-function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, categories, currencies, defaultCurrency, managementYears }: BudgetTabProps) {
+function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, readOnly, categories, currencies, defaultCurrency, managementYears }: BudgetTabProps) {
   // Seed from management_years; merge with any year keys already on lines
   const years = useMemo(() => {
     const ks = new Set<string>(managementYears)
@@ -177,7 +179,7 @@ function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, categorie
     <div className="gf-budget-wrap">
       <div className="gf-budget-toolbar">
         <span className="gf-budget-toolbar-title">Rubricas Orçamentais</span>
-        <button className="gf-btn gf-btn-primary" onClick={addRow}>+ Rubrica</button>
+        {!readOnly && <button className="gf-btn gf-btn-primary" onClick={addRow}>+ Rubrica</button>}
       </div>
 
       {lines.length === 0 ? (
@@ -193,12 +195,14 @@ function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, categorie
               {years.map(y => (
                 <th key={y} className="gf-th-r" style={{ width: 110 }}>
                   {y}
-                  <button
-                    className="gf-icon-btn"
-                    onClick={() => removeYear(y)}
-                    style={{ display: 'inline-flex', fontSize: 10, width: 14, height: 14, marginLeft: 3, verticalAlign: 'middle' }}
-                    title={`Remover coluna ${y}`}
-                  >✕</button>
+                  {!readOnly && (
+                    <button
+                      className="gf-icon-btn"
+                      onClick={() => removeYear(y)}
+                      style={{ display: 'inline-flex', fontSize: 10, width: 14, height: 14, marginLeft: 3, verticalAlign: 'middle' }}
+                      title={`Remover coluna ${y}`}
+                    >✕</button>
+                  )}
                 </th>
               ))}
               <th className="gf-th-r" style={{ width: 110 }}>Total</th>
@@ -209,7 +213,7 @@ function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, categorie
             {lines.map(b => (
               <tr key={b.id} style={savedRows.has(b.id) ? { boxShadow: 'inset 0 0 0 2px #95BB42' } : undefined}>
                 <td>
-                  <button className="gf-icon-btn" onClick={() => onDelete(b.id)} title="Remover">✕</button>
+                  {!readOnly && <button className="gf-icon-btn" onClick={() => onDelete(b.id)} title="Remover">✕</button>}
                 </td>
                 <td>
                   <select className="styled-select-sm gf-cell-select" value={b.category}
@@ -359,9 +363,10 @@ interface ContractsTabProps {
   onDelete: (id: string) => void
   onNew: () => void
   currencies: CurrencyOption[]
+  readOnly: boolean
 }
 
-function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew, currencies }: ContractsTabProps) {
+function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew, currencies, readOnly }: ContractsTabProps) {
   const invoicedFor = useCallback((c: FinContract) =>
     invoices
       .filter(i => i.app_contract_id === c.app_id || i.contract_id === c.id)
@@ -370,9 +375,11 @@ function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew, currencies
 
   return (
     <div className="gf-contracts-wrap">
-      <div className="gf-contracts-toolbar">
-        <button className="gf-btn gf-btn-primary" onClick={onNew}>+ Novo Contrato</button>
-      </div>
+      {!readOnly && (
+        <div className="gf-contracts-toolbar">
+          <button className="gf-btn gf-btn-primary" onClick={onNew}>+ Novo Contrato</button>
+        </div>
+      )}
       {contracts.length === 0 ? (
         <div className="gf-empty">Sem contratos. Clique em + Novo Contrato para adicionar.</div>
       ) : (
@@ -389,10 +396,12 @@ function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew, currencies
                   <div className="gf-contract-title">{c.supplier || '(sem fornecedor)'}</div>
                   {c.category && <Badge variant="grey">{c.category}</Badge>}
                 </div>
-                <div className="gf-contract-actions">
-                  <button className="gf-btn" onClick={() => onEdit(c)}>Editar</button>
-                  <button className="gf-btn gf-btn-danger" onClick={() => onDelete(c.id)}>Eliminar</button>
-                </div>
+                {!readOnly && (
+                  <div className="gf-contract-actions">
+                    <button className="gf-btn" onClick={() => onEdit(c)}>Editar</button>
+                    <button className="gf-btn gf-btn-danger" onClick={() => onDelete(c.id)}>Eliminar</button>
+                  </div>
+                )}
               </div>
               <div className="gf-contract-meta">
                 <div className="gf-contract-meta-item">
@@ -605,10 +614,11 @@ interface InvoicesTabProps {
   onDuplicate: (id: string) => void
   contracts: FinContract[]
   currencies: CurrencyOption[]
+  readOnly: boolean
 }
 
 
-function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts, currencies }: InvoicesTabProps) {
+function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts, currencies, readOnly }: InvoicesTabProps) {
   const [statusFilter, setStatusFilter] = useState('Todos')
   const [openMenuId,   setOpenMenuId]   = useState<string | null>(null)
 
@@ -639,7 +649,7 @@ function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts
           ))}
         </div>
         <div style={{ flex: 1 }} />
-        <button className="gf-btn gf-btn-primary" onClick={onNew}>+ Factura</button>
+        {!readOnly && <button className="gf-btn gf-btn-primary" onClick={onNew}>+ Factura</button>}
       </div>
 
       <div className="gf-invoices-table-wrap">
@@ -689,14 +699,16 @@ function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts
                       })()}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <InvRowMenu
-                        invId={inv.id}
-                        openId={openMenuId}
-                        onOpen={setOpenMenuId}
-                        onEdit={() => onEdit(inv)}
-                        onDuplicate={() => onDuplicate(inv.id)}
-                        onDelete={() => onDelete(inv.id)}
-                      />
+                      {!readOnly && (
+                        <InvRowMenu
+                          invId={inv.id}
+                          openId={openMenuId}
+                          onOpen={setOpenMenuId}
+                          onEdit={() => onEdit(inv)}
+                          onDuplicate={() => onDuplicate(inv.id)}
+                          onDelete={() => onDelete(inv.id)}
+                        />
+                      )}
                     </td>
                   </tr>
                 )
@@ -714,6 +726,7 @@ export default function GestaoFinanceira() {
   const { showToast } = useToast()
   const { filters }  = useFilters()
   const { programs } = usePrograms()
+  const readOnly = !useCanEditCurrent('gestao-financeira')
   const [selProgId, setSelProgId] = useState<string>('')
 
   // Initialise from global filter or first available program (once)
@@ -1215,6 +1228,7 @@ export default function GestaoFinanceira() {
               onDelete={deleteBudget}
               onSaveLine={saveBudgetLine}
               savedRows={rowSaved}
+              readOnly={readOnly}
               categories={categories}
               currencies={currencies}
               defaultCurrency={defaultCurrency}
@@ -1229,6 +1243,7 @@ export default function GestaoFinanceira() {
               onDelete={deleteContract}
               onNew={openNewContract}
               currencies={currencies}
+              readOnly={readOnly}
             />
           )}
           {tab === 'facturas' && (
@@ -1240,6 +1255,7 @@ export default function GestaoFinanceira() {
               onDuplicate={duplicateInvoice}
               contracts={draft.contracts}
               currencies={currencies}
+              readOnly={readOnly}
             />
           )}
         </>

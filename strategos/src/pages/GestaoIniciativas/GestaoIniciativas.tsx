@@ -20,6 +20,7 @@ import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange, leafPctPrev, l
 import type { Activity, Person, ActivityDependency, DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 import { validateNewDependency, propagateDateChanges } from '../../lib/activityDependencies'
+import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 
 // ── Types ──────────────────────────────────────────────────────
 type BadgeVariant = 'green' | 'blue' | 'red' | 'grey'
@@ -735,6 +736,7 @@ export default function GestaoIniciativas() {
   const { showToast } = useToast()
   const { filters } = useFilters()
   const [selProgId, setSelProgId] = useState<string | null>(null)
+  const readOnly = !useCanEditCurrent('gestao-iniciativas')
 
   const { programs } = usePrograms()
   const { activities: rawActivities, loading, refetch } = useActivities({})
@@ -1233,15 +1235,17 @@ export default function GestaoIniciativas() {
             <Badge variant={statusBadge(aStatus)}>{statusLabel(aStatus)}</Badge>
           </td>
           <td onClick={e => e.stopPropagation()}>
-            <RowMenu
-              actId={a.id} openId={menuId} canUp={idx > 0} canDown={idx < sorted.length - 1}
-              onOpen={setMenuId}
-              onEdit={() => openPanel(a)}
-              onDuplicate={() => handleDuplicate(a)}
-              onDelete={() => handleRowDelete(a)}
-              onMoveUp={() => handleMove(a, acts, 'up')}
-              onMoveDown={() => handleMove(a, acts, 'down')}
-            />
+            {!readOnly && (
+              <RowMenu
+                actId={a.id} openId={menuId} canUp={idx > 0} canDown={idx < sorted.length - 1}
+                onOpen={setMenuId}
+                onEdit={() => openPanel(a)}
+                onDuplicate={() => handleDuplicate(a)}
+                onDelete={() => handleRowDelete(a)}
+                onMoveUp={() => handleMove(a, acts, 'up')}
+                onMoveDown={() => handleMove(a, acts, 'down')}
+              />
+            )}
           </td>
         </tr>
       )
@@ -1333,7 +1337,7 @@ export default function GestaoIniciativas() {
             <td className="gi-td-r">{Math.round(n3pct)}%</td><td className="gi-td-r">{Math.round(n3prev)}%</td>
             <td className="gi-td-c"><Badge variant={statusBadge(n3st)}>{n3st}</Badge></td>
             <td onClick={e => e.stopPropagation()}>
-              {n3Rep && (
+              {!readOnly && n3Rep && (
                 <RowMenu
                   actId={n3Rep.id} openId={menuId}
                   canUp={n3RepIdx > 0} canDown={n3RepIdx < n3Sibs.length - 1}
@@ -1388,7 +1392,7 @@ export default function GestaoIniciativas() {
               <td className="gi-td-r">{Math.round(n4pct)}%</td><td className="gi-td-r">{Math.round(n4prev)}%</td>
               <td className="gi-td-c"><Badge variant={statusBadge(n4st)}>{n4st}</Badge></td>
               <td onClick={e => e.stopPropagation()}>
-                {n4Rep && (
+                {!readOnly && n4Rep && (
                   <RowMenu
                     actId={n4Rep.id} openId={menuId}
                     canUp={n4RepIdx > 0} canDown={n4RepIdx < n4Sibs.length - 1}
@@ -1433,7 +1437,7 @@ export default function GestaoIniciativas() {
                   <td /><td /><td /><td />
                   <td />
                   <td onClick={e => e.stopPropagation()}>
-                    {n5Rep && (
+                    {!readOnly && n5Rep && (
                       <RowMenu
                         actId={n5Rep.id} openId={menuId}
                         canUp={n5RepIdx > 0} canDown={n5RepIdx < n5Sibs.length - 1}
@@ -1549,19 +1553,23 @@ export default function GestaoIniciativas() {
             >×</button>
           )}
         </div>
-        <button className="gi-btn gi-btn-secondary" onClick={handleOpenPlano} disabled={!selProgId}
-          title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
-          Novo Plano
-        </button>
-        <button className="gi-btn gi-btn-primary" onClick={openNew} disabled={!selProgId}
-          title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
-          Nova Actividade
-        </button>
+        {!readOnly && (
+          <>
+            <button className="gi-btn gi-btn-secondary" onClick={handleOpenPlano} disabled={!selProgId}
+              title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
+              Novo Plano
+            </button>
+            <button className="gi-btn gi-btn-primary" onClick={openNew} disabled={!selProgId}
+              title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
+              Nova Actividade
+            </button>
+          </>
+        )}
         <div className="gi-sep" />
         <button className="gi-btn" onClick={collapseAll}>Colapsar tudo</button>
         <button className="gi-btn" onClick={expandAll}>Expandir tudo</button>
         <div className="gi-spacer" />
-        {dirty.size > 0 && (
+        {!readOnly && dirty.size > 0 && (
           <button className="gi-btn gi-btn-save" onClick={handleBatchSave} disabled={batchSaving}>
             {batchSaving ? 'A guardar…' : `Guardar (${dirty.size})`}
           </button>
@@ -1578,8 +1586,7 @@ export default function GestaoIniciativas() {
             icon="list"
             title="Sem planos ou actividades"
             description="Cria um plano de acção para começar a gerir as actividades do programa."
-            actionLabel="+ Novo Plano"
-            onAction={handleOpenPlano}
+            {...(!readOnly && { actionLabel: '+ Novo Plano', onAction: handleOpenPlano })}
           />
         ) : (
           <>

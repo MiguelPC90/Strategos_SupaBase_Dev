@@ -14,6 +14,7 @@ import KpiCard from '../../components/KpiCard/KpiCard'
 import Badge from '../../components/Badge/Badge'
 import Modal from '../../components/Modal/Modal'
 import type { FteResource, Person, FinContract } from '../../types/index'
+import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 
 // ── Types ──────────────────────────────────────────────────────────
 interface PlanOption {
@@ -135,9 +136,10 @@ interface ResourceCardProps {
   onDelete: () => void
   onDuplicate: () => void
   sym: string
+  readOnly: boolean
 }
 
-function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate, sym }: ResourceCardProps) {
+function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate, sym, readOnly }: ResourceCardProps) {
   const cost = calcCost(res, workDays)
   const isOverallocated = (res.allocation_pct ?? 0) > 100
   const dateErr = !!(res.start_date && res.end_date && res.end_date < res.start_date)
@@ -188,11 +190,13 @@ function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate,
             <span className="gres-field-label">Estado</span>
             <Badge variant={status === 'Activo' ? 'green' : 'grey'}>{status}</Badge>
           </div>
-          <div className="gres-card-actions">
-            <button className="gres-icon-btn" onClick={onEdit} title="Editar" style={{ fontSize: 14 }}>✎</button>
-            <button className="gres-icon-btn" onClick={onDuplicate} title="Duplicar">⧉</button>
-            <button className="gres-icon-btn danger" onClick={onDelete} title="Eliminar">✕</button>
-          </div>
+          {!readOnly && (
+            <div className="gres-card-actions">
+              <button className="gres-icon-btn" onClick={onEdit} title="Editar" style={{ fontSize: 14 }}>✎</button>
+              <button className="gres-icon-btn" onClick={onDuplicate} title="Duplicar">⧉</button>
+              <button className="gres-icon-btn danger" onClick={onDelete} title="Eliminar">✕</button>
+            </div>
+          )}
         </div>
 
         {/* Detail row */}
@@ -613,6 +617,7 @@ export default function GestaoRecursos() {
   const { filters }  = useFilters()
   const { programs } = usePrograms()
   const [selProgId, setSelProgId] = useState<string>('')
+  const readOnly = !useCanEditCurrent('gestao-recursos')
 
   // Initialise from global filter or first available program (once)
   useEffect(() => {
@@ -959,20 +964,24 @@ export default function GestaoRecursos() {
         {conflicts.length > 0 && (
           <span className="gres-warn">⚠ Sobrealocação: {conflicts.join(', ')}</span>
         )}
-        <button
-          className="gres-btn"
-          onClick={() => setShowImport(true)}
-          disabled={!selectedPlan}
-        >
-          Importar de outro plano
-        </button>
-        <button
-          className="gres-btn gres-btn-save"
-          onClick={handleSave}
-          disabled={!selectedPlan || !isDirty || saving}
-        >
-          {saving ? 'A guardar…' : isDirty ? 'Guardar alterações' : 'Guardar'}
-        </button>
+        {!readOnly && (
+          <>
+            <button
+              className="gres-btn"
+              onClick={() => setShowImport(true)}
+              disabled={!selectedPlan}
+            >
+              Importar de outro plano
+            </button>
+            <button
+              className="gres-btn gres-btn-save"
+              onClick={handleSave}
+              disabled={!selectedPlan || !isDirty || saving}
+            >
+              {saving ? 'A guardar…' : isDirty ? 'Guardar alterações' : 'Guardar'}
+            </button>
+          </>
+        )}
       </div>
 
       {loading ? (
@@ -1027,7 +1036,7 @@ export default function GestaoRecursos() {
           <div className="gres-cards-section">
             <div className="gres-cards-toolbar">
               <span className="gres-cards-title">Recursos Alocados ({draft.length})</span>
-              <button className="gres-btn gres-btn-primary" onClick={openNewResource}>+ Adicionar Recurso</button>
+              {!readOnly && <button className="gres-btn gres-btn-primary" onClick={openNewResource}>+ Adicionar Recurso</button>}
             </div>
 
             {draft.length === 0 ? (
@@ -1035,8 +1044,7 @@ export default function GestaoRecursos() {
                 icon="list"
                 title="Sem recursos alocados"
                 description="Clica em + Adicionar Recurso para começar a alocar recursos a este plano."
-                actionLabel="+ Adicionar Recurso"
-                onAction={openNewResource}
+                {...(!readOnly && { actionLabel: '+ Adicionar Recurso', onAction: openNewResource })}
               />
             ) : (
               draft.map(res => (
@@ -1049,6 +1057,7 @@ export default function GestaoRecursos() {
                   onDelete={() => deleteResource(res.id)}
                   onDuplicate={() => duplicateResource(res.id)}
                   sym={currSymbol}
+                  readOnly={readOnly}
                 />
               ))
             )}
