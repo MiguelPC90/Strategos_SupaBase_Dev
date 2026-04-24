@@ -4,6 +4,7 @@ import { useToast } from '../../context/ToastContext'
 import * as XLSX from 'xlsx'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
+import Modal from '../../components/Modal/Modal'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { usePrograms } from '../../hooks/usePrograms'
@@ -1011,7 +1012,7 @@ function AdminPermissoes({ profiles }: { profiles: Profile[] }) {
                         >
                           <option value="">–</option>
                           <option value="view">Ver</option>
-                          <option value="edit">Editar</option>
+                          {p.role === 'editor' && <option value="edit">Editar</option>}
                         </select>
                       </td>
                     )
@@ -1049,14 +1050,15 @@ function AdminUtilizadores() {
   const { user: currentUser } = useAuth()
   const { showToast } = useToast()
 
-  const [profiles,   setProfiles]   = useState<Profile[]>([])
-  const [loadingP,   setLoadingP]   = useState(true)
-  const [editId,     setEditId]     = useState<string | null>(null)
-  const [editRole,   setEditRole]   = useState<UserRole>('viewer')
-  const [saving,     setSaving]     = useState(false)
-  const [showInvite, setShowInvite] = useState(false)
-  const [invite,     setInvite]     = useState<InviteForm>({ email: '', role: 'viewer' })
-  const [inviting,   setInviting]   = useState(false)
+  const [profiles,         setProfiles]         = useState<Profile[]>([])
+  const [loadingP,         setLoadingP]         = useState(true)
+  const [editId,           setEditId]           = useState<string | null>(null)
+  const [editRole,         setEditRole]         = useState<UserRole>('viewer')
+  const [saving,           setSaving]           = useState(false)
+  const [showInvite,       setShowInvite]       = useState(false)
+  const [invite,           setInvite]           = useState<InviteForm>({ email: '', role: 'viewer' })
+  const [inviting,         setInviting]         = useState(false)
+  const [downgradeConfirm, setDowngradeConfirm] = useState<{ userId: string; editCount: number } | null>(null)
 
   async function loadProfiles() {
     setLoadingP(true)
@@ -1079,24 +1081,54 @@ function AdminUtilizadores() {
     setEditId(null)
   }
 
-  async function saveRole() {
-    if (!editId) return
+  async function commitSaveRole(userId: string, newRole: UserRole) {
     setSaving(true)
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .update({ role: editRole })
-        .eq('id', editId)
+        .update({ role: newRole })
+        .eq('id', userId)
         .select()
-      console.log('[saveRole] result:', { data, error })
       if (error) { showToast(`Erro: ${error.message}`, 'error'); return }
       if (!data || data.length === 0) { showToast('Sem permissão para editar', 'warning'); return }
       setEditId(null)
+      setDowngradeConfirm(null)
       await loadProfiles()
       showToast('Role actualizado', 'success')
     } finally {
       setSaving(false)
     }
+  }
+
+  async function saveRole() {
+    if (!editId) return
+    // editor → viewer: check for edit permissions that would be stranded
+    if (editRole === 'viewer') {
+      const originalRole = profiles.find(p => p.id === editId)?.role
+      if (originalRole === 'editor') {
+        const { data } = await supabase
+          .from('user_permissions')
+          .select('id')
+          .eq('user_id', editId)
+          .eq('access_level', 'edit')
+        const editCount = data?.length ?? 0
+        if (editCount > 0) {
+          setDowngradeConfirm({ userId: editId, editCount })
+          return
+        }
+      }
+    }
+    await commitSaveRole(editId, editRole)
+  }
+
+  async function confirmDowngradeAndSave() {
+    if (!downgradeConfirm) return
+    await supabase
+      .from('user_permissions')
+      .update({ access_level: 'view' })
+      .eq('user_id', downgradeConfirm.userId)
+      .eq('access_level', 'edit')
+    await commitSaveRole(downgradeConfirm.userId, 'viewer')
   }
 
   async function deleteProfile(id: string, name: string | null) {
@@ -1260,6 +1292,27 @@ function AdminUtilizadores() {
         <AdminPermissoes profiles={profiles} />
 
       </div>
+
+      {/* ── Downgrade confirmation modal ── */}
+      <Modal
+        isOpen={!!downgradeConfirm}
+        onClose={() => setDowngradeConfirm(null)}
+        title="Mudar para Viewer"
+        width={400}
+        footer={
+          <>
+            <button className="adm-btn-secondary" onClick={() => setDowngradeConfirm(null)}>Cancelar</button>
+            <button className="adm-btn-primary" onClick={confirmDowngradeAndSave} disabled={saving}>
+              {saving ? 'A guardar…' : 'Continuar'}
+            </button>
+          </>
+        }
+      >
+        <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text)' }}>
+          Este utilizador tem <strong>{downgradeConfirm?.editCount}</strong> permissões de edição.
+          Ao mudar para <strong>viewer</strong>, estas permissões serão convertidas para apenas visualização.
+        </p>
+      </Modal>
     </>
   )
 }
