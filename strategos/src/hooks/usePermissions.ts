@@ -26,8 +26,8 @@ export function usePermissions(): UsePermissionsResult {
     (page: PageKey, programId?: string): boolean => {
       // Admin bypasses all checks
       if (isAdmin) return true
-      // No permission rows at all → no restrictions configured
-      if (permissions.length === 0) return true
+      // No permission rows → deny by default (matches DB deny-by-default)
+      if (permissions.length === 0) return false
 
       const pagePerms = permissions.filter(p => p.page === page)
       // Permissions exist globally but none granted for this page → blocked
@@ -53,9 +53,9 @@ export function usePermissions(): UsePermissionsResult {
       if (isAdmin) return true
       if (role === 'viewer') return false
       // editor:
-      if (permissions.length === 0) return true
+      if (permissions.length === 0) return false
       const pagePerms = permissions.filter(p => p.page === page)
-      if (pagePerms.length === 0) return true
+      if (pagePerms.length === 0) return false
       if (programId) {
         const specific = pagePerms.find(p => p.program_id === programId)
         if (specific) return specific.access_level === 'edit'

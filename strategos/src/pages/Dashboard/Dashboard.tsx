@@ -909,10 +909,10 @@ export default function Dashboard() {
   )
 
   // Plano IDs the current user is permitted to see (null = unrestricted).
-  // Admins bypass; non-admins with no scoped program rows also see everything.
+  // Admins bypass; non-admins with no permissions see nothing (deny-by-default).
   const permissionPlanoIds = useMemo((): Set<string> | null => {
     if (isAdmin) return null
-    if (!permissions || permissions.length === 0) return null
+    if (!permissions || permissions.length === 0) return new Set<string>()
     const allowedPrograms = new Set(
       permissions.filter(p => p.program_id).map(p => p.program_id!),
     )
