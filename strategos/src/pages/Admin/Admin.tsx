@@ -890,7 +890,7 @@ const MATRIX_PAGES: { key: string; label: string }[] = [
   { key: 'actividades',         label: 'Actividades'   },
   { key: 'gantt',               label: 'Gantt'         },
   { key: 'ponto-situacao',      label: 'PDS'           },
-  { key: 'execucao-financeira', label: 'Financeiro'    },
+  { key: 'exec-financeira',     label: 'Financeiro'    },
   { key: 'recursos',            label: 'Recursos'      },
   { key: 'evolucao',            label: 'Evolução'      },
   { key: 'gestao-iniciativas',  label: 'G.Iniciativas' },
