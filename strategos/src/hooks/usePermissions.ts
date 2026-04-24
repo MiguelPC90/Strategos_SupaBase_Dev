@@ -40,6 +40,7 @@ export function usePermissions(): UsePermissionsResult {
         // Fallback: page-level row (program_id = null covers all programs)
         const pageLevel = pagePerms.find(p => p.program_id === null)
         if (pageLevel) return isAllowed(pageLevel.access_level)
+        return false  // programId provided but no matching row — deny
       }
 
       // Sidebar / no-programId check: allow if any row grants access
@@ -61,6 +62,7 @@ export function usePermissions(): UsePermissionsResult {
         if (specific) return specific.access_level === 'edit'
         const pageLevel = pagePerms.find(p => p.program_id === null)
         if (pageLevel) return pageLevel.access_level === 'edit'
+        return false  // programId provided but no matching row — deny
       }
       return pagePerms.some(p => p.access_level === 'edit')
     },
