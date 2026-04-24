@@ -243,4 +243,10 @@
     margin: 0;
     cursor: pointer;
   }
+
+  .breadcrumb-no-access {
+    font-size: 12px;
+    color: var(--text3);
+    font-style: italic;
+  }
 }

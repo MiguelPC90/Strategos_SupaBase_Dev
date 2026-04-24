@@ -9,8 +9,9 @@ import {
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import { useSnapshots } from '../../hooks/useSnapshots'
-import { usePrograms } from '../../hooks/usePrograms'
+import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useEixos } from '../../hooks/useEixos'
+import { useFilters } from '../../context/FilterContext'
 import type { Snapshot, SnapshotKpi } from '../../types/index'
 import { colors, chartDefaults } from '../../lib/tokens'
 
@@ -107,7 +108,8 @@ const BLUE  = colors.status.done
 
 // ── Component ──────────────────────────────────────────────────
 export default function Evolucao() {
-  const [programId,    setProgramId]    = useState('')
+  const { filters, setFilter }         = useFilters()
+  const programId                      = filters.programIds[0] ?? ''
   const [periodOption, setPeriodOption] = useState<PeriodOption>('6m')
   const [dateFrom,     setDateFrom]     = useState(() => computePeriodDates('6m').from)
   const [dateTo,       setDateTo]       = useState(() => computePeriodDates('6m').to)
@@ -119,7 +121,7 @@ export default function Evolucao() {
     setDateTo(to)
   }, [periodOption])
 
-  const { programs }                  = usePrograms()
+  const programs                       = useAccessiblePrograms('evolucao')
   const { snapshots, loading, error } = useSnapshots(programId || undefined)
   const { eixos }                     = useEixos(programId || undefined)
 
@@ -244,7 +246,7 @@ export default function Evolucao() {
         <select
           className="styled-select"
           value={programId}
-          onChange={e => setProgramId(e.target.value)}
+          onChange={e => setFilter('programIds', e.target.value ? [e.target.value] : [])}
         >
           <option value="">Todos os programas</option>
           {programs.map(p => (

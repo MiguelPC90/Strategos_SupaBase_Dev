@@ -7,7 +7,7 @@ import EmptyState from '../../components/EmptyState/EmptyState'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
-import { usePrograms } from '../../hooks/usePrograms'
+import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { usePdsEntries, usePdsConsolidated } from '../../hooks/usePdsEntries'
 import type { PdsItem, PdsEntry, PdsItemEdit } from '../../types/index'
 import { SECTION_CONFIG, type PdsSection } from './sectionConfig'
@@ -276,7 +276,7 @@ function PdsSection({
 export default function GestaoPDS() {
   const { showToast } = useToast()
   const { filters }  = useFilters()
-  const { programs } = usePrograms()
+  const programs = useAccessiblePrograms('gestao-pds')
   const readOnly = !useCanEditCurrent('gestao-pds')
   const [selProgId, setSelProgId] = useState<string>('')
 

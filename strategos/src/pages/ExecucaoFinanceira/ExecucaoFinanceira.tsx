@@ -12,7 +12,7 @@ import Card from '../../components/Card/Card'
 import { invoiceAlert } from '../../lib/invoiceHelpers'
 import { useFinancials } from '../../hooks/useFinancials'
 import { usePlanos } from '../../hooks/usePlanos'
-import { usePrograms } from '../../hooks/usePrograms'
+import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import { colors, chartDefaults } from '../../lib/tokens'
@@ -221,7 +221,7 @@ type TipoFilter = 'todos' | 'capex' | 'opex'
 
 export default function ExecucaoFinanceira() {
   const { filters }  = useFilters()
-  const { programs } = usePrograms()
+  const programs = useAccessiblePrograms()
 
   const [selProgId,           setSelProgId]           = useState<string | null>(null)
   const [selectedPlanoLabels, setSelectedPlanoLabels] = useState<string[]>([])

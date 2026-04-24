@@ -2,7 +2,7 @@ import './Breadcrumb.css'
 import { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useFilters } from '../../context/FilterContext'
-import { usePrograms } from '../../hooks/usePrograms'
+import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
@@ -187,8 +187,12 @@ function FilterChip({ label, onRemove }: FilterChipProps) {
 
 export default function Breadcrumb() {
   const { filters, setFilter } = useFilters()
-  const { programs } = usePrograms()
   const location = useLocation()
+
+  const pageKey = location.pathname.slice(1) as PageKey
+  const isGestaoCurrent = GESTAO_PAGES.includes(pageKey)
+
+  const accessiblePrograms = useAccessiblePrograms(isGestaoCurrent ? pageKey : undefined)
 
   const programId = filters.programIds[0] ?? null
   const n1Name    = filters.n1Values[0]   ?? null
@@ -197,14 +201,31 @@ export default function Breadcrumb() {
   const { eixos }  = useEixos(programId ?? undefined)
   const { planos } = usePlanos(programId ?? undefined)
 
-  const currentProgram = programs.find(p => p.id === programId)
+  const currentProgram = accessiblePrograms.find(p => p.id === programId)
   const planosForEixo  = n1Name ? planos.filter(p => p.eixo?.name === n1Name) : planos
 
-  const pageKey = location.pathname.slice(1) as PageKey
-  const isGestaoCurrent = GESTAO_PAGES.includes(pageKey)
   // useCanEditCurrent is always called (hook rules); result only used when isGestaoCurrent
   const canEditPage = useCanEditCurrent(isGestaoCurrent ? pageKey : 'gestao-pds')
   const showReadOnly = isGestaoCurrent && !canEditPage
+
+  // Auto-reset programId when it's not accessible on the current page
+  useEffect(() => {
+    if (!programId) return
+    if (accessiblePrograms.length === 0) return
+    if (!accessiblePrograms.find(p => p.id === programId)) {
+      setFilter('programIds', [])
+    }
+  }, [accessiblePrograms, programId, setFilter])
+
+  if (isGestaoCurrent && accessiblePrograms.length === 0) {
+    return (
+      <div className="breadcrumb">
+        <div className="breadcrumb-main">
+          <span className="breadcrumb-no-access">Sem acesso a programas nesta página</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="breadcrumb">
@@ -215,7 +236,7 @@ export default function Breadcrumb() {
           isFirst
           options={[
             { value: null, label: 'Todos os programas' },
-            ...programs.map(p => ({ value: p.id, label: p.name })),
+            ...accessiblePrograms.map(p => ({ value: p.id, label: p.name })),
           ]}
           current={programId}
           onSelect={id => setFilter('programIds', id ? [id] : [])}

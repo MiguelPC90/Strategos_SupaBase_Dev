@@ -7,7 +7,7 @@ import Badge from '../../components/Badge/Badge'
 import MultiSelect from '../../components/MultiSelect/MultiSelect'
 import { useResources } from '../../hooks/useResources'
 import { usePlanos } from '../../hooks/usePlanos'
-import { usePrograms } from '../../hooks/usePrograms'
+import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { usePeople } from '../../hooks/usePeople'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
@@ -692,7 +692,7 @@ function InternExtDonut({ internos, externos, iPct, ePct, total }: InternExtDonu
 // ── Main page ──────────────────────────────────────────────────
 export default function Recursos() {
   const { filters }  = useFilters()
-  const { programs } = usePrograms()
+  const programs = useAccessiblePrograms()
 
   const [selProgId,           setSelProgId]           = useState<string | null>(null)
   const [selectedPlanoLabels, setSelectedPlanoLabels] = useState<string[]>([])

@@ -6,7 +6,7 @@ import EmptyState from '../../components/EmptyState/EmptyState'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
-import { usePrograms } from '../../hooks/usePrograms'
+import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useResources } from '../../hooks/useResources'
 import { usePeople } from '../../hooks/usePeople'
 import { useFinancials } from '../../hooks/useFinancials'
@@ -615,7 +615,7 @@ function ImportPanel({ planOptions, currentPlanKey, allResources, onImport, onCl
 export default function GestaoRecursos() {
   const { showToast } = useToast()
   const { filters }  = useFilters()
-  const { programs } = usePrograms()
+  const programs = useAccessiblePrograms('gestao-recursos')
   const [selProgId, setSelProgId] = useState<string>('')
   const readOnly = !useCanEditCurrent('gestao-recursos')
 

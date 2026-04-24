@@ -7,7 +7,7 @@ import KpiCard from '../../components/KpiCard/KpiCard'
 import Badge from '../../components/Badge/Badge'
 import { usePdsEntries, usePdsConsolidated } from '../../hooks/usePdsEntries'
 import { usePlanos } from '../../hooks/usePlanos'
-import { usePrograms } from '../../hooks/usePrograms'
+import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useRisks } from '../../hooks/useRisks'
 import { useActivities } from '../../hooks/useActivities'
 import { useFilters } from '../../context/FilterContext'
@@ -285,7 +285,7 @@ function RiskTable({ risks, size, thresholds, selectedIds, onSelect }: RiskTable
 // ── Main page ──────────────────────────────────────────────────
 export default function PontoSituacao() {
   const { filters }   = useFilters()
-  const { programs }  = usePrograms()
+  const programs = useAccessiblePrograms()
   // ── State ──────────────────────────────────────────────────
   const [selProgId,         setSelProgId]         = useState<string | null>(null)
   const [selectedKey,       setSelectedKey]       = useState('')

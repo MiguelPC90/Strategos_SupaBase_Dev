@@ -10,7 +10,7 @@ import Badge from '../../components/Badge/Badge'
 import DateRangePicker from '../../components/DateRangePicker/DateRangePicker'
 import * as XLSX from 'xlsx'
 import { useActivities } from '../../hooks/useActivities'
-import { usePrograms } from '../../hooks/usePrograms'
+import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { usePeople } from '../../hooks/usePeople'
 import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -738,7 +738,7 @@ export default function GestaoIniciativas() {
   const [selProgId, setSelProgId] = useState<string | null>(null)
   const readOnly = !useCanEditCurrent('gestao-iniciativas')
 
-  const { programs } = usePrograms()
+  const programs = useAccessiblePrograms('gestao-iniciativas')
   const { activities: rawActivities, loading, refetch } = useActivities({})
   const { people } = usePeople()
   const { eixos: dbEixos } = useEixos(selProgId ?? undefined)

@@ -9,7 +9,7 @@ import Modal from '../../components/Modal/Modal'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { useRisks } from '../../hooks/useRisks'
 import { usePlanos } from '../../hooks/usePlanos'
-import { usePrograms } from '../../hooks/usePrograms'
+import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import type { Risk } from '../../types/index'
@@ -220,7 +220,7 @@ function RowMenu({ riskId, openId, onOpen, onEdit, onDuplicate, onDelete }: RowM
 // ── Main component ─────────────────────────────────────────────
 export default function GestaoRiscos() {
   const { filters }  = useFilters()
-  const { programs } = usePrograms()
+  const programs = useAccessiblePrograms('gestao-riscos')
   const { showToast } = useToast()
   const readOnly = !useCanEditCurrent('gestao-riscos')
   const [selProgId,   setSelProgId]   = useState<string>('')

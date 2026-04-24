@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
-import { usePrograms } from '../../hooks/usePrograms'
+import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useFinancials } from '../../hooks/useFinancials'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import ProgressBar from '../../components/ProgressBar/ProgressBar'
@@ -725,7 +725,7 @@ function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts
 export default function GestaoFinanceira() {
   const { showToast } = useToast()
   const { filters }  = useFilters()
-  const { programs } = usePrograms()
+  const programs = useAccessiblePrograms('gestao-financeira')
   const readOnly = !useCanEditCurrent('gestao-financeira')
   const [selProgId, setSelProgId] = useState<string>('')
 
