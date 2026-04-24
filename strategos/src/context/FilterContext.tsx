@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState, useEffect, type ReactNode } from 'react'
 import { usePlanos } from '../hooks/usePlanos'
+import { useEixos } from '../hooks/useEixos'
 import { leafStatus } from '../lib/rollup'
 import type { Activity } from '../types/index'
 
@@ -31,6 +32,19 @@ const DEFAULT_FILTERS: FilterState = {
   cutoffDate:  null,
 }
 
+const STORAGE_KEY = 'stratgos:filters'
+
+function loadFromStorage(): FilterState {
+  try {
+    const saved = sessionStorage.getItem(STORAGE_KEY)
+    if (!saved) return DEFAULT_FILTERS
+    const parsed = JSON.parse(saved) as Partial<FilterState>
+    return { ...DEFAULT_FILTERS, ...parsed }
+  } catch {
+    return DEFAULT_FILTERS
+  }
+}
+
 // ── Context value ─────────────────────────────────────────────
 interface FilterContextValue {
   filters: FilterState
@@ -45,19 +59,25 @@ const FilterContext = createContext<FilterContextValue | null>(null)
 
 // ── Provider ──────────────────────────────────────────────────
 export function FilterProvider({ children }: { children: ReactNode }) {
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS)
+  const [filters, setFilters] = useState<FilterState>(loadFromStorage)
 
-  // Fetch all planos (no program filter) to populate owner/sponsor options
-  const { planos } = usePlanos()
+  // All eixos + planos needed for cascade auto-fill and owner/sponsor lists
+  const { eixos: allEixos } = useEixos()
+  const { planos: allPlanos } = usePlanos()
+
+  // Persist to sessionStorage on every filter change
+  useEffect(() => {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(filters))
+  }, [filters])
 
   const ownerOptions = useMemo(
-    () => [...new Set(planos.map(p => p.owner).filter((v): v is string => Boolean(v)))].sort(),
-    [planos],
+    () => [...new Set(allPlanos.map(p => p.owner).filter((v): v is string => Boolean(v)))].sort(),
+    [allPlanos],
   )
 
   const sponsorOptions = useMemo(
-    () => [...new Set(planos.map(p => p.sponsor).filter((v): v is string => Boolean(v)))].sort(),
-    [planos],
+    () => [...new Set(allPlanos.map(p => p.sponsor).filter((v): v is string => Boolean(v)))].sort(),
+    [allPlanos],
   )
 
   const setFilter = useCallback(<K extends keyof FilterState>(
@@ -66,16 +86,46 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   ) => {
     setFilters(prev => {
       const next = { ...prev, [key]: value }
-      // Cascading resets
+
       if (key === 'programIds') {
+        // Parent changed → clear both children
         next.n1Values = []
         next.n2Values = []
-      } else if (key === 'n1Values') {
-        next.n2Values = []
+        return next
       }
+
+      if (key === 'n1Values') {
+        const eixoName = (value as string[])[0]
+        if (eixoName) {
+          // Auto-fill programa from eixo; prefer a match in current program if names collide
+          const currentProgId = prev.programIds[0]
+          const eixo = allEixos.find(e => e.name === eixoName && e.program_id === currentProgId)
+                    || allEixos.find(e => e.name === eixoName)
+          if (eixo?.program_id) next.programIds = [eixo.program_id]
+        }
+        // Always clear plano (incompatible with new eixo selection or Todos)
+        next.n2Values = []
+        return next
+      }
+
+      if (key === 'n2Values') {
+        const planoName = (value as string[])[0]
+        if (planoName) {
+          // Auto-fill programa + eixo from plano
+          const plano = allPlanos.find(p => p.name === planoName)
+          if (plano) {
+            if (plano.program_id) next.programIds = [plano.program_id]
+            const eixoName = plano.eixo?.name
+            next.n1Values = eixoName ? [eixoName] : []
+          }
+        }
+        // Plano = Todos → don't touch parents
+        return next
+      }
+
       return next
     })
-  }, [])
+  }, [allEixos, allPlanos])
 
   const resetFilters = useCallback(() => {
     setFilters(DEFAULT_FILTERS)
@@ -85,13 +135,11 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     const { programIds, n1Values, n2Values, owners, sponsors, statuses } = filters
     const today = new Date().toISOString().slice(0, 10)
 
-    // Owner/sponsor live on the planos table, not on activities.
-    // Build a Set of matching plano UUIDs so we can match via a.plano_id.
     const ownerPlanoIds = owners.length
-      ? new Set(planos.filter(p => p.owner && owners.includes(p.owner)).map(p => p.id))
+      ? new Set(allPlanos.filter(p => p.owner && owners.includes(p.owner)).map(p => p.id))
       : null
     const sponsorPlanoIds = sponsors.length
-      ? new Set(planos.filter(p => p.sponsor && sponsors.includes(p.sponsor)).map(p => p.id))
+      ? new Set(allPlanos.filter(p => p.sponsor && sponsors.includes(p.sponsor)).map(p => p.id))
       : null
 
     return activities.filter(a => {
@@ -102,14 +150,14 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       if (sponsorPlanoIds && !sponsorPlanoIds.has(a.plano_id ?? ''))               return false
 
       // Status filter: only applied to leaf activities (level >= 4)
-      // Parent activities are always included to preserve tree structure
+      // Parent activities always included to preserve tree structure
       if (statuses.length && a.level >= 4) {
         if (!statuses.includes(leafStatus(a, today))) return false
       }
 
       return true
     })
-  }, [filters, planos])
+  }, [filters, allPlanos])
 
   return (
     <FilterContext.Provider value={{ filters, setFilter, resetFilters, getFilteredActivities, ownerOptions, sponsorOptions }}>

@@ -6,6 +6,7 @@ import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
+import { useToast } from '../../context/ToastContext'
 import type { PageKey } from '../../types/index'
 
 const GESTAO_PAGES: PageKey[] = [
@@ -187,6 +188,7 @@ function FilterChip({ label, onRemove }: FilterChipProps) {
 
 export default function Breadcrumb() {
   const { filters, setFilter } = useFilters()
+  const { showToast } = useToast()
   const location = useLocation()
 
   const pageKey = location.pathname.slice(1) as PageKey
@@ -198,15 +200,33 @@ export default function Breadcrumb() {
   const n1Name    = filters.n1Values[0]   ?? null
   const n2Name    = filters.n2Values[0]   ?? null
 
-  const { eixos }  = useEixos(programId ?? undefined)
-  const { planos } = usePlanos(programId ?? undefined)
+  // All eixos + planos — filtered in dropdowns based on current selections
+  const { eixos: allEixos } = useEixos()
+  const { planos: allPlanos } = usePlanos()
 
-  const currentProgram = accessiblePrograms.find(p => p.id === programId)
-  const planosForEixo  = n1Name ? planos.filter(p => p.eixo?.name === n1Name) : planos
-
-  // useCanEditCurrent is always called (hook rules); result only used when isGestaoCurrent
+  // useCanEditCurrent always called (hook rules); only used when isGestaoCurrent
   const canEditPage = useCanEditCurrent(isGestaoCurrent ? pageKey : 'gestao-pds')
   const showReadOnly = isGestaoCurrent && !canEditPage
+
+  // Cascade-restricted dropdown options
+  const eixoOptions = programId
+    ? allEixos.filter(e => e.program_id === programId)
+    : allEixos
+
+  const planoOptions = n1Name
+    ? allPlanos.filter(p => p.eixo?.name === n1Name)
+    : programId
+      ? allPlanos.filter(p => p.program_id === programId)
+      : allPlanos
+
+  // Programmatic selection guard — blocks inaccessible programs and shows feedback
+  function trySetProgram(id: string | null) {
+    if (id && !accessiblePrograms.find(p => p.id === id)) {
+      showToast('Sem acesso a este programa', 'warning')
+      return
+    }
+    setFilter('programIds', id ? [id] : [])
+  }
 
   // Auto-reset programId when it's not accessible on the current page
   useEffect(() => {
@@ -227,10 +247,12 @@ export default function Breadcrumb() {
     )
   }
 
+  const currentProgram = accessiblePrograms.find(p => p.id === programId)
+
   return (
     <div className="breadcrumb">
       <div className="breadcrumb-main">
-        {/* Program segment — always shown */}
+        {/* Programa — always visible */}
         <BreadcrumbSegment
           label={currentProgram?.name ?? 'Todos os programas'}
           isFirst
@@ -239,40 +261,34 @@ export default function Breadcrumb() {
             ...accessiblePrograms.map(p => ({ value: p.id, label: p.name })),
           ]}
           current={programId}
-          onSelect={id => setFilter('programIds', id ? [id] : [])}
+          onSelect={trySetProgram}
         />
 
-        {/* Eixo segment — only when a program is selected */}
-        {programId && (
-          <>
-            <span className="breadcrumb-separator">›</span>
-            <BreadcrumbSegment
-              label={n1Name ?? 'Todos os eixos'}
-              options={[
-                { value: null, label: 'Todos os eixos' },
-                ...eixos.map(e => ({ value: e.name, label: e.name })),
-              ]}
-              current={n1Name}
-              onSelect={name => setFilter('n1Values', name ? [name] : [])}
-            />
-          </>
-        )}
+        <span className="breadcrumb-separator">›</span>
 
-        {/* Plano segment — only when an eixo is selected */}
-        {n1Name && (
-          <>
-            <span className="breadcrumb-separator">›</span>
-            <BreadcrumbSegment
-              label={n2Name ?? 'Todos os planos'}
-              options={[
-                { value: null, label: 'Todos os planos' },
-                ...planosForEixo.map(p => ({ value: p.name, label: p.name })),
-              ]}
-              current={n2Name}
-              onSelect={name => setFilter('n2Values', name ? [name] : [])}
-            />
-          </>
-        )}
+        {/* Eixo — always visible, restricted to selected program */}
+        <BreadcrumbSegment
+          label={n1Name ?? 'Todos os eixos'}
+          options={[
+            { value: null, label: 'Todos os eixos' },
+            ...eixoOptions.map(e => ({ value: e.name, label: e.name })),
+          ]}
+          current={n1Name}
+          onSelect={name => setFilter('n1Values', name ? [name] : [])}
+        />
+
+        <span className="breadcrumb-separator">›</span>
+
+        {/* Plano — always visible, restricted to selected eixo or program */}
+        <BreadcrumbSegment
+          label={n2Name ?? 'Todos os planos'}
+          options={[
+            { value: null, label: 'Todos os planos' },
+            ...planoOptions.map(p => ({ value: p.name, label: p.name })),
+          ]}
+          current={n2Name}
+          onSelect={name => setFilter('n2Values', name ? [name] : [])}
+        />
       </div>
 
       {showReadOnly && (
