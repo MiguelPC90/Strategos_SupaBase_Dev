@@ -17,7 +17,7 @@ import { usePlanos } from '../../hooks/usePlanos'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange, leafPctPrev, leafStatus } from '../../lib/rollup'
-import type { Activity, Person, ActivityDependency, DependencyType } from '../../types/index'
+import type { Activity, Person, ActivityDependency, DependencyType, Plano } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 import { validateNewDependency, propagateDateChanges } from '../../lib/activityDependencies'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
@@ -510,10 +510,10 @@ function Panel({ form, eixos, planos, activities, internalPeople, errors, onChan
 // ── ⋯ Row menu ─────────────────────────────────────────────────
 interface RowMenuProps {
   actId: string; openId: string | null
-  canUp: boolean; canDown: boolean
+  canUp?: boolean; canDown?: boolean
   onOpen: (id: string | null) => void
-  onEdit: () => void; onDuplicate: () => void
-  onDelete: () => void; onMoveUp: () => void; onMoveDown: () => void
+  onEdit?: () => void; onDuplicate?: () => void
+  onDelete?: () => void; onMoveUp?: () => void; onMoveDown?: () => void
 }
 
 const MENU_H = 220 // conservative estimate for flip threshold
@@ -543,12 +543,20 @@ function RowMenu({ actId, openId, canUp, canDown, onOpen, onEdit, onDuplicate, o
       style={{ position: 'fixed', zIndex: 300, ...(pos ?? {}) }}
       onClick={e => e.stopPropagation()}
     >
-      <button className="gi-menu-item" onClick={() => { onOpen(null); onEdit() }}>Editar</button>
-      <button className="gi-menu-item" onClick={() => { onOpen(null); onDuplicate() }}>Duplicar</button>
-      <button className="gi-menu-item" onClick={() => { onOpen(null); onMoveUp() }} disabled={!canUp}>Mover para cima</button>
-      <button className="gi-menu-item" onClick={() => { onOpen(null); onMoveDown() }} disabled={!canDown}>Mover para baixo</button>
-      <div className="gi-menu-sep" />
-      <button className="gi-menu-item danger" onClick={() => { onOpen(null); onDelete() }}>Eliminar</button>
+      {onEdit && <button className="gi-menu-item" onClick={() => { onOpen(null); onEdit() }}>Editar</button>}
+      {onDuplicate && <button className="gi-menu-item" onClick={() => { onOpen(null); onDuplicate() }}>Duplicar</button>}
+      {(onMoveUp || onMoveDown) && (
+        <>
+          <button className="gi-menu-item" onClick={() => { onOpen(null); onMoveUp?.() }} disabled={!canUp}>Mover para cima</button>
+          <button className="gi-menu-item" onClick={() => { onOpen(null); onMoveDown?.() }} disabled={!canDown}>Mover para baixo</button>
+        </>
+      )}
+      {onDelete && (
+        <>
+          <div className="gi-menu-sep" />
+          <button className="gi-menu-item danger" onClick={() => { onOpen(null); onDelete() }}>Eliminar</button>
+        </>
+      )}
     </div>
   )
 
@@ -773,10 +781,11 @@ export default function GestaoIniciativas() {
   const [panelSaving, setPanelSaving] = useState(false)
   const [panelErrors, setPanelErrors] = useState<Record<string, string>>({})
 
-  const [newPlanoOpen, setNewPlanoOpen] = useState(false)
-  const [planoForm, setPlanoForm]       = useState<PlanoForm>(BLANK_PLANO)
-  const [planoErrors, setPlanoErrors]   = useState<Record<string, string>>({})
-  const [planoSaving, setPlanoSaving]   = useState(false)
+  const [planoModalOpen, setPlanoModalOpen] = useState(false)
+  const [planoToEdit, setPlanoToEdit]       = useState<Plano | null>(null)
+  const [planoForm, setPlanoForm]           = useState<PlanoForm>(BLANK_PLANO)
+  const [planoErrors, setPlanoErrors]       = useState<Record<string, string>>({})
+  const [planoSaving, setPlanoSaving]       = useState(false)
   const [planoStep, setPlanoStep]               = useState<1 | 2>(1)
   const [uploadedFile, setUploadedFile]         = useState<File | null>(null)
   const [parsedActivities, setParsedActivities] = useState<ParsedActivity[]>([])
@@ -1054,19 +1063,86 @@ export default function GestaoIniciativas() {
     handleAddDependency, handleRemoveDependency, handleUpdateDependency,
   ])
 
-  // ── Novo Plano handlers ───────────────────────────────────────
+  // ── Plano modal handlers ──────────────────────────────────────
   const handleOpenPlano = useCallback(() => {
+    setPlanoToEdit(null)
     setPlanoForm(BLANK_PLANO); setPlanoErrors({})
     setPlanoStep(1); setUploadedFile(null); setParsedActivities([]); setParseErrors([])
-    setNewPlanoOpen(true)
+    setPlanoModalOpen(true)
   }, [])
 
   const handleClosePlano = useCallback(() => {
-    setNewPlanoOpen(false); setPlanoStep(1)
+    setPlanoModalOpen(false); setPlanoToEdit(null); setPlanoStep(1)
     setPlanoForm(BLANK_PLANO); setPlanoErrors({})
     setUploadedFile(null); setParsedActivities([]); setParseErrors([])
     if (fileInputRef.current) fileInputRef.current.value = ''
   }, [])
+
+  const handleEditPlano = useCallback((plano: Plano) => {
+    setPlanoToEdit(plano)
+    setPlanoForm({
+      name:       plano.name,
+      code:       plano.code,
+      eixo_id:    plano.eixo_id,
+      start_date: plano.start_date,
+      end_date:   plano.end_date,
+      owner:      plano.owner ?? '',
+      sponsor:    plano.sponsor ?? '',
+      objective:  plano.objective ?? '',
+    })
+    setPlanoErrors({})
+    setPlanoModalOpen(true)
+  }, [])
+
+  const handleDuplicatePlano = useCallback(async (plano: Plano) => {
+    const { data, error } = await supabase
+      .from('planos')
+      .insert({
+        eixo_id:    plano.eixo_id,
+        program_id: plano.program_id,
+        code:       plano.code + '-C',
+        name:       plano.name + ' (cópia)',
+        owner:      plano.owner,
+        sponsor:    plano.sponsor,
+        start_date: plano.start_date,
+        end_date:   plano.end_date,
+        objective:  plano.objective,
+        sort_order: plano.sort_order + 1,
+      })
+      .select('*, eixo:eixos(name, code)')
+      .single()
+    if (error) { showToast('Erro ao duplicar: ' + error.message, 'error'); return }
+    showToast('Plano duplicado.', 'success')
+    refetchPlanos()
+    handleEditPlano(data as unknown as Plano)
+  }, [showToast, refetchPlanos, handleEditPlano])
+
+  const handleSavePlanoEdit = useCallback(async () => {
+    if (!planoToEdit) return
+    const errs: Record<string, string> = {}
+    if (!planoForm.name.trim())                          errs.name  = 'Nome obrigatório.'
+    if (!planoForm.code.trim())                          errs.code  = 'Código obrigatório.'
+    if (!planoForm.start_date || !planoForm.end_date)    errs.dates = 'Período previsto obrigatório.'
+    if (Object.keys(errs).length) { setPlanoErrors(errs); return }
+    setPlanoSaving(true); setPlanoErrors({})
+    const { error } = await supabase
+      .from('planos')
+      .update({
+        name:       planoForm.name.trim(),
+        code:       planoForm.code.trim().toUpperCase(),
+        owner:      planoForm.owner    || null,
+        sponsor:    planoForm.sponsor  || null,
+        start_date: planoForm.start_date,
+        end_date:   planoForm.end_date,
+        objective:  planoForm.objective || null,
+      })
+      .eq('id', planoToEdit.id)
+    setPlanoSaving(false)
+    if (error) { setPlanoErrors({ _: error.message }); return }
+    showToast('Plano guardado.', 'success')
+    handleClosePlano()
+    refetchPlanos()
+  }, [planoToEdit, planoForm, showToast, handleClosePlano, refetchPlanos])
 
   const clearFile = useCallback(() => {
     setUploadedFile(null); setParsedActivities([]); setParseErrors([])
@@ -1165,7 +1241,7 @@ export default function GestaoIniciativas() {
       ? `Plano "${planoPayload.name}" criado com ${parsedActivities.length} actividade(s).`
       : `Plano "${planoPayload.name}" criado.`
     )
-    setNewPlanoOpen(false); setPlanoStep(1)
+    setPlanoModalOpen(false); setPlanoStep(1)
     setPlanoForm(BLANK_PLANO); setPlanoErrors({})
     setUploadedFile(null); setParsedActivities([]); setParseErrors([])
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -1280,7 +1356,8 @@ export default function GestaoIniciativas() {
       const n2leaves = n2g.all.filter(a => a.level === 4)
       const n2pct = rollupPct(n2leaves); const n2prev = rollupPctPrev(n2leaves, TODAY)
       const n2st  = rollupStatus(n2leaves, TODAY, delayThreshold); const n2dr = rollupDateRange(n2leaves)
-      const n2Owner = dbPlanos.find(p => p.name === n2g.n2)?.owner || '—'
+      const n2Plano = dbPlanos.find(p => p.name === n2g.n2)
+      const n2Owner = n2Plano?.owner || '—'
       rows.push(
         <tr key={n2g.key} className="gi-row-n2">
           <td>
@@ -1292,7 +1369,17 @@ export default function GestaoIniciativas() {
           <td className="gi-td-c" style={{ fontSize: 12 }}>{n2Owner}</td>
           <td className="gi-td-c">{fmtDate(n2dr.bf)}</td>
           <td className="gi-td-r">{Math.round(n2pct)}%</td><td className="gi-td-r">{Math.round(n2prev)}%</td>
-          <td className="gi-td-c"><Badge variant={statusBadge(n2st)}>{n2st}</Badge></td><td />
+          <td className="gi-td-c"><Badge variant={statusBadge(n2st)}>{n2st}</Badge></td>
+          <td onClick={e => e.stopPropagation()}>
+            {!readOnly && n2Plano && (
+              <RowMenu
+                actId={n2Plano.id} openId={menuId}
+                onOpen={setMenuId}
+                onEdit={() => handleEditPlano(n2Plano)}
+                onDuplicate={() => handleDuplicatePlano(n2Plano)}
+              />
+            )}
+          </td>
         </tr>
       )
       if (n2col) continue
@@ -1506,7 +1593,17 @@ export default function GestaoIniciativas() {
             <td className="gi-td-c" style={{ fontSize: 12 }}>{plano.owner || '—'}</td>
             <td className="gi-td-c">{fmtDate(plano.end_date)}</td>
             <td className="gi-td-r">—</td><td className="gi-td-r">—</td>
-            <td className="gi-td-c" /><td />
+            <td className="gi-td-c" />
+            <td onClick={e => e.stopPropagation()}>
+              {!readOnly && (
+                <RowMenu
+                  actId={plano.id} openId={menuId}
+                  onOpen={setMenuId}
+                  onEdit={() => handleEditPlano(plano)}
+                  onDuplicate={() => handleDuplicatePlano(plano)}
+                />
+              )}
+            </td>
           </tr>
         )
       }
@@ -1629,16 +1726,20 @@ export default function GestaoIniciativas() {
         )}
       </Card>
 
-      {newPlanoOpen && (
+      {planoModalOpen && (
         <Modal
           isOpen={true}
           onClose={handleClosePlano}
-          title="Novo Plano de Acção"
+          title={planoToEdit ? 'Editar Plano de Acção' : 'Novo Plano de Acção'}
           width={560}
           footer={
             <>
               <button className="gi-btn" onClick={handleClosePlano}>Cancelar</button>
-              {planoStep === 1 ? (
+              {planoToEdit ? (
+                <button className="gi-btn gi-btn-save" onClick={handleSavePlanoEdit} disabled={planoSaving}>
+                  {planoSaving ? 'A guardar…' : 'Guardar'}
+                </button>
+              ) : planoStep === 1 ? (
                 <button className="gi-btn gi-btn-primary" onClick={goToStep2}>
                   Continuar →
                 </button>
@@ -1658,18 +1759,20 @@ export default function GestaoIniciativas() {
             </>
           }
         >
-          {/* ── Stepper ── */}
-          <div className="gi-stepper">
-            <div className={`gi-step${planoStep === 1 ? ' active' : ''}`}>
-              <span className="gi-step-num">1</span>
-              <span>Dados do Plano</span>
+          {/* ── Stepper (create mode only) ── */}
+          {!planoToEdit && (
+            <div className="gi-stepper">
+              <div className={`gi-step${planoStep === 1 ? ' active' : ''}`}>
+                <span className="gi-step-num">1</span>
+                <span>Dados do Plano</span>
+              </div>
+              <div className="gi-step-connector" />
+              <div className={`gi-step${planoStep === 2 ? ' active' : ''}`}>
+                <span className="gi-step-num">2</span>
+                <span>Importar (opcional)</span>
+              </div>
             </div>
-            <div className="gi-step-connector" />
-            <div className={`gi-step${planoStep === 2 ? ' active' : ''}`}>
-              <span className="gi-step-num">2</span>
-              <span>Importar (opcional)</span>
-            </div>
-          </div>
+          )}
 
           {/* ── Step 1: Plano form ── */}
           {planoStep === 1 && (
@@ -1705,6 +1808,7 @@ export default function GestaoIniciativas() {
                       className={`gi-field-input${planoErrors.eixo_id ? ' gi-input-error' : ''}`}
                       value={planoForm.eixo_id}
                       onChange={e => setPlanoForm(f => ({ ...f, eixo_id: e.target.value }))}
+                      disabled={!!planoToEdit}
                     >
                       <option value="">— seleccionar —</option>
                       {dbEixos.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
@@ -1765,8 +1869,8 @@ export default function GestaoIniciativas() {
             </div>
           )}
 
-          {/* ── Step 2: Excel import ── */}
-          {planoStep === 2 && (
+          {/* ── Step 2: Excel import (create mode only) ── */}
+          {!planoToEdit && planoStep === 2 && (
             <div className="gi-step2">
               <div className="gi-step2-header">
                 <div className="gi-step2-help">
