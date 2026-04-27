@@ -16,6 +16,7 @@
     align-items: center;
     gap: 5px;
     white-space: nowrap;
+    overflow: hidden;
     transition: border-color 0.15s, background 0.15s;
   }
   .ms-trigger:hover { background: var(--bg2); }
@@ -27,12 +28,20 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    flex-shrink: 0;
   }
   .ms-sep {
     color: var(--border2);
     margin: 0 1px;
+    flex-shrink: 0;
   }
-  .ms-value { color: var(--text); }
+  .ms-value {
+    color: var(--text);
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .ms-trigger svg { width: 10px; height: 6px; color: var(--text3); flex-shrink: 0; }
   .ms-dropdown {
     position: absolute;
