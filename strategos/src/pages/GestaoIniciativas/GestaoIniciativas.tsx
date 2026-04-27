@@ -1895,7 +1895,7 @@ export default function GestaoIniciativas() {
                 <div className="gi-section-title">Limiares de Estado</div>
                 <div className="gi-two-col" style={{ marginTop: 10 }}>
                   <div className="gi-field">
-                    <span className="gi-field-label">Limiar folhas (pp)</span>
+                    <span className="gi-field-label">Tolerância Folhas (N4-N6)</span>
                     <input
                       className="gi-field-input"
                       type="number"
@@ -1909,11 +1909,11 @@ export default function GestaoIniciativas() {
                       }))}
                     />
                     <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-                      Vazio = herdar do programa
+                      Margem em pontos percentuais antes de marcar Em risco. Vazio = herdar do programa.
                     </span>
                   </div>
                   <div className="gi-field">
-                    <span className="gi-field-label">Limiar global (pp)</span>
+                    <span className="gi-field-label">Tolerância Agregados (N0-N3)</span>
                     <input
                       className="gi-field-input"
                       type="number"
@@ -1927,7 +1927,7 @@ export default function GestaoIniciativas() {
                       }))}
                     />
                     <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-                      Vazio = herdar do programa
+                      Margem em pontos percentuais antes de marcar Em risco. Vazio = herdar do programa.
                     </span>
                   </div>
                 </div>

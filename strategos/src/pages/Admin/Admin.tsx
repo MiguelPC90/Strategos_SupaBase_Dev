@@ -542,7 +542,7 @@ function AdminProgramas() {
                   <tr>
                     <th>Código</th>
                     <th>Nome</th>
-                    <th style={{ width: 110 }}>Limiares (L/A)</th>
+                    <th style={{ width: 110 }} title="Folhas (N4-N6) / Agregados (N0-N3) — em pontos percentuais">Limiares</th>
                     <th style={{ width: 72 }}>Acções</th>
                   </tr>
                 </thead>
@@ -582,14 +582,14 @@ function AdminProgramas() {
                             <span style={{ display: 'flex', gap: 4 }}>
                               <input
                                 className="adm-row-input" type="number" min={0} max={100}
-                                style={{ width: 46 }} title="Limiar folhas"
+                                style={{ width: 46 }} placeholder="F" title="Folhas N4-N6 (pp) — margem antes de marcar Em risco"
                                 value={draft!.threshold_leaves}
                                 onChange={e => setDraft(d => d ? { ...d, threshold_leaves: Number(e.target.value) } : d)}
                                 onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
                               />
                               <input
                                 className="adm-row-input" type="number" min={0} max={100}
-                                style={{ width: 46 }} title="Limiar agregados"
+                                style={{ width: 46 }} placeholder="A" title="Agregados N0-N3 (pp) — margem antes de marcar Em risco"
                                 value={draft!.threshold_aggregates}
                                 onChange={e => setDraft(d => d ? { ...d, threshold_aggregates: Number(e.target.value) } : d)}
                                 onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
@@ -639,14 +639,14 @@ function AdminProgramas() {
                         <span style={{ display: 'flex', gap: 4 }}>
                           <input
                             className="adm-row-input" type="number" min={0} max={100}
-                            style={{ width: 46 }} title="Limiar folhas"
+                            style={{ width: 46 }} placeholder="F" title="Folhas N4-N6 (pp) — margem antes de marcar Em risco"
                             value={draft.threshold_leaves}
                             onChange={e => setDraft(d => d ? { ...d, threshold_leaves: Number(e.target.value) } : d)}
                             onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
                           />
                           <input
                             className="adm-row-input" type="number" min={0} max={100}
-                            style={{ width: 46 }} title="Limiar agregados"
+                            style={{ width: 46 }} placeholder="A" title="Agregados N0-N3 (pp) — margem antes de marcar Em risco"
                             value={draft.threshold_aggregates}
                             onChange={e => setDraft(d => d ? { ...d, threshold_aggregates: Number(e.target.value) } : d)}
                             onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
@@ -1385,10 +1385,11 @@ interface DraftCostRole {
 // ── Cargos sub-tab ─────────────────────────────────────────────
 function CostRolesTab() {
   const { showToast } = useToast()
-  const [costRoles, setCostRoles] = useState<CostRole[]>([])
-  const [loading,   setLoading]   = useState(true)
-  const [draft,     setDraft]     = useState<DraftCostRole | null>(null)
-  const [errMsg,    setErrMsg]    = useState('')
+  const [costRoles,       setCostRoles]       = useState<CostRole[]>([])
+  const [loading,         setLoading]         = useState(true)
+  const [draft,           setDraft]           = useState<DraftCostRole | null>(null)
+  const [errMsg,          setErrMsg]          = useState('')
+  const [defaultCurrency, setDefaultCurrency] = useState('EUR')
 
   function showErr(msg: string) {
     setErrMsg(msg)
@@ -1402,7 +1403,14 @@ function CostRolesTab() {
     setLoading(false)
   }
 
-  useEffect(() => { loadCostRoles() }, [])
+  useEffect(() => {
+    loadCostRoles()
+    supabase.from('currencies').select('code, is_default').order('code')
+      .then(({ data }) => {
+        const def = (data ?? []).find((r: { code: string; is_default: boolean }) => r.is_default)
+        if (def) setDefaultCurrency(def.code)
+      })
+  }, [])
 
   async function saveCostRole() {
     if (!draft || !draft.name.trim()) return
@@ -1538,7 +1546,7 @@ function CostRolesTab() {
           </table>
           <div className="adm-panel-footer">
             <button className="adm-add-btn" disabled={draft !== null}
-              onClick={() => setDraft({ id: null, name: '', cost_per_hour: '', currency: 'EUR', is_active: true })}>
+              onClick={() => setDraft({ id: null, name: '', cost_per_hour: '', currency: defaultCurrency, is_active: true })}>
               + Novo Cargo
             </button>
           </div>
@@ -1627,13 +1635,14 @@ function StringListEditor({ configKey, label, defaults = [] }: { configKey: stri
 
 // ── Pessoas sub-tab ────────────────────────────────────────────
 function PessoasTab() {
-  const [people,    setPeople]    = useState<Person[]>([])
-  const [loading,   setLoading]   = useState(true)
-  const [draft,     setDraft]     = useState<DraftPerson | null>(null)
-  const [errMsg,    setErrMsg]    = useState('')
-  const [profOpts,  setProfOpts]  = useState<string[]>([])
-  const [unitOpts,  setUnitOpts]  = useState<string[]>([])
-  const [costRoles, setCostRoles] = useState<CostRole[]>([])
+  const [people,          setPeople]          = useState<Person[]>([])
+  const [loading,         setLoading]         = useState(true)
+  const [draft,           setDraft]           = useState<DraftPerson | null>(null)
+  const [errMsg,          setErrMsg]          = useState('')
+  const [profOpts,        setProfOpts]        = useState<string[]>([])
+  const [unitOpts,        setUnitOpts]        = useState<string[]>([])
+  const [costRoles,       setCostRoles]       = useState<CostRole[]>([])
+  const [defaultCurrency, setDefaultCurrency] = useState('EUR')
 
   function showErr(msg: string) {
     setErrMsg(msg)
@@ -1653,6 +1662,11 @@ function PessoasTab() {
   useEffect(() => {
     supabase.from('cost_roles').select('*').order('name')
       .then(({ data }) => setCostRoles((data ?? []) as CostRole[]))
+    supabase.from('currencies').select('code, is_default').order('code')
+      .then(({ data }) => {
+        const def = (data ?? []).find((r: { code: string; is_default: boolean }) => r.is_default)
+        if (def) setDefaultCurrency(def.code)
+      })
   }, [])
 
   useEffect(() => { loadPeople() }, [])
@@ -1691,7 +1705,7 @@ function PessoasTab() {
       const { error } = await supabase.from('people').update(payload).eq('id', draft.id)
       if (error) { showErr(error.message); return }
     } else {
-      const { error } = await supabase.from('people').insert({ ...payload, sort_order: 0, active: true })
+      const { error } = await supabase.from('people').insert({ ...payload, sort_order: 0, active: true, currency: defaultCurrency })
       if (error) { showErr(error.message); return }
     }
     setDraft(null)
