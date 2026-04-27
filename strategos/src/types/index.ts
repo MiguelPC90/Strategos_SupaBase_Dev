@@ -253,6 +253,17 @@ export interface Risk {
   sort_order: number
 }
 
+// ── Cost roles ────────────────────────────────────────────────
+export interface CostRole {
+  id: string
+  name: string
+  cost_per_hour: number
+  currency: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 // ── People directory ──────────────────────────────────────────
 export interface Person {
   id: string
@@ -264,6 +275,9 @@ export interface Person {
   notes: string | null
   active: boolean
   sort_order: number
+  cost_role_id: string | null
+  cost_per_hour_override: number | null
+  currency: string | null
 }
 
 // ── Snapshots ─────────────────────────────────────────────────

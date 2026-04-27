@@ -13,7 +13,7 @@ import {
   DEFAULT_HEALTH_CONFIG, HEALTH_METRIC_LABELS,
   type HealthConfig, type HealthBlock, type HealthMetric,
 } from '../../lib/healthRules'
-import type { Program, Eixo, Plano, Profile, Person, Snapshot, UserRole, AlertRule, AlertSeverity } from '../../types/index'
+import type { Program, Eixo, Plano, Profile, Person, CostRole, Snapshot, UserRole, AlertRule, AlertSeverity } from '../../types/index'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -1361,15 +1361,192 @@ function AdminUtilizadores() {
 }
 
 // ── Section 4: Recursos ───────────────────────────────────────
-type RecursosTab = 'perfis' | 'unidades' | 'pessoas'
+type RecursosTab = 'perfis' | 'unidades' | 'cargos' | 'pessoas'
 
 interface DraftPerson {
-  id:       string | null
-  name:     string
-  email:    string
-  company:  string   // maps to people.type
-  org_unit: string
-  role:     string
+  id:                     string | null
+  name:                   string
+  email:                  string
+  company:                string   // maps to people.type
+  org_unit:               string
+  role:                   string
+  cost_role_id:           string   // '' = none
+  cost_per_hour_override: string   // '' = none, parsed to number on save
+}
+
+interface DraftCostRole {
+  id:           string | null
+  name:         string
+  cost_per_hour: string
+  currency:     string
+  is_active:    boolean
+}
+
+// ── Cargos sub-tab ─────────────────────────────────────────────
+function CostRolesTab() {
+  const { showToast } = useToast()
+  const [costRoles, setCostRoles] = useState<CostRole[]>([])
+  const [loading,   setLoading]   = useState(true)
+  const [draft,     setDraft]     = useState<DraftCostRole | null>(null)
+  const [errMsg,    setErrMsg]    = useState('')
+
+  function showErr(msg: string) {
+    setErrMsg(msg)
+    setTimeout(() => setErrMsg(''), 3000)
+  }
+
+  async function loadCostRoles() {
+    setLoading(true)
+    const { data } = await supabase.from('cost_roles').select('*').order('name')
+    setCostRoles((data ?? []) as CostRole[])
+    setLoading(false)
+  }
+
+  useEffect(() => { loadCostRoles() }, [])
+
+  async function saveCostRole() {
+    if (!draft || !draft.name.trim()) return
+    const payload = {
+      name:          draft.name.trim(),
+      cost_per_hour: parseFloat(draft.cost_per_hour) || 0,
+      currency:      draft.currency.trim() || 'EUR',
+      is_active:     draft.is_active,
+    }
+    if (draft.id) {
+      const { error } = await supabase.from('cost_roles').update(payload).eq('id', draft.id)
+      if (error) { showErr(error.message); return }
+    } else {
+      const { error } = await supabase.from('cost_roles').insert(payload)
+      if (error) { showErr(error.message); return }
+    }
+    showToast(draft.id ? 'Cargo actualizado.' : 'Cargo criado.', 'success')
+    setDraft(null)
+    await loadCostRoles()
+  }
+
+  async function deleteCostRole(id: string) {
+    if (!window.confirm('Remover este cargo?')) return
+    const { error } = await supabase.from('cost_roles').delete().eq('id', id)
+    if (error) { showErr(error.message); return }
+    await loadCostRoles()
+  }
+
+  return (
+    <>
+      <p className="adm-help" style={{ marginBottom: 8 }}>
+        Cargos com custo/hora padrão. Atribuir a uma pessoa define o custo base de alocação.
+      </p>
+      {loading ? (
+        <p className="adm-help">A carregar…</p>
+      ) : (
+        <div style={{ margin: '-16px' }}>
+          <table className="adm-panel-table">
+            <thead>
+              <tr>
+                <th>Cargo</th>
+                <th style={{ width: 100 }}>€/hora</th>
+                <th style={{ width: 60 }}>Moeda</th>
+                <th style={{ width: 56 }}>Activo</th>
+                <th style={{ width: 72 }}>Acções</th>
+              </tr>
+            </thead>
+            <tbody>
+              {costRoles.map(cr => {
+                const editing = draft?.id === cr.id
+                return (
+                  <tr key={cr.id} className={editing ? 'editing' : undefined}>
+                    <td>
+                      {editing ? (
+                        <input className="adm-row-input" autoFocus value={draft!.name}
+                          onChange={e => setDraft(d => d ? { ...d, name: e.target.value } : d)}
+                          onKeyDown={e => { if (e.key === 'Enter') saveCostRole(); if (e.key === 'Escape') setDraft(null) }} />
+                      ) : cr.name}
+                    </td>
+                    <td>
+                      {editing ? (
+                        <input className="adm-row-input" type="number" min={0} value={draft!.cost_per_hour}
+                          onChange={e => setDraft(d => d ? { ...d, cost_per_hour: e.target.value } : d)}
+                          onKeyDown={e => { if (e.key === 'Enter') saveCostRole(); if (e.key === 'Escape') setDraft(null) }} />
+                      ) : (
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{cr.cost_per_hour}</span>
+                      )}
+                    </td>
+                    <td>
+                      {editing ? (
+                        <input className="adm-row-input" value={draft!.currency} style={{ width: 50 }}
+                          onChange={e => setDraft(d => d ? { ...d, currency: e.target.value } : d)}
+                          onKeyDown={e => { if (e.key === 'Enter') saveCostRole(); if (e.key === 'Escape') setDraft(null) }} />
+                      ) : cr.currency}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      {editing ? (
+                        <input type="checkbox" checked={draft!.is_active}
+                          onChange={e => setDraft(d => d ? { ...d, is_active: e.target.checked } : d)} />
+                      ) : (
+                        <span style={{ color: cr.is_active ? 'var(--green)' : 'var(--text3)' }}>
+                          {cr.is_active ? '●' : '○'}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {editing ? (
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          <button className="adm-icon-btn" title="Guardar"  onClick={saveCostRole}>✓</button>
+                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                        </span>
+                      ) : (
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          <button className="adm-icon-btn" title="Editar"
+                            onClick={() => setDraft({ id: cr.id, name: cr.name, cost_per_hour: String(cr.cost_per_hour), currency: cr.currency, is_active: cr.is_active })}>✎</button>
+                          <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
+                            onClick={() => deleteCostRole(cr.id)}>🗑</button>
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+              {draft !== null && draft.id === null && (
+                <tr className="editing">
+                  <td><input className="adm-row-input" autoFocus placeholder="Nome do cargo *"
+                    value={draft.name}
+                    onChange={e => setDraft(d => d ? { ...d, name: e.target.value } : d)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveCostRole(); if (e.key === 'Escape') setDraft(null) }} />
+                  </td>
+                  <td><input className="adm-row-input" type="number" min={0} placeholder="0"
+                    value={draft.cost_per_hour}
+                    onChange={e => setDraft(d => d ? { ...d, cost_per_hour: e.target.value } : d)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveCostRole(); if (e.key === 'Escape') setDraft(null) }} />
+                  </td>
+                  <td><input className="adm-row-input" placeholder="EUR" value={draft.currency} style={{ width: 50 }}
+                    onChange={e => setDraft(d => d ? { ...d, currency: e.target.value } : d)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveCostRole(); if (e.key === 'Escape') setDraft(null) }} />
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <input type="checkbox" checked={draft.is_active}
+                      onChange={e => setDraft(d => d ? { ...d, is_active: e.target.checked } : d)} />
+                  </td>
+                  <td>
+                    <span style={{ whiteSpace: 'nowrap' }}>
+                      <button className="adm-icon-btn" title="Guardar"  onClick={saveCostRole}>✓</button>
+                      <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                    </span>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <div className="adm-panel-footer">
+            <button className="adm-add-btn" disabled={draft !== null}
+              onClick={() => setDraft({ id: null, name: '', cost_per_hour: '', currency: 'EUR', is_active: true })}>
+              + Novo Cargo
+            </button>
+          </div>
+        </div>
+      )}
+      {errMsg && <div className="adm-toast" style={{ background: 'var(--red)' }}>{errMsg}</div>}
+    </>
+  )
 }
 
 // ── Shared: editable string-list backed by app_config ──────────
@@ -1456,6 +1633,7 @@ function PessoasTab() {
   const [errMsg,    setErrMsg]    = useState('')
   const [profOpts,  setProfOpts]  = useState<string[]>([])
   const [unitOpts,  setUnitOpts]  = useState<string[]>([])
+  const [costRoles, setCostRoles] = useState<CostRole[]>([])
 
   function showErr(msg: string) {
     setErrMsg(msg)
@@ -1466,11 +1644,16 @@ function PessoasTab() {
     setLoading(true)
     const { data } = await supabase
       .from('people')
-      .select('id, name, email, org_unit, role, type, notes, active, sort_order')
+      .select('id, name, email, org_unit, role, type, notes, active, sort_order, cost_role_id, cost_per_hour_override, currency')
       .order('name')
     setPeople((data ?? []) as Person[])
     setLoading(false)
   }
+
+  useEffect(() => {
+    supabase.from('cost_roles').select('*').order('name')
+      .then(({ data }) => setCostRoles((data ?? []) as CostRole[]))
+  }, [])
 
   useEffect(() => { loadPeople() }, [])
 
@@ -1496,11 +1679,13 @@ function PessoasTab() {
   async function savePerson() {
     if (!draft || !draft.name.trim()) return
     const payload = {
-      name:     draft.name.trim(),
-      email:    draft.email.trim() || null,
-      type:     draft.company.trim() || null,
-      org_unit: draft.org_unit.trim() || null,
-      role:     draft.role.trim() || null,
+      name:                   draft.name.trim(),
+      email:                  draft.email.trim() || null,
+      type:                   draft.company.trim() || null,
+      org_unit:               draft.org_unit.trim() || null,
+      role:                   draft.role.trim() || null,
+      cost_role_id:           draft.cost_role_id || null,
+      cost_per_hour_override: draft.cost_per_hour_override !== '' ? parseFloat(draft.cost_per_hour_override) : null,
     }
     if (draft.id) {
       const { error } = await supabase.from('people').update(payload).eq('id', draft.id)
@@ -1533,6 +1718,7 @@ function PessoasTab() {
                 <th>Empresa</th>
                 <th>Unidade</th>
                 <th>Perfil</th>
+                <th style={{ width: 140 }}>Cargo / Custo</th>
                 <th style={{ width: 72 }}>Acções</th>
               </tr>
             </thead>
@@ -1592,6 +1778,36 @@ function PessoasTab() {
                         )
                       ) : (p.role || '—')}
                     </td>
+                    <td style={{ width: 140 }}>
+                      {editing ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <select className="adm-select" style={{ width: '100%' }} value={draft!.cost_role_id}
+                            onChange={e => setDraft(d => d ? { ...d, cost_role_id: e.target.value } : d)}>
+                            <option value="">— sem cargo —</option>
+                            {costRoles.filter(cr => cr.is_active).map(cr => (
+                              <option key={cr.id} value={cr.id}>{cr.name}</option>
+                            ))}
+                          </select>
+                          <input className="adm-row-input" type="number" min={0} placeholder="Override €/h"
+                            value={draft!.cost_per_hour_override}
+                            onChange={e => setDraft(d => d ? { ...d, cost_per_hour_override: e.target.value } : d)}
+                            onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                        </div>
+                      ) : (() => {
+                        const cr = costRoles.find(r => r.id === p.cost_role_id)
+                        const resolved = p.cost_per_hour_override ?? cr?.cost_per_hour
+                        return (
+                          <span style={{ fontSize: 12 }}>
+                            {cr ? cr.name : '—'}
+                            {resolved != null && resolved > 0 && (
+                              <span style={{ marginLeft: 4, color: 'var(--text2)' }}>
+                                {p.cost_per_hour_override != null ? '* ' : ''}{resolved}{cr?.currency ?? 'EUR'}/h
+                              </span>
+                            )}
+                          </span>
+                        )
+                      })()}
+                    </td>
                     <td>
                       {editing ? (
                         <span style={{ whiteSpace: 'nowrap' }}>
@@ -1601,7 +1817,7 @@ function PessoasTab() {
                       ) : (
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Editar"
-                            onClick={() => setDraft({ id: p.id, name: p.name, email: p.email ?? '', company: p.type ?? '', org_unit: p.org_unit ?? '', role: p.role ?? '' })}>✎</button>
+                            onClick={() => setDraft({ id: p.id, name: p.name, email: p.email ?? '', company: p.type ?? '', org_unit: p.org_unit ?? '', role: p.role ?? '', cost_role_id: p.cost_role_id ?? '', cost_per_hour_override: p.cost_per_hour_override != null ? String(p.cost_per_hour_override) : '' })}>✎</button>
                           <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
                             onClick={() => deletePerson(p.id)}>🗑</button>
                         </span>
@@ -1655,6 +1871,21 @@ function PessoasTab() {
                         onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
                     )}
                   </td>
+                  <td style={{ width: 140 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <select className="adm-select" style={{ width: '100%' }} value={draft.cost_role_id}
+                        onChange={e => setDraft(d => d ? { ...d, cost_role_id: e.target.value } : d)}>
+                        <option value="">— sem cargo —</option>
+                        {costRoles.filter(cr => cr.is_active).map(cr => (
+                          <option key={cr.id} value={cr.id}>{cr.name}</option>
+                        ))}
+                      </select>
+                      <input className="adm-row-input" type="number" min={0} placeholder="Override €/h"
+                        value={draft.cost_per_hour_override}
+                        onChange={e => setDraft(d => d ? { ...d, cost_per_hour_override: e.target.value } : d)}
+                        onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                    </div>
+                  </td>
                   <td>
                     <span style={{ whiteSpace: 'nowrap' }}>
                       <button className="adm-icon-btn" title="Guardar"  onClick={savePerson}>✓</button>
@@ -1669,7 +1900,7 @@ function PessoasTab() {
             <button
               className="adm-add-btn"
               disabled={draft !== null}
-              onClick={() => setDraft({ id: null, name: '', email: '', company: '', org_unit: '', role: '' })}
+              onClick={() => setDraft({ id: null, name: '', email: '', company: '', org_unit: '', role: '', cost_role_id: '', cost_per_hour_override: '' })}
             >
               + Nova Pessoa
             </button>
@@ -1687,19 +1918,20 @@ function AdminRecursos() {
   return (
     <Card title="Recursos">
       <div className="adm-tabs">
-        {(['perfis', 'unidades', 'pessoas'] as RecursosTab[]).map(t => (
+        {(['perfis', 'unidades', 'cargos', 'pessoas'] as RecursosTab[]).map(t => (
           <button
             key={t}
             className={`adm-tab${tab === t ? ' active' : ''}`}
             onClick={() => setTab(t)}
           >
-            {t === 'perfis' ? 'Perfis' : t === 'unidades' ? 'Unidades' : 'Pessoas'}
+            {t === 'perfis' ? 'Perfis' : t === 'unidades' ? 'Unidades' : t === 'cargos' ? 'Cargos' : 'Pessoas'}
           </button>
         ))}
       </div>
 
       {tab === 'perfis'   && <StringListEditor configKey="resource_profiles" label="Perfis de recursos disponíveis" />}
       {tab === 'unidades' && <StringListEditor configKey="org_units"         label="Unidades organizacionais" />}
+      {tab === 'cargos'   && <CostRolesTab />}
       {tab === 'pessoas'  && <PessoasTab />}
     </Card>
   )
