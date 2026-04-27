@@ -103,6 +103,18 @@ const NAV_VIEW: NavItemConfig[] = [
   },
 ]
 
+const NAV_PLANOS: NavItemConfig[] = [
+  {
+    to: '/planos',
+    label: 'Planos',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+      </svg>
+    ),
+  },
+]
+
 const NAV_MANAGE: NavItemConfig[] = [
   {
     to: '/gestao-iniciativas',
@@ -189,9 +201,12 @@ function getInitials(fullName: string | null | undefined, email: string | undefi
 }
 
 const ROLE_LABEL: Record<string, string> = {
-  admin: 'Admin',
-  editor: 'Gestor',
-  viewer: 'Visualizador',
+  admin:           'Admin',
+  program_manager: 'Prog. Manager',
+  editor:          'Gestor',
+  sponsor:         'Sponsor',
+  stakeholder:     'Stakeholder',
+  viewer:          'Visualizador',
 }
 
 export default function Layout() {
@@ -280,6 +295,12 @@ export default function Layout() {
           ))}
 
           <div className="sidebar-sep" />
+          <span className="sidebar-group-lbl">Por Plano</span>
+          {NAV_PLANOS.map(item => (
+            <NavItem key={item.to} {...item} />
+          ))}
+
+          <div className="sidebar-sep" />
           <span className="sidebar-group-lbl">Gestão</span>
           {NAV_MANAGE.filter(item => hasAccess(item.to.slice(1) as PageKey)).map(item => (
             <NavItem key={item.to} {...item} isManage />
@@ -337,7 +358,7 @@ export default function Layout() {
                 <div className="profile-dropdown-email">{displayEmail}</div>
                 {roleLabel && (
                   <div className="profile-dropdown-role">
-                    <Badge variant={role === 'admin' ? 'navy' : role === 'editor' ? 'blue' : 'grey'}>
+                    <Badge variant={role === 'admin' ? 'navy' : (role === 'editor' || role === 'program_manager') ? 'blue' : role === 'sponsor' ? 'amber' : 'grey'}>
                       {roleLabel}
                     </Badge>
                   </div>
@@ -358,7 +379,7 @@ export default function Layout() {
 
       {/* ── Main content ── */}
       <main className="main-content">
-        {!location.pathname.startsWith('/admin') && <Breadcrumb />}
+        {!location.pathname.startsWith('/admin') && !location.pathname.startsWith('/planos') && <Breadcrumb />}
 
         <div className="page-body">
           <Outlet />

@@ -15,6 +15,8 @@ import GestaoRiscos from './pages/GestaoRiscos/GestaoRiscos'
 import GestaoFinanceira from './pages/GestaoFinanceira/GestaoFinanceira'
 import GestaoRecursos from './pages/GestaoRecursos/GestaoRecursos'
 import Admin from './pages/Admin/Admin'
+import PlanosCatalog from './pages/PlanosCatalog/PlanosCatalog'
+import PlanoPage from './pages/PlanoPage/PlanoPage'
 import { useAuth } from './hooks/useAuth'
 import { useRole } from './hooks/useRole'
 import { usePermissions } from './hooks/usePermissions'
@@ -152,6 +154,8 @@ export default function App() {
           <Route path="gestao-financeira"  element={<PageGuard page="gestao-financeira"> <GestaoFinanceira />  </PageGuard>} />
           <Route path="gestao-recursos"    element={<PageGuard page="gestao-recursos">   <GestaoRecursos />    </PageGuard>} />
           <Route path="admin"              element={<AdminGuard><Admin /></AdminGuard>} />
+          <Route path="planos"            element={<PlanosCatalog />} />
+          <Route path="planos/:planoId"   element={<PlanoPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

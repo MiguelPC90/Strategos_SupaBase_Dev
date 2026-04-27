@@ -1,0 +1,159 @@
+@layer components {
+  .pp-wrap {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+
+  /* ── Header ── */
+  .pp-header {
+    padding: 20px 32px 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+
+  .pp-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text3);
+    cursor: pointer;
+    margin-bottom: 6px;
+    transition: color 0.15s;
+  }
+
+  .pp-back-btn:hover { color: var(--stratgos-ember); }
+
+  .pp-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text3);
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+
+  .pp-bc-sep { color: var(--border2); }
+
+  .pp-bc-current {
+    color: var(--text2);
+    font-weight: 500;
+  }
+
+  .pp-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 4px;
+  }
+
+  .pp-code {
+    display: inline-block;
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    background: var(--bg3);
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-bottom: 8px;
+  }
+
+  .pp-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 8px 0;
+  }
+
+  .pp-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .pp-meta-lbl {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .pp-meta-dates {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .pp-objective {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.5;
+    margin: 6px 0 12px;
+    max-width: 720px;
+  }
+
+  /* ── Tab nav ── */
+  .pp-tab-nav {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border);
+    padding: 0 32px;
+    background: var(--bg2);
+  }
+
+  .pp-tab-btn {
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+
+  .pp-tab-btn:hover { color: var(--text); }
+
+  .pp-tab-btn.active {
+    color: var(--stratgos-ember);
+    border-bottom-color: var(--stratgos-ember);
+    font-weight: 600;
+  }
+
+  /* ── Tab content ── */
+  .pp-tab-content {
+    padding: 32px;
+    flex: 1;
+  }
+
+  .pp-empty-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    border: 2px dashed var(--border);
+    border-radius: var(--rl);
+    background: var(--bg2);
+  }
+
+  .pp-empty-tab-label {
+    font-size: 13px;
+    color: var(--text3);
+    font-style: italic;
+  }
+}
