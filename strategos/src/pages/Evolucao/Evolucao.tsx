@@ -179,10 +179,11 @@ export default function Evolucao() {
       {
         title: 'Dados Gerais',
         rows: [
-          { label: 'Total actividades (N4)', ref: first.total,      actual: last.total,      invertColor: false, isPercent: false },
-          { label: 'Concluídas',             ref: first.concluidas, actual: last.concluidas, invertColor: false, isPercent: false },
-          { label: 'Em dia',                 ref: first.em_dia,     actual: last.em_dia,     invertColor: false, isPercent: false },
-          { label: 'Em atraso',              ref: first.em_atraso,  actual: last.em_atraso,  invertColor: true,  isPercent: false },
+          { label: 'Total actividades (N4)', ref: first.total,             actual: last.total,             invertColor: false, isPercent: false },
+          { label: 'Concluídas',             ref: first.concluidas,        actual: last.concluidas,        invertColor: false, isPercent: false },
+          { label: 'Em dia',                 ref: first.em_dia,            actual: last.em_dia,            invertColor: false, isPercent: false },
+          { label: 'Em risco',               ref: first.em_risco ?? 0,     actual: last.em_risco ?? 0,     invertColor: true,  isPercent: false },
+          { label: 'Em atraso',              ref: first.em_atraso,         actual: last.em_atraso,         invertColor: true,  isPercent: false },
         ],
       },
       {
@@ -221,12 +222,13 @@ export default function Evolucao() {
   }, [filtered, programId, eixoKeys])
 
   // ── delta cards: first → last ─────────────────────────────────
-  const firstKpi = filtered.length > 0 ? extractKpi(filtered[0], programId) : null
-  const lastKpi  = filtered.length > 0 ? extractKpi(filtered[filtered.length - 1], programId) : null
-  const dExec    = firstKpi && lastKpi ? lastKpi.exec_media  - firstKpi.exec_media  : null
-  const dConclui = firstKpi && lastKpi ? lastKpi.concluidas  - firstKpi.concluidas  : null
-  const dEmDia   = firstKpi && lastKpi ? lastKpi.em_dia      - firstKpi.em_dia      : null
-  const dAtraso  = firstKpi && lastKpi ? lastKpi.em_atraso   - firstKpi.em_atraso   : null
+  const firstKpi  = filtered.length > 0 ? extractKpi(filtered[0], programId) : null
+  const lastKpi   = filtered.length > 0 ? extractKpi(filtered[filtered.length - 1], programId) : null
+  const dExec     = firstKpi && lastKpi ? lastKpi.exec_media        - firstKpi.exec_media        : null
+  const dConclui  = firstKpi && lastKpi ? lastKpi.concluidas        - firstKpi.concluidas        : null
+  const dEmDia    = firstKpi && lastKpi ? lastKpi.em_dia            - firstKpi.em_dia            : null
+  const dEmRisco  = firstKpi && lastKpi ? (lastKpi.em_risco ?? 0)   - (firstKpi.em_risco ?? 0)  : null
+  const dAtraso   = firstKpi && lastKpi ? lastKpi.em_atraso         - firstKpi.em_atraso         : null
 
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
@@ -314,6 +316,12 @@ export default function Evolucao() {
             value={lastKpi ? String(lastKpi.em_dia) : '—'}
             subtitle={dEmDia !== null ? `${delta(dEmDia)} actividades vs. início` : ''}
             color={dEmDia !== null ? deltaColor(dEmDia, true) : 'text'}
+          />
+          <KpiCard
+            label="Em risco"
+            value={lastKpi ? String(lastKpi.em_risco ?? 0) : '—'}
+            subtitle={dEmRisco !== null ? `${delta(dEmRisco)} actividades vs. início` : ''}
+            color={dEmRisco !== null ? deltaColor(dEmRisco, false) : 'text'}
           />
           <KpiCard
             label="Em atraso"

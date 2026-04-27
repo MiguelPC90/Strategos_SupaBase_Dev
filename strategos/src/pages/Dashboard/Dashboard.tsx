@@ -31,6 +31,7 @@ const TODAY = new Date().toISOString().slice(0, 10)
 // ── Chart colours ─────────────────────────────────────────────
 const CLR_CONCLUIDAS = statusColor('done')
 const CLR_EM_DIA     = statusColor('ontrack')
+const CLR_EM_RISCO   = statusColor('risk')
 const CLR_EM_ATRASO  = statusColor('late')
 
 // ── Pie slice label ───────────────────────────────────────────
@@ -59,6 +60,7 @@ interface Metrics {
   total: number
   concluidas: number
   em_dia: number
+  em_risco: number
   em_atraso: number
   /** Average pct (0–100) */
   grau_exec: number
@@ -66,9 +68,10 @@ interface Metrics {
   exec_obj: number
 }
 
-function classify(a: Activity): 'concluida' | 'em_dia' | 'em_atraso' {
+function classify(a: Activity): 'concluida' | 'em_dia' | 'em_risco' | 'em_atraso' {
   const s = leafStatus(a, TODAY)
   if (s === 'Concluída') return 'concluida'
+  if (s === 'Em risco')  return 'em_risco'
   if (s === 'Em atraso') return 'em_atraso'
   return 'em_dia'
 }
@@ -76,19 +79,20 @@ function classify(a: Activity): 'concluida' | 'em_dia' | 'em_atraso' {
 function calcMetrics(acts: Activity[]): Metrics {
   const total = acts.length
   if (total === 0) {
-    return { total: 0, concluidas: 0, em_dia: 0, em_atraso: 0, grau_exec: 0, exec_obj: 0 }
+    return { total: 0, concluidas: 0, em_dia: 0, em_risco: 0, em_atraso: 0, grau_exec: 0, exec_obj: 0 }
   }
-  let concluidas = 0, em_dia = 0, em_atraso = 0, sumPct = 0, sumPrev = 0
+  let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0, sumPct = 0, sumPrev = 0
   for (const a of acts) {
     const cls = classify(a)
     if (cls === 'concluida') concluidas++
     else if (cls === 'em_dia') em_dia++
+    else if (cls === 'em_risco') em_risco++
     else em_atraso++
     sumPct  += a.pct
     sumPrev += leafPctPrev(a, TODAY)
   }
   return {
-    total, concluidas, em_dia, em_atraso,
+    total, concluidas, em_dia, em_risco, em_atraso,
     grau_exec: sumPct  / total,
     exec_obj:  sumPrev / total,
   }
@@ -196,6 +200,7 @@ interface BarEntry {
   name: string
   concluidas: number
   em_dia: number
+  em_risco: number
   em_atraso: number
   isFirstOfProg?: boolean
   program?: string
@@ -205,15 +210,16 @@ function truncate(s: string, n: number): string {
   return s.length <= n ? s : s.slice(0, n - 1) + '…'
 }
 
-function barCounts(acts: Activity[]): { concluidas: number; em_dia: number; em_atraso: number } {
-  let concluidas = 0, em_dia = 0, em_atraso = 0
+function barCounts(acts: Activity[]): { concluidas: number; em_dia: number; em_risco: number; em_atraso: number } {
+  let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0
   for (const a of acts) {
     const cls = classify(a)
     if (cls === 'concluida') concluidas++
     else if (cls === 'em_dia') em_dia++
+    else if (cls === 'em_risco') em_risco++
     else em_atraso++
   }
-  return { concluidas, em_dia, em_atraso }
+  return { concluidas, em_dia, em_risco, em_atraso }
 }
 
 interface AxisTickProps {
@@ -304,6 +310,7 @@ function buildRow(nome: string, m: Metrics, isParent: boolean): Record<string, u
     total:      m.total,
     concluidas: m.concluidas,
     em_dia:     m.em_dia,
+    em_risco:   m.em_risco,
     em_atraso:  m.em_atraso,
     grau_exec:  grauExec,
     exec_obj:   execObj,
@@ -423,6 +430,7 @@ const DETAIL_COLS: Column[] = [
   { key: 'total',      label: 'Total',         sortable: true, width: '70px'  },
   { key: 'concluidas', label: 'Concluídas',    sortable: true, width: '90px'  },
   { key: 'em_dia',     label: 'Em dia',        sortable: true, width: '70px'  },
+  { key: 'em_risco',   label: 'Em risco',      sortable: true, width: '76px'  },
   { key: 'em_atraso',  label: 'Em atraso',     sortable: true, width: '80px'  },
   {
     key: 'grau_exec',
@@ -652,6 +660,9 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
                 <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA} maxBarSize={80}>
                   <LabelList dataKey="em_dia" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
+                <Bar dataKey="em_risco" name="Em risco" stackId="a" fill={CLR_EM_RISCO} maxBarSize={80}>
+                  <LabelList dataKey="em_risco" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                </Bar>
                 <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO} maxBarSize={80}>
                   <LabelList dataKey="em_atraso" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
@@ -675,6 +686,9 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
                 <Legend wrapperStyle={{ paddingTop: 24, fontSize: 11 }} />
                 <Bar dataKey="em_dia" name="Em dia" stackId="a" fill={CLR_EM_DIA} maxBarSize={80}>
                   <LabelList dataKey="em_dia" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
+                </Bar>
+                <Bar dataKey="em_risco" name="Em risco" stackId="a" fill={CLR_EM_RISCO} maxBarSize={80}>
+                  <LabelList dataKey="em_risco" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
                 </Bar>
                 <Bar dataKey="em_atraso" name="Em atraso" stackId="a" fill={CLR_EM_ATRASO} maxBarSize={80}>
                   <LabelList dataKey="em_atraso" position="inside" style={{ fontSize: 10, fill: 'white', fontWeight: 600 }} formatter={(v: unknown) => (Number(v) > 0 ? Number(v) : '')} />
@@ -986,11 +1000,13 @@ export default function Dashboard() {
   // ── Zone 2 — Contagem KPI deltas ────────────────────────────
   const delta7Conc     = kpi7dAgo !== null ? m.concluidas - kpi7dAgo.concluidas : null
   const delta7EmDia    = kpi7dAgo !== null ? m.em_dia - kpi7dAgo.em_dia : null
+  const delta7EmRisco  = kpi7dAgo !== null ? m.em_risco - (kpi7dAgo.em_risco ?? 0) : null
   const delta7EmAtraso = kpi7dAgo !== null ? m.em_atraso - kpi7dAgo.em_atraso : null
 
   // ── Pie chart data ───────────────────────────────────────────
   const pieData = useMemo(() => [
     { name: 'Em dia',     value: m.em_dia,     color: CLR_EM_DIA },
+    { name: 'Em risco',   value: m.em_risco,   color: CLR_EM_RISCO },
     { name: 'Em atraso',  value: m.em_atraso,  color: CLR_EM_ATRASO },
     { name: 'Concluídas', value: m.concluidas, color: CLR_CONCLUIDAS },
   ], [m])
@@ -1036,6 +1052,7 @@ export default function Dashboard() {
       total:      m.total,
       concluidas: m.concluidas,
       em_dia:     m.em_dia,
+      em_risco:   m.em_risco,
       em_atraso:  m.em_atraso,
       grau_exec:  grauExec,
       exec_obj:   execObj,
@@ -1100,6 +1117,7 @@ export default function Dashboard() {
               <div className="contagem-kpi-grid">
                 <ContagemKpi value={m.concluidas} total={m.total} label="concluídas" delta={delta7Conc}     deltaVariant="good" />
                 <ContagemKpi value={m.em_dia}     total={m.total} label="em dia"     delta={delta7EmDia}    deltaVariant="neutral" />
+                <ContagemKpi value={m.em_risco}   total={m.total} label="em risco"   delta={delta7EmRisco}  deltaVariant="bad" />
                 <ContagemKpi value={m.em_atraso}  total={m.total} label="em atraso"  delta={delta7EmAtraso} variant="late" deltaVariant="bad" />
               </div>
             </div>

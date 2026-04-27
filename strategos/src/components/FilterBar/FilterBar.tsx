@@ -5,7 +5,7 @@ import { useFilters } from '../../context/FilterContext'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useActivities } from '../../hooks/useActivities'
 
-const STATUS_OPTIONS = ['Concluída', 'Em dia', 'Em atraso']
+const STATUS_OPTIONS = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
 
 export default function FilterBar() {
   const { filters, setFilter, resetFilters, ownerOptions, sponsorOptions } = useFilters()

@@ -33,20 +33,21 @@ export function leafPctPrev(a: Activity, today: string): number {
 }
 
 /**
- * Derived status for a single leaf activity (level >= 4).
+ * Derived status for a single leaf activity (level >= 4) — 4-state model.
  * - pct >= 100                                        → 'Concluída'
- * - today > bf AND pct < 100                          → 'Em atraso' (overdue)
- * - pct < (leafPctPrev(a, today) − THRESHOLD_LEAVES)  → 'Em atraso' (behind schedule)
+ * - today > bf AND pct < 100                          → 'Em atraso' (missed deadline)
+ * - pct < (leafPctPrev(a, today) − THRESHOLD_LEAVES)  → 'Em risco' (behind but deadline not yet passed)
  * - else                                              → 'Em dia'
  *
- * THRESHOLD_LEAVES defaults to 0 (any gap triggers delay). Configurable via
+ * THRESHOLD_LEAVES defaults to 0 (any gap triggers risk). Configurable via
  * app_config key 'status_delay_threshold_leaves'.
  */
 export function leafStatus(a: Activity, today: string): string {
   if (a.pct >= 100) return 'Concluída'
   const pct_prev = leafPctPrev(a, today)
-  if (a.bf && today > a.bf && a.pct < 100) return 'Em atraso'
-  if (a.pct < pct_prev - THRESHOLD_LEAVES) return 'Em atraso'
+  const overdue  = a.bf ? today > a.bf : false
+  if (overdue) return 'Em atraso'
+  if (a.pct < pct_prev - THRESHOLD_LEAVES) return 'Em risco'
   return 'Em dia'
 }
 
@@ -63,10 +64,10 @@ export function rollupPctPrev(activities: Activity[], today: string): number {
 }
 
 /**
- * Rollup status from N4 leaves using date + schedule logic.
+ * Rollup status from N4 leaves using date + schedule logic — 4-state model.
  * - All pct >= 100                                    → 'Concluída'
- * - today > max(bf) AND avg pct < 100                → 'Em atraso'
- * - (avg pct_previsto − avg pct) > threshold         → 'Em atraso'
+ * - today > max(bf) AND avg pct < 100                → 'Em atraso' (group missed deadline)
+ * - (avg pct_previsto − avg pct) > threshold         → 'Em risco' (behind but deadline not yet passed)
  * - else                                             → 'Em dia'
  *
  * `threshold` defaults to THRESHOLD_AGGREGATES (configurable via app_config
@@ -86,7 +87,7 @@ export function rollupStatus(leaves: Activity[], today: string, threshold = THRE
   }, null)
   if (maxBf && today > maxBf && avgPct < 100) return 'Em atraso'
   const avgPrev = rollupPctPrev(leaves, today)
-  if ((avgPrev - avgPct) > threshold) return 'Em atraso'
+  if ((avgPrev - avgPct) > threshold) return 'Em risco'
   return 'Em dia'
 }
 

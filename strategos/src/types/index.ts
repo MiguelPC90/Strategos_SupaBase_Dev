@@ -263,6 +263,8 @@ export interface SnapshotKpi {
   total: number
   concluidas: number
   em_dia: number
+  /** Activities behind schedule but before deadline — added in migration 022 */
+  em_risco?: number
   em_atraso: number
   exec_media: number
   /** Average pct_prev (0–100) — planned execution objective at snapshot time */

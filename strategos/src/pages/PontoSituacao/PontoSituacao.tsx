@@ -418,6 +418,7 @@ export default function PontoSituacao() {
     const statuses   = planLeaves.map(a => leafStatus(a, TODAY))
     const concluidas = statuses.filter(s => s === 'Concluída').length
     const emDia      = statuses.filter(s => s === 'Em dia').length
+    const emRisco    = statuses.filter(s => s === 'Em risco').length
     const emAtraso   = statuses.filter(s => s === 'Em atraso').length
     const pct        = total > 0 ? Math.round(planLeaves.reduce((s, a) => s + a.pct, 0) / total) : 0
     const pctPrev    = total > 0 ? Math.round(planLeaves.reduce((s, a) => s + leafPctPrev(a, TODAY), 0) / total) : 0
@@ -426,7 +427,7 @@ export default function PontoSituacao() {
     const aDataReal  = (concluidas + emAtraso) > 0
       ? Math.round((concluidas / (concluidas + emAtraso)) * 100)
       : 0
-    return { total, concluidas, emDia, emAtraso, pct, pctPrev, geralReal, geralObj, aDataReal }
+    return { total, concluidas, emDia, emRisco, emAtraso, pct, pctPrev, geralReal, geralObj, aDataReal }
   }, [planLeaves])
 
   // ── Plan navigation ────────────────────────────────────────
@@ -455,7 +456,10 @@ export default function PontoSituacao() {
   // ── Health indicator ───────────────────────────────────────
   const healthInput = useMemo((): HealthInput => {
     const total     = planLeaves.length
-    const emAtraso  = planLeaves.filter(a => leafStatus(a, TODAY) === 'Em atraso').length
+    const delayed   = planLeaves.filter(a => {
+      const s = leafStatus(a, TODAY)
+      return s === 'Em atraso' || s === 'Em risco'
+    }).length
     const avgPct    = total > 0 ? planLeaves.reduce((s, a) => s + a.pct, 0) / total : 0
     const avgPrev   = total > 0 ? planLeaves.reduce((s, a) => s + leafPctPrev(a, TODAY), 0) / total : 0
     const attOpen   = visAttention.filter(i => {
@@ -464,7 +468,7 @@ export default function PontoSituacao() {
     }).length
     return {
       execDelay:     Math.max(0, avgPrev - avgPct),
-      delayedPct:    total > 0 ? (emAtraso / total) * 100 : 0,
+      delayedPct:    total > 0 ? (delayed / total) * 100 : 0,
       criticalRisks: planRisks.filter(r => r.impact * r.probability > thresholds.high).length,
       highRisks:     planRisks.filter(r => {
         const g = r.impact * r.probability
@@ -601,6 +605,7 @@ export default function PontoSituacao() {
                 <KpiCard label="Total actividades" value={kpi.total} />
                 <KpiCard label="Concluídas" value={kpi.concluidas} color="green" />
                 <KpiCard label="Em dia"     value={kpi.emDia}      color="blue" />
+                <KpiCard label="Em risco"   value={kpi.emRisco}    color="amber" />
                 <KpiCard label="Em atraso"  value={kpi.emAtraso}   color="red" />
               </div>
             </Card>

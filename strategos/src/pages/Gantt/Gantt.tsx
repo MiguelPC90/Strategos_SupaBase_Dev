@@ -6,7 +6,7 @@ import EmptyState from '../../components/EmptyState/EmptyState'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
-import { rollupPct, leafPctPrev, rollupPctPrev, computeRowState, type RowState } from '../../lib/rollup'
+import { rollupPct, leafPctPrev, rollupPctPrev, leafStatus, rollupStatus, computeRowState, type RowState } from '../../lib/rollup'
 import type { Activity, Program } from '../../types/index'
 import type { DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
@@ -30,11 +30,11 @@ const STATE_FILL: Record<RowState, string> = {
 }
 
 function rowStateForAct(a: Activity): RowState {
-  return computeRowState(a.pct, leafPctPrev(a, TODAY))
+  return leafStatus(a, TODAY) as RowState
 }
 function rowStateForGroup(acts: Activity[]): RowState {
   const leaves = acts.filter(a => a.level === 4)
-  return computeRowState(rollupPct(leaves), rollupPctPrev(leaves, TODAY))
+  return rollupStatus(leaves, TODAY) as RowState
 }
 
 const PILL_CLASS: Record<RowState, string> = {

@@ -17,7 +17,7 @@ const GESTAO_PAGES: PageKey[] = [
   'gestao-recursos',
 ]
 
-const STATUS_OPTIONS = ['Concluída', 'Em dia', 'Em atraso']
+const STATUS_OPTIONS = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
 
 function SecondaryFiltersMenu() {
   const { filters, setFilter, ownerOptions, sponsorOptions } = useFilters()

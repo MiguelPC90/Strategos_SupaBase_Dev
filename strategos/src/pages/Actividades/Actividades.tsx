@@ -14,12 +14,13 @@ const TODAY = new Date().toISOString().slice(0, 10)
 const ALL_STATUS_KEYS: RowState[] = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
 
 // ── Status helpers ─────────────────────────────────────────────
-type StatusCls = 'concluida' | 'em_dia' | 'em_atraso'
+type StatusCls = 'concluida' | 'em_dia' | 'em_risco' | 'em_atraso'
 type LevelView  = 'todos' | 'programa' | 'eixo' | 'plano' | 'macro' | 'actividade'
 
 function actStatus(a: Activity): StatusCls {
   const s = leafStatus(a, TODAY)
   if (s === 'Concluída') return 'concluida'
+  if (s === 'Em risco')  return 'em_risco'
   if (s === 'Em atraso') return 'em_atraso'
   return 'em_dia'
 }
@@ -50,6 +51,7 @@ interface Stats {
   total: number
   concluidas: number
   em_dia: number
+  em_risco: number
   em_atraso: number
   exec: number
   exec_obj: number
@@ -58,12 +60,13 @@ interface Stats {
 
 function computeStats(acts: Activity[]): Stats {
   const total = acts.length
-  let concluidas = 0, em_dia = 0, em_atraso = 0, sumPct = 0, sumPrev = 0
+  let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0, sumPct = 0, sumPrev = 0
   let latest_end: string | null = null
   for (const a of acts) {
     const s = actStatus(a)
     if (s === 'concluida') concluidas++
     else if (s === 'em_dia') em_dia++
+    else if (s === 'em_risco') em_risco++
     else em_atraso++
     sumPct  += a.pct
     sumPrev += leafPctPrev(a, TODAY)
@@ -71,7 +74,7 @@ function computeStats(acts: Activity[]): Stats {
     if (end && (!latest_end || end > latest_end)) latest_end = end
   }
   return {
-    total, concluidas, em_dia, em_atraso,
+    total, concluidas, em_dia, em_risco, em_atraso,
     exec:     total > 0 ? sumPct  / total : 0,
     exec_obj: total > 0 ? sumPrev / total : 0,
     latest_end,
@@ -283,10 +286,10 @@ function DeadlineCell({ bf, rf }: { bf: string | null; rf?: string | null }) {
   return <td className={`act-td-c act-deadline${bf && bf < TODAY ? ' late' : ''}`}>{bf ? fmt(bf) : '—'}</td>
 }
 
-function CdaCell({ concluidas, em_dia, em_atraso }: { concluidas: number; em_dia: number; em_atraso: number }) {
+function CdaCell({ concluidas, em_dia, em_risco, em_atraso }: { concluidas: number; em_dia: number; em_risco: number; em_atraso: number }) {
   return (
     <td className="act-td-c">
-      <div className="act-cda" title={`Concluídas: ${concluidas} · Em dia: ${em_dia} · Em atraso: ${em_atraso}`}>
+      <div className="act-cda" title={`Concluídas: ${concluidas} · Em dia: ${em_dia} · Em risco: ${em_risco} · Em atraso: ${em_atraso}`}>
         <span className="act-cda-item" style={{ color: 'var(--status-done)' }} title={`Concluídas: ${concluidas}`}>
           <span className="act-cda-icon">✓</span>
           <span>{concluidas}</span>
@@ -294,6 +297,10 @@ function CdaCell({ concluidas, em_dia, em_atraso }: { concluidas: number; em_dia
         <span className="act-cda-item" style={{ color: 'var(--status-ontrack)' }} title={`Em dia: ${em_dia}`}>
           <span className="act-cda-icon">◐</span>
           <span>{em_dia}</span>
+        </span>
+        <span className="act-cda-item" style={{ color: 'var(--status-risk)' }} title={`Em risco: ${em_risco}`}>
+          <span className="act-cda-icon">⦿</span>
+          <span>{em_risco}</span>
         </span>
         <span className="act-cda-item" style={{ color: 'var(--status-late)' }} title={`Em atraso: ${em_atraso}`}>
           <span className="act-cda-icon">✕</span>
@@ -329,7 +336,7 @@ export default function Actividades() {
     if (statusFilter.size === ALL_STATUS_KEYS.length) return searchFilteredActs
     return searchFilteredActs.filter(a => {
       if (a.level < 4) return true
-      return statusFilter.has(computeRowState(a.pct, leafPctPrev(a, TODAY)))
+      return statusFilter.has(leafStatus(a, TODAY) as RowState)
     })
   }, [searchFilteredActs, statusFilter])
 
@@ -445,7 +452,7 @@ export default function Actividades() {
           if (!n3g.n3) {
             for (const a of n3g.acts) {
               const pctPrev = leafPctPrev(a, TODAY)
-              const ast     = computeRowState(a.pct, pctPrev)
+              const ast     = leafStatus(a, TODAY) as RowState
               rows.push(
                 <tr key={a.id} className="act-row-n4">
                   <td>
@@ -471,7 +478,7 @@ export default function Actividades() {
           if (!n3HasChildren) {
             for (const a of n3g.acts) {
               const pctPrev = leafPctPrev(a, TODAY)
-              const ast     = computeRowState(a.pct, pctPrev)
+              const ast     = leafStatus(a, TODAY) as RowState
               rows.push(
                 <tr key={a.id} className="act-row-n4">
                   <td>
@@ -520,7 +527,7 @@ export default function Actividades() {
 
           for (const a of n3ChildLeaves) {
             const pctPrev = leafPctPrev(a, TODAY)
-            const ast     = computeRowState(a.pct, pctPrev)
+            const ast     = leafStatus(a, TODAY) as RowState
             rows.push(
               <tr key={a.id} className="act-row-n4">
                 <td>
