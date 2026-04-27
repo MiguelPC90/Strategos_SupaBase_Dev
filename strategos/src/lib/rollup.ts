@@ -42,12 +42,16 @@ export function leafPctPrev(a: Activity, today: string): number {
  * THRESHOLD_LEAVES defaults to 0 (any gap triggers risk). Configurable via
  * app_config key 'status_delay_threshold_leaves'.
  */
-export function leafStatus(a: Activity, today: string): string {
+export function leafStatus(
+  a: Activity,
+  today: string,
+  threshold: number = THRESHOLD_LEAVES,
+): string {
   if (a.pct >= 100) return 'Concluída'
   const pct_prev = leafPctPrev(a, today)
   const overdue  = a.bf ? today > a.bf : false
   if (overdue) return 'Em atraso'
-  if (a.pct < pct_prev - THRESHOLD_LEAVES) return 'Em risco'
+  if (a.pct < pct_prev - threshold) return 'Em risco'
   return 'Em dia'
 }
 

@@ -5,6 +5,7 @@ import Card from '../../components/Card/Card'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
+import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import { useFilters } from '../../context/FilterContext'
 import { rollupPct, leafPctPrev, rollupPctPrev, leafStatus, rollupStatus, computeRowState, type RowState } from '../../lib/rollup'
 import type { Activity, Program } from '../../types/index'
@@ -29,8 +30,8 @@ const STATE_FILL: Record<RowState, string> = {
   'Em risco': 'var(--status-risk)', 'Em atraso': 'var(--status-late)',
 }
 
-function rowStateForAct(a: Activity): RowState {
-  return leafStatus(a, TODAY) as RowState
+function rowStateForAct(a: Activity, tLeaves: number = 0): RowState {
+  return leafStatus(a, TODAY, tLeaves) as RowState
 }
 function rowStateForGroup(acts: Activity[]): RowState {
   const leaves = acts.filter(a => a.level === 4)
@@ -483,6 +484,7 @@ export default function Gantt() {
   })
   const { programs } = usePrograms()
   const { dependencies } = useActivityDependencies()
+  const thresholdsMap = useThresholdsMap()
   const multiProg = programs.length > 1
 
   const filtered = useMemo(() => getFilteredActivities(activities), [activities, getFilteredActivities])
@@ -502,9 +504,9 @@ export default function Gantt() {
     if (statusFilter.size === 4) return searchFilteredActs
     return searchFilteredActs.filter(a => {
       if (a.level < 4) return true
-      return statusFilter.has(rowStateForAct(a))
+      return statusFilter.has(rowStateForAct(a, thresholdsMap.get(a.plano_id ?? '')?.leaves))
     })
-  }, [searchFilteredActs, statusFilter])
+  }, [searchFilteredActs, statusFilter, thresholdsMap])
 
   const tree  = useMemo(() => buildTree(finalActs), [finalActs])
   const n0tree = useMemo(
@@ -583,7 +585,7 @@ export default function Gantt() {
       onEnter = (e: React.MouseEvent) => setTooltip({
         name: act.name, bs: act.bs, bf: act.bf, rs: act.rs, rf: act.rf,
         pct: act.pct, pct_prev: leafPctPrev(act, TODAY),
-        rowState: rowStateForAct(act),
+        rowState: rowStateForAct(act, thresholdsMap.get(act.plano_id ?? '')?.leaves),
         childCount: null,
         x: e.clientX, y: e.clientY,
       })
@@ -699,7 +701,7 @@ export default function Gantt() {
           // ── No N3 name: render all acts directly as leaf rows ──
           if (!n3g.n3) {
             for (const a of n3g.acts) {
-              const ast = rowStateForAct(a)
+              const ast = rowStateForAct(a, thresholdsMap.get(a.plano_id ?? '')?.leaves)
               rows.push(
                 <tr key={a.id} className="gantt-row-n4">
                   <td className="gantt-sticky">
@@ -731,7 +733,7 @@ export default function Gantt() {
             // N3 has no children — render only the level-3 representative as a single leaf row
             const rep = n3g.acts.find(a => a.level === 3)
             if (!rep) continue
-            const ast = rowStateForAct(rep)
+            const ast = rowStateForAct(rep, thresholdsMap.get(rep.plano_id ?? '')?.leaves)
             rows.push(
               <tr key={rep.id} className="gantt-row-n4">
                 <td className="gantt-sticky">
@@ -784,7 +786,7 @@ export default function Gantt() {
 
           // Render only the real children — the N3 representative is excluded to avoid duplicates
           for (const a of n3ChildLeaves) {
-            const ast = rowStateForAct(a)
+            const ast = rowStateForAct(a, thresholdsMap.get(a.plano_id ?? '')?.leaves)
             rows.push(
               <tr key={a.id} className="gantt-row-n4">
                 <td className="gantt-sticky">

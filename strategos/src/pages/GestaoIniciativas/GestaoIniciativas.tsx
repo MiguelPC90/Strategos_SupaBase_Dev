@@ -150,12 +150,15 @@ interface PlanoForm {
   name: string; code: string; eixo_id: string
   start_date: string | null; end_date: string | null
   owner: string; sponsor: string; objective: string
+  threshold_leaves: number | null
+  threshold_aggregates: number | null
 }
 
 const BLANK_PLANO: PlanoForm = {
   name: '', code: '', eixo_id: '',
   start_date: null, end_date: null,
   owner: '', sponsor: '', objective: '',
+  threshold_leaves: null, threshold_aggregates: null,
 }
 
 // ── Excel import types ─────────────────────────────────────────
@@ -800,6 +803,20 @@ export default function GestaoIniciativas() {
       .then(({ data }) => { if (data) setDelayThreshold(parseInt(data.data) || 20) })
   }, [])
 
+  // Per-plano threshold map — computed from the selected program + loaded planos
+  const giThresholdsMap = useMemo(() => {
+    const progLeaves = program?.threshold_leaves ?? 0
+    const progAggs   = program?.threshold_aggregates ?? 20
+    const map = new Map<string, { leaves: number; aggregates: number }>()
+    for (const pl of dbPlanos) {
+      map.set(pl.id, {
+        leaves:     pl.threshold_leaves     ?? progLeaves,
+        aggregates: pl.threshold_aggregates ?? progAggs,
+      })
+    }
+    return map
+  }, [program, dbPlanos])
+
   const [searchQuery, setSearchQuery] = useState('')
 
   const {
@@ -1081,14 +1098,16 @@ export default function GestaoIniciativas() {
   const handleEditPlano = useCallback((plano: Plano) => {
     setPlanoToEdit(plano)
     setPlanoForm({
-      name:       plano.name,
-      code:       plano.code,
-      eixo_id:    plano.eixo_id,
-      start_date: plano.start_date,
-      end_date:   plano.end_date,
-      owner:      plano.owner ?? '',
-      sponsor:    plano.sponsor ?? '',
-      objective:  plano.objective ?? '',
+      name:                plano.name,
+      code:                plano.code,
+      eixo_id:             plano.eixo_id,
+      start_date:          plano.start_date,
+      end_date:            plano.end_date,
+      owner:               plano.owner ?? '',
+      sponsor:             plano.sponsor ?? '',
+      objective:           plano.objective ?? '',
+      threshold_leaves:     plano.threshold_leaves ?? null,
+      threshold_aggregates: plano.threshold_aggregates ?? null,
     })
     setPlanoErrors({})
     setPlanoModalOpen(true)
@@ -1098,16 +1117,18 @@ export default function GestaoIniciativas() {
     const { data, error } = await supabase
       .from('planos')
       .insert({
-        eixo_id:    plano.eixo_id,
-        program_id: plano.program_id,
-        code:       plano.code + '-C',
-        name:       plano.name + ' (cópia)',
-        owner:      plano.owner,
-        sponsor:    plano.sponsor,
-        start_date: plano.start_date,
-        end_date:   plano.end_date,
-        objective:  plano.objective,
-        sort_order: plano.sort_order + 1,
+        eixo_id:              plano.eixo_id,
+        program_id:           plano.program_id,
+        code:                 plano.code + '-C',
+        name:                 plano.name + ' (cópia)',
+        owner:                plano.owner,
+        sponsor:              plano.sponsor,
+        start_date:           plano.start_date,
+        end_date:             plano.end_date,
+        objective:            plano.objective,
+        threshold_leaves:     plano.threshold_leaves,
+        threshold_aggregates: plano.threshold_aggregates,
+        sort_order:           plano.sort_order + 1,
       })
       .select('*, eixo:eixos(name, code)')
       .single()
@@ -1128,13 +1149,15 @@ export default function GestaoIniciativas() {
     const { error } = await supabase
       .from('planos')
       .update({
-        name:       planoForm.name.trim(),
-        code:       planoForm.code.trim().toUpperCase(),
-        owner:      planoForm.owner    || null,
-        sponsor:    planoForm.sponsor  || null,
-        start_date: planoForm.start_date,
-        end_date:   planoForm.end_date,
-        objective:  planoForm.objective || null,
+        name:                 planoForm.name.trim(),
+        code:                 planoForm.code.trim().toUpperCase(),
+        owner:                planoForm.owner    || null,
+        sponsor:              planoForm.sponsor  || null,
+        start_date:           planoForm.start_date,
+        end_date:             planoForm.end_date,
+        objective:            planoForm.objective || null,
+        threshold_leaves:     planoForm.threshold_leaves,
+        threshold_aggregates: planoForm.threshold_aggregates,
       })
       .eq('id', planoToEdit.id)
     setPlanoSaving(false)
@@ -1190,16 +1213,18 @@ export default function GestaoIniciativas() {
     const nextSort = ((maxResult as { sort_order: number }[] | null)?.[0]?.sort_order ?? 0) + 1
 
     const planoPayload = {
-      name:       planoForm.name.trim(),
-      code:       planoForm.code.trim().toUpperCase(),
-      eixo_id:    planoForm.eixo_id,
-      program_id: selProgId ?? null,
-      start_date: planoForm.start_date,
-      end_date:   planoForm.end_date,
-      owner:      planoForm.owner    || null,
-      sponsor:    planoForm.sponsor  || null,
-      objective:  planoForm.objective || null,
-      sort_order: nextSort,
+      name:                 planoForm.name.trim(),
+      code:                 planoForm.code.trim().toUpperCase(),
+      eixo_id:              planoForm.eixo_id,
+      program_id:           selProgId ?? null,
+      start_date:           planoForm.start_date,
+      end_date:             planoForm.end_date,
+      owner:                planoForm.owner    || null,
+      sponsor:              planoForm.sponsor  || null,
+      objective:            planoForm.objective || null,
+      threshold_leaves:     planoForm.threshold_leaves,
+      threshold_aggregates: planoForm.threshold_aggregates,
+      sort_order:           nextSort,
     }
 
     const { data: newPlano, error: planoErr } = await supabase
@@ -1280,7 +1305,7 @@ export default function GestaoIniciativas() {
       const aEnd   = a.rf ?? a.bf ?? a.finish
       const pctVal = dirty.get(a.id)?.pct ?? a.pct
       const aPrev    = leafPctPrev(a, TODAY)
-      const aStatus  = leafStatus(a, TODAY)
+      const aStatus  = leafStatus(a, TODAY, giThresholdsMap.get(a.plano_id ?? '')?.leaves)
       const isSelected = selectedId === a.id
       return (
         <tr
@@ -1863,6 +1888,48 @@ export default function GestaoIniciativas() {
                     onChange={e => setPlanoForm(f => ({ ...f, objective: e.target.value }))}
                     placeholder="Descreva o objectivo principal do plano…"
                   />
+                </div>
+              </div>
+
+              <div className="gi-section">
+                <div className="gi-section-title">Limiares de Estado</div>
+                <div className="gi-two-col" style={{ marginTop: 10 }}>
+                  <div className="gi-field">
+                    <span className="gi-field-label">Limiar folhas (pp)</span>
+                    <input
+                      className="gi-field-input"
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={planoForm.threshold_leaves ?? ''}
+                      placeholder={`padrão: ${program?.threshold_leaves ?? 0}`}
+                      onChange={e => setPlanoForm(f => ({
+                        ...f,
+                        threshold_leaves: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
+                      }))}
+                    />
+                    <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
+                      Vazio = herdar do programa
+                    </span>
+                  </div>
+                  <div className="gi-field">
+                    <span className="gi-field-label">Limiar global (pp)</span>
+                    <input
+                      className="gi-field-input"
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={planoForm.threshold_aggregates ?? ''}
+                      placeholder={`padrão: ${program?.threshold_aggregates ?? 20}`}
+                      onChange={e => setPlanoForm(f => ({
+                        ...f,
+                        threshold_aggregates: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
+                      }))}
+                    />
+                    <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
+                      Vazio = herdar do programa
+                    </span>
+                  </div>
                 </div>
               </div>
 

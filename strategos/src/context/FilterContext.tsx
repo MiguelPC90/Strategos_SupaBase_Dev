@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useMemo, useState, useEffect, type ReactNode } from 'react'
 import { usePlanos } from '../hooks/usePlanos'
 import { useEixos } from '../hooks/useEixos'
+import { usePrograms } from '../hooks/usePrograms'
+import { buildThresholdsMap } from '../hooks/useThresholdsMap'
 import { leafStatus } from '../lib/rollup'
 import type { Activity } from '../types/index'
 
@@ -62,8 +64,14 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<FilterState>(loadFromStorage)
 
   // All eixos + planos needed for cascade auto-fill and owner/sponsor lists
-  const { eixos: allEixos } = useEixos()
-  const { planos: allPlanos } = usePlanos()
+  const { eixos: allEixos }     = useEixos()
+  const { planos: allPlanos }   = usePlanos()
+  const { programs: allPrograms } = usePrograms()
+
+  const thresholdsMap = useMemo(
+    () => buildThresholdsMap(allPrograms, allPlanos),
+    [allPrograms, allPlanos],
+  )
 
   // Persist to sessionStorage on every filter change
   useEffect(() => {
@@ -152,12 +160,13 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       // Status filter: only applied to leaf activities (level >= 4)
       // Parent activities always included to preserve tree structure
       if (statuses.length && a.level >= 4) {
-        if (!statuses.includes(leafStatus(a, today))) return false
+        const tLeaves = thresholdsMap.get(a.plano_id ?? '')?.leaves
+        if (!statuses.includes(leafStatus(a, today, tLeaves))) return false
       }
 
       return true
     })
-  }, [filters, allPlanos])
+  }, [filters, allPlanos, thresholdsMap])
 
   return (
     <FilterContext.Provider value={{ filters, setFilter, resetFilters, getFilteredActivities, ownerOptions, sponsorOptions }}>

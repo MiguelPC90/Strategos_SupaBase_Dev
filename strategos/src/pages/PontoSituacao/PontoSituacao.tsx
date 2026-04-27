@@ -371,6 +371,16 @@ export default function PontoSituacao() {
     [planos, selectedKey]
   )
 
+  const selectedProgram = useMemo(
+    () => programs.find(p => p.id === selProgId) ?? null,
+    [programs, selProgId]
+  )
+
+  const psThresholdLeaves = useMemo(
+    () => selectedPlano?.threshold_leaves ?? selectedProgram?.threshold_leaves ?? 0,
+    [selectedPlano, selectedProgram]
+  )
+
   const planEntries = useMemo(() => {
     if (!selectedPlano) return []
     return entries
@@ -415,7 +425,7 @@ export default function PontoSituacao() {
   // ── KPI computations ───────────────────────────────────────
   const kpi = useMemo(() => {
     const total      = planLeaves.length
-    const statuses   = planLeaves.map(a => leafStatus(a, TODAY))
+    const statuses   = planLeaves.map(a => leafStatus(a, TODAY, psThresholdLeaves))
     const concluidas = statuses.filter(s => s === 'Concluída').length
     const emDia      = statuses.filter(s => s === 'Em dia').length
     const emRisco    = statuses.filter(s => s === 'Em risco').length
@@ -428,7 +438,7 @@ export default function PontoSituacao() {
       ? Math.round((concluidas / (concluidas + emAtraso)) * 100)
       : 0
     return { total, concluidas, emDia, emRisco, emAtraso, pct, pctPrev, geralReal, geralObj, aDataReal }
-  }, [planLeaves])
+  }, [planLeaves, psThresholdLeaves])
 
   // ── Plan navigation ────────────────────────────────────────
   const planosInProgram = planos  // already sorted by sort_order from hook
@@ -457,7 +467,7 @@ export default function PontoSituacao() {
   const healthInput = useMemo((): HealthInput => {
     const total     = planLeaves.length
     const delayed   = planLeaves.filter(a => {
-      const s = leafStatus(a, TODAY)
+      const s = leafStatus(a, TODAY, psThresholdLeaves)
       return s === 'Em atraso' || s === 'Em risco'
     }).length
     const avgPct    = total > 0 ? planLeaves.reduce((s, a) => s + a.pct, 0) / total : 0
@@ -476,7 +486,7 @@ export default function PontoSituacao() {
       }).length,
       attentionOpen: attOpen,
     }
-  }, [planLeaves, planRisks, visAttention, thresholds])
+  }, [planLeaves, psThresholdLeaves, planRisks, visAttention, thresholds])
 
   const health = useMemo(
     () => computeHealth(healthInput, healthConfig),

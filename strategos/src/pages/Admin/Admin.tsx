@@ -369,7 +369,7 @@ function HealthBlockEditor({ color, label, block, onChange }: HealthBlockEditorP
 }
 
 // ── Section 2: Programas e Eixos ──────────────────────────────
-interface DraftProg  { id: string | null; code: string; name: string }
+interface DraftProg  { id: string | null; code: string; name: string; threshold_leaves: number; threshold_aggregates: number }
 interface DraftEixo  { id: string | null; code: string; name: string }
 interface DraftPlano { id: string | null; code: string; name: string; owner: string; sponsor: string }
 
@@ -399,7 +399,7 @@ function AdminProgramas() {
     setProgLoad(true)
     const { data } = await supabase
       .from('programs')
-      .select('id, code, name, sort_order')
+      .select('id, code, name, sort_order, threshold_leaves, threshold_aggregates')
       .order('sort_order')
       .order('name')
     setPrograms((data ?? []) as Program[])
@@ -448,7 +448,7 @@ function AdminProgramas() {
 
   async function saveProg() {
     if (!draft || !draft.name.trim()) return
-    const payload = { code: draft.code.trim(), name: draft.name.trim(), sort_order: 0 }
+    const payload = { code: draft.code.trim(), name: draft.name.trim(), sort_order: 0, threshold_leaves: draft.threshold_leaves, threshold_aggregates: draft.threshold_aggregates }
     if (draft.id) {
       await supabase.from('programs').update(payload).eq('id', draft.id)
     } else {
@@ -542,6 +542,7 @@ function AdminProgramas() {
                   <tr>
                     <th>Código</th>
                     <th>Nome</th>
+                    <th style={{ width: 110 }}>Limiares (L/A)</th>
                     <th style={{ width: 72 }}>Acções</th>
                   </tr>
                 </thead>
@@ -576,6 +577,30 @@ function AdminProgramas() {
                             />
                           ) : p.name}
                         </td>
+                        <td style={{ width: 110 }}>
+                          {editing ? (
+                            <span style={{ display: 'flex', gap: 4 }}>
+                              <input
+                                className="adm-row-input" type="number" min={0} max={100}
+                                style={{ width: 46 }} title="Limiar folhas"
+                                value={draft!.threshold_leaves}
+                                onChange={e => setDraft(d => d ? { ...d, threshold_leaves: Number(e.target.value) } : d)}
+                                onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
+                              />
+                              <input
+                                className="adm-row-input" type="number" min={0} max={100}
+                                style={{ width: 46 }} title="Limiar agregados"
+                                value={draft!.threshold_aggregates}
+                                onChange={e => setDraft(d => d ? { ...d, threshold_aggregates: Number(e.target.value) } : d)}
+                                onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
+                              />
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+                              {p.threshold_leaves ?? 0}% / {p.threshold_aggregates ?? 20}%
+                            </span>
+                          )}
+                        </td>
                         <td>
                           {editing ? (
                             <span style={{ whiteSpace: 'nowrap' }}>
@@ -585,7 +610,7 @@ function AdminProgramas() {
                           ) : (
                             <span style={{ whiteSpace: 'nowrap' }}>
                               <button className="adm-icon-btn" title="Editar"
-                                onClick={e => { e.stopPropagation(); setDraft({ id: p.id, code: p.code, name: p.name }) }}>✎</button>
+                                onClick={e => { e.stopPropagation(); setDraft({ id: p.id, code: p.code, name: p.name, threshold_leaves: p.threshold_leaves ?? 0, threshold_aggregates: p.threshold_aggregates ?? 20 }) }}>✎</button>
                               <button className="adm-icon-btn" title="Apagar" style={{ color: 'var(--red)' }}
                                 onClick={e => { e.stopPropagation(); deleteProg(p.id) }}>🗑</button>
                             </span>
@@ -610,6 +635,24 @@ function AdminProgramas() {
                           onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
                         />
                       </td>
+                      <td style={{ width: 110 }}>
+                        <span style={{ display: 'flex', gap: 4 }}>
+                          <input
+                            className="adm-row-input" type="number" min={0} max={100}
+                            style={{ width: 46 }} title="Limiar folhas"
+                            value={draft.threshold_leaves}
+                            onChange={e => setDraft(d => d ? { ...d, threshold_leaves: Number(e.target.value) } : d)}
+                            onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
+                          />
+                          <input
+                            className="adm-row-input" type="number" min={0} max={100}
+                            style={{ width: 46 }} title="Limiar agregados"
+                            value={draft.threshold_aggregates}
+                            onChange={e => setDraft(d => d ? { ...d, threshold_aggregates: Number(e.target.value) } : d)}
+                            onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
+                          />
+                        </span>
+                      </td>
                       <td>
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Guardar"  onClick={saveProg}>✓</button>
@@ -625,7 +668,7 @@ function AdminProgramas() {
               <button
                 className="adm-add-btn"
                 disabled={draft !== null}
-                onClick={() => setDraft({ id: null, code: '', name: '' })}
+                onClick={() => setDraft({ id: null, code: '', name: '', threshold_leaves: 0, threshold_aggregates: 20 })}
               >
                 + Novo Programa
               </button>

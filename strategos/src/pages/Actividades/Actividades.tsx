@@ -6,8 +6,10 @@ import KpiCard from '../../components/KpiCard/KpiCard'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
+import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import { useFilters } from '../../context/FilterContext'
 import type { Activity, Program } from '../../types/index'
+import type { PlanoThresholds } from '../../hooks/useThresholdsMap'
 import { leafPctPrev, leafStatus, computeRowState, type RowState } from '../../lib/rollup'
 
 const TODAY = new Date().toISOString().slice(0, 10)
@@ -17,8 +19,8 @@ const ALL_STATUS_KEYS: RowState[] = ['Concluída', 'Em dia', 'Em risco', 'Em atr
 type StatusCls = 'concluida' | 'em_dia' | 'em_risco' | 'em_atraso'
 type LevelView  = 'todos' | 'programa' | 'eixo' | 'plano' | 'macro' | 'actividade'
 
-function actStatus(a: Activity): StatusCls {
-  const s = leafStatus(a, TODAY)
+function actStatus(a: Activity, tLeaves: number = 0): StatusCls {
+  const s = leafStatus(a, TODAY, tLeaves)
   if (s === 'Concluída') return 'concluida'
   if (s === 'Em risco')  return 'em_risco'
   if (s === 'Em atraso') return 'em_atraso'
@@ -58,12 +60,16 @@ interface Stats {
   latest_end: string | null
 }
 
-function computeStats(acts: Activity[]): Stats {
+function computeStats(
+  acts: Activity[],
+  thresholdsMap?: Map<string, PlanoThresholds>,
+): Stats {
   const total = acts.length
   let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0, sumPct = 0, sumPrev = 0
   let latest_end: string | null = null
   for (const a of acts) {
-    const s = actStatus(a)
+    const tLeaves = thresholdsMap?.get(a.plano_id ?? '')?.leaves ?? 0
+    const s = actStatus(a, tLeaves)
     if (s === 'concluida') concluidas++
     else if (s === 'em_dia') em_dia++
     else if (s === 'em_risco') em_risco++
@@ -319,6 +325,7 @@ export default function Actividades() {
     cutoffDate: filters.cutoffDate,
   })
   const { programs } = usePrograms()
+  const thresholdsMap = useThresholdsMap()
   const multiProg = programs.length > 1
 
   const filtered = useMemo(() => getFilteredActivities(activities), [activities, getFilteredActivities])
@@ -336,16 +343,17 @@ export default function Actividades() {
     if (statusFilter.size === ALL_STATUS_KEYS.length) return searchFilteredActs
     return searchFilteredActs.filter(a => {
       if (a.level < 4) return true
-      return statusFilter.has(leafStatus(a, TODAY) as RowState)
+      const tLeaves = thresholdsMap.get(a.plano_id ?? '')?.leaves
+      return statusFilter.has(leafStatus(a, TODAY, tLeaves) as RowState)
     })
-  }, [searchFilteredActs, statusFilter])
+  }, [searchFilteredActs, statusFilter, thresholdsMap])
 
   const tree     = useMemo(() => buildTree(finalActs), [finalActs])
   const n0tree   = useMemo(
     () => multiProg ? buildProgramTree(finalActs, programs) : null,
     [finalActs, programs, multiProg]
   )
-  const summary  = useMemo(() => computeStats(finalActs.filter(a => a.level === 4)), [finalActs])
+  const summary  = useMemo(() => computeStats(finalActs.filter(a => a.level === 4), thresholdsMap), [finalActs, thresholdsMap])
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
@@ -396,7 +404,7 @@ export default function Actividades() {
       const n1key    = `n1:${n1g.n1}`
       const n1col    = collapsed.has(n1key)
       const n1leaves = n1g.allActs.filter(a => a.level === 4)
-      const n1stats  = computeStats(n1leaves)
+      const n1stats  = computeStats(n1leaves, thresholdsMap)
       const n1state  = computeRowState(n1stats.exec, n1stats.exec_obj)
 
       rows.push(
@@ -424,7 +432,7 @@ export default function Actividades() {
         const n2key    = `n2:${n1g.n1}:${n2g.n2}`
         const n2col    = collapsed.has(n2key)
         const n2leaves = n2g.allActs.filter(a => a.level === 4)
-        const n2stats  = computeStats(n2leaves)
+        const n2stats  = computeStats(n2leaves, thresholdsMap)
         const n2state  = computeRowState(n2stats.exec, n2stats.exec_obj)
 
         rows.push(
@@ -452,7 +460,7 @@ export default function Actividades() {
           if (!n3g.n3) {
             for (const a of n3g.acts) {
               const pctPrev = leafPctPrev(a, TODAY)
-              const ast     = leafStatus(a, TODAY) as RowState
+              const ast     = leafStatus(a, TODAY, thresholdsMap.get(a.plano_id ?? '')?.leaves) as RowState
               rows.push(
                 <tr key={a.id} className="act-row-n4">
                   <td>
@@ -478,7 +486,7 @@ export default function Actividades() {
           if (!n3HasChildren) {
             for (const a of n3g.acts) {
               const pctPrev = leafPctPrev(a, TODAY)
-              const ast     = leafStatus(a, TODAY) as RowState
+              const ast     = leafStatus(a, TODAY, thresholdsMap.get(a.plano_id ?? '')?.leaves) as RowState
               rows.push(
                 <tr key={a.id} className="act-row-n4">
                   <td>
@@ -501,7 +509,7 @@ export default function Actividades() {
           const n3key    = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
           const n3col    = collapsed.has(n3key)
           const n3leaves = n3g.acts.filter(a => a.level === 4)
-          const n3stats  = computeStats(n3leaves)
+          const n3stats  = computeStats(n3leaves, thresholdsMap)
           const n3state  = computeRowState(n3stats.exec, n3stats.exec_obj)
 
           rows.push(
@@ -527,7 +535,7 @@ export default function Actividades() {
 
           for (const a of n3ChildLeaves) {
             const pctPrev = leafPctPrev(a, TODAY)
-            const ast     = leafStatus(a, TODAY) as RowState
+            const ast     = leafStatus(a, TODAY, thresholdsMap.get(a.plano_id ?? '')?.leaves) as RowState
             rows.push(
               <tr key={a.id} className="act-row-n4">
                 <td>

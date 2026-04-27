@@ -45,6 +45,10 @@ export interface Plano {
   end_date: string | null
   objective: string | null
   sort_order: number
+  /** Per-plano leaf threshold override (pp). NULL = inherit from program. */
+  threshold_leaves: number | null
+  /** Per-plano aggregate threshold override (pp). NULL = inherit from program. */
+  threshold_aggregates: number | null
   created_at: string
   updated_at: string
   /** Joined from eixos when queried with eixo:eixos(name,code) */
@@ -58,6 +62,10 @@ export interface Program {
   name: string
   description: string | null
   sort_order: number
+  /** Leaf-activity threshold for this program (pp). NOT NULL DEFAULT 0. */
+  threshold_leaves: number
+  /** Aggregate-rollup threshold for this program (pp). NOT NULL DEFAULT 20. */
+  threshold_aggregates: number
   created_at: string
   updated_at: string
 }

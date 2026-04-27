@@ -24,6 +24,7 @@ import { generateAlerts } from '../../lib/alerts'
 import type { Alert, AlertRule } from '../../lib/alerts'
 import type { Activity, Program, Eixo, Plano } from '../../types/index'
 import { leafPctPrev, leafStatus, computeRowState, type RowState } from '../../lib/rollup'
+import { buildThresholdsMap, type PlanoThresholds } from '../../hooks/useThresholdsMap'
 import { colors, statusColor } from '../../lib/tokens'
 
 const TODAY = new Date().toISOString().slice(0, 10)
@@ -68,22 +69,29 @@ interface Metrics {
   exec_obj: number
 }
 
-function classify(a: Activity): 'concluida' | 'em_dia' | 'em_risco' | 'em_atraso' {
-  const s = leafStatus(a, TODAY)
+function classify(
+  a: Activity,
+  tLeaves: number = 0,
+): 'concluida' | 'em_dia' | 'em_risco' | 'em_atraso' {
+  const s = leafStatus(a, TODAY, tLeaves)
   if (s === 'Concluída') return 'concluida'
   if (s === 'Em risco')  return 'em_risco'
   if (s === 'Em atraso') return 'em_atraso'
   return 'em_dia'
 }
 
-function calcMetrics(acts: Activity[]): Metrics {
+function calcMetrics(
+  acts: Activity[],
+  thresholdsMap?: Map<string, PlanoThresholds>,
+): Metrics {
   const total = acts.length
   if (total === 0) {
     return { total: 0, concluidas: 0, em_dia: 0, em_risco: 0, em_atraso: 0, grau_exec: 0, exec_obj: 0 }
   }
   let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0, sumPct = 0, sumPrev = 0
   for (const a of acts) {
-    const cls = classify(a)
+    const tLeaves = thresholdsMap?.get(a.plano_id ?? '')?.leaves ?? 0
+    const cls = classify(a, tLeaves)
     if (cls === 'concluida') concluidas++
     else if (cls === 'em_dia') em_dia++
     else if (cls === 'em_risco') em_risco++
@@ -210,10 +218,14 @@ function truncate(s: string, n: number): string {
   return s.length <= n ? s : s.slice(0, n - 1) + '…'
 }
 
-function barCounts(acts: Activity[]): { concluidas: number; em_dia: number; em_risco: number; em_atraso: number } {
+function barCounts(
+  acts: Activity[],
+  thresholdsMap?: Map<string, PlanoThresholds>,
+): { concluidas: number; em_dia: number; em_risco: number; em_atraso: number } {
   let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0
   for (const a of acts) {
-    const cls = classify(a)
+    const tLeaves = thresholdsMap?.get(a.plano_id ?? '')?.leaves ?? 0
+    const cls = classify(a, tLeaves)
     if (cls === 'concluida') concluidas++
     else if (cls === 'em_dia') em_dia++
     else if (cls === 'em_risco') em_risco++
@@ -512,9 +524,10 @@ interface BarChartCardProps {
   leaves: Activity[]
   programs: Program[]
   allEixos: Eixo[]
+  thresholdsMap: Map<string, PlanoThresholds>
 }
 
-function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
+function BarChartCard({ leaves, programs, allEixos, thresholdsMap }: BarChartCardProps) {
   const [chartChip, setChartChip] = useState<'eixo' | 'programa'>('eixo')
   const chartDataRef  = useRef<BarEntry[]>([])
   const xCoordsRef    = useRef<Record<number, number>>({})
@@ -522,7 +535,7 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
   const chartDataEixo = useMemo((): BarEntry[] => {
     if (programs.length === 0) {
       return Array.from(groupBy(leaves, a => a.n1 || '(sem eixo)').entries())
-        .map(([n1, acts]) => ({ name: n1, ...barCounts(acts) }))
+        .map(([n1, acts]) => ({ name: n1, ...barCounts(acts, thresholdsMap) }))
     }
     const sortedProgs = programs.slice().sort((a, b) => a.sort_order - b.sort_order)
     const progsWithData = sortedProgs.filter(p => leaves.some(a => a.program_id === p.id))
@@ -540,7 +553,7 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
       const pushEntry = (name: string, acts: Activity[]) => {
         const isFirstOfProg = prog.id !== lastProgId
         if (isFirstOfProg) lastProgId = prog.id
-        result.push({ name, ...barCounts(acts), program: progName, isFirstOfProg })
+        result.push({ name, ...barCounts(acts, thresholdsMap), program: progName, isFirstOfProg })
       }
       if (progEixos.length > 0) {
         const seen = new Set<string>()
@@ -560,7 +573,7 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
       }
     }
     return result
-  }, [leaves, programs, allEixos])
+  }, [leaves, programs, allEixos, thresholdsMap])
 
   const chartDataProg = useMemo((): BarEntry[] =>
     programs
@@ -569,10 +582,10 @@ function BarChartCard({ leaves, programs, allEixos }: BarChartCardProps) {
       .map(prog => {
         const progLeaves = leaves.filter(a => a.program_id === prog.id)
         if (progLeaves.length === 0) return null
-        return { name: prog.name, ...barCounts(progLeaves) }
+        return { name: prog.name, ...barCounts(progLeaves, thresholdsMap) }
       })
       .filter((e): e is BarEntry => e !== null),
-  [leaves, programs])
+  [leaves, programs, thresholdsMap])
 
   chartDataRef.current = chartDataEixo
   xCoordsRef.current   = {}
@@ -713,9 +726,10 @@ interface DetailTableCardProps {
   allPlanos: Plano[]
   totalsRow: Record<string, unknown>
   onRowClick: (row: Record<string, unknown>) => void
+  thresholdsMap: Map<string, PlanoThresholds>
 }
 
-function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onRowClick }: DetailTableCardProps) {
+function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onRowClick, thresholdsMap }: DetailTableCardProps) {
   const [tableChip, setTableChip] = useState<'programa' | 'eixo' | 'plano'>('eixo')
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -733,7 +747,7 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
         .map(prog => {
           const progLeaves = leaves.filter(a => a.program_id === prog.id)
           if (progLeaves.length === 0) return null
-          return { ...buildRow(prog.name, calcMetrics(progLeaves), false), _prog_id: prog.id }
+          return { ...buildRow(prog.name, calcMetrics(progLeaves, thresholdsMap), false), _prog_id: prog.id }
         })
         .filter((r): r is Record<string, unknown> => r !== null)
     }
@@ -764,9 +778,9 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
       for (const prog of sortedProgs) {
         const progLeaves = leaves.filter(a => a.program_id === prog.id)
         if (progLeaves.length === 0) continue
-        rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves), false), _prog_id: prog.id, _isProgHeader: true })
+        rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, thresholdsMap), false), _prog_id: prog.id, _isProgHeader: true })
         for (const { name, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
-          rows.push({ ...buildRow(name, calcMetrics(eixoLeaves), false), _n1: name, _prog_id: prog.id })
+          rows.push({ ...buildRow(name, calcMetrics(eixoLeaves, thresholdsMap), false), _n1: name, _prog_id: prog.id })
         }
       }
       return rows
@@ -776,9 +790,9 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
     for (const prog of sortedProgs) {
       const progLeaves = leaves.filter(a => a.program_id === prog.id)
       if (progLeaves.length === 0) continue
-      rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves), false), _prog_id: prog.id, _isProgHeader: true })
+      rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, thresholdsMap), false), _prog_id: prog.id, _isProgHeader: true })
       for (const { name: eixoName, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
-        rows.push({ ...buildRow(eixoName, calcMetrics(eixoLeaves), true), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
+        rows.push({ ...buildRow(eixoName, calcMetrics(eixoLeaves, thresholdsMap), true), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
         const byPlano = groupBy(eixoLeaves, a => a.n2 || '(sem plano)')
         const eixoPlanos = allPlanos
           .filter(p => p.program_id === prog.id && p.eixo?.name === eixoName)
@@ -788,16 +802,16 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
           const acts = byPlano.get(plano.name)
           if (!acts) continue
           seen.add(plano.name)
-          rows.push({ ...buildRow(plano.name, calcMetrics(acts), false), _n1: eixoName, _n2: plano.name, _indent: 2 })
+          rows.push({ ...buildRow(plano.name, calcMetrics(acts, thresholdsMap), false), _n1: eixoName, _n2: plano.name, _indent: 2 })
         }
         for (const [n2, acts] of byPlano) {
           if (seen.has(n2)) continue
-          rows.push({ ...buildRow(n2, calcMetrics(acts), false), _n1: eixoName, _n2: n2, _indent: 2 })
+          rows.push({ ...buildRow(n2, calcMetrics(acts, thresholdsMap), false), _n1: eixoName, _n2: n2, _indent: 2 })
         }
       }
     }
     return rows
-  }, [tableChip, leaves, programs, allEixos, allPlanos])
+  }, [tableChip, leaves, programs, allEixos, allPlanos, thresholdsMap])
 
   const sortedTableRows = useMemo(
     () => sortKey ? sortHierarchically(tableRows, sortKey, sortDir) : tableRows,
@@ -869,13 +883,18 @@ export default function Dashboard() {
   const snapshotProgramId                  = filters.programIds[0]
   const { snapshots }                      = useSnapshots(snapshotProgramId)
 
+  const thresholdsMap = useMemo(
+    () => buildThresholdsMap(programs, allPlanos),
+    [programs, allPlanos],
+  )
+
   // Apply global filters then restrict to leaf level (level 4)
   const filtered = useMemo(
     () => getFilteredActivities(activities),
     [activities, getFilteredActivities],
   )
   const leaves = useMemo(() => filtered.filter(a => a.level === 4), [filtered])
-  const m      = useMemo(() => calcMetrics(leaves), [leaves])
+  const m      = useMemo(() => calcMetrics(leaves, thresholdsMap), [leaves, thresholdsMap])
 
   // ── Snapshot references ──────────────────────────────────────
   const currentSnapshot = useMemo(
@@ -1139,7 +1158,7 @@ export default function Dashboard() {
       {/* ── Row 2: Charts ─────────────────────────────────────── */}
       <div className="dashboard-charts-grid">
 
-        <BarChartCard leaves={leaves} programs={programs} allEixos={allEixos} />
+        <BarChartCard leaves={leaves} programs={programs} allEixos={allEixos} thresholdsMap={thresholdsMap} />
 
         <Card title="Estado Global">
           {m.total === 0 ? (
@@ -1272,6 +1291,7 @@ export default function Dashboard() {
         allPlanos={allPlanos}
         totalsRow={totalsRow}
         onRowClick={handleRowClick}
+        thresholdsMap={thresholdsMap}
       />
     </>
   )
