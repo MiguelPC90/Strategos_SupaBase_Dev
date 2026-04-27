@@ -88,9 +88,18 @@
     color: var(--text);
     font: inherit;
     font-size: 13px;
-    width: 220px;
-    min-width: 140px;
+    width: 200px;
+    flex-shrink: 0;
     transition: border-color 0.15s;
+  }
+
+  /* Sized wrapper for MultiSelect controls in the filter bar */
+  .pc-ms {
+    flex-shrink: 0;
+  }
+  .pc-ms .ms-wrap,
+  .pc-ms .ms-trigger {
+    width: 100%;
   }
 
   .pc-search:focus {
