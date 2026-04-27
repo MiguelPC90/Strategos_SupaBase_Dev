@@ -94,6 +94,30 @@
     max-width: 160px;
     transition: opacity 0.15s, max-width 0.2s ease;
   }
+
+  .nav-fav-label {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .nav-fav-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: inherit;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .nav-fav-prog {
+    font-size: 10px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.45);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .sidebar.collapsed .nav-label {
     opacity: 0;
     max-width: 0;

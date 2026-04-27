@@ -1,13 +1,16 @@
 import './Layout.css'
-import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react'
 import SplashScreen from '../SplashScreen/SplashScreen'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Star } from 'lucide-react'
 import Badge from '../Badge/Badge'
 import { useAuth } from '../../hooks/useAuth'
 import { useRole } from '../../hooks/useRole'
 import { usePermissions } from '../../hooks/usePermissions'
 import { ToastList } from '../Toast/Toast'
 import { usePrograms } from '../../hooks/usePrograms'
+import { usePlanos } from '../../hooks/usePlanos'
+import { useFavorites } from '../../hooks/useFavorites'
 import { supabase } from '../../lib/supabase'
 import { setThresholds } from '../../lib/rollup'
 import type { PageKey } from '../../types/index'
@@ -215,7 +218,12 @@ export default function Layout() {
   const { profile, role, isAdmin } = useRole()
   const { hasAccess } = usePermissions()
 
-  const { loading: programsLoading } = usePrograms()
+  const { programs, loading: programsLoading } = usePrograms()
+  const { planos } = usePlanos()
+  const { favorites } = useFavorites()
+
+  const programMap = useMemo(() => new Map(programs.map(p => [p.id, p])), [programs])
+  const planoMap   = useMemo(() => new Map(planos.map(p => [p.id, p])),   [planos])
 
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
@@ -299,6 +307,32 @@ export default function Layout() {
           {NAV_PLANOS.map(item => (
             <NavItem key={item.to} {...item} />
           ))}
+
+          {favorites.length > 0 && (
+            <>
+              <div className="sidebar-sep" />
+              <span className="sidebar-group-lbl">Favoritos</span>
+              {favorites.map(f => {
+                const plano = planoMap.get(f.plano_id)
+                if (!plano) return null
+                const progName = plano.program_id ? (programMap.get(plano.program_id)?.name ?? null) : null
+                return (
+                  <NavLink
+                    key={f.plano_id}
+                    to={`/planos/${f.plano_id}`}
+                    className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                    title={plano.name}
+                  >
+                    <Star size={16} strokeWidth={1.5} />
+                    <span className="nav-label nav-fav-label">
+                      <span className="nav-fav-name">{plano.name}</span>
+                      {progName && <span className="nav-fav-prog">{progName}</span>}
+                    </span>
+                  </NavLink>
+                )
+              })}
+            </>
+          )}
 
           <div className="sidebar-sep" />
           <span className="sidebar-group-lbl">Gestão</span>
