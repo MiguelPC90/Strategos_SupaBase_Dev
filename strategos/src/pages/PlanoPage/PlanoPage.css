@@ -47,12 +47,35 @@
     font-weight: 500;
   }
 
+  .pp-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 0;
+  }
+
+  .pp-title-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .pp-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+
   .pp-title {
     font-family: var(--font-display);
     font-size: 20px;
     font-weight: 600;
     color: var(--text);
-    margin: 0 0 4px;
+    margin: 0;
   }
 
   .pp-code {
@@ -63,7 +86,57 @@
     background: var(--bg3);
     padding: 1px 6px;
     border-radius: 3px;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
+  }
+
+  .pp-btn-edit {
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    background: none;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text2);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .pp-btn-edit:hover {
+    border-color: var(--stratgos-ember);
+    color: var(--stratgos-ember);
+  }
+
+  .pp-fav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    background: none;
+    color: var(--text3);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    padding: 0;
+  }
+
+  .pp-fav-btn:hover:not(:disabled) {
+    color: var(--amber);
+    border-color: var(--amber);
+  }
+
+  .pp-fav-active {
+    color: var(--amber);
+    border-color: var(--amber);
+    background: var(--amber-bg);
+  }
+
+  .pp-fav-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
   }
 
   .pp-meta {

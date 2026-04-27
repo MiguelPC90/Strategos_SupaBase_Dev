@@ -1,9 +1,13 @@
 import './PlanoPage.css'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
+import { Star } from 'lucide-react'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
+import { useFavorites } from '../../hooks/useFavorites'
+import { usePermissions } from '../../hooks/usePermissions'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Spinner from '../../components/Spinner/Spinner'
+import VisaoExecutiva from './VisaoExecutiva'
 
 const TABS = [
   { id: 'visao',        label: 'Visão Executiva' },
@@ -26,18 +30,10 @@ function fmtDate(d: string | null | undefined): string {
   return `${day}/${m}/${y}`
 }
 
-function TabContent({ activeTab }: { activeTab: TabId }) {
-  const labels: Record<TabId, string> = {
-    visao:       'Visão Executiva',
-    actividades: 'Actividades',
-    pds:         'PDS',
-    riscos:      'Riscos',
-    financeira:  'Financeira',
-    recursos:    'Recursos',
-  }
+function PlaceholderTab({ label }: { label: string }) {
   return (
     <div className="pp-empty-tab">
-      <span className="pp-empty-tab-label">{labels[activeTab]} — em construção</span>
+      <span className="pp-empty-tab-label">{label} — em construção</span>
     </div>
   )
 }
@@ -49,6 +45,8 @@ export default function PlanoPage() {
 
   const { planos, loading: planosLoading } = usePlanos()
   const { programs, loading: programsLoading } = usePrograms()
+  const { isFavorite, toggle: toggleFav, canAddMore } = useFavorites()
+  const { canEdit } = usePermissions()
 
   const loading = planosLoading || programsLoading
 
@@ -81,6 +79,9 @@ export default function PlanoPage() {
   const eixoName = plano.eixo?.name ?? null
   const dateLine = [fmtDate(plano.start_date), fmtDate(plano.end_date)].filter(Boolean).join(' → ')
 
+  const isFav       = planoId ? isFavorite(planoId) : false
+  const canEditPlano = canEdit('gestao-iniciativas', plano.program_id ?? undefined)
+
   return (
     <div className="pp-wrap">
       {/* Header */}
@@ -99,8 +100,32 @@ export default function PlanoPage() {
           <span className="pp-bc-current">{plano.name}</span>
         </div>
 
-        <h1 className="pp-title">{plano.name}</h1>
-        <span className="pp-code">{plano.code}</span>
+        <div className="pp-title-row">
+          <div className="pp-title-left">
+            <h1 className="pp-title">{plano.name}</h1>
+            <span className="pp-code">{plano.code}</span>
+          </div>
+          <div className="pp-header-actions">
+            {canEditPlano && (
+              <button
+                className="pp-btn-edit"
+                onClick={() => navigate('/gestao-iniciativas')}
+                type="button"
+              >
+                Editar plano
+              </button>
+            )}
+            <button
+              className={`pp-fav-btn${isFav ? ' pp-fav-active' : ''}`}
+              onClick={() => planoId && toggleFav(planoId)}
+              disabled={!isFav && !canAddMore}
+              title={isFav ? 'Remover dos favoritos' : canAddMore ? 'Adicionar aos favoritos' : 'Limite de favoritos atingido'}
+              type="button"
+            >
+              <Star size={16} fill={isFav ? 'currentColor' : 'none'} strokeWidth={1.5} />
+            </button>
+          </div>
+        </div>
 
         <div className="pp-meta">
           {plano.owner   && <span className="pp-meta-item"><span className="pp-meta-lbl">Owner</span>{plano.owner}</span>}
@@ -128,7 +153,14 @@ export default function PlanoPage() {
 
       {/* Tab content */}
       <div className="pp-tab-content">
-        <TabContent activeTab={activeTab} />
+        {activeTab === 'visao' && planoId && (
+          <VisaoExecutiva planoId={planoId} programId={plano.program_id} />
+        )}
+        {activeTab === 'actividades' && <PlaceholderTab label="Actividades" />}
+        {activeTab === 'pds'         && <PlaceholderTab label="PDS" />}
+        {activeTab === 'riscos'      && <PlaceholderTab label="Riscos" />}
+        {activeTab === 'financeira'  && <PlaceholderTab label="Financeira" />}
+        {activeTab === 'recursos'    && <PlaceholderTab label="Recursos" />}
       </div>
     </div>
   )

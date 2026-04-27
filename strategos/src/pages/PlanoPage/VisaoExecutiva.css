@@ -1,0 +1,281 @@
+@layer components {
+  .ve-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .ve-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    font-size: 13px;
+    color: var(--text3);
+  }
+
+  /* ── KPI row ─────────────────────────────────────────────────── */
+  .ve-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+
+  /* ── Trend nodes ─────────────────────────────────────────────── */
+  .ve-trend-up   { color: var(--green); font-size: 11px; }
+  .ve-trend-down { color: var(--red);   font-size: 11px; }
+  .ve-trend-flat { color: var(--text3); font-size: 11px; }
+
+  /* ── Two-column zone ─────────────────────────────────────────── */
+  .ve-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* ── Generic panel ───────────────────────────────────────────── */
+  .ve-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+    padding: 16px 20px;
+  }
+
+  .ve-panel-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin: 0 0 14px;
+  }
+
+  .ve-panel-empty {
+    font-size: 13px;
+    color: var(--text3);
+    margin: 0;
+    padding: 12px 0;
+  }
+
+  /* ── Status badges ───────────────────────────────────────────── */
+  .ve-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .ve-badge-late    { background: var(--red-bg);   color: var(--red);   }
+  .ve-badge-risk    { background: var(--amber-bg); color: var(--amber); }
+  .ve-badge-ontrack { background: var(--green-bg); color: var(--green); }
+  .ve-badge-done    { background: var(--blue-bg);  color: var(--blue);  }
+
+  /* ── Activity list ───────────────────────────────────────────── */
+  .ve-act-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ve-act-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ve-act-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .ve-act-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ve-act-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ve-act-bar-outer {
+    flex: 1;
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .ve-act-bar {
+    height: 100%;
+    background: var(--stratgos-ember);
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+
+  .ve-act-pct {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    min-width: 28px;
+    text-align: right;
+  }
+
+  .ve-act-date {
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  /* ── Attention items ─────────────────────────────────────────── */
+  .ve-attn-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .ve-attn-group-lbl {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+
+  .ve-attn-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .ve-attn-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .ve-attn-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+
+  .ve-attn-risk .ve-attn-dot  { background: var(--red);   }
+  .ve-attn-pds  .ve-attn-dot  { background: var(--amber); }
+
+  .ve-attn-text {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.4;
+  }
+
+  /* ── Finance panel ───────────────────────────────────────────── */
+  .ve-finance-panel {
+    /* extends .ve-panel */
+  }
+
+  .ve-fin-summary {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .ve-fin-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .ve-fin-lbl {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .ve-fin-val {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    font-family: var(--font-mono);
+  }
+
+  .ve-fin-executed  { color: var(--green); }
+  .ve-fin-committed { color: var(--amber); }
+
+  .ve-fin-bar-outer {
+    position: relative;
+    height: 8px;
+    background: var(--bg3);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .ve-fin-bar-committed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: var(--amber-bg);
+    border-radius: 4px;
+    transition: width 0.4s;
+  }
+
+  .ve-fin-bar-executed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: var(--green);
+    border-radius: 4px;
+    transition: width 0.4s;
+  }
+
+  .ve-fin-bar-legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .ve-fin-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .ve-fin-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .ve-fin-legend-exec   .ve-fin-legend-dot { background: var(--green); }
+  .ve-fin-legend-commit .ve-fin-legend-dot { background: var(--amber-bg); border: 1px solid var(--amber); }
+}
