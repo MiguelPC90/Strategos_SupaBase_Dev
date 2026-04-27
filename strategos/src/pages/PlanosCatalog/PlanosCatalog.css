@@ -176,6 +176,7 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
+    table-layout: fixed;
   }
 
   .pc-th {
@@ -205,8 +206,14 @@
   }
 
   .pc-td-star { padding: 8px 4px 8px 12px; width: 40px; }
-  .pc-td-meta { color: var(--text2); font-size: 12px; white-space: nowrap; }
-  .pc-td-bar  { min-width: 130px; }
+  .pc-td-meta {
+    color: var(--text2);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pc-td-bar { }
 
   .pc-row-link {
     display: flex;

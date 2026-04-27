@@ -1,5 +1,5 @@
 import './PlanosCatalog.css'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Star, LayoutList, LayoutGrid } from 'lucide-react'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -111,12 +111,69 @@ export default function PlanosCatalog() {
     return { ...plano, status, pct, program }
   }), [planos, leavesByPlano, today, programMap])
 
-  // ── Filter options ────────────────────────────────────────────
-  const progOptions    = useMemo(() => [...new Set(programs.map(p => p.name))].sort(), [programs])
-  const eixoOptions    = useMemo(() => [...new Set(planos.map(p => p.eixo?.name).filter((n): n is string => !!n))].sort(), [planos])
-  const ownerOptions   = useMemo(() => [...new Set(planos.map(p => p.owner).filter((o): o is string => !!o))].sort(), [planos])
-  const sponsorOptions = useMemo(() => [...new Set(planos.map(p => p.sponsor).filter((s): s is string => !!s))].sort(), [planos])
-  const statusOptions  = ['Em atraso', 'Em risco', 'Em dia', 'Concluída']
+  // ── Cascading filter options ──────────────────────────────────
+  // Program options: all programs that have at least one accessible plano
+  const progOptions = useMemo(
+    () => [...new Set(enriched.map(p => p.program?.name).filter((n): n is string => !!n))].sort(),
+    [enriched],
+  )
+
+  // Eixo options: narrowed to selected programs
+  const eixoOptions = useMemo(() => {
+    const base = progFilter.length > 0
+      ? enriched.filter(p => progFilter.includes(p.program?.name ?? ''))
+      : enriched
+    return [...new Set(base.map(p => p.eixo?.name).filter((n): n is string => !!n))].sort()
+  }, [enriched, progFilter])
+
+  // Owner options: narrowed to selected programs + selected eixos
+  const ownerOptions = useMemo(() => {
+    let base = enriched
+    if (progFilter.length  > 0) base = base.filter(p => progFilter.includes(p.program?.name ?? ''))
+    if (eixoFilter.length  > 0) base = base.filter(p => eixoFilter.includes(p.eixo?.name ?? ''))
+    return [...new Set(base.map(p => p.owner).filter((o): o is string => !!o))].sort()
+  }, [enriched, progFilter, eixoFilter])
+
+  // Sponsor options: narrowed to selected programs + selected eixos
+  const sponsorOptions = useMemo(() => {
+    let base = enriched
+    if (progFilter.length  > 0) base = base.filter(p => progFilter.includes(p.program?.name ?? ''))
+    if (eixoFilter.length  > 0) base = base.filter(p => eixoFilter.includes(p.eixo?.name ?? ''))
+    return [...new Set(base.map(p => p.sponsor).filter((s): s is string => !!s))].sort()
+  }, [enriched, progFilter, eixoFilter])
+
+  const statusOptions = ['Em atraso', 'Em risco', 'Em dia', 'Concluída']
+
+  // ── Auto-clear downstream selections when parent filter narrows options ──
+  // Use a ref so the effect doesn't run on the initial mount
+  const mounted = useRef(false)
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return }
+    if (eixoFilter.length > 0) {
+      const valid = new Set(eixoOptions)
+      const still = eixoFilter.filter(e => valid.has(e))
+      if (still.length !== eixoFilter.length) setEixoFilter(still)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eixoOptions])
+
+  useEffect(() => {
+    if (ownerFilter.length > 0) {
+      const valid = new Set(ownerOptions)
+      const still = ownerFilter.filter(o => valid.has(o))
+      if (still.length !== ownerFilter.length) setOwnerFilter(still)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownerOptions])
+
+  useEffect(() => {
+    if (sponsorFilter.length > 0) {
+      const valid = new Set(sponsorOptions)
+      const still = sponsorFilter.filter(s => valid.has(s))
+      if (still.length !== sponsorFilter.length) setSponsorFilter(still)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sponsorOptions])
 
   // ── Apply filters ─────────────────────────────────────────────
   const filtered = useMemo(() => enriched.filter(p => {
@@ -238,6 +295,15 @@ export default function PlanosCatalog() {
       ) : viewMode === 'table' ? (
         <div className="pc-table-wrap">
           <table className="pc-table">
+            <colgroup>
+              <col style={{ width: 40 }} />
+              <col />
+              <col style={{ width: 150 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 100 }} />
+              <col style={{ width: 150 }} />
+            </colgroup>
             <thead>
               <tr>
                 <th className="pc-th pc-th-star" />

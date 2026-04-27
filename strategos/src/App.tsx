@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { ToastProvider } from './context/ToastContext'
+import { FavoritesProvider } from './context/FavoritesContext'
 import Layout from './components/Layout/Layout'
 import Login from './pages/Login/Login'
 import Dashboard from './pages/Dashboard/Dashboard'
@@ -130,6 +131,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <ToastProvider>
+    <FavoritesProvider>
     <BrowserRouter>
       <Routes>
         <Route
@@ -159,6 +161,7 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </FavoritesProvider>
     </ToastProvider>
   )
 }
