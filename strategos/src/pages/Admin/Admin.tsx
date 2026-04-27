@@ -1389,7 +1389,8 @@ function CostRolesTab() {
   const [loading,         setLoading]         = useState(true)
   const [draft,           setDraft]           = useState<DraftCostRole | null>(null)
   const [errMsg,          setErrMsg]          = useState('')
-  const [defaultCurrency, setDefaultCurrency] = useState('EUR')
+  const [defaultCurrency,       setDefaultCurrency]       = useState('EUR')
+  const [defaultCurrencySymbol, setDefaultCurrencySymbol] = useState('€')
 
   function showErr(msg: string) {
     setErrMsg(msg)
@@ -1405,10 +1406,10 @@ function CostRolesTab() {
 
   useEffect(() => {
     loadCostRoles()
-    supabase.from('currencies').select('code, is_default').order('code')
+    supabase.from('currencies').select('code, symbol, is_default').order('code')
       .then(({ data }) => {
-        const def = (data ?? []).find((r: { code: string; is_default: boolean }) => r.is_default)
-        if (def) setDefaultCurrency(def.code)
+        const def = (data ?? []).find((r: { code: string; symbol: string; is_default: boolean }) => r.is_default)
+        if (def) { setDefaultCurrency(def.code); setDefaultCurrencySymbol(def.symbol) }
       })
   }, [])
 
@@ -1452,7 +1453,7 @@ function CostRolesTab() {
             <thead>
               <tr>
                 <th>Cargo</th>
-                <th style={{ width: 100 }}>€/hora</th>
+                <th style={{ width: 100 }}>{defaultCurrencySymbol}/hora</th>
                 <th style={{ width: 60 }}>Moeda</th>
                 <th style={{ width: 56 }}>Activo</th>
                 <th style={{ width: 72 }}>Acções</th>
@@ -1642,7 +1643,9 @@ function PessoasTab() {
   const [profOpts,        setProfOpts]        = useState<string[]>([])
   const [unitOpts,        setUnitOpts]        = useState<string[]>([])
   const [costRoles,       setCostRoles]       = useState<CostRole[]>([])
-  const [defaultCurrency, setDefaultCurrency] = useState('EUR')
+  const [defaultCurrency,       setDefaultCurrency]       = useState('EUR')
+  const [defaultCurrencySymbol, setDefaultCurrencySymbol] = useState('€')
+  const [currSymbolMap,         setCurrSymbolMap]         = useState<Map<string, string>>(new Map())
 
   function showErr(msg: string) {
     setErrMsg(msg)
@@ -1662,10 +1665,13 @@ function PessoasTab() {
   useEffect(() => {
     supabase.from('cost_roles').select('*').order('name')
       .then(({ data }) => setCostRoles((data ?? []) as CostRole[]))
-    supabase.from('currencies').select('code, is_default').order('code')
+    supabase.from('currencies').select('code, symbol, is_default').order('code')
       .then(({ data }) => {
-        const def = (data ?? []).find((r: { code: string; is_default: boolean }) => r.is_default)
-        if (def) setDefaultCurrency(def.code)
+        const rows = data as { code: string; symbol: string; is_default: boolean }[] ?? []
+        const map = new Map(rows.map(r => [r.code, r.symbol]))
+        setCurrSymbolMap(map)
+        const def = rows.find(r => r.is_default)
+        if (def) { setDefaultCurrency(def.code); setDefaultCurrencySymbol(def.symbol) }
       })
   }, [])
 
@@ -1802,7 +1808,7 @@ function PessoasTab() {
                               <option key={cr.id} value={cr.id}>{cr.name}</option>
                             ))}
                           </select>
-                          <input className="adm-row-input" type="number" min={0} placeholder="Override €/h"
+                          <input className="adm-row-input" type="number" min={0} placeholder={`Override ${defaultCurrencySymbol}/h`}
                             value={draft!.cost_per_hour_override}
                             onChange={e => setDraft(d => d ? { ...d, cost_per_hour_override: e.target.value } : d)}
                             onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
@@ -1815,7 +1821,7 @@ function PessoasTab() {
                             {cr ? cr.name : '—'}
                             {resolved != null && resolved > 0 && (
                               <span style={{ marginLeft: 4, color: 'var(--text2)' }}>
-                                {p.cost_per_hour_override != null ? '* ' : ''}{resolved}{cr?.currency ?? 'EUR'}/h
+                                {p.cost_per_hour_override != null ? '* ' : ''}{resolved}{currSymbolMap.get(cr?.currency ?? defaultCurrency) ?? cr?.currency ?? ''}/h
                               </span>
                             )}
                           </span>
@@ -1894,7 +1900,7 @@ function PessoasTab() {
                           <option key={cr.id} value={cr.id}>{cr.name}</option>
                         ))}
                       </select>
-                      <input className="adm-row-input" type="number" min={0} placeholder="Override €/h"
+                      <input className="adm-row-input" type="number" min={0} placeholder={`Override ${defaultCurrencySymbol}/h`}
                         value={draft.cost_per_hour_override}
                         onChange={e => setDraft(d => d ? { ...d, cost_per_hour_override: e.target.value } : d)}
                         onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
