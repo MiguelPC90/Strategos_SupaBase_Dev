@@ -4,8 +4,8 @@
 // ─────────────────────────────────────────────────────────────
 
 // ── Utility types ─────────────────────────────────────────────
-export type AccessLevel = 'none' | 'view' | 'edit'
-export type UserRole    = 'admin' | 'editor' | 'viewer'
+export type AccessLevel = 'full' | 'ops' | 'view' | 'view_ops' | 'denied'
+export type UserRole    = 'admin' | 'program_manager' | 'editor' | 'sponsor' | 'stakeholder' | 'viewer'
 export type PageKey =
   | 'dashboard'
   | 'actividades'

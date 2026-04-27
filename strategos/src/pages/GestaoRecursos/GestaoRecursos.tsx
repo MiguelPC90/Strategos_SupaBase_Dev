@@ -15,6 +15,7 @@ import Badge from '../../components/Badge/Badge'
 import Modal from '../../components/Modal/Modal'
 import type { FteResource, Person, FinContract } from '../../types/index'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
+import { usePermissions } from '../../hooks/usePermissions'
 
 // ── Types ──────────────────────────────────────────────────────────
 interface PlanOption {
@@ -81,9 +82,10 @@ interface SummaryTableProps {
   workDays: number
   onRowClick: (id: string) => void
   sym: string
+  showCosts: boolean
 }
 
-function SummaryTable({ resources, workDays, onRowClick, sym }: SummaryTableProps) {
+function SummaryTable({ resources, workDays, onRowClick, sym, showCosts }: SummaryTableProps) {
   if (resources.length === 0) return null
   return (
     <div className="gres-summary-wrap">
@@ -96,7 +98,7 @@ function SummaryTable({ resources, workDays, onRowClick, sym }: SummaryTableProp
             <th>Tipo</th>
             <th className="gres-th-r">% Aloc.</th>
             <th>Período</th>
-            <th className="gres-th-r">Custo Est.</th>
+            {showCosts && <th className="gres-th-r">Custo Est.</th>}
             <th>Estado</th>
           </tr>
         </thead>
@@ -114,7 +116,7 @@ function SummaryTable({ resources, workDays, onRowClick, sym }: SummaryTableProp
                 <td>{r.type ?? '—'}</td>
                 <td className="gres-td-r">{r.allocation_pct ?? 0}%</td>
                 <td>{period}</td>
-                <td className="gres-td-r">{cost > 0 ? fmtEur(cost, sym) : '—'}</td>
+                {showCosts && <td className="gres-td-r">{cost > 0 ? fmtEur(cost, sym) : '—'}</td>}
                 <td>
                   <Badge variant={status === 'Activo' ? 'green' : 'grey'}>{status}</Badge>
                 </td>
@@ -137,9 +139,10 @@ interface ResourceCardProps {
   onDuplicate: () => void
   sym: string
   readOnly: boolean
+  showCosts: boolean
 }
 
-function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate, sym, readOnly }: ResourceCardProps) {
+function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate, sym, readOnly, showCosts }: ResourceCardProps) {
   const cost = calcCost(res, workDays)
   const isOverallocated = (res.allocation_pct ?? 0) > 100
   const dateErr = !!(res.start_date && res.end_date && res.end_date < res.start_date)
@@ -205,10 +208,12 @@ function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate,
             <span className="gres-field-label">Unidade Org.</span>
             <span style={{ fontSize: 12 }}>{res.org_unit ?? '—'}</span>
           </div>
-          <div className="gres-field">
-            <span className="gres-field-label">Custo/dia</span>
-            <span style={{ fontSize: 12 }}>{res.daily_cost != null ? fmtEur(res.daily_cost, sym) : '—'}</span>
-          </div>
+          {showCosts && (
+            <div className="gres-field">
+              <span className="gres-field-label">Custo/dia</span>
+              <span style={{ fontSize: 12 }}>{res.daily_cost != null ? fmtEur(res.daily_cost, sym) : '—'}</span>
+            </div>
+          )}
           <div className="gres-field">
             <span className="gres-field-label">Período</span>
             <span style={{ fontSize: 12 }}>{period}</span>
@@ -222,9 +227,9 @@ function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate,
         </div>
       </div>
 
-      {(cost > 0 || isExpired || dateErr) && (
+      {(showCosts && cost > 0 || isExpired || dateErr) && (
         <div className="gres-card-footer">
-          {cost > 0 && (
+          {showCosts && cost > 0 && (
             <span className="gres-cost-hint">
               Custo estimado: <strong>{fmtEur(cost, sym)}</strong>
               {` (${monthsBetween(res.start_date, res.end_date)} meses × ${workDays} dias/mês)`}
@@ -390,7 +395,7 @@ function PersonAutocomplete({ value, personId, people, onNameChange, onSelect, o
 }
 
 // ── ResourceModalBody ──────────────────────────────────────────────
-function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnits, sym }: {
+function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnits, sym, showCosts }: {
   form: ResourceForm
   setForm: (f: ResourceForm) => void
   people: Person[]
@@ -398,6 +403,7 @@ function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnit
   profiles: string[]
   orgUnits: string[]
   sym: string
+  showCosts: boolean
 }) {
   const set = (patch: Partial<ResourceForm>) => setForm({ ...form, ...patch })
 
@@ -463,12 +469,14 @@ function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnit
         </div>
       </div>
       <div className="gres-form-row">
-        <div className="gres-form-field">
-          <label className="gres-form-label">Custo/Dia ({sym})</label>
-          <input className="gres-form-input" type="number" min={0}
-            value={form.daily_cost}
-            onChange={e => set({ daily_cost: e.target.value })} placeholder="0" />
-        </div>
+        {showCosts && (
+          <div className="gres-form-field">
+            <label className="gres-form-label">Custo/Dia ({sym})</label>
+            <input className="gres-form-input" type="number" min={0}
+              value={form.daily_cost}
+              onChange={e => set({ daily_cost: e.target.value })} placeholder="0" />
+          </div>
+        )}
         <div className="gres-form-field">
           <label className="gres-form-label">Estado</label>
           <select className="styled-select-sm" value={form.status}
@@ -618,8 +626,10 @@ export default function GestaoRecursos() {
   const programs = useAccessiblePrograms('gestao-recursos')
   const [selProgId, setSelProgId] = useState<string>('')
   const readOnly = !useCanEditCurrent('gestao-recursos')
+  const { canViewCosts } = usePermissions()
 
   // Initialise from global filter or first available program (once)
+
   useEffect(() => {
     if (selProgId) return
     const init = filters.programIds[0] ?? programs[0]?.id
@@ -627,6 +637,8 @@ export default function GestaoRecursos() {
   }, [programs]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const programId = selProgId || undefined
+  const showCosts = canViewCosts('gestao-recursos', programId)
+
   const { planos, loading: planosLoading } = usePlanos(programId)
   const { resources: dbResources, loading: resLoading, refetch } = useResources(programId)
   const loading = resLoading || planosLoading
@@ -1029,6 +1041,7 @@ export default function GestaoRecursos() {
               workDays={workDays}
               onRowClick={openEditResource}
               sym={currSymbol}
+              showCosts={showCosts}
             />
           )}
 
@@ -1058,6 +1071,7 @@ export default function GestaoRecursos() {
                   onDuplicate={() => duplicateResource(res.id)}
                   sym={currSymbol}
                   readOnly={readOnly}
+                  showCosts={showCosts}
                 />
               ))
             )}
@@ -1104,6 +1118,7 @@ export default function GestaoRecursos() {
             profiles={profiles}
             orgUnits={orgUnits}
             sym={currSymbol}
+            showCosts={showCosts}
           />
         )}
       </Modal>

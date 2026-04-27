@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 
-type Role = 'admin' | 'editor' | 'viewer'
+type Role = 'admin' | 'program_manager' | 'editor' | 'sponsor' | 'stakeholder' | 'viewer'
 
 interface Profile {
   id: string
@@ -16,8 +16,16 @@ interface UseRoleResult {
   profile: Profile | null
   role: Role | null
   isAdmin: boolean
+  isProgramManager: boolean
+  isEditor: boolean
+  /** Alias for isEditor — kept for backward compatibility */
   isGestor: boolean
+  isSponsor: boolean
+  isStakeholder: boolean
+  /** True for roles that cannot edit (sponsor, stakeholder, legacy viewer) */
   isViewer: boolean
+  /** True for admin, program_manager, editor — roles that can hold edit permissions */
+  canPotentiallyEdit: boolean
   loading: boolean
 }
 
@@ -50,13 +58,19 @@ export function useRole(): UseRoleResult {
   }, [user])
 
   const role = profile?.role ?? null
+  const canPotentiallyEdit = ['admin', 'program_manager', 'editor'].includes(role ?? '')
 
   return {
     profile,
     role,
     isAdmin: role === 'admin',
+    isProgramManager: role === 'program_manager',
+    isEditor: role === 'editor',
     isGestor: role === 'editor',
-    isViewer: role === 'viewer',
+    isSponsor: role === 'sponsor',
+    isStakeholder: role === 'stakeholder',
+    isViewer: !canPotentiallyEdit && role !== null,
+    canPotentiallyEdit,
     loading,
   }
 }

@@ -10,6 +10,7 @@ import { usePlanos } from '../../hooks/usePlanos'
 import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { usePeople } from '../../hooks/usePeople'
 import { useFilters } from '../../context/FilterContext'
+import { usePermissions } from '../../hooks/usePermissions'
 import { supabase } from '../../lib/supabase'
 import type { FteResource, Person } from '../../types/index'
 import { colors } from '../../lib/tokens'
@@ -91,9 +92,10 @@ interface PlanViewProps {
   expanded: Set<string>
   onToggle: (key: string) => void
   sym: string
+  showCosts: boolean
 }
 
-function PlanView({ resources, planoNames, expanded, onToggle, sym }: PlanViewProps) {
+function PlanView({ resources, planoNames, expanded, onToggle, sym, showCosts }: PlanViewProps) {
   const groups = useMemo(() => {
     const map = new Map<string, { label: string; items: FteResource[] }>()
     for (const r of resources) {
@@ -115,7 +117,7 @@ function PlanView({ resources, planoNames, expanded, onToggle, sym }: PlanViewPr
           <th>Plano</th>
           <th className="res-th-c">Nº Recursos</th>
           <th className="res-th-c">FTE Total</th>
-          <th className="res-th-r">Custo Mensal</th>
+          {showCosts && <th className="res-th-r">Custo Mensal</th>}
           <th className="res-th-c">Internos</th>
           <th className="res-th-c">Externos</th>
         </tr>
@@ -137,7 +139,7 @@ function PlanView({ resources, planoNames, expanded, onToggle, sym }: PlanViewPr
               </td>
               <td className="res-td-c">{names.size}</td>
               <td className="res-td-c">{fte.toFixed(1)}</td>
-              <td className="res-td-r">{fmtEur(cost, sym)}</td>
+              {showCosts && <td className="res-td-r">{fmtEur(cost, sym)}</td>}
               <td className="res-td-c">{intern}</td>
               <td className="res-td-c">{ext}</td>
             </tr>,
@@ -146,7 +148,7 @@ function PlanView({ resources, planoNames, expanded, onToggle, sym }: PlanViewPr
           if (isOpen) {
             rows.push(
               <tr key={`d-${g.key}`} className="res-detail-row">
-                <td colSpan={6} className="res-detail-cell">
+                <td colSpan={showCosts ? 6 : 5} className="res-detail-cell">
                   <table className="res-detail-table">
                     <thead>
                       <tr>
@@ -154,7 +156,7 @@ function PlanView({ resources, planoNames, expanded, onToggle, sym }: PlanViewPr
                         <th>Perfil</th>
                         <th>Tipo</th>
                         <th className="res-th-c">Alocação</th>
-                        <th className="res-th-r">Custo/dia</th>
+                        {showCosts && <th className="res-th-r">Custo/dia</th>}
                         <th>Período</th>
                       </tr>
                     </thead>
@@ -165,7 +167,7 @@ function PlanView({ resources, planoNames, expanded, onToggle, sym }: PlanViewPr
                           <td>{r.role ?? '—'}</td>
                           <td><Badge variant={typeVar(r.type)}>{typeLbl(r.type)}</Badge></td>
                           <td className="res-td-c">{r.allocation_pct ?? 0}%</td>
-                          <td className="res-td-r">{r.daily_cost ? fmtEur(r.daily_cost, sym) : '—'}</td>
+                          {showCosts && <td className="res-td-r">{r.daily_cost ? fmtEur(r.daily_cost, sym) : '—'}</td>}
                           <td>
                             {r.start_date?.substring(0, 7) ?? '—'}
                             {' — '}
@@ -205,9 +207,10 @@ interface HeatmapProps {
   planoNames: Map<string, string>
   onSelect: (name: string) => void
   sym: string
+  showCosts: boolean
 }
 
-function ResourceHeatmap({ resources, globalAllocByPersonMonth, months, planoNames, onSelect, sym }: HeatmapProps) {
+function ResourceHeatmap({ resources, globalAllocByPersonMonth, months, planoNames, onSelect, sym, showCosts }: HeatmapProps) {
   const [hoverCell, setHoverCell] = useState<HoverCell | null>(null)
 
   const uniqueNames = useMemo(() => {
@@ -367,7 +370,7 @@ function ResourceHeatmap({ resources, globalAllocByPersonMonth, months, planoNam
               <div key={i} className="rec-tt-plan-row">
                 <span className="rec-tt-plan-name" title={p.plan}>{p.plan}</span>
                 <span className="rec-tt-plan-info">
-                  {p.allocation}% · {fmtEur(p.daily_cost, sym)}/dia
+                  {p.allocation}%{showCosts && ` · ${fmtEur(p.daily_cost, sym)}/dia`}
                 </span>
               </div>
             ))}
@@ -398,9 +401,10 @@ interface ResourcePanelProps {
   person: Person | undefined
   onClose: () => void
   sym: string
+  showCosts: boolean
 }
 
-function ResourcePanel({ name, resources, planoNames, person, onClose, sym }: ResourcePanelProps) {
+function ResourcePanel({ name, resources, planoNames, person, onClose, sym, showCosts }: ResourcePanelProps) {
   const myResources = useMemo(() => resources.filter(r => r.name === name), [resources, name])
   const first       = myResources[0]
 
@@ -434,7 +438,7 @@ function ResourcePanel({ name, resources, planoNames, person, onClose, sym }: Re
               <Badge variant={typeVar(first.type)}>{typeLbl(first.type)}</Badge>
             </div>
           )}
-          {first?.daily_cost && <div className="res-info-row"><span>Custo/dia</span>{fmtEur(first.daily_cost, sym)}</div>}
+          {showCosts && first?.daily_cost && <div className="res-info-row"><span>Custo/dia</span>{fmtEur(first.daily_cost, sym)}</div>}
           {person?.email     && <div className="res-info-row"><span>Email</span>{person.email}</div>}
         </div>
 
@@ -489,9 +493,10 @@ interface ListaCompletaProps {
   resources: FteResource[]
   planoNames: Map<string, string>
   sym: string
+  showCosts: boolean
 }
 
-function ListaCompleta({ resources, planoNames, sym }: ListaCompletaProps) {
+function ListaCompleta({ resources, planoNames, sym, showCosts }: ListaCompletaProps) {
   const [sortBy,  setSortBy]  = useState<SortKey>('name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
@@ -556,16 +561,16 @@ function ListaCompleta({ resources, planoNames, sym }: ListaCompletaProps) {
             {th('role',       'Perfil')}
             {th('type',       'Tipo')}
             {th('allocation', 'Alocação',   'num')}
-            {th('daily_cost', 'Custo/dia',  'num')}
+            {showCosts && th('daily_cost', 'Custo/dia',  'num')}
             {th('start',      'Início',     'center')}
             {th('end',        'Fim',        'center')}
             {th('duration',   'Duração',    'center')}
-            {th('total_cost', 'Custo total','num')}
+            {showCosts && th('total_cost', 'Custo total','num')}
           </tr>
         </thead>
         <tbody>
           {sorted.length === 0 ? (
-            <tr><td colSpan={10} className="rec-empty">Sem recursos para os filtros seleccionados.</td></tr>
+            <tr><td colSpan={showCosts ? 10 : 8} className="rec-empty">Sem recursos para os filtros seleccionados.</td></tr>
           ) : (
             <>
               {sorted.map(r => {
@@ -579,19 +584,20 @@ function ListaCompleta({ resources, planoNames, sym }: ListaCompletaProps) {
                     <td>{r.role ?? '—'}</td>
                     <td><Badge variant={typeVar(r.type)}>{typeLbl(r.type)}</Badge></td>
                     <td className="num">{r.allocation_pct ?? 0}%</td>
-                    <td className="num">{r.daily_cost ? fmtEur(r.daily_cost, sym) : '—'}</td>
+                    {showCosts && <td className="num">{r.daily_cost ? fmtEur(r.daily_cost, sym) : '—'}</td>}
                     <td className="center">{fmtDate(r.start_date)}</td>
                     <td className="center">{fmtDate(r.end_date)}</td>
                     <td className="center">{formatDuration(dur)}</td>
-                    <td className="num">{cost > 0 ? fmtEur(cost, sym) : '—'}</td>
+                    {showCosts && <td className="num">{cost > 0 ? fmtEur(cost, sym) : '—'}</td>}
                   </tr>
                 )
               })}
               <tr className="rec-lista-totals">
                 <td colSpan={4} style={{ fontWeight: 700 }}>Total</td>
                 <td className="num" style={{ fontWeight: 700 }}>{totalAlloc}%</td>
-                <td /><td /><td /><td />
-                <td className="num" style={{ fontWeight: 700 }}>{fmtEur(totalCostSum, sym)}</td>
+                {showCosts && <td />}
+                <td /><td /><td />
+                {showCosts && <td className="num" style={{ fontWeight: 700 }}>{fmtEur(totalCostSum, sym)}</td>}
               </tr>
             </>
           )}
@@ -693,6 +699,7 @@ function InternExtDonut({ internos, externos, iPct, ePct, total }: InternExtDonu
 export default function Recursos() {
   const { filters }  = useFilters()
   const programs = useAccessiblePrograms()
+  const { canViewCosts } = usePermissions()
 
   const [selProgId,           setSelProgId]           = useState<string | null>(null)
   const [selectedPlanoLabels, setSelectedPlanoLabels] = useState<string[]>([])
@@ -741,6 +748,7 @@ export default function Recursos() {
   }, [selProgId])
 
   const programId = selProgId ?? undefined
+  const showCosts = canViewCosts('recursos', programId)
 
   const { resources, loading } = useResources(programId)
 
@@ -1092,6 +1100,7 @@ export default function Recursos() {
                 expanded={expandedPlans}
                 onToggle={togglePlan}
                 sym={currSymbol}
+                showCosts={showCosts}
               />
             )}
             {activeTab === 'recurso' && (
@@ -1102,6 +1111,7 @@ export default function Recursos() {
                 planoNames={planoNames}
                 onSelect={setSelectedRes}
                 sym={currSymbol}
+                showCosts={showCosts}
               />
             )}
             {activeTab === 'lista' && (
@@ -1109,6 +1119,7 @@ export default function Recursos() {
                 resources={scoped}
                 planoNames={planoNames}
                 sym={currSymbol}
+                showCosts={showCosts}
               />
             )}
           </Card>
@@ -1124,6 +1135,7 @@ export default function Recursos() {
           person={selectedPerson}
           onClose={() => setSelectedRes(null)}
           sym={currSymbol}
+          showCosts={showCosts}
         />
       )}
     </div>

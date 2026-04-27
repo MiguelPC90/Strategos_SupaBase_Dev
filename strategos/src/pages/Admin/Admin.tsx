@@ -944,7 +944,7 @@ const MATRIX_PAGES: { key: string; label: string }[] = [
   { key: 'gestao-recursos',     label: 'G.Recursos'    },
 ]
 
-type CellValue = '' | 'view' | 'edit'
+type CellValue = '' | 'full' | 'ops' | 'view' | 'view_ops' | 'denied'
 type PermMap   = Record<string, Record<string, CellValue>>
 
 function AdminPermissoes({ profiles }: { profiles: Profile[] }) {
@@ -975,7 +975,7 @@ function AdminPermissoes({ profiles }: { profiles: Profile[] }) {
         const map: PermMap = {}
         for (const row of (data ?? [])) {
           if (!map[row.user_id]) map[row.user_id] = {}
-          map[row.user_id][row.page] = (row.access_level === 'none' ? '' : row.access_level) as CellValue
+          map[row.user_id][row.page] = row.access_level as CellValue
         }
         setPermMap(map)
         setLoadingPerms(false)
@@ -1054,8 +1054,15 @@ function AdminPermissoes({ profiles }: { profiles: Profile[] }) {
                           onChange={e => handleCellChange(p.id, pg.key, e.target.value as CellValue)}
                         >
                           <option value="">–</option>
+                          {['admin', 'program_manager', 'editor'].includes(p.role) && (
+                            <>
+                              <option value="full">Editar Total</option>
+                              <option value="ops">Editar Ops</option>
+                            </>
+                          )}
                           <option value="view">Ver</option>
-                          {p.role === 'editor' && <option value="edit">Editar</option>}
+                          <option value="view_ops">Ver (Ops)</option>
+                          <option value="denied">Bloqueado</option>
                         </select>
                       </td>
                     )
@@ -1082,12 +1089,15 @@ function AdminPermissoes({ profiles }: { profiles: Profile[] }) {
 
 // ── Section 3a: Utilizadores ───────────────────────────────────
 function roleBadge(role: UserRole) {
-  if (role === 'admin')  return <Badge variant="navy">Admin</Badge>
-  if (role === 'editor') return <Badge variant="blue">Gestor</Badge>
+  if (role === 'admin')           return <Badge variant="navy">Admin</Badge>
+  if (role === 'program_manager') return <Badge variant="blue">Prog.Manager</Badge>
+  if (role === 'editor')          return <Badge variant="blue">Gestor</Badge>
+  if (role === 'sponsor')         return <Badge variant="amber">Sponsor</Badge>
+  if (role === 'stakeholder')     return <Badge variant="grey">Stakeholder</Badge>
   return <Badge variant="grey">Viewer</Badge>
 }
 
-interface InviteForm { email: string; role: 'editor' | 'viewer' }
+interface InviteForm { email: string; role: 'program_manager' | 'editor' | 'sponsor' | 'stakeholder' }
 
 function AdminUtilizadores() {
   const { user: currentUser } = useAuth()
@@ -1099,7 +1109,7 @@ function AdminUtilizadores() {
   const [editRole,         setEditRole]         = useState<UserRole>('viewer')
   const [saving,           setSaving]           = useState(false)
   const [showInvite,       setShowInvite]       = useState(false)
-  const [invite,           setInvite]           = useState<InviteForm>({ email: '', role: 'viewer' })
+  const [invite,           setInvite]           = useState<InviteForm>({ email: '', role: 'stakeholder' })
   const [inviting,         setInviting]         = useState(false)
   const [downgradeConfirm, setDowngradeConfirm] = useState<{ userId: string; editCount: number } | null>(null)
 
@@ -1145,15 +1155,17 @@ function AdminUtilizadores() {
 
   async function saveRole() {
     if (!editId) return
-    // editor → viewer: check for edit permissions that would be stranded
-    if (editRole === 'viewer') {
+    // Downgrading from edit-capable to view-only role: check for stranded edit permissions
+    const viewOnlyRoles: UserRole[] = ['sponsor', 'stakeholder', 'viewer']
+    const editCapableRoles: UserRole[] = ['program_manager', 'editor']
+    if (viewOnlyRoles.includes(editRole)) {
       const originalRole = profiles.find(p => p.id === editId)?.role
-      if (originalRole === 'editor') {
+      if (originalRole && editCapableRoles.includes(originalRole)) {
         const { data } = await supabase
           .from('user_permissions')
           .select('id')
           .eq('user_id', editId)
-          .eq('access_level', 'edit')
+          .in('access_level', ['full', 'ops'])
         const editCount = data?.length ?? 0
         if (editCount > 0) {
           setDowngradeConfirm({ userId: editId, editCount })
@@ -1170,8 +1182,8 @@ function AdminUtilizadores() {
       .from('user_permissions')
       .update({ access_level: 'view' })
       .eq('user_id', downgradeConfirm.userId)
-      .eq('access_level', 'edit')
-    await commitSaveRole(downgradeConfirm.userId, 'viewer')
+      .in('access_level', ['full', 'ops'])
+    await commitSaveRole(downgradeConfirm.userId, editRole)
   }
 
   async function deleteProfile(id: string, name: string | null) {
@@ -1202,7 +1214,7 @@ function AdminUtilizadores() {
           .eq('email', invite.email.trim())
       }
       setShowInvite(false)
-      setInvite({ email: '', role: 'viewer' })
+      setInvite({ email: '', role: 'stakeholder' })
       showToast('Convite enviado!', 'success')
       await loadProfiles()
     } finally {
@@ -1244,10 +1256,12 @@ function AdminUtilizadores() {
                 <select
                   className="adm-select"
                   value={invite.role}
-                  onChange={e => setInvite(v => ({ ...v, role: e.target.value as 'editor' | 'viewer' }))}
+                  onChange={e => setInvite(v => ({ ...v, role: e.target.value as InviteForm['role'] }))}
                 >
-                  <option value="editor">Gestor</option>
-                  <option value="viewer">Viewer</option>
+                  <option value="program_manager">Program Manager — gere programas, pode editar</option>
+                  <option value="editor">Gestor — edita conforme permissões</option>
+                  <option value="sponsor">Sponsor — apenas visualização</option>
+                  <option value="stakeholder">Stakeholder — apenas visualização</option>
                 </select>
               </div>
               <div style={{ display: 'flex', gap: 8, paddingBottom: 1 }}>
@@ -1290,8 +1304,10 @@ function AdminUtilizadores() {
                               autoFocus
                             >
                               <option value="admin">Admin</option>
+                              <option value="program_manager">Program Manager</option>
                               <option value="editor">Gestor</option>
-                              <option value="viewer">Viewer</option>
+                              <option value="sponsor">Sponsor</option>
+                              <option value="stakeholder">Stakeholder</option>
                             </select>
                           ) : roleBadge(p.role)}
                         </td>
@@ -1340,7 +1356,7 @@ function AdminUtilizadores() {
       <Modal
         isOpen={!!downgradeConfirm}
         onClose={() => setDowngradeConfirm(null)}
-        title="Mudar para Viewer"
+        title="Mudar para role de visualização"
         width={400}
         footer={
           <>
@@ -1352,8 +1368,8 @@ function AdminUtilizadores() {
         }
       >
         <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text)' }}>
-          Este utilizador tem <strong>{downgradeConfirm?.editCount}</strong> permissões de edição.
-          Ao mudar para <strong>viewer</strong>, estas permissões serão convertidas para apenas visualização.
+          Este utilizador tem <strong>{downgradeConfirm?.editCount}</strong> permissões de edição (Editar Total / Editar Ops).
+          Ao mudar de role, estas permissões serão convertidas para apenas visualização.
         </p>
       </Modal>
     </>

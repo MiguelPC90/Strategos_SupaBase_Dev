@@ -1,50 +1,73 @@
 import { useCallback } from 'react'
 import { useAuth } from './useAuth'
 import { useRole } from './useRole'
-import type { UserPermission, PageKey } from '../types/index'
+import type { AccessLevel, UserPermission, PageKey } from '../types/index'
 
 interface UsePermissionsResult {
   permissions: UserPermission[]
   /** Can the current user view/access this page (sidebar visibility + direct URL)? */
   hasAccess: (page: PageKey, programId?: string) => boolean
-  /** Can the current user mutate data on this page? */
+  /** Alias for hasAccess */
+  canView: (page: PageKey, programId?: string) => boolean
+  /** Can the current user mutate data on this page? full=always, ops=non-financial only */
   canEdit: (page: PageKey, programId?: string) => boolean
+  /** Can the current user see cost fields? True only for full or view access levels */
+  canViewCosts: (page: PageKey, programId?: string) => boolean
+  /** Resolve the effective access level for a page + program combination */
+  resolveAccessLevel: (page: PageKey, programId?: string) => AccessLevel | null
   /** True while the role profile is still loading */
   loading: boolean
 }
 
-function isAllowed(level: string): boolean {
-  return level === 'view' || level === 'edit'
+const FINANCIAL_PAGES: PageKey[] = ['gestao-financeira', 'exec-financeira']
+
+function isAccessible(level: string): boolean {
+  return level === 'full' || level === 'ops' || level === 'view' || level === 'view_ops'
+}
+
+function resolveLevel(
+  permissions: UserPermission[],
+  page: string,
+  programId?: string,
+): string | null {
+  const pagePerms = permissions.filter(p => p.page === page)
+  if (pagePerms.length === 0) return null
+
+  if (programId) {
+    const specific = pagePerms.find(p => p.program_id === programId)
+    if (specific) return specific.access_level
+    const fallback = pagePerms.find(p => p.program_id === null)
+    if (fallback) return fallback.access_level
+    return null
+  }
+
+  // No programId: return the best level across all rows for this page
+  const ORDER = ['full', 'ops', 'view', 'view_ops', 'denied']
+  const levels = pagePerms.map(p => p.access_level)
+  const sorted = [...levels].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b))
+  return sorted[0] ?? null
 }
 
 export function usePermissions(): UsePermissionsResult {
-  // Permissions are fetched centrally in AuthContext
   const { permissions } = useAuth()
-  const { role, isAdmin, loading: roleLoading } = useRole()
+  const { isAdmin, canPotentiallyEdit, loading: roleLoading } = useRole()
+
+  const resolveAccessLevel = useCallback(
+    (page: PageKey, programId?: string): AccessLevel | null => {
+      if (isAdmin) return 'full'
+      if (permissions.length === 0) return null
+      return resolveLevel(permissions, page, programId) as AccessLevel | null
+    },
+    [isAdmin, permissions],
+  )
 
   const hasAccess = useCallback(
     (page: PageKey, programId?: string): boolean => {
-      // Admin bypasses all checks
       if (isAdmin) return true
-      // No permission rows → deny by default (matches DB deny-by-default)
       if (permissions.length === 0) return false
-
-      const pagePerms = permissions.filter(p => p.page === page)
-      // Permissions exist globally but none granted for this page → blocked
-      if (pagePerms.length === 0) return false
-
-      if (programId) {
-        // Most specific: page + program match
-        const specific = pagePerms.find(p => p.program_id === programId)
-        if (specific) return isAllowed(specific.access_level)
-        // Fallback: page-level row (program_id = null covers all programs)
-        const pageLevel = pagePerms.find(p => p.program_id === null)
-        if (pageLevel) return isAllowed(pageLevel.access_level)
-        return false  // programId provided but no matching row — deny
-      }
-
-      // Sidebar / no-programId check: allow if any row grants access
-      return pagePerms.some(p => isAllowed(p.access_level))
+      const level = resolveLevel(permissions, page, programId)
+      if (!level) return false
+      return isAccessible(level)
     },
     [isAdmin, permissions],
   )
@@ -52,22 +75,35 @@ export function usePermissions(): UsePermissionsResult {
   const canEdit = useCallback(
     (page: PageKey, programId?: string): boolean => {
       if (isAdmin) return true
-      if (role === 'viewer') return false
-      // editor:
+      if (!canPotentiallyEdit) return false
       if (permissions.length === 0) return false
-      const pagePerms = permissions.filter(p => p.page === page)
-      if (pagePerms.length === 0) return false
-      if (programId) {
-        const specific = pagePerms.find(p => p.program_id === programId)
-        if (specific) return specific.access_level === 'edit'
-        const pageLevel = pagePerms.find(p => p.program_id === null)
-        if (pageLevel) return pageLevel.access_level === 'edit'
-        return false  // programId provided but no matching row — deny
-      }
-      return pagePerms.some(p => p.access_level === 'edit')
+      const level = resolveLevel(permissions, page, programId)
+      if (!level) return false
+      if (level === 'full') return true
+      if (level === 'ops') return !FINANCIAL_PAGES.includes(page)
+      return false
     },
-    [isAdmin, role, permissions],
+    [isAdmin, canPotentiallyEdit, permissions],
   )
 
-  return { permissions, hasAccess, canEdit, loading: roleLoading }
+  const canViewCosts = useCallback(
+    (page: PageKey, programId?: string): boolean => {
+      if (isAdmin) return true
+      if (permissions.length === 0) return false
+      const level = resolveLevel(permissions, page, programId)
+      if (!level) return false
+      return level === 'full' || level === 'view'
+    },
+    [isAdmin, permissions],
+  )
+
+  return {
+    permissions,
+    hasAccess,
+    canView: hasAccess,
+    canEdit,
+    canViewCosts,
+    resolveAccessLevel,
+    loading: roleLoading,
+  }
 }
