@@ -722,7 +722,17 @@ function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts
 }
 
 // ── Main component ─────────────────────────────────────────────────
-export default function GestaoFinanceira() {
+interface GestaoFinanceiraProps {
+  mode?: 'standalone' | 'embedded'
+  planoId?: string
+  programId?: string
+}
+
+export default function GestaoFinanceira({
+  mode = 'standalone',
+  planoId: propPlanoId,
+  programId: propProgramId,
+}: GestaoFinanceiraProps = {}) {
   const { showToast } = useToast()
   const { filters }  = useFilters()
   const programs = useAccessiblePrograms('gestao-financeira')
@@ -731,12 +741,13 @@ export default function GestaoFinanceira() {
 
   // Initialise from global filter or first available program (once)
   useEffect(() => {
+    if (mode === 'embedded') return
     if (selProgId) return
     const init = filters.programIds[0] ?? programs[0]?.id
     if (init) setSelProgId(init)
   }, [programs]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const programId = selProgId || undefined
+  const programId = mode === 'embedded' ? propProgramId : (selProgId || undefined)
 
   // ── Admin config: categories, currencies, management years ───
   const [categories,      setCategories]      = useState<CategoryOption[]>([])
@@ -816,13 +827,20 @@ export default function GestaoFinanceira() {
   )
 
   const [selectedKey, setSelectedKey] = useState('')
-  useEffect(() => { setSelectedKey('') }, [programId])
   useEffect(() => {
+    if (mode === 'embedded') return
+    setSelectedKey('')
+  }, [programId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (mode === 'embedded') {
+      if (propPlanoId) setSelectedKey(propPlanoId)
+      return
+    }
     if (planOptions.length === 0) return
     if (planOptions.some(p => p.key === selectedKey)) return
     setSelectedKey(planOptions[0].key)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planOptions])
+  }, [planOptions, propPlanoId])
 
   const selectedPlan = useMemo(
     () => planOptions.find(p => p.key === selectedKey) ?? null,
@@ -1145,38 +1163,40 @@ export default function GestaoFinanceira() {
   }, [selectedPlan, showToast])
 
   // ── Render ───────────────────────────────────────────────────
-  const noProgram = !programId
-  const noPlans   = !noProgram && !planosLoading && planOptions.length === 0
+  const noProgram = mode === 'embedded' ? false : !programId
+  const noPlans   = mode === 'embedded' ? false : (!noProgram && !planosLoading && planOptions.length === 0)
 
   return (
     <div className="gf-page">
       {/* Controls bar */}
-      <div className="gf-controls-bar">
-        {programs.length > 1 && (
-          <>
-            <label className="gf-label">Programa:</label>
-            <select
-              className="styled-select"
-              value={selProgId}
-              onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
-            >
-              {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </>
-        )}
-        <label className="gf-label">Plano de Acção:</label>
-        <select
-          className="styled-select"
-          value={selectedKey}
-          onChange={e => setSelectedKey(e.target.value)}
-          disabled={noProgram || noPlans}
-        >
-          {noProgram  ? <option value="">— selecciona um programa —</option>
-           : noPlans  ? <option value="">— sem planos disponíveis —</option>
-           : planOptions.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
-        </select>
-        <div className="gf-spacer" />
-      </div>
+      {mode === 'standalone' && (
+        <div className="gf-controls-bar">
+          {programs.length > 1 && (
+            <>
+              <label className="gf-label">Programa:</label>
+              <select
+                className="styled-select"
+                value={selProgId}
+                onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
+              >
+                {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </>
+          )}
+          <label className="gf-label">Plano de Acção:</label>
+          <select
+            className="styled-select"
+            value={selectedKey}
+            onChange={e => setSelectedKey(e.target.value)}
+            disabled={noProgram || noPlans}
+          >
+            {noProgram  ? <option value="">— selecciona um programa —</option>
+             : noPlans  ? <option value="">— sem planos disponíveis —</option>
+             : planOptions.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+          </select>
+          <div className="gf-spacer" />
+        </div>
+      )}
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
@@ -1192,7 +1212,7 @@ export default function GestaoFinanceira() {
           title="Sem planos de acção"
           description="Não existem planos de acção disponíveis para este programa."
         />
-      ) : !selectedPlan ? (
+      ) : (!selectedPlan && mode === 'standalone') ? (
         <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
           Selecciona um plano de acção.
         </div>
@@ -1213,50 +1233,97 @@ export default function GestaoFinanceira() {
             />
           </div>
 
-          {/* Tabs */}
-          <div className="gf-tabs">
-            {([['orcamento', 'Orçamento'], ['contratos', 'Contratos'], ['facturas', 'Facturas']] as [Tab, string][]).map(([t, lbl]) => (
-              <button key={t} className={`gf-tab${tab === t ? ' gf-tab--active' : ''}`}
-                onClick={() => setTab(t)}>{lbl}</button>
-            ))}
-          </div>
+          {mode === 'embedded' ? (
+            <div className="gf-stacked">
+              <section className="gf-stacked-section">
+                <h3 className="gf-stacked-title">Orçamento</h3>
+                <BudgetTab
+                  lines={draft.budget}
+                  setLines={setBudget}
+                  onDelete={deleteBudget}
+                  onSaveLine={saveBudgetLine}
+                  savedRows={rowSaved}
+                  readOnly={readOnly}
+                  categories={categories}
+                  currencies={currencies}
+                  defaultCurrency={defaultCurrency}
+                  managementYears={managementYears}
+                />
+              </section>
+              <section className="gf-stacked-section">
+                <h3 className="gf-stacked-title">Contratos</h3>
+                <ContractsTab
+                  contracts={draft.contracts}
+                  invoices={draft.invoices}
+                  onEdit={openEditContract}
+                  onDelete={deleteContract}
+                  onNew={openNewContract}
+                  currencies={currencies}
+                  readOnly={readOnly}
+                />
+              </section>
+              <section className="gf-stacked-section">
+                <h3 className="gf-stacked-title">Facturas</h3>
+                <InvoicesTab
+                  invoices={draft.invoices}
+                  onNew={openNewInvoice}
+                  onEdit={openEditInvoice}
+                  onDelete={deleteInvoice}
+                  onDuplicate={duplicateInvoice}
+                  contracts={draft.contracts}
+                  currencies={currencies}
+                  readOnly={readOnly}
+                />
+              </section>
+            </div>
+          ) : (
+            <>
+              {/* Tabs */}
+              <div className="gf-tabs">
+                {([['orcamento', 'Orçamento'], ['contratos', 'Contratos'], ['facturas', 'Facturas']] as [Tab, string][]).map(([t, lbl]) => (
+                  <button key={t} className={`gf-tab${tab === t ? ' gf-tab--active' : ''}`}
+                    onClick={() => setTab(t)}>{lbl}</button>
+                ))}
+              </div>
 
-          {tab === 'orcamento' && (
-            <BudgetTab
-              lines={draft.budget}
-              setLines={setBudget}
-              onDelete={deleteBudget}
-              onSaveLine={saveBudgetLine}
-              savedRows={rowSaved}
-              readOnly={readOnly}
-              categories={categories}
-              currencies={currencies}
-              defaultCurrency={defaultCurrency}
-              managementYears={managementYears}
-            />
-          )}
-          {tab === 'contratos' && (
-            <ContractsTab
-              contracts={draft.contracts}
-              invoices={draft.invoices}
-              onEdit={openEditContract}
-              onDelete={deleteContract}
-              onNew={openNewContract}
-              currencies={currencies}
-              readOnly={readOnly}
-            />
-          )}
-          {tab === 'facturas' && (
-            <InvoicesTab
-              invoices={draft.invoices}
-              onNew={openNewInvoice}
-              onEdit={openEditInvoice}
-              onDelete={deleteInvoice}
-              onDuplicate={duplicateInvoice}
-              contracts={draft.contracts}
-              currencies={currencies}
-              readOnly={readOnly}
-            />
+              {tab === 'orcamento' && (
+                <BudgetTab
+                  lines={draft.budget}
+                  setLines={setBudget}
+                  onDelete={deleteBudget}
+                  onSaveLine={saveBudgetLine}
+                  savedRows={rowSaved}
+                  readOnly={readOnly}
+                  categories={categories}
+                  currencies={currencies}
+                  defaultCurrency={defaultCurrency}
+                  managementYears={managementYears}
+                />
+              )}
+              {tab === 'contratos' && (
+                <ContractsTab
+                  contracts={draft.contracts}
+                  invoices={draft.invoices}
+                  onEdit={openEditContract}
+                  onDelete={deleteContract}
+                  onNew={openNewContract}
+                  currencies={currencies}
+                  readOnly={readOnly}
+                />
+              )}
+              {tab === 'facturas' && (
+                <InvoicesTab
+                  invoices={draft.invoices}
+                  onNew={openNewInvoice}
+                  onEdit={openEditInvoice}
+                  onDelete={deleteInvoice}
+                  onDuplicate={duplicateInvoice}
+                  contracts={draft.contracts}
+                  currencies={currencies}
+                  readOnly={readOnly}
+                />
+              )}
+            </>
           )}
         </>
       )}

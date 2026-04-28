@@ -10,6 +10,8 @@ import Spinner from '../../components/Spinner/Spinner'
 import VisaoExecutiva from './VisaoExecutiva'
 import GestaoPDS from '../GestaoPDS/GestaoPDS'
 import GestaoRiscos from '../GestaoRiscos/GestaoRiscos'
+import GestaoRecursos from '../GestaoRecursos/GestaoRecursos'
+import GestaoFinanceira from '../GestaoFinanceira/GestaoFinanceira'
 
 const TABS = [
   { id: 'visao',        label: 'Visão Executiva' },
@@ -173,8 +175,20 @@ export default function PlanoPage() {
             programId={plano.program_id ?? undefined}
           />
         )}
-        {activeTab === 'financeira'  && <PlaceholderTab label="Financeira" />}
-        {activeTab === 'recursos'    && <PlaceholderTab label="Recursos" />}
+        {activeTab === 'financeira' && planoId && (
+          <GestaoFinanceira
+            mode="embedded"
+            planoId={planoId}
+            programId={plano.program_id ?? undefined}
+          />
+        )}
+        {activeTab === 'recursos' && planoId && (
+          <GestaoRecursos
+            mode="embedded"
+            planoId={planoId}
+            programId={plano.program_id ?? undefined}
+          />
+        )}
       </div>
     </div>
   )

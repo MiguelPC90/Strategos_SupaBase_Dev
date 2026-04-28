@@ -29,6 +29,28 @@
 
   .gf-spacer { flex: 1; }
 
+  /* ── Stacked layout (embedded mode) ─────────────────────────── */
+  .gf-stacked {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .gf-stacked-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .gf-stacked-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    margin: 0;
+  }
+
   .gf-toast {
     font-size: 12px;
     color: var(--green);
