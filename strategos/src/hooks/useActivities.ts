@@ -4,6 +4,7 @@ import type { Activity } from '../types/index'
 
 interface ActivityFilters {
   program_id?: string
+  plano_id?: string
   n1?: string
   n2?: string
   owner?: string
@@ -32,7 +33,7 @@ function applyStatusCutoff(activity: Activity, cutoffDate: string): Activity {
 }
 
 export function useActivities(filters: ActivityFilters = {}): UseActivitiesResult {
-  const { program_id, n1, n2, owner, sponsor, status, cutoffDate } = filters
+  const { program_id, plano_id, n1, n2, owner, sponsor, status, cutoffDate } = filters
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -51,6 +52,7 @@ export function useActivities(filters: ActivityFilters = {}): UseActivitiesResul
       .order('sort_order', { ascending: true })
 
     if (program_id) query = query.eq('program_id', program_id)
+    if (plano_id)   query = query.eq('plano_id', plano_id)
     if (n1)         query = query.eq('n1', n1)
     if (n2)         query = query.eq('n2', n2)
     if (owner)      query = query.eq('owner', owner)
@@ -75,7 +77,7 @@ export function useActivities(filters: ActivityFilters = {}): UseActivitiesResul
 
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [program_id, n1, n2, owner, sponsor, status, cutoffDate, tick])
+  }, [program_id, plano_id, n1, n2, owner, sponsor, status, cutoffDate, tick])
 
   return { activities, loading, error, refetch }
 }

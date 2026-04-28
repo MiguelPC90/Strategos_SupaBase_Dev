@@ -743,14 +743,26 @@ function DependenciesEditor({
 }
 
 // ── Main component ─────────────────────────────────────────────
-export default function GestaoIniciativas() {
+interface GestaoIniciativasProps {
+  mode?: 'standalone' | 'embedded'
+  planoId?: string
+  programId?: string
+}
+
+export default function GestaoIniciativas({
+  mode = 'standalone',
+  planoId: propPlanoId,
+  programId: propProgramId,
+}: GestaoIniciativasProps = {}) {
   const { showToast } = useToast()
   const { filters } = useFilters()
   const [selProgId, setSelProgId] = useState<string | null>(null)
   const readOnly = !useCanEditCurrent('gestao-iniciativas')
 
   const programs = useAccessiblePrograms('gestao-iniciativas')
-  const { activities: rawActivities, loading, refetch } = useActivities({})
+  const { activities: rawActivities, loading, refetch } = useActivities(
+    mode === 'embedded' ? { plano_id: propPlanoId } : {}
+  )
   const { people } = usePeople()
   const { eixos: dbEixos } = useEixos(selProgId ?? undefined)
   const { planos: dbPlanos, refetch: refetchPlanos } = usePlanos(selProgId ?? undefined)
@@ -763,12 +775,19 @@ export default function GestaoIniciativas() {
 
   // Filter client-side: match by program_id (new data) or by n0 name (legacy data with null program_id)
   const activities = useMemo(() => {
+    if (mode === 'embedded') return rawActivities
     if (!selProgId || !program) return rawActivities
     return rawActivities.filter(a =>
       a.program_id === selProgId ||
       (!a.program_id && a.n0 === program.name)
     )
-  }, [rawActivities, selProgId, program])
+  }, [mode, rawActivities, selProgId, program])
+
+  // Current plano metadata (for pre-filling n1/n2 when opening new activity in embedded mode)
+  const currentPlano = useMemo(
+    () => mode === 'embedded' ? dbPlanos.find(p => p.id === propPlanoId) : undefined,
+    [mode, dbPlanos, propPlanoId]
+  )
 
   // Eixo and plano names from DB tables (Panel dropdowns)
   const eixos = useMemo(() => dbEixos.map(e => e.name), [dbEixos])
@@ -867,14 +886,15 @@ export default function GestaoIniciativas() {
     return () => document.removeEventListener('click', handler)
   }, [menuId])
 
-  // Initialize selProgId from global filter or first available program
+  // Sync selProgId: from prop when embedded, from filter/first-program when standalone
   useEffect(() => {
+    if (mode === 'embedded') { if (propProgramId) setSelProgId(propProgramId); return }
     if (programs.length === 0) return
     setSelProgId(prev => {
       if (prev && programs.some(p => p.id === prev)) return prev
       return filters.programIds[0] ?? programs[0].id
     })
-  }, [programs, filters.programIds])
+  }, [programs, filters.programIds, mode, propProgramId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Collapse ─────────────────────────────────────────────────
   const toggle = useCallback((key: string) => {
@@ -944,11 +964,16 @@ export default function GestaoIniciativas() {
         n5: sel.level >= 5 ? sel.n5 : '',
         owner: sel.owner, sponsor: sel.sponsor,
       }))
+    } else if (mode === 'embedded') {
+      const firstAct = activities[0]
+      const n1 = firstAct?.n1 ?? currentPlano?.eixo?.name ?? ''
+      const n2 = firstAct?.n2 ?? currentPlano?.name ?? ''
+      setPanelForm(blankForm(program?.name ?? '', { n1, n2 }))
     } else {
       setPanelForm(blankForm(program?.name ?? ''))
     }
     setPanelErrors({})
-  }, [selectedId, activities, program])
+  }, [selectedId, activities, program, mode, currentPlano])
 
   const closePanel = useCallback(() => { setPanelForm(null); setPanelErrors({}) }, [])
 
@@ -1355,13 +1380,14 @@ export default function GestaoIniciativas() {
 
   // ── Build table rows ─────────────────────────────────────────
   const rows: React.ReactNode[] = []
+  const iE = mode === 'embedded'
 
   for (const n1g of tree) {
-    const n1col = collapsed.has(n1g.key)
+    const n1col = !iE && collapsed.has(n1g.key)
     const n1leaves = n1g.all.filter(a => a.level === 4)
     const n1pct = rollupPct(n1leaves); const n1prev = rollupPctPrev(n1leaves, TODAY)
     const n1st  = rollupStatus(n1leaves, TODAY, delayThreshold); const n1dr = rollupDateRange(n1leaves)
-    rows.push(
+    if (!iE) rows.push(
       <tr key={n1g.key} className="gi-row-n1">
         <td>
           <div className="gi-name-cell" style={{ paddingLeft: 4 }}>
@@ -1377,13 +1403,13 @@ export default function GestaoIniciativas() {
     if (n1col) continue
 
     for (const n2g of n1g.n2s) {
-      const n2col = collapsed.has(n2g.key)
+      const n2col = !iE && collapsed.has(n2g.key)
       const n2leaves = n2g.all.filter(a => a.level === 4)
       const n2pct = rollupPct(n2leaves); const n2prev = rollupPctPrev(n2leaves, TODAY)
       const n2st  = rollupStatus(n2leaves, TODAY, delayThreshold); const n2dr = rollupDateRange(n2leaves)
       const n2Plano = dbPlanos.find(p => p.name === n2g.n2)
       const n2Owner = n2Plano?.owner || '—'
-      rows.push(
+      if (!iE) rows.push(
         <tr key={n2g.key} className="gi-row-n2">
           <td>
             <div className="gi-name-cell" style={{ paddingLeft: 20 }}>
@@ -1409,7 +1435,7 @@ export default function GestaoIniciativas() {
       )
       if (n2col) continue
 
-      rows.push(...leafRows(n2g.leafActs.filter(a => a.level !== 2), 36, 'n3'))
+      rows.push(...leafRows(n2g.leafActs.filter(a => a.level !== 2), iE ? 4 : 36, 'n3'))
 
       for (const n3g of n2g.n3s) {
         // True children = n4 groups + any leafActs that are NOT the level-3 representative itself
@@ -1417,7 +1443,7 @@ export default function GestaoIniciativas() {
         const n3HasChildren = n3g.n4s.length > 0 || n3ChildLeaves.length > 0
         if (!n3HasChildren) {
           // Leaf-only: the Macroactividade has no children — render as single leaf row
-          rows.push(...leafRows(n3g.leafActs, 36, 'n3'))
+          rows.push(...leafRows(n3g.leafActs, iE ? 4 : 36, 'n3'))
           continue
         }
         const n3col = collapsed.has(n3g.key)
@@ -1437,7 +1463,7 @@ export default function GestaoIniciativas() {
             onClick={n3Rep ? () => openPanel(n3Rep) : undefined}
           >
             <td>
-              <div className="gi-name-cell" style={{ paddingLeft: 36 }}>
+              <div className="gi-name-cell" style={{ paddingLeft: iE ? 4 : 36 }}>
                 <button
                   className="gi-toggle"
                   onClick={e => { e.stopPropagation(); toggle(n3g.key) }}
@@ -1466,13 +1492,13 @@ export default function GestaoIniciativas() {
         )
         if (n3col) continue
 
-        rows.push(...leafRows(n3ChildLeaves, 52, 'n4'))
+        rows.push(...leafRows(n3ChildLeaves, iE ? 20 : 52, 'n4'))
 
         for (const n4g of n3g.n4s) {
           const n4ChildLeaves = n4g.leafActs.filter(a => a.level !== 4)
           const n4HasChildren = n4g.n5s.length > 0 || n4ChildLeaves.length > 0
           if (!n4HasChildren) {
-            rows.push(...leafRows(n4g.leafActs, 52, 'n4'))
+            rows.push(...leafRows(n4g.leafActs, iE ? 20 : 52, 'n4'))
             continue
           }
           const n4col = collapsed.has(n4g.key)
@@ -1492,7 +1518,7 @@ export default function GestaoIniciativas() {
               onClick={n4Rep ? () => openPanel(n4Rep) : undefined}
             >
               <td>
-                <div className="gi-name-cell" style={{ paddingLeft: 52 }}>
+                <div className="gi-name-cell" style={{ paddingLeft: iE ? 20 : 52 }}>
                   <button
                     className="gi-toggle"
                     onClick={e => { e.stopPropagation(); toggle(n4g.key) }}
@@ -1521,13 +1547,13 @@ export default function GestaoIniciativas() {
           )
           if (n4col) continue
 
-          rows.push(...leafRows(n4ChildLeaves, 68, 'n5'))
+          rows.push(...leafRows(n4ChildLeaves, iE ? 36 : 68, 'n5'))
 
           for (const n5g of n4g.n5s) {
             const n5Leaves = n5g.acts.filter(a => a.level !== 5)
             if (n5Leaves.length === 0) {
               // Tarefa with no sub-tasks: single leaf row
-              rows.push(...leafRows(n5g.acts, 68, 'n5'))
+              rows.push(...leafRows(n5g.acts, iE ? 36 : 68, 'n5'))
             } else {
               const n5Rep  = n5g.acts.find(a => a.level === 5)
               const n5Sibs = n5Rep
@@ -1542,7 +1568,7 @@ export default function GestaoIniciativas() {
                   onClick={n5Rep ? () => openPanel(n5Rep) : undefined}
                 >
                   <td>
-                    <div className="gi-name-cell" style={{ paddingLeft: 68 }}>
+                    <div className="gi-name-cell" style={{ paddingLeft: iE ? 36 : 68 }}>
                       <span className="gi-name-text">{n5g.n5}</span>
                     </div>
                   </td>
@@ -1564,7 +1590,7 @@ export default function GestaoIniciativas() {
                   </td>
                 </tr>
               )
-              rows.push(...leafRows(n5Leaves, 84, 'n5'))
+              rows.push(...leafRows(n5Leaves, iE ? 52 : 84, 'n5'))
             }
           }
         }
@@ -1573,7 +1599,7 @@ export default function GestaoIniciativas() {
   }
 
   // ── Orphan planos (created without activities, not in tree) ───
-  {
+  if (!iE) {
     const renderedN2s = new Set(
       tree.flatMap(n1g => n1g.n2s.map(n2g => `${n1g.n1}|||${n2g.n2}`))
     )
@@ -1639,7 +1665,7 @@ export default function GestaoIniciativas() {
   return (
     <div className="gi-page">
       <div className="gi-controls-bar">
-        {programs.length > 1 && (
+        {mode === 'standalone' && programs.length > 1 && (
           <>
             <label className="gi-prog-label">Programa</label>
             <select
@@ -1677,10 +1703,12 @@ export default function GestaoIniciativas() {
         </div>
         {!readOnly && (
           <>
-            <button className="gi-btn gi-btn-secondary" onClick={handleOpenPlano} disabled={!selProgId}
-              title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
-              Novo Plano
-            </button>
+            {mode === 'standalone' && (
+              <button className="gi-btn gi-btn-secondary" onClick={handleOpenPlano} disabled={!selProgId}
+                title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
+                Novo Plano
+              </button>
+            )}
             <button className="gi-btn gi-btn-primary" onClick={openNew} disabled={!selProgId}
               title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
               Nova Actividade
@@ -1704,12 +1732,21 @@ export default function GestaoIniciativas() {
             <Spinner />
           </div>
         ) : !loading && activities.length === 0 ? (
-          <EmptyState
-            icon="list"
-            title="Sem planos ou actividades"
-            description="Cria um plano de acção para começar a gerir as actividades do programa."
-            {...(!readOnly && { actionLabel: '+ Novo Plano', onAction: handleOpenPlano })}
-          />
+          mode === 'embedded' ? (
+            <EmptyState
+              icon="list"
+              title="Sem actividades"
+              description="Clica em + Nova Actividade para começar a gerir as actividades deste plano."
+              {...(!readOnly && { actionLabel: '+ Nova Actividade', onAction: openNew })}
+            />
+          ) : (
+            <EmptyState
+              icon="list"
+              title="Sem planos ou actividades"
+              description="Cria um plano de acção para começar a gerir as actividades do programa."
+              {...(!readOnly && { actionLabel: '+ Novo Plano', onAction: handleOpenPlano })}
+            />
+          )
         ) : (
           <>
             {searchQuery && searchFilteredActs.length === 0 ? (

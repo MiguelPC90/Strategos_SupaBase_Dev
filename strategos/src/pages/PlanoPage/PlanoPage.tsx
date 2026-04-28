@@ -12,6 +12,7 @@ import GestaoPDS from '../GestaoPDS/GestaoPDS'
 import GestaoRiscos from '../GestaoRiscos/GestaoRiscos'
 import GestaoRecursos from '../GestaoRecursos/GestaoRecursos'
 import GestaoFinanceira from '../GestaoFinanceira/GestaoFinanceira'
+import GestaoIniciativas from '../GestaoIniciativas/GestaoIniciativas'
 
 const TABS = [
   { id: 'visao',        label: 'Visão Executiva' },
@@ -160,7 +161,13 @@ export default function PlanoPage() {
         {activeTab === 'visao' && planoId && (
           <VisaoExecutiva planoId={planoId} programId={plano.program_id} />
         )}
-        {activeTab === 'actividades' && <PlaceholderTab label="Actividades" />}
+        {activeTab === 'actividades' && planoId && (
+          <GestaoIniciativas
+            mode="embedded"
+            planoId={planoId}
+            programId={plano.program_id ?? undefined}
+          />
+        )}
         {activeTab === 'pds' && planoId && (
           <GestaoPDS
             mode="embedded"
