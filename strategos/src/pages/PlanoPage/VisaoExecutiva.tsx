@@ -1,13 +1,14 @@
 import './VisaoExecutiva.css'
 import { useMemo } from 'react'
-import KpiCard from '../../components/KpiCard/KpiCard'
+import { ArrowUp, ArrowDown } from 'lucide-react'
 import { useActivities } from '../../hooks/useActivities'
 import { usePdsConsolidated } from '../../hooks/usePdsEntries'
 import { useRisks } from '../../hooks/useRisks'
 import { useFinancials } from '../../hooks/useFinancials'
 import { useSnapshots } from '../../hooks/useSnapshots'
 import { usePermissions } from '../../hooks/usePermissions'
-import { rollupStatus, rollupPct, leafStatus } from '../../lib/rollup'
+import { useDefaultCurrency } from '../../hooks/useDefaultCurrency'
+import { rollupPct, leafStatus } from '../../lib/rollup'
 import { DEFAULT_THRESHOLDS } from '../../lib/riskColors'
 import type { Activity } from '../../types/index'
 
@@ -18,14 +19,6 @@ interface VisaoExecutivaProps {
 
 type LeafWithMeta = Activity & { _status: string; _gap: number }
 
-function kpiStatusColor(s: string): 'green' | 'red' | 'amber' | 'blue' | 'text' {
-  if (s === 'Concluída') return 'blue'
-  if (s === 'Em dia')    return 'green'
-  if (s === 'Em risco')  return 'amber'
-  if (s === 'Em atraso') return 'red'
-  return 'text'
-}
-
 function statusBadgeClass(s: string): string {
   if (s === 'Em atraso') return 've-badge-late'
   if (s === 'Em risco')  return 've-badge-risk'
@@ -34,29 +27,41 @@ function statusBadgeClass(s: string): string {
   return ''
 }
 
-function fmtEur(v: number): string {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)} M€`
-  if (v >= 1_000)     return `${(v / 1_000).toFixed(0)} k€`
-  return `${v.toFixed(0)} €`
+function fmtCur(v: number, sym: string): string {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)} M${sym}`
+  if (v >= 1_000)     return `${(v / 1_000).toFixed(0)} k${sym}`
+  return `${v.toFixed(0)} ${sym}`
 }
 
 function TrendNode({ delta, unit }: { delta: number | null; unit: string }) {
   if (delta === null) return null
-  if (Math.abs(delta) < 0.05) return <span className="ve-trend-flat">— sem alteração</span>
-  const sign = delta > 0 ? '▲' : '▼'
-  const cls  = delta > 0 ? 've-trend-up' : 've-trend-down'
-  return <span className={cls}>{sign} {Math.abs(delta).toFixed(1)}{unit}</span>
+  if (Math.abs(delta) < 0.05) return <span className="ve-trend-flat">sem alteração</span>
+  if (delta > 0) {
+    return (
+      <span className="ve-trend-up">
+        <ArrowUp size={10} strokeWidth={2.5} />
+        {Math.abs(delta).toFixed(1)}{unit}
+      </span>
+    )
+  }
+  return (
+    <span className="ve-trend-down">
+      <ArrowDown size={10} strokeWidth={2.5} />
+      {Math.abs(delta).toFixed(1)}{unit}
+    </span>
+  )
 }
 
 export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaProps) {
   const today = useMemo(() => new Date().toISOString().split('T')[0], [])
 
-  const { activities, loading: actLoading }   = useActivities({ program_id: programId ?? undefined })
-  const { items: pdsItems, loading: pdsLoading } = usePdsConsolidated(planoId)
-  const { risks, loading: risksLoading }      = useRisks(programId ?? undefined)
+  const { activities, loading: actLoading }        = useActivities({ program_id: programId ?? undefined })
+  const { items: pdsItems, loading: pdsLoading }   = usePdsConsolidated(planoId)
+  const { risks, loading: risksLoading }           = useRisks(programId ?? undefined)
   const { budgetLines, invoices, loading: finLoading } = useFinancials(programId ?? undefined)
-  const { snapshots }                         = useSnapshots(programId ?? undefined)
-  const { canViewCosts }                      = usePermissions()
+  const { snapshots }                              = useSnapshots(programId ?? undefined)
+  const { canViewCosts }                           = usePermissions()
+  const { symbol: currSymbol }                     = useDefaultCurrency()
 
   const loading = actLoading || pdsLoading || risksLoading || finLoading
 
@@ -66,8 +71,19 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
     [activities, planoId],
   )
 
+  // ── Activity status counts ────────────────────────────────────
+  const actSummary = useMemo(() => {
+    const statuses = leaves.map(a => leafStatus(a, today))
+    return {
+      done:    statuses.filter(s => s === 'Concluída').length,
+      ontrack: statuses.filter(s => s === 'Em dia').length,
+      risk:    statuses.filter(s => s === 'Em risco').length,
+      late:    statuses.filter(s => s === 'Em atraso').length,
+      total:   leaves.length,
+    }
+  }, [leaves, today])
+
   // ── KPI calculations ─────────────────────────────────────────
-  const status  = useMemo(() => rollupStatus(leaves, today), [leaves, today])
   const execPct = useMemo(() => rollupPct(leaves), [leaves])
   const totalN  = leaves.length
   const doneN   = leaves.filter(a => a.pct >= 100).length
@@ -125,9 +141,9 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
   const showCosts = canViewCosts('gestao-financeira', programId ?? undefined)
 
   const { totalBudget, totalExecuted, totalCommitted } = useMemo(() => {
-    const lines   = budgetLines.filter(bl => bl.plano_id === planoId)
-    const invs    = invoices.filter(inv => inv.plano_id === planoId)
-    const budget  = lines.reduce((s, bl) =>
+    const lines  = budgetLines.filter(bl => bl.plano_id === planoId)
+    const invs   = invoices.filter(inv => inv.plano_id === planoId)
+    const budget = lines.reduce((s, bl) =>
       s + Object.values(bl.values ?? {}).reduce((x, v) => x + (v ?? 0), 0), 0)
     const executed  = invs.filter(i => i.status === 'Paga').reduce((s, i) => s + i.amount, 0)
     const committed = invs.filter(i => i.status === 'Aprovada' || i.status === 'Recebida')
@@ -135,45 +151,82 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
     return { totalBudget: budget, totalExecuted: executed, totalCommitted: committed }
   }, [budgetLines, invoices, planoId])
 
-  const execFinPct   = totalBudget > 0 ? (totalExecuted / totalBudget) * 100 : 0
-  const commitFinPct = totalBudget > 0 ? ((totalExecuted + totalCommitted) / totalBudget) * 100 : 0
-
   if (loading) {
     return <div className="ve-loading">A carregar...</div>
   }
 
   return (
     <div className="ve-wrap">
-      {/* Zone 2 — KPI Row */}
+      {/* Zone 2 — 3-card KPI summary */}
       <div className="ve-kpi-row">
-        <KpiCard
-          label="Status"
-          value={status}
-          color={kpiStatusColor(status)}
-        />
-        <KpiCard
-          label="% Execução"
-          value={`${execPct.toFixed(1)}%`}
-          trend={<TrendNode delta={execDelta} unit=" pp" />}
-          color="navy"
-        />
-        <KpiCard
-          label="Concretização"
-          value={`${concPct.toFixed(0)}%`}
-          subtitle={`${doneN} de ${totalN} actividades`}
-          trend={<TrendNode delta={concDelta} unit=" pp" />}
-          color="navy"
-        />
-        <KpiCard
-          label="Pontos Atenção"
-          value={openAttention.length}
-          color={openAttention.length > 0 ? 'amber' : 'text'}
-        />
-        <KpiCard
-          label="Riscos Críticos"
-          value={criticalRisks.length}
-          color={criticalRisks.length > 0 ? 'red' : 'text'}
-        />
+
+        {/* Card 1: Resumo Actividades */}
+        <div className="ve-summary-card">
+          <div className="ve-card-title">Resumo Actividades</div>
+          <div className="ve-act-summary">
+            <div className="ve-act-row">
+              <span className="ve-dot ve-dot-done" />
+              <span className="ve-act-lbl">Concluídas</span>
+              <span className="ve-act-cnt">{actSummary.done}</span>
+            </div>
+            <div className="ve-act-row">
+              <span className="ve-dot ve-dot-ontrack" />
+              <span className="ve-act-lbl">Em dia</span>
+              <span className="ve-act-cnt">{actSummary.ontrack}</span>
+            </div>
+            <div className="ve-act-row">
+              <span className="ve-dot ve-dot-risk" />
+              <span className="ve-act-lbl">Em risco</span>
+              <span className="ve-act-cnt">{actSummary.risk}</span>
+            </div>
+            <div className="ve-act-row">
+              <span className="ve-dot ve-dot-late" />
+              <span className="ve-act-lbl">Em atraso</span>
+              <span className="ve-act-cnt">{actSummary.late}</span>
+            </div>
+            <div className="ve-act-row ve-act-row-total">
+              <span className="ve-act-lbl">Total</span>
+              <span className="ve-act-cnt ve-act-cnt-total">{actSummary.total}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: KPI Execução */}
+        <div className="ve-summary-card">
+          <div className="ve-card-title">KPI Execução</div>
+          <div className="ve-exec-kpi">
+            <div className="ve-exec-big">
+              <span className="ve-exec-val">{execPct.toFixed(1)}%</span>
+              <span className="ve-exec-lbl">% Execução</span>
+              <TrendNode delta={execDelta} unit=" pp" />
+            </div>
+            <div className="ve-exec-sec">
+              <span className="ve-exec-sec-val">{concPct.toFixed(0)}%</span>
+              <span className="ve-exec-sec-lbl">Concretização</span>
+              <span className="ve-exec-sec-sub">{doneN} de {totalN}</span>
+              <TrendNode delta={concDelta} unit=" pp" />
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Atenção */}
+        <div className="ve-summary-card">
+          <div className="ve-card-title">Atenção</div>
+          <div className="ve-attn-kpis">
+            <div className="ve-attn-kpi">
+              <span className={`ve-attn-kpi-val${openAttention.length > 0 ? ' ve-color-amber' : ''}`}>
+                {openAttention.length}
+              </span>
+              <span className="ve-attn-kpi-lbl">Pontos de Atenção</span>
+            </div>
+            <div className="ve-attn-kpi">
+              <span className={`ve-attn-kpi-val${criticalRisks.length > 0 ? ' ve-color-red' : ''}`}>
+                {criticalRisks.length}
+              </span>
+              <span className="ve-attn-kpi-lbl">Riscos Críticos</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Zone 3 — Two-column */}
@@ -248,49 +301,30 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
         </div>
       </div>
 
-      {/* Zone 4 — Finance bar (hidden for ops/view_ops) */}
+      {/* Zone 4 — Finance mini cards (hidden for ops/view_ops) */}
       {showCosts && totalBudget > 0 && (
-        <div className="ve-panel ve-finance-panel">
-          <h3 className="ve-panel-title">Execução Financeira</h3>
-          <div className="ve-fin-summary">
-            <div className="ve-fin-stat">
-              <span className="ve-fin-lbl">Orçamento Total</span>
-              <span className="ve-fin-val">{fmtEur(totalBudget)}</span>
-            </div>
-            <div className="ve-fin-stat">
-              <span className="ve-fin-lbl">Executado</span>
-              <span className="ve-fin-val ve-fin-executed">{fmtEur(totalExecuted)}</span>
-            </div>
-            <div className="ve-fin-stat">
-              <span className="ve-fin-lbl">Comprometido</span>
-              <span className="ve-fin-val ve-fin-committed">{fmtEur(totalExecuted + totalCommitted)}</span>
-            </div>
-            <div className="ve-fin-stat">
-              <span className="ve-fin-lbl">Disponível</span>
-              <span className="ve-fin-val">{fmtEur(Math.max(0, totalBudget - totalExecuted - totalCommitted))}</span>
-            </div>
+        <div className="ve-fin-cards">
+          <div className="ve-fin-card">
+            <span className="ve-fin-card-lbl">Orçamento</span>
+            <span className="ve-fin-card-val">{fmtCur(totalBudget, currSymbol)}</span>
           </div>
-          <div className="ve-fin-bar-outer">
-            <div
-              className="ve-fin-bar-committed"
-              style={{ width: `${Math.min(100, commitFinPct)}%` }}
-            />
-            <div
-              className="ve-fin-bar-executed"
-              style={{ width: `${Math.min(100, execFinPct)}%` }}
-            />
-          </div>
-          <div className="ve-fin-bar-legend">
-            <span className="ve-fin-legend-item ve-fin-legend-exec">
-              <span className="ve-fin-legend-dot" />
-              Executado ({execFinPct.toFixed(0)}%)
+          <div className="ve-fin-card">
+            <span className="ve-fin-card-lbl">Comprometido</span>
+            <span className="ve-fin-card-val ve-fin-card-committed">
+              {fmtCur(totalExecuted + totalCommitted, currSymbol)}
             </span>
-            {totalCommitted > 0 && (
-              <span className="ve-fin-legend-item ve-fin-legend-commit">
-                <span className="ve-fin-legend-dot" />
-                Comprometido ({(commitFinPct - execFinPct).toFixed(0)} pp adicionais)
-              </span>
-            )}
+          </div>
+          <div className="ve-fin-card">
+            <span className="ve-fin-card-lbl">Executado</span>
+            <span className="ve-fin-card-val ve-fin-card-executed">
+              {fmtCur(totalExecuted, currSymbol)}
+            </span>
+          </div>
+          <div className="ve-fin-card">
+            <span className="ve-fin-card-lbl">Disponível</span>
+            <span className="ve-fin-card-val">
+              {fmtCur(Math.max(0, totalBudget - totalExecuted - totalCommitted), currSymbol)}
+            </span>
           </div>
         </div>
       )}

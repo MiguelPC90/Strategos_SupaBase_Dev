@@ -14,17 +14,179 @@
     color: var(--text3);
   }
 
-  /* ── KPI row ─────────────────────────────────────────────────── */
+  /* ── KPI row — 3 summary cards ───────────────────────────────── */
   .ve-kpi-row {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 12px;
   }
 
+  .ve-summary-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 180px;
+  }
+
+  .ve-card-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin: 0;
+  }
+
+  /* ── Activity summary rows (Card 1) ──────────────────────────── */
+  .ve-act-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .ve-act-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ve-act-row-total {
+    margin-top: 4px;
+    padding-top: 7px;
+    border-top: 1px solid var(--border);
+  }
+
+  .ve-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .ve-dot-done    { background: var(--blue);  }
+  .ve-dot-ontrack { background: var(--green); }
+  .ve-dot-risk    { background: var(--amber); }
+  .ve-dot-late    { background: var(--red);   }
+
+  .ve-act-lbl {
+    flex: 1;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .ve-act-cnt {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-width: 20px;
+    text-align: right;
+  }
+
+  .ve-act-cnt-total { font-size: 14px; }
+
+  /* ── Execution KPIs (Card 2) ─────────────────────────────────── */
+  .ve-exec-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .ve-exec-big {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .ve-exec-val {
+    font-size: 32px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .ve-exec-lbl {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  .ve-exec-sec {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .ve-exec-sec-val {
+    font-size: 20px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .ve-exec-sec-lbl { font-size: 11px; color: var(--text3); }
+  .ve-exec-sec-sub { font-size: 11px; color: var(--text3); }
+
   /* ── Trend nodes ─────────────────────────────────────────────── */
-  .ve-trend-up   { color: var(--green); font-size: 11px; }
-  .ve-trend-down { color: var(--red);   font-size: 11px; }
-  .ve-trend-flat { color: var(--text3); font-size: 11px; }
+  .ve-trend-up {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--green);
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  .ve-trend-down {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--red);
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  .ve-trend-flat {
+    display: inline-block;
+    color: var(--text3);
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  /* ── Attention KPIs (Card 3) ─────────────────────────────────── */
+  .ve-attn-kpis {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .ve-attn-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .ve-attn-kpi-val {
+    font-size: 32px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .ve-attn-kpi-lbl {
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .ve-color-amber { color: var(--amber); }
+  .ve-color-red   { color: var(--red);   }
 
   /* ── Two-column zone ─────────────────────────────────────────── */
   .ve-two-col {
@@ -73,7 +235,7 @@
   .ve-badge-ontrack { background: var(--green-bg); color: var(--green); }
   .ve-badge-done    { background: var(--blue-bg);  color: var(--blue);  }
 
-  /* ── Activity list ───────────────────────────────────────────── */
+  /* ── Activity list (Zone 3) ──────────────────────────────────── */
   .ve-act-list {
     list-style: none;
     padding: 0;
@@ -141,7 +303,7 @@
     color: var(--text3);
   }
 
-  /* ── Attention items ─────────────────────────────────────────── */
+  /* ── Attention items (Zone 3) ────────────────────────────────── */
   .ve-attn-sections {
     display: flex;
     flex-direction: column;
@@ -181,8 +343,8 @@
     margin-top: 4px;
   }
 
-  .ve-attn-risk .ve-attn-dot  { background: var(--red);   }
-  .ve-attn-pds  .ve-attn-dot  { background: var(--amber); }
+  .ve-attn-risk .ve-attn-dot { background: var(--red);   }
+  .ve-attn-pds  .ve-attn-dot { background: var(--amber); }
 
   .ve-attn-text {
     font-size: 13px;
@@ -190,25 +352,24 @@
     line-height: 1.4;
   }
 
-  /* ── Finance panel ───────────────────────────────────────────── */
-  .ve-finance-panel {
-    /* extends .ve-panel */
+  /* ── Finance mini cards (Zone 4) ─────────────────────────────── */
+  .ve-fin-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
   }
 
-  .ve-fin-summary {
-    display: flex;
-    gap: 32px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-  }
-
-  .ve-fin-stat {
+  .ve-fin-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+    padding: 14px 16px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
   }
 
-  .ve-fin-lbl {
+  .ve-fin-card-lbl {
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.04em;
@@ -216,66 +377,14 @@
     color: var(--text3);
   }
 
-  .ve-fin-val {
-    font-size: 18px;
+  .ve-fin-card-val {
+    font-size: 20px;
     font-weight: 600;
-    color: var(--text);
     font-family: var(--font-mono);
+    color: var(--text);
+    line-height: 1.2;
   }
 
-  .ve-fin-executed  { color: var(--green); }
-  .ve-fin-committed { color: var(--amber); }
-
-  .ve-fin-bar-outer {
-    position: relative;
-    height: 8px;
-    background: var(--bg3);
-    border-radius: 4px;
-    overflow: hidden;
-    margin-bottom: 8px;
-  }
-
-  .ve-fin-bar-committed {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    background: var(--amber-bg);
-    border-radius: 4px;
-    transition: width 0.4s;
-  }
-
-  .ve-fin-bar-executed {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    background: var(--green);
-    border-radius: 4px;
-    transition: width 0.4s;
-  }
-
-  .ve-fin-bar-legend {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .ve-fin-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    color: var(--text3);
-  }
-
-  .ve-fin-legend-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 2px;
-    flex-shrink: 0;
-  }
-
-  .ve-fin-legend-exec   .ve-fin-legend-dot { background: var(--green); }
-  .ve-fin-legend-commit .ve-fin-legend-dot { background: var(--amber-bg); border: 1px solid var(--amber); }
+  .ve-fin-card-executed  { color: var(--green); }
+  .ve-fin-card-committed { color: var(--amber); }
 }

@@ -1,10 +1,12 @@
 import './PlanoPage.css'
+import { useMemo } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
-import { Star } from 'lucide-react'
+import { Star, ChevronLeft } from 'lucide-react'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFavorites } from '../../hooks/useFavorites'
 import { usePermissions } from '../../hooks/usePermissions'
+import { useActivities } from '../../hooks/useActivities'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Spinner from '../../components/Spinner/Spinner'
 import VisaoExecutiva from './VisaoExecutiva'
@@ -13,6 +15,8 @@ import GestaoRiscos from '../GestaoRiscos/GestaoRiscos'
 import GestaoRecursos from '../GestaoRecursos/GestaoRecursos'
 import GestaoFinanceira from '../GestaoFinanceira/GestaoFinanceira'
 import GestaoIniciativas from '../GestaoIniciativas/GestaoIniciativas'
+import { rollupStatus } from '../../lib/rollup'
+import { statusColor } from '../../lib/tokens'
 
 const TABS = [
   { id: 'visao',        label: 'Visão Executiva' },
@@ -29,18 +33,20 @@ function isValidTab(t: string | null): t is TabId {
   return TABS.some(tab => tab.id === t)
 }
 
-function fmtDate(d: string | null | undefined): string {
+const PT_MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
+function fmtDateMY(d: string | null | undefined): string {
   if (!d) return ''
-  const [y, m, day] = d.split('-')
-  return `${day}/${m}/${y}`
+  const parts = d.split('-')
+  const m = parseInt(parts[1], 10)
+  return `${PT_MONTHS[m - 1]} ${parts[0]}`
 }
 
-function PlaceholderTab({ label }: { label: string }) {
-  return (
-    <div className="pp-empty-tab">
-      <span className="pp-empty-tab-label">{label} — em construção</span>
-    </div>
-  )
+function planoStatusKey(s: string): 'ontrack' | 'late' | 'done' | 'risk' {
+  if (s === 'Concluída') return 'done'
+  if (s === 'Em atraso') return 'late'
+  if (s === 'Em risco')  return 'risk'
+  return 'ontrack'
 }
 
 export default function PlanoPage() {
@@ -52,6 +58,11 @@ export default function PlanoPage() {
   const { programs, loading: programsLoading } = usePrograms()
   const { isFavorite, toggle: toggleFav, canAddMore } = useFavorites()
   const { canEdit } = usePermissions()
+
+  const today = useMemo(() => new Date().toISOString().split('T')[0], [])
+  const { activities: planActivities } = useActivities(planoId ? { plano_id: planoId } : {})
+  const planLeaves = useMemo(() => planActivities.filter(a => a.level === 4), [planActivities])
+  const planoStatus = useMemo(() => rollupStatus(planLeaves, today), [planLeaves, today])
 
   const loading = planosLoading || programsLoading
 
@@ -82,33 +93,49 @@ export default function PlanoPage() {
   }
 
   const eixoName = plano.eixo?.name ?? null
-  const dateLine = [fmtDate(plano.start_date), fmtDate(plano.end_date)].filter(Boolean).join(' → ')
+  const dateLine = [fmtDateMY(plano.start_date), fmtDateMY(plano.end_date)].filter(Boolean).join(' → ')
 
-  const isFav       = planoId ? isFavorite(planoId) : false
+  const isFav        = planoId ? isFavorite(planoId) : false
   const canEditPlano = canEdit('gestao-iniciativas', plano.program_id ?? undefined)
 
   return (
     <div className="pp-wrap">
       {/* Header */}
       <div className="pp-header">
-        <button className="pp-back-btn" onClick={() => navigate('/planos')}>
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          Planos
-        </button>
-
-        <div className="pp-breadcrumb">
-          {program?.name && <span>{program.name}</span>}
-          {eixoName && <><span className="pp-bc-sep">›</span><span>{eixoName}</span></>}
-          <span className="pp-bc-sep">›</span>
-          <span className="pp-bc-current">{plano.name}</span>
+        {/* Nav strip */}
+        <div className="pp-nav-strip">
+          <button className="pp-nav-back" onClick={() => navigate('/planos')}>
+            <ChevronLeft size={13} />
+            Voltar
+          </button>
+          {program?.name && (
+            <>
+              <span className="pp-nav-sep">·</span>
+              <button className="pp-nav-link" onClick={() => navigate('/planos')}>
+                {program.name}
+              </button>
+            </>
+          )}
+          {eixoName && (
+            <>
+              <span className="pp-nav-sep">›</span>
+              <span className="pp-nav-crumb">{eixoName}</span>
+            </>
+          )}
+          <span className="pp-nav-sep">›</span>
+          <span className="pp-nav-current">{plano.name}</span>
         </div>
 
         <div className="pp-title-row">
           <div className="pp-title-left">
-            <h1 className="pp-title">{plano.name}</h1>
-            <span className="pp-code">{plano.code}</span>
+            <div className="pp-title-line">
+              <span
+                className="pp-status-dot"
+                style={{ backgroundColor: statusColor(planoStatusKey(planoStatus)) }}
+              />
+              <h1 className="pp-title">{plano.name}</h1>
+              <span className="pp-code">{plano.code}</span>
+            </div>
           </div>
           <div className="pp-header-actions">
             {canEditPlano && (
