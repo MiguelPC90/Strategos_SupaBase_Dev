@@ -103,7 +103,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
     const sevenDaysAgo = new Date(today)
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
     const cutoff = sevenDaysAgo.toISOString().split('T')[0]
-    const prev = [...planoSnaps].reverse().find(s => s.snap_date <= cutoff)
+    const prev = [...planoSnaps].reverse().find(s => s.snap_date.slice(0, 10) <= cutoff)
 
     if (!prev || !latest.by_n2 || !prev.by_n2) return nullResult
 
@@ -180,7 +180,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
               <div className="ve-contagem-kpi-label">Concluídas</div>
               {delta7Conc !== null && (
                 <div className={`ve-contagem-kpi-delta ${delta7Conc > 0 ? 'good' : delta7Conc < 0 ? 'bad' : 'neutral'}`}>
-                  {delta7Conc >= 0 ? '+' : ''}{delta7Conc} vs 7d
+                  {delta7Conc > 0 ? '+' : ''}{delta7Conc} vs 7d
                 </div>
               )}
             </div>
@@ -192,7 +192,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
               <div className="ve-contagem-kpi-label">Em Dia</div>
               {delta7EmDia !== null && (
                 <div className={`ve-contagem-kpi-delta ${delta7EmDia > 0 ? 'neutral' : delta7EmDia < 0 ? 'bad' : 'neutral'}`}>
-                  {delta7EmDia >= 0 ? '+' : ''}{delta7EmDia} vs 7d
+                  {delta7EmDia > 0 ? '+' : ''}{delta7EmDia} vs 7d
                 </div>
               )}
             </div>
@@ -204,7 +204,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
               <div className="ve-contagem-kpi-label">Em Risco</div>
               {delta7EmRisco !== null && (
                 <div className={`ve-contagem-kpi-delta ${delta7EmRisco > 0 ? 'bad' : delta7EmRisco < 0 ? 'good' : 'neutral'}`}>
-                  {delta7EmRisco >= 0 ? '+' : ''}{delta7EmRisco} vs 7d
+                  {delta7EmRisco > 0 ? '+' : ''}{delta7EmRisco} vs 7d
                 </div>
               )}
             </div>
@@ -216,7 +216,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
               <div className="ve-contagem-kpi-label">Em Atraso</div>
               {delta7EmAtraso !== null && (
                 <div className={`ve-contagem-kpi-delta ${delta7EmAtraso > 0 ? 'bad' : delta7EmAtraso < 0 ? 'good' : 'neutral'}`}>
-                  {delta7EmAtraso >= 0 ? '+' : ''}{delta7EmAtraso} vs 7d
+                  {delta7EmAtraso > 0 ? '+' : ''}{delta7EmAtraso} vs 7d
                 </div>
               )}
             </div>
@@ -227,44 +227,51 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
         <Card title="Execução">
           <div className="ve-exec-kpi-grid">
             <div className="ve-exec-kpi">
-              <div className="ve-exec-kpi-label">Grau de Execução</div>
               <div className="ve-exec-kpi-value-row">
                 <span className="ve-exec-kpi-value">{execPct.toFixed(1)}%</span>
-                {execDelta !== null && Math.abs(execDelta) >= 0.05 && (
-                  <span className={`ve-exec-kpi-delta ${execDelta > 0 ? 'positive' : 'negative'}`}>
-                    {execDelta > 0 ? '▲' : '▼'}{Math.abs(execDelta).toFixed(1)}pp
-                  </span>
+                {execDelta !== null && (
+                  Math.abs(execDelta) < 0.05
+                    ? <span className="ve-exec-kpi-delta neutral">0pp</span>
+                    : <span className={`ve-exec-kpi-delta ${execDelta > 0 ? 'positive' : 'negative'}`}>
+                        {execDelta > 0 ? '▲' : '▼'}{Math.abs(execDelta).toFixed(1)}pp
+                      </span>
                 )}
               </div>
               <div className="ve-exec-kpi-target">Objectivo: {execTarget.toFixed(1)}%</div>
+              <div className="ve-exec-kpi-label">Grau de Execução</div>
             </div>
             <div className="ve-exec-kpi">
-              <div className="ve-exec-kpi-label">Concretização Geral</div>
               <div className="ve-exec-kpi-value-row">
                 <span className="ve-exec-kpi-value">{concGeralVal.toFixed(1)}%</span>
-                {concGeralDelta !== null && Math.abs(concGeralDelta) >= 0.05 && (
-                  <span className={`ve-exec-kpi-delta ${concGeralDelta > 0 ? 'positive' : 'negative'}`}>
-                    {concGeralDelta > 0 ? '▲' : '▼'}{Math.abs(concGeralDelta).toFixed(1)}pp
-                  </span>
+                {concGeralDelta !== null && (
+                  Math.abs(concGeralDelta) < 0.05
+                    ? <span className="ve-exec-kpi-delta neutral">0pp</span>
+                    : <span className={`ve-exec-kpi-delta ${concGeralDelta > 0 ? 'positive' : 'negative'}`}>
+                        {concGeralDelta > 0 ? '▲' : '▼'}{Math.abs(concGeralDelta).toFixed(1)}pp
+                      </span>
                 )}
               </div>
-              {concGeralTarget !== null && (
-                <div className="ve-exec-kpi-target">Objectivo: {concGeralTarget.toFixed(1)}%</div>
-              )}
+              {concGeralTarget !== null
+                ? <div className="ve-exec-kpi-target">Objectivo: {concGeralTarget.toFixed(1)}%</div>
+                : <div className="ve-exec-kpi-target" />
+              }
+              <div className="ve-exec-kpi-label">Concretização Geral</div>
             </div>
             <div className="ve-exec-kpi">
-              <div className="ve-exec-kpi-label">Concretização à Data</div>
               <div className="ve-exec-kpi-value-row">
                 <span className="ve-exec-kpi-value">
                   {concDataVal !== null ? `${concDataVal.toFixed(1)}%` : '—'}
                 </span>
-                {concDataDelta !== null && Math.abs(concDataDelta) >= 0.05 && (
-                  <span className={`ve-exec-kpi-delta ${concDataDelta > 0 ? 'positive' : 'negative'}`}>
-                    {concDataDelta > 0 ? '▲' : '▼'}{Math.abs(concDataDelta).toFixed(1)}pp
-                  </span>
+                {concDataDelta !== null && (
+                  Math.abs(concDataDelta) < 0.05
+                    ? <span className="ve-exec-kpi-delta neutral">0pp</span>
+                    : <span className={`ve-exec-kpi-delta ${concDataDelta > 0 ? 'positive' : 'negative'}`}>
+                        {concDataDelta > 0 ? '▲' : '▼'}{Math.abs(concDataDelta).toFixed(1)}pp
+                      </span>
                 )}
               </div>
               <div className="ve-exec-kpi-target">Objectivo: 100%</div>
+              <div className="ve-exec-kpi-label">Concretização à Data</div>
             </div>
           </div>
         </Card>
