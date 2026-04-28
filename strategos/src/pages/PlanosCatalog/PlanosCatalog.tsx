@@ -261,19 +261,19 @@ export default function PlanosCatalog() {
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        <div className="pc-ms" style={{ width: 160 }}>
+        <div className="pc-ms" style={{ width: 220 }}>
           <MultiSelect label="Programa"  options={progOptions}    value={progFilter}    onChange={setProgFilter} />
         </div>
-        <div className="pc-ms" style={{ width: 140 }}>
+        <div className="pc-ms" style={{ width: 200 }}>
           <MultiSelect label="Eixo"      options={eixoOptions}    value={eixoFilter}    onChange={setEixoFilter} />
         </div>
-        <div className="pc-ms" style={{ width: 140 }}>
+        <div className="pc-ms" style={{ width: 160 }}>
           <MultiSelect label="Status"    options={statusOptions}  value={statusFilter}  onChange={setStatusFilter} />
         </div>
-        <div className="pc-ms" style={{ width: 140 }}>
+        <div className="pc-ms" style={{ width: 200 }}>
           <MultiSelect label="Owner"     options={ownerOptions}   value={ownerFilter}   onChange={setOwnerFilter} />
         </div>
-        <div className="pc-ms" style={{ width: 140 }}>
+        <div className="pc-ms" style={{ width: 200 }}>
           <MultiSelect label="Sponsor"   options={sponsorOptions} value={sponsorFilter} onChange={setSponsorFilter} />
         </div>
         <button
