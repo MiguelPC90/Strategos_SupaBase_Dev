@@ -218,7 +218,19 @@ function RowMenu({ riskId, openId, onOpen, onEdit, onDuplicate, onDelete }: RowM
 }
 
 // ── Main component ─────────────────────────────────────────────
-export default function GestaoRiscos() {
+interface GestaoRiscosProps {
+  mode?: 'standalone' | 'embedded'
+  /** UUID of the plano — required when mode='embedded' */
+  planoId?: string
+  /** program_id of the plano — passed to avoid an extra lookup */
+  programId?: string
+}
+
+export default function GestaoRiscos({
+  mode = 'standalone',
+  planoId: propPlanoId,
+  programId: propProgramId,
+}: GestaoRiscosProps = {}) {
   const { filters }  = useFilters()
   const programs = useAccessiblePrograms('gestao-riscos')
   const { showToast } = useToast()
@@ -248,12 +260,13 @@ export default function GestaoRiscos() {
 
   // Initialise from global filter or first available program (once)
   useEffect(() => {
+    if (mode === 'embedded') return
     if (selProgId) return
     const init = filters.programIds[0] ?? programs[0]?.id
     if (init) setSelProgId(init)
   }, [programs]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const programId = selProgId || undefined
+  const programId = mode === 'embedded' ? propProgramId : (selProgId || undefined)
 
   const { planos, loading: planosLoading } = usePlanos(programId)
   const { risks, loading: risksLoading, refetch } = useRisks(programId)
@@ -280,16 +293,23 @@ export default function GestaoRiscos() {
 
   const [selectedKey, setSelectedKey] = useState<string>('')
 
-  // Reset plan when program changes
-  useEffect(() => { setSelectedKey('') }, [programId])
+  // Reset plan when program changes (standalone only)
+  useEffect(() => {
+    if (mode === 'embedded') return
+    setSelectedKey('')
+  }, [programId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-select first plan once options load (or when program changes)
   useEffect(() => {
+    if (mode === 'embedded') {
+      setSelectedKey(propPlanoId ?? '')
+      return
+    }
     if (planOptions.length === 0) return
     if (planOptions.some(p => p.key === selectedKey)) return
     setSelectedKey(planOptions[0].key)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planOptions])
+  }, [planOptions, propPlanoId, mode])
 
   const selectedPlan = useMemo(
     () => planOptions.find(p => p.key === selectedKey) ?? null,
@@ -298,9 +318,10 @@ export default function GestaoRiscos() {
 
   // Filter risks for selected plan via plano_id
   const planRisks = useMemo<Risk[]>(() => {
-    if (!selectedPlan) return []
-    return risks.filter(r => r.plano_id === selectedPlan.key)
-  }, [risks, selectedPlan])
+    const key = mode === 'embedded' ? propPlanoId : selectedPlan?.key
+    if (!key) return []
+    return risks.filter(r => r.plano_id === key)
+  }, [risks, selectedPlan, mode, propPlanoId])
 
   // ── Menu state ───────────────────────────────────────────────
   const [menuId, setMenuId] = useState<string | null>(null)
@@ -413,46 +434,61 @@ export default function GestaoRiscos() {
   }, [refetch])
 
   // ── Derived flags ─────────────────────────────────────────────
-  const noProgram = !programId
-  const noPlans   = !noProgram && !planosLoading && planOptions.length === 0
+  const noProgram = mode === 'embedded' ? false : !programId
+  const noPlans   = mode === 'embedded' ? false : (!noProgram && !planosLoading && planOptions.length === 0)
 
   return (
     <div className="gr-page">
-      {/* Controls bar */}
-      <div className="gr-controls-bar">
-        {programs.length > 1 && (
-          <>
-            <label className="gr-label">Programa:</label>
-            <select
-              className="styled-select"
-              value={selProgId}
-              onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
-            >
-              {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </>
-        )}
-        <label className="gr-label">Plano de Acção:</label>
-        <select
-          className="styled-select"
-          value={selectedKey}
-          onChange={e => setSelectedKey(e.target.value)}
-          disabled={noProgram || noPlans}
-        >
-          {noProgram ? (
-            <option value="">— selecciona um programa —</option>
-          ) : noPlans ? (
-            <option value="">— sem planos disponíveis —</option>
-          ) : (
-            planOptions.map(p => (
-              <option key={p.key} value={p.key}>{p.label}</option>
-            ))
+      {/* Controls bar — standalone only */}
+      {mode === 'standalone' && (
+        <div className="gr-controls-bar">
+          {programs.length > 1 && (
+            <>
+              <label className="gr-label">Programa:</label>
+              <select
+                className="styled-select"
+                value={selProgId}
+                onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
+              >
+                {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </>
           )}
-        </select>
+          <label className="gr-label">Plano de Acção:</label>
+          <select
+            className="styled-select"
+            value={selectedKey}
+            onChange={e => setSelectedKey(e.target.value)}
+            disabled={noProgram || noPlans}
+          >
+            {noProgram ? (
+              <option value="">— selecciona um programa —</option>
+            ) : noPlans ? (
+              <option value="">— sem planos disponíveis —</option>
+            ) : (
+              planOptions.map(p => (
+                <option key={p.key} value={p.key}>{p.label}</option>
+              ))
+            )}
+          </select>
 
-        <div className="gr-spacer" />
+          <div className="gr-spacer" />
 
-        {!readOnly && (
+          {!readOnly && (
+            <button
+              className="gr-btn gr-btn-primary"
+              onClick={openNew}
+              disabled={!selectedPlan}
+            >
+              Novo Risco
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Embedded action bar */}
+      {mode === 'embedded' && !readOnly && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
           <button
             className="gr-btn gr-btn-primary"
             onClick={openNew}
@@ -460,8 +496,8 @@ export default function GestaoRiscos() {
           >
             Novo Risco
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Risk table */}
       <Card title="Riscos">
@@ -477,7 +513,7 @@ export default function GestaoRiscos() {
           <div className="gr-empty">
             Nenhum plano de acção disponível para este programa.
           </div>
-        ) : !selectedPlan ? (
+        ) : (!selectedPlan && mode === 'standalone') ? (
           <div className="gr-empty">
             Seleccione um plano para gerir riscos.
           </div>

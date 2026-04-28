@@ -273,7 +273,19 @@ function PdsSection({
 }
 
 // ── Main component ─────────────────────────────────────────────
-export default function GestaoPDS() {
+interface GestaoPDSProps {
+  mode?: 'standalone' | 'embedded'
+  /** UUID of the plano — required when mode='embedded' */
+  planoId?: string
+  /** program_id of the plano — passed to avoid an extra lookup */
+  programId?: string
+}
+
+export default function GestaoPDS({
+  mode = 'standalone',
+  planoId: propPlanoId,
+  programId: propProgramId,
+}: GestaoPDSProps = {}) {
   const { showToast } = useToast()
   const { filters }  = useFilters()
   const programs = useAccessiblePrograms('gestao-pds')
@@ -281,12 +293,13 @@ export default function GestaoPDS() {
   const [selProgId, setSelProgId] = useState<string>('')
 
   useEffect(() => {
+    if (mode === 'embedded') return
     if (selProgId) return
     const init = filters.programIds[0] ?? programs[0]?.id
     if (init) setSelProgId(init)
   }, [programs]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const programId = selProgId || undefined
+  const programId = mode === 'embedded' ? propProgramId : (selProgId || undefined)
   const { planos, loading: planosLoading } = usePlanos(programId)
   const {
     entries,
@@ -316,14 +329,21 @@ export default function GestaoPDS() {
 
   const [selectedKey, setSelectedKey] = useState<string>('')
 
-  useEffect(() => { setSelectedKey('') }, [programId])
+  useEffect(() => {
+    if (mode === 'embedded') return
+    setSelectedKey('')
+  }, [programId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (mode === 'embedded') {
+      setSelectedKey(propPlanoId ?? '')
+      return
+    }
     if (planOptions.length === 0) return
     if (planOptions.some(p => p.key === selectedKey)) return
     setSelectedKey(planOptions[0].key)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planOptions])
+  }, [planOptions, propPlanoId, mode])
 
   const selectedPlan = useMemo(
     () => planOptions.find(p => p.key === selectedKey) ?? null,
@@ -565,7 +585,7 @@ export default function GestaoPDS() {
       const { error } = await supabase
         .from('pds_entries')
         .insert({
-          program_id: selProgId,
+          program_id: programId ?? null,
           plano_id:   selectedPlan.key,
           n0:         selectedPlan.n0,
           n1:         selectedPlan.n1,
@@ -586,8 +606,9 @@ export default function GestaoPDS() {
       refetchEntries()
       refetchConsolidated()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    addModal, selectedPlan, selectedKey, selProgId,
+    addModal, selectedPlan, selectedKey, programId,
     entries, newItemText, newItemDate, newItemStatus,
     refetchEntries, refetchConsolidated, showToast,
   ])
@@ -606,46 +627,48 @@ export default function GestaoPDS() {
     onEditCancel: cancelEdit,
   }
 
-  const noProgram      = !programId
-  const noPlans        = !noProgram && !planosLoading && planOptions.length === 0
+  const noProgram      = mode === 'embedded' ? false : !programId
+  const noPlans        = mode === 'embedded' ? false : (!noProgram && !planosLoading && planOptions.length === 0)
   const contentLoading = entriesLoading || planosLoading || (!!selectedKey && consolidatedLoading)
 
   return (
     <div className="pds-page">
-      {/* Controls bar */}
-      <div className="pds-controls-bar">
-        {programs.length > 1 && (
-          <>
-            <label className="pds-label">Programa:</label>
-            <select
-              className="styled-select"
-              value={selProgId}
-              onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
-            >
-              {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </>
-        )}
-        <label className="pds-label">Plano de Acção:</label>
-        <select
-          className="styled-select"
-          value={selectedKey}
-          onChange={e => setSelectedKey(e.target.value)}
-          disabled={noProgram || noPlans}
-        >
-          {noProgram ? (
-            <option value="">— selecciona um programa —</option>
-          ) : noPlans ? (
-            <option value="">— sem planos disponíveis —</option>
-          ) : (
-            planOptions.map(p => (
-              <option key={p.key} value={p.key}>{p.label}</option>
-            ))
+      {/* Controls bar — standalone only */}
+      {mode === 'standalone' && (
+        <div className="pds-controls-bar">
+          {programs.length > 1 && (
+            <>
+              <label className="pds-label">Programa:</label>
+              <select
+                className="styled-select"
+                value={selProgId}
+                onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
+              >
+                {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </>
           )}
-        </select>
+          <label className="pds-label">Plano de Acção:</label>
+          <select
+            className="styled-select"
+            value={selectedKey}
+            onChange={e => setSelectedKey(e.target.value)}
+            disabled={noProgram || noPlans}
+          >
+            {noProgram ? (
+              <option value="">— selecciona um programa —</option>
+            ) : noPlans ? (
+              <option value="">— sem planos disponíveis —</option>
+            ) : (
+              planOptions.map(p => (
+                <option key={p.key} value={p.key}>{p.label}</option>
+              ))
+            )}
+          </select>
 
-        <div className="pds-spacer" />
-      </div>
+          <div className="pds-spacer" />
+        </div>
+      )}
 
       {/* Content area */}
       {contentLoading ? (
@@ -660,7 +683,7 @@ export default function GestaoPDS() {
           title="Sem planos de acção"
           description="Não existem planos de acção disponíveis para este programa."
         />
-      ) : !selectedPlan ? (
+      ) : (!selectedPlan && mode === 'standalone') ? (
         <div className="pds-status">Selecciona um plano de acção.</div>
       ) : (
         <div className="pds-grid">

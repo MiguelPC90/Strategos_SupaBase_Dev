@@ -8,6 +8,8 @@ import { usePermissions } from '../../hooks/usePermissions'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Spinner from '../../components/Spinner/Spinner'
 import VisaoExecutiva from './VisaoExecutiva'
+import GestaoPDS from '../GestaoPDS/GestaoPDS'
+import GestaoRiscos from '../GestaoRiscos/GestaoRiscos'
 
 const TABS = [
   { id: 'visao',        label: 'Visão Executiva' },
@@ -157,8 +159,20 @@ export default function PlanoPage() {
           <VisaoExecutiva planoId={planoId} programId={plano.program_id} />
         )}
         {activeTab === 'actividades' && <PlaceholderTab label="Actividades" />}
-        {activeTab === 'pds'         && <PlaceholderTab label="PDS" />}
-        {activeTab === 'riscos'      && <PlaceholderTab label="Riscos" />}
+        {activeTab === 'pds' && planoId && (
+          <GestaoPDS
+            mode="embedded"
+            planoId={planoId}
+            programId={plano.program_id ?? undefined}
+          />
+        )}
+        {activeTab === 'riscos' && planoId && (
+          <GestaoRiscos
+            mode="embedded"
+            planoId={planoId}
+            programId={plano.program_id ?? undefined}
+          />
+        )}
         {activeTab === 'financeira'  && <PlaceholderTab label="Financeira" />}
         {activeTab === 'recursos'    && <PlaceholderTab label="Recursos" />}
       </div>
