@@ -159,14 +159,20 @@ export interface FinBudgetLine {
   plano_id: string | null
   app_id: string
   program_id: string | null
-  category: string
-  capex: boolean
+  /** FK to cost_categories — primary category identifier (migration 027) */
+  category_id: string | null
+  /** @deprecated Use category_id + cost_categories.name. Will be removed after full cleanup. */
+  category?: string
+  /** @deprecated Use cost_categories.is_capex. Will be removed after full cleanup. */
+  capex?: boolean
   currency: string
   /** Map of period key → amount, e.g. { "2024": 50000 } */
   values: Record<string, number>
   note: string | null
   source_ref: string | null
   sort_order: number
+  /** Populated when queried with cost_categories(id,name,is_capex) join */
+  cost_categories?: { id: string; name: string; is_capex: boolean } | null
 }
 
 // ── Financial — contracts ─────────────────────────────────────

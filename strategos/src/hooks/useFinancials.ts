@@ -29,7 +29,7 @@ export function useFinancials(program_id?: string): UseFinancialsResult {
     const budgetQ = (() => {
       let q = supabase
         .from('fin_budget_lines')
-        .select('*')
+        .select('*, cost_categories(id, name, is_capex)')
         .order('sort_order', { ascending: true })
       if (program_id) q = q.eq('program_id', program_id)
       return q

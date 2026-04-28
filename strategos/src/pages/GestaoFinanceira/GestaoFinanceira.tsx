@@ -48,7 +48,7 @@ interface ContractForm {
 
 // ── Constants ──────────────────────────────────────────────────────
 interface CurrencyOption { code: string; symbol: string }
-interface CategoryOption { name: string; is_capex: boolean }
+interface CategoryOption { id: string; name: string; is_capex: boolean }
 
 const EMPTY_DRAFT: DraftState = { budget: [], contracts: [], invoices: [] }
 
@@ -152,7 +152,7 @@ function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, readOnly,
     years.forEach(y => { baseValues[y] = 0 })
     setLines([...lines, {
       id: newId(), pds_id: null, plano_id: null, app_id: newAppId(), program_id: null,
-      category: '', capex: false, currency: defaultCurrency,
+      category_id: null, cost_categories: null, currency: defaultCurrency,
       values: baseValues, note: null, source_ref: null, sort_order: lines.length,
     }])
   }
@@ -216,31 +216,29 @@ function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, readOnly,
                   {!readOnly && <button className="gf-icon-btn" onClick={() => onDelete(b.id)} title="Remover">✕</button>}
                 </td>
                 <td>
-                  <select className="styled-select-sm gf-cell-select" value={b.category}
+                  <select className="styled-select-sm gf-cell-select" value={b.category_id ?? ''}
                     onChange={e => {
-                      const name = e.target.value
-                      const cat = categories.find(c => c.name === name)
-                      const patch: Partial<FinBudgetLine> = { category: name }
-                      if (cat != null) patch.capex = Boolean(cat.is_capex)
+                      const catId = e.target.value
+                      const cat = categories.find(c => c.id === catId)
+                      const patch: Partial<FinBudgetLine> = {
+                        category_id: catId || null,
+                        cost_categories: cat ? { id: cat.id, name: cat.name, is_capex: cat.is_capex } : null,
+                      }
                       updateLine(b.id, patch)
                       onSaveLine({ ...b, ...patch })
                     }}>
                     <option value="">— categoria —</option>
-                    {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                    {/* Keep current value selectable if it was set before categories loaded */}
-                    {b.category && !categories.some(c => c.name === b.category) && (
-                      <option value={b.category}>{b.category}</option>
-                    )}
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </td>
                 <td className="gf-td-c">
-                  {b.category
+                  {b.cost_categories
                     ? <span style={{
                         display: 'inline-block', padding: '3px 9px', borderRadius: 999,
                         fontSize: 11, fontWeight: 500,
-                        background: b.capex ? '#EBF0FA' : '#FDF3E7',
-                        color: b.capex ? 'var(--blue)' : 'var(--amber)',
-                      }}>{b.capex ? 'CAPEX' : 'OPEX'}</span>
+                        background: b.cost_categories.is_capex ? '#EBF0FA' : '#FDF3E7',
+                        color: b.cost_categories.is_capex ? 'var(--blue)' : 'var(--amber)',
+                      }}>{b.cost_categories.is_capex ? 'CAPEX' : 'OPEX'}</span>
                     : <span style={{ color: 'var(--text3)', fontSize: 13 }}>—</span>}
                 </td>
                 <td className="gf-td-c">
@@ -788,10 +786,10 @@ export default function GestaoFinanceira({
           const ids = (links as { category_id: string }[]).map(l => l.category_id)
           const { data: cats } = await supabase
             .from('cost_categories')
-            .select('name, is_capex')
+            .select('id, name, is_capex')
             .in('id', ids)
             .order('name')
-          return (cats ?? []).map((c: { name: string; is_capex: boolean }) => ({ name: c.name, is_capex: c.is_capex }))
+          return (cats ?? []).map((c: { id: string; name: string; is_capex: boolean }) => ({ id: c.id, name: c.name, is_capex: c.is_capex }))
         }),
       // Step 2: get management years for this program
       supabase.from('management_years')
@@ -1126,7 +1124,7 @@ export default function GestaoFinanceira({
           .from('fin_budget_lines')
           .insert({
             plano_id: pdsId, app_id: b.app_id, program_id: progId,
-            category: b.category, capex: b.capex, currency: b.currency,
+            category_id: b.category_id, currency: b.currency,
             values: b.values, note: b.note, source_ref: b.source_ref,
             sort_order: b.sort_order,
           })
@@ -1147,7 +1145,7 @@ export default function GestaoFinanceira({
           .from('fin_budget_lines')
           .upsert({
             id: key, plano_id: pdsId, app_id: b.app_id, program_id: progId,
-            category: b.category, capex: b.capex, currency: b.currency,
+            category_id: b.category_id, currency: b.currency,
             values: b.values, note: b.note, source_ref: b.source_ref, sort_order: b.sort_order,
           }, { onConflict: 'id' })
         if (error) throw error

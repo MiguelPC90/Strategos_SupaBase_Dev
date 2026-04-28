@@ -11,6 +11,7 @@ import {
 import Card from '../../components/Card/Card'
 import { invoiceAlert } from '../../lib/invoiceHelpers'
 import { useFinancials } from '../../hooks/useFinancials'
+import type { FinBudgetLine } from '../../types/index'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useFilters } from '../../context/FilterContext'
@@ -42,6 +43,15 @@ function fmtDate(d: string | null): string {
   if (!d) return '—'
   const [y, m, day] = d.split('-')
   return `${day}/${m}/${y}`
+}
+
+// Resolve category name: joined cost_categories first, then legacy TEXT fallback
+function bCatName(b: FinBudgetLine): string {
+  return b.cost_categories?.name ?? b.category ?? ''
+}
+// Resolve CAPEX flag: joined cost_categories first, then legacy boolean fallback
+function bIsCapex(b: FinBudgetLine): boolean {
+  return b.cost_categories?.is_capex ?? b.capex ?? false
 }
 
 function compactNumber(v: number): string {
@@ -347,7 +357,8 @@ export default function ExecucaoFinanceira() {
   const catCapexMap = useMemo(() => {
     const m = new Map<string, boolean>()
     for (const l of planLines) {
-      if (!m.has(l.category)) m.set(l.category, l.capex)
+      const name = bCatName(l)
+      if (!m.has(name)) m.set(name, bIsCapex(l))
     }
     return m
   }, [planLines])
@@ -355,12 +366,12 @@ export default function ExecucaoFinanceira() {
   // ── Step 2: CAPEX/OPEX filter ────────────────────────────────
   const lines = useMemo(() => {
     if (tipoFilter === 'todos') return planLines
-    return planLines.filter(l => tipoFilter === 'capex' ? l.capex : !l.capex)
+    return planLines.filter(l => tipoFilter === 'capex' ? bIsCapex(l) : !bIsCapex(l))
   }, [planLines, tipoFilter])
 
   const ctrs = useMemo(() => {
     if (tipoFilter === 'todos') return planCtrs
-    const catSet = new Set(lines.map(l => l.category))
+    const catSet = new Set(lines.map(l => bCatName(l)))
     return planCtrs.filter(c => catSet.has(c.category))
   }, [planCtrs, lines, tipoFilter])
 
@@ -407,8 +418,8 @@ export default function ExecucaoFinanceira() {
   ], [kpiOrc, kpiAdj, kpiFact, kpiDisp])
 
   const pieData = useMemo<PieEntry[]>(() => [
-    { name: 'CAPEX', value: lines.filter(l =>  l.capex).reduce((s, l) => s + sumByYears(l.values, selectedYears), 0), fill: colors.brand.ink700 },
-    { name: 'OPEX',  value: lines.filter(l => !l.capex).reduce((s, l) => s + sumByYears(l.values, selectedYears), 0), fill: colors.brand.ember },
+    { name: 'CAPEX', value: lines.filter(l =>  bIsCapex(l)).reduce((s, l) => s + sumByYears(l.values, selectedYears), 0), fill: colors.brand.ink700 },
+    { name: 'OPEX',  value: lines.filter(l => !bIsCapex(l)).reduce((s, l) => s + sumByYears(l.values, selectedYears), 0), fill: colors.brand.ember },
   ], [lines, selectedYears])
 
   const monthlyStatusData = useMemo<MonthStatusBar[]>(() => {
@@ -506,11 +517,11 @@ export default function ExecucaoFinanceira() {
 
   // ── Category rows ─────────────────────────────────────────────
   const catRows = useMemo(() => {
-    const cats = [...new Set(lines.map(l => l.category))].sort()
+    const cats = [...new Set(lines.map(l => bCatName(l)))].sort()
     return cats.map(cat => {
-      const catLines    = lines.filter(l => l.category === cat)
+      const catLines    = lines.filter(l => bCatName(l) === cat)
       const orc         = catLines.reduce((s, l) => s + sumByYears(l.values, selectedYears), 0)
-      const isCapex     = catLines.some(l => l.capex)
+      const isCapex     = catLines.some(l => bIsCapex(l))
       const catCtrs     = ctrs.filter(c => c.category === cat)
       const adj         = catCtrs.reduce((s, c) => s + c.total_amount, 0)
       const catCtrIds   = new Set(catCtrs.map(c => c.id))
