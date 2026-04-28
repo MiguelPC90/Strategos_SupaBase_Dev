@@ -202,6 +202,32 @@
 
   .topbar-spacer { flex: 1; }
 
+  .topbar-search-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 10px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: var(--r);
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+  .topbar-search-btn:hover {
+    background: rgba(255, 255, 255, 0.13);
+    border-color: rgba(255, 255, 255, 0.35);
+    color: #fff;
+  }
+  .topbar-search-hint {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: rgba(255, 255, 255, 0.45);
+    letter-spacing: 0.02em;
+  }
+
   .topbar-btn {
     height: 30px;
     padding: 0 12px;

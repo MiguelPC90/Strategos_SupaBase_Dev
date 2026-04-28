@@ -2,7 +2,7 @@ import './Layout.css'
 import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react'
 import SplashScreen from '../SplashScreen/SplashScreen'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Star } from 'lucide-react'
+import { Star, Search } from 'lucide-react'
 import Badge from '../Badge/Badge'
 import { useAuth } from '../../hooks/useAuth'
 import { useRole } from '../../hooks/useRole'
@@ -15,6 +15,7 @@ import { supabase } from '../../lib/supabase'
 import { setThresholds } from '../../lib/rollup'
 import type { PageKey } from '../../types/index'
 import Breadcrumb from '../Breadcrumb/Breadcrumb'
+import { CommandPalette } from '../CommandPalette/CommandPalette'
 
 interface NavItemConfig {
   to: string
@@ -227,6 +228,7 @@ export default function Layout() {
 
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
+  const [paletteOpen, setPaletteOpen] = useState(false)
 
   const [clientTitle,    setClientTitle]    = useState('')
   const [clientLogoUrl,  setClientLogoUrl]  = useState('')
@@ -279,6 +281,17 @@ export default function Layout() {
     return () => document.removeEventListener('mousedown', handle)
   }, [])
 
+  useEffect(() => {
+    function handle(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setPaletteOpen(o => !o)
+      }
+    }
+    document.addEventListener('keydown', handle)
+    return () => document.removeEventListener('keydown', handle)
+  }, [])
+
   const initials = getInitials(profile?.full_name, user?.email)
   const displayName = profile?.full_name || user?.email || 'Utilizador'
   const displayEmail = user?.email ?? ''
@@ -293,6 +306,7 @@ export default function Layout() {
   return (
     <>
       <SplashScreen visible={showSplash} logoUrl={clientLogoUrl || null} />
+      <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
       {/* ── Sidebar (always collapsed, expands on hover) ── */}
       <nav className="sidebar collapsed">
@@ -376,6 +390,15 @@ export default function Layout() {
         </div>
 
         <div className="topbar-spacer" />
+
+        <button
+          className="topbar-search-btn"
+          onClick={() => setPaletteOpen(o => !o)}
+          aria-label="Pesquisar plano (⌘K)"
+        >
+          <Search size={15} />
+          <span className="topbar-search-hint">⌘K</span>
+        </button>
 
         <div style={{ position: 'relative' }} ref={profileRef}>
           <button
