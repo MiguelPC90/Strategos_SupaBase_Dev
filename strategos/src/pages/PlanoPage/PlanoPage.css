@@ -113,16 +113,6 @@
     margin: 0;
   }
 
-  .pp-code {
-    display: inline-block;
-    font-size: 11px;
-    color: var(--text3);
-    font-family: var(--font-mono);
-    background: var(--bg3);
-    padding: 1px 6px;
-    border-radius: 3px;
-  }
-
   .pp-btn-edit {
     height: 28px;
     padding: 0 12px;
@@ -200,6 +190,15 @@
     font-family: var(--font-mono);
     font-size: 11px;
     color: var(--text3);
+  }
+
+  .pp-narrative {
+    flex-basis: 100%;
+    font-size: 12px;
+    color: var(--text3);
+    font-style: italic;
+    line-height: 1.5;
+    padding-top: 2px;
   }
 
   .pp-objective {

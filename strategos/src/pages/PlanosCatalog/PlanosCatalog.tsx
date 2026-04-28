@@ -1,6 +1,6 @@
 import './PlanosCatalog.css'
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Star, LayoutList, LayoutGrid } from 'lucide-react'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
@@ -59,6 +59,7 @@ export default function PlanosCatalog() {
   const { programs } = usePrograms()
   const { isFavorite, toggle, canAddMore } = useFavorites()
   const { showToast } = useToast()
+  const [searchParams] = useSearchParams()
   const today = useMemo(() => new Date().toISOString().slice(0, 10), [])
 
   // ── Fetch level=4 leaves for status computation ───────────────
@@ -174,6 +175,25 @@ export default function PlanosCatalog() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sponsorOptions])
+
+  // Apply query params (programa / eixo) once enriched data is ready
+  const appliedQueryParamsRef = useRef(false)
+  useEffect(() => {
+    if (enriched.length === 0) return
+    if (appliedQueryParamsRef.current) return
+    appliedQueryParamsRef.current = true
+    const progId = searchParams.get('programa')
+    const eixoId = searchParams.get('eixo')
+    if (progId) {
+      const name = programMap.get(progId)?.name
+      if (name) setProgFilter([name])
+    }
+    if (eixoId) {
+      const name = enriched.find(p => p.eixo_id === eixoId)?.eixo?.name
+      if (name) setEixoFilter([name])
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enriched])
 
   // ── Apply filters ─────────────────────────────────────────────
   const filtered = useMemo(() => enriched.filter(p => {

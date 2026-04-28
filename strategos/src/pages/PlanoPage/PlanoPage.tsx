@@ -15,8 +15,9 @@ import GestaoRiscos from '../GestaoRiscos/GestaoRiscos'
 import GestaoRecursos from '../GestaoRecursos/GestaoRecursos'
 import GestaoFinanceira from '../GestaoFinanceira/GestaoFinanceira'
 import GestaoIniciativas from '../GestaoIniciativas/GestaoIniciativas'
-import { rollupStatus } from '../../lib/rollup'
+import { rollupStatus, rollupPct, rollupPctPrev, leafStatus } from '../../lib/rollup'
 import { statusColor } from '../../lib/tokens'
+import { generateStatusNarrative } from '../../lib/statusNarrative'
 
 const TABS = [
   { id: 'visao',        label: 'Visão Executiva' },
@@ -63,6 +64,17 @@ export default function PlanoPage() {
   const { activities: planActivities } = useActivities(planoId ? { plano_id: planoId } : {})
   const planLeaves = useMemo(() => planActivities.filter(a => a.level === 4), [planActivities])
   const planoStatus = useMemo(() => rollupStatus(planLeaves, today), [planLeaves, today])
+
+  const execMedia    = useMemo(() => rollupPct(planLeaves),            [planLeaves])
+  const execTarget   = useMemo(() => rollupPctPrev(planLeaves, today), [planLeaves, today])
+  const delayedCount = useMemo(
+    () => planLeaves.filter(a => leafStatus(a, today) === 'Em atraso').length,
+    [planLeaves, today],
+  )
+  const narrative = useMemo(() => {
+    if (planLeaves.length === 0) return ''
+    return generateStatusNarrative({ status: planoStatus, execMedia, execTarget, delayedCount })
+  }, [planoStatus, execMedia, execTarget, delayedCount, planLeaves.length])
 
   const loading = planosLoading || programsLoading
 
@@ -111,7 +123,10 @@ export default function PlanoPage() {
           {program?.name && (
             <>
               <span className="pp-nav-sep">·</span>
-              <button className="pp-nav-link" onClick={() => navigate('/planos')}>
+              <button
+                className="pp-nav-link"
+                onClick={() => navigate(`/planos?programa=${program.id}`)}
+              >
                 {program.name}
               </button>
             </>
@@ -119,7 +134,16 @@ export default function PlanoPage() {
           {eixoName && (
             <>
               <span className="pp-nav-sep">›</span>
-              <span className="pp-nav-crumb">{eixoName}</span>
+              {program ? (
+                <button
+                  className="pp-nav-link"
+                  onClick={() => navigate(`/planos?programa=${program.id}&eixo=${plano.eixo_id}`)}
+                >
+                  {eixoName}
+                </button>
+              ) : (
+                <span className="pp-nav-crumb">{eixoName}</span>
+              )}
             </>
           )}
           <span className="pp-nav-sep">›</span>
@@ -134,7 +158,6 @@ export default function PlanoPage() {
                 style={{ backgroundColor: statusColor(planoStatusKey(planoStatus)) }}
               />
               <h1 className="pp-title">{plano.name}</h1>
-              <span className="pp-code">{plano.code}</span>
             </div>
           </div>
           <div className="pp-header-actions">
@@ -162,7 +185,13 @@ export default function PlanoPage() {
         <div className="pp-meta">
           {plano.owner   && <span className="pp-meta-item"><span className="pp-meta-lbl">Owner</span>{plano.owner}</span>}
           {plano.sponsor && <span className="pp-meta-item"><span className="pp-meta-lbl">Sponsor</span>{plano.sponsor}</span>}
-          {dateLine      && <span className="pp-meta-item pp-meta-dates">{dateLine}</span>}
+          {dateLine      && (
+            <span className="pp-meta-item">
+              <span className="pp-meta-lbl">Datas</span>
+              <span className="pp-meta-dates">{dateLine}</span>
+            </span>
+          )}
+          {narrative && <span className="pp-narrative">{narrative}</span>}
         </div>
 
         {plano.objective && (

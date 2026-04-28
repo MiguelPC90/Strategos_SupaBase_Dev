@@ -1,6 +1,8 @@
 import './VisaoExecutiva.css'
 import { useMemo } from 'react'
 import { ArrowUp, ArrowDown } from 'lucide-react'
+import Card from '../../components/Card/Card'
+import KpiCard from '../../components/KpiCard/KpiCard'
 import { useActivities } from '../../hooks/useActivities'
 import { usePdsConsolidated } from '../../hooks/usePdsEntries'
 import { useRisks } from '../../hooks/useRisks'
@@ -161,72 +163,53 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
       <div className="ve-kpi-row">
 
         {/* Card 1: Resumo Actividades */}
-        <div className="ve-summary-card">
-          <div className="ve-card-title">Resumo Actividades</div>
-          <div className="ve-act-summary">
-            <div className="ve-act-row">
-              <span className="ve-dot ve-dot-done" />
-              <span className="ve-act-lbl">Concluídas</span>
-              <span className="ve-act-cnt">{actSummary.done}</span>
-            </div>
-            <div className="ve-act-row">
-              <span className="ve-dot ve-dot-ontrack" />
-              <span className="ve-act-lbl">Em dia</span>
-              <span className="ve-act-cnt">{actSummary.ontrack}</span>
-            </div>
-            <div className="ve-act-row">
-              <span className="ve-dot ve-dot-risk" />
-              <span className="ve-act-lbl">Em risco</span>
-              <span className="ve-act-cnt">{actSummary.risk}</span>
-            </div>
-            <div className="ve-act-row">
-              <span className="ve-dot ve-dot-late" />
-              <span className="ve-act-lbl">Em atraso</span>
-              <span className="ve-act-cnt">{actSummary.late}</span>
-            </div>
-            <div className="ve-act-row ve-act-row-total">
-              <span className="ve-act-lbl">Total</span>
-              <span className="ve-act-cnt ve-act-cnt-total">{actSummary.total}</span>
-            </div>
+        <Card title="Resumo Actividades">
+          <div className="kpi-2col">
+            <KpiCard label="Concluídas"  value={actSummary.done}    color="blue"  />
+            <KpiCard label="Em dia"      value={actSummary.ontrack} color="green" />
+            <KpiCard label="Em risco"    value={actSummary.risk}    color="amber" />
+            <KpiCard label="Em atraso"   value={actSummary.late}    color="red"   />
           </div>
-        </div>
+          <div className="ve-total-row">
+            <span className="ve-total-lbl">Total</span>
+            <span className="ve-total-val">{actSummary.total}</span>
+          </div>
+        </Card>
 
         {/* Card 2: KPI Execução */}
-        <div className="ve-summary-card">
-          <div className="ve-card-title">KPI Execução</div>
-          <div className="ve-exec-kpi">
-            <div className="ve-exec-big">
-              <span className="ve-exec-val">{execPct.toFixed(1)}%</span>
-              <span className="ve-exec-lbl">% Execução</span>
-              <TrendNode delta={execDelta} unit=" pp" />
-            </div>
-            <div className="ve-exec-sec">
-              <span className="ve-exec-sec-val">{concPct.toFixed(0)}%</span>
-              <span className="ve-exec-sec-lbl">Concretização</span>
-              <span className="ve-exec-sec-sub">{doneN} de {totalN}</span>
-              <TrendNode delta={concDelta} unit=" pp" />
-            </div>
+        <Card title="KPI Execução">
+          <div className="kpi-2col">
+            <KpiCard
+              label="% Execução"
+              value={`${execPct.toFixed(1)}%`}
+              color="navy"
+              trend={<TrendNode delta={execDelta} unit=" pp" />}
+            />
+            <KpiCard
+              label="Concretização"
+              value={`${concPct.toFixed(0)}%`}
+              subtitle={`${doneN} de ${totalN}`}
+              color="navy"
+              trend={<TrendNode delta={concDelta} unit=" pp" />}
+            />
           </div>
-        </div>
+        </Card>
 
         {/* Card 3: Atenção */}
-        <div className="ve-summary-card">
-          <div className="ve-card-title">Atenção</div>
-          <div className="ve-attn-kpis">
-            <div className="ve-attn-kpi">
-              <span className={`ve-attn-kpi-val${openAttention.length > 0 ? ' ve-color-amber' : ''}`}>
-                {openAttention.length}
-              </span>
-              <span className="ve-attn-kpi-lbl">Pontos de Atenção</span>
-            </div>
-            <div className="ve-attn-kpi">
-              <span className={`ve-attn-kpi-val${criticalRisks.length > 0 ? ' ve-color-red' : ''}`}>
-                {criticalRisks.length}
-              </span>
-              <span className="ve-attn-kpi-lbl">Riscos Críticos</span>
-            </div>
+        <Card title="Atenção">
+          <div className="kpi-2col">
+            <KpiCard
+              label="Pontos de Atenção"
+              value={openAttention.length}
+              color={openAttention.length > 0 ? 'amber' : 'text'}
+            />
+            <KpiCard
+              label="Riscos Críticos"
+              value={criticalRisks.length}
+              color={criticalRisks.length > 0 ? 'red' : 'text'}
+            />
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Zone 3 — Two-column */}
@@ -313,17 +296,26 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
             <span className="ve-fin-card-val ve-fin-card-committed">
               {fmtCur(totalExecuted + totalCommitted, currSymbol)}
             </span>
+            <span className="ve-fin-card-pct">
+              {((totalExecuted + totalCommitted) / totalBudget * 100).toFixed(1)}% do orç.
+            </span>
           </div>
           <div className="ve-fin-card">
             <span className="ve-fin-card-lbl">Executado</span>
             <span className="ve-fin-card-val ve-fin-card-executed">
               {fmtCur(totalExecuted, currSymbol)}
             </span>
+            <span className="ve-fin-card-pct">
+              {(totalExecuted / totalBudget * 100).toFixed(1)}% do orç.
+            </span>
           </div>
           <div className="ve-fin-card">
             <span className="ve-fin-card-lbl">Disponível</span>
             <span className="ve-fin-card-val">
               {fmtCur(Math.max(0, totalBudget - totalExecuted - totalCommitted), currSymbol)}
+            </span>
+            <span className="ve-fin-card-pct">
+              {(Math.max(0, totalBudget - totalExecuted - totalCommitted) / totalBudget * 100).toFixed(1)}% do orç.
             </span>
           </div>
         </div>

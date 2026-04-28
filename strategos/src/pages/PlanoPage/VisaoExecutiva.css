@@ -21,119 +21,32 @@
     gap: 12px;
   }
 
-  .ve-summary-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--rl);
-    padding: 16px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    min-height: 180px;
-  }
-
-  .ve-card-title {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--text3);
-    margin: 0;
-  }
-
-  /* ── Activity summary rows (Card 1) ──────────────────────────── */
-  .ve-act-summary {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-  }
-
-  .ve-act-row {
+  /* ── Total row (Card 1 footer) ───────────────────────────────── */
+  .ve-total-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-  }
-
-  .ve-act-row-total {
-    margin-top: 4px;
-    padding-top: 7px;
+    justify-content: space-between;
+    margin-top: 10px;
+    padding-top: 10px;
     border-top: 1px solid var(--border);
   }
 
-  .ve-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .ve-dot-done    { background: var(--blue);  }
-  .ve-dot-ontrack { background: var(--green); }
-  .ve-dot-risk    { background: var(--amber); }
-  .ve-dot-late    { background: var(--red);   }
-
-  .ve-act-lbl {
-    flex: 1;
-    font-size: 12px;
+  .ve-total-lbl {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
     color: var(--text2);
   }
 
-  .ve-act-cnt {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    font-family: var(--font-mono);
-    min-width: 20px;
-    text-align: right;
-  }
-
-  .ve-act-cnt-total { font-size: 14px; }
-
-  /* ── Execution KPIs (Card 2) ─────────────────────────────────── */
-  .ve-exec-kpi {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .ve-exec-big {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .ve-exec-val {
-    font-size: 32px;
+  .ve-total-val {
+    font-size: 16px;
     font-weight: 700;
     font-family: var(--font-mono);
     color: var(--text);
-    line-height: 1;
   }
 
-  .ve-exec-lbl {
-    font-size: 11px;
-    color: var(--text3);
-    margin-top: 2px;
-  }
-
-  .ve-exec-sec {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .ve-exec-sec-val {
-    font-size: 20px;
-    font-weight: 600;
-    font-family: var(--font-mono);
-    color: var(--text);
-    line-height: 1;
-  }
-
-  .ve-exec-sec-lbl { font-size: 11px; color: var(--text3); }
-  .ve-exec-sec-sub { font-size: 11px; color: var(--text3); }
-
-  /* ── Trend nodes ─────────────────────────────────────────────── */
+  /* ── Trend nodes (used as KpiCard trend= prop) ───────────────── */
   .ve-trend-up {
     display: inline-flex;
     align-items: center;
@@ -158,35 +71,6 @@
     font-size: 11px;
     margin-top: 2px;
   }
-
-  /* ── Attention KPIs (Card 3) ─────────────────────────────────── */
-  .ve-attn-kpis {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .ve-attn-kpi {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-  }
-
-  .ve-attn-kpi-val {
-    font-size: 32px;
-    font-weight: 700;
-    font-family: var(--font-mono);
-    color: var(--text);
-    line-height: 1;
-  }
-
-  .ve-attn-kpi-lbl {
-    font-size: 11px;
-    color: var(--text3);
-  }
-
-  .ve-color-amber { color: var(--amber); }
-  .ve-color-red   { color: var(--red);   }
 
   /* ── Two-column zone ─────────────────────────────────────────── */
   .ve-two-col {
@@ -387,4 +271,10 @@
 
   .ve-fin-card-executed  { color: var(--green); }
   .ve-fin-card-committed { color: var(--amber); }
+
+  .ve-fin-card-pct {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+  }
 }
