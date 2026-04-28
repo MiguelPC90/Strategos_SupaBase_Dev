@@ -14,72 +14,168 @@
     color: var(--text3);
   }
 
-  /* ── KPI row — 3 summary cards ───────────────────────────────── */
+  /* ── KPI row — 3 cards ───────────────────────────────────── */
   .ve-kpi-row {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1.3fr 1.3fr 1fr;
     gap: 12px;
   }
 
-  /* ── Total row (Card 1 footer) ───────────────────────────────── */
-  .ve-total-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border);
+  /* ── Card 1 — Estado das Actividades ─────────────────────── */
+  .ve-contagem-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
   }
 
-  .ve-total-lbl {
-    font-size: 11px;
+  .ve-contagem-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ve-contagem-kpi-numbers {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+  }
+
+  .ve-contagem-kpi-value {
+    font-family: var(--font-serif);
+    font-size: 36px;
+    font-weight: 400;
+    color: var(--stratgos-ink-900, var(--text));
+    line-height: 1;
+  }
+
+  .ve-contagem-kpi-value.risk { color: var(--status-risk, var(--amber)); }
+  .ve-contagem-kpi-value.late { color: var(--status-late, var(--red)); }
+
+  .ve-contagem-kpi-denom {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--stratgos-ink-300, var(--text3));
+    line-height: 1;
+  }
+
+  .ve-contagem-kpi-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--text2);
+    color: var(--stratgos-ink-500, var(--text2));
+    margin-top: 4px;
   }
 
-  .ve-total-val {
-    font-size: 16px;
+  .ve-contagem-kpi-delta {
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 2px;
+  }
+
+  .ve-contagem-kpi-delta.good    { color: var(--status-ontrack, var(--green)); }
+  .ve-contagem-kpi-delta.bad     { color: var(--status-late, var(--red)); }
+  .ve-contagem-kpi-delta.neutral { color: var(--stratgos-ink-300, var(--text3)); }
+
+  /* ── Card 2 — Execução ───────────────────────────────────── */
+  .ve-exec-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .ve-exec-kpi {
+    padding: 12px 14px;
+    background: var(--stratgos-parchment, var(--bg3));
+    border-radius: var(--r);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .ve-exec-kpi-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--stratgos-ink-500, var(--text2));
+  }
+
+  .ve-exec-kpi-value-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .ve-exec-kpi-value {
+    font-family: var(--font-serif, Georgia, serif);
+    font-size: 28px;
     font-weight: 700;
+    color: var(--stratgos-ink-900, var(--text));
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ve-exec-kpi-delta {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .ve-exec-kpi-delta.positive { background: #dcfce7; color: #166534; }
+  .ve-exec-kpi-delta.negative { background: #fee2e2; color: #991b1b; }
+  .ve-exec-kpi-delta.neutral  { background: var(--bg3); color: var(--text3); }
+
+  .ve-exec-kpi-target {
+    font-size: 11px;
+    color: var(--stratgos-ink-400, var(--text3));
+  }
+
+  /* ── Card 3 — A Requerer Atenção ─────────────────────────── */
+  .ve-attn-kpi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .ve-attn-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ve-attn-kpi-value {
+    font-family: var(--font-serif);
+    font-size: 48px;
+    font-weight: 400;
+    color: var(--stratgos-ink-900, var(--text));
+    line-height: 1;
+  }
+
+  .ve-attn-kpi-value.risk  { color: var(--status-late, var(--red)); }
+  .ve-attn-kpi-value.amber { color: var(--status-risk, var(--amber)); }
+
+  .ve-attn-kpi-label {
     font-family: var(--font-mono);
-    color: var(--text);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--stratgos-ink-500, var(--text2));
   }
 
-  /* ── Trend nodes (used as KpiCard trend= prop) ───────────────── */
-  .ve-trend-up {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    color: var(--green);
-    font-size: 11px;
-    margin-top: 2px;
-  }
-
-  .ve-trend-down {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    color: var(--red);
-    font-size: 11px;
-    margin-top: 2px;
-  }
-
-  .ve-trend-flat {
-    display: inline-block;
-    color: var(--text3);
-    font-size: 11px;
-    margin-top: 2px;
-  }
-
-  /* ── Two-column zone ─────────────────────────────────────────── */
+  /* ── Two-column zone ─────────────────────────────────────── */
   .ve-two-col {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
   }
 
-  /* ── Generic panel ───────────────────────────────────────────── */
+  /* ── Generic panel ───────────────────────────────────────── */
   .ve-panel {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -103,7 +199,7 @@
     padding: 12px 0;
   }
 
-  /* ── Status badges ───────────────────────────────────────────── */
+  /* ── Status badges ───────────────────────────────────────── */
   .ve-badge {
     display: inline-block;
     font-size: 10px;
@@ -119,7 +215,7 @@
   .ve-badge-ontrack { background: var(--green-bg); color: var(--green); }
   .ve-badge-done    { background: var(--blue-bg);  color: var(--blue);  }
 
-  /* ── Activity list (Zone 3) ──────────────────────────────────── */
+  /* ── Activity list (Zone 3) ──────────────────────────────── */
   .ve-act-list {
     list-style: none;
     padding: 0;
@@ -187,7 +283,7 @@
     color: var(--text3);
   }
 
-  /* ── Attention items (Zone 3) ────────────────────────────────── */
+  /* ── Attention items (Zone 3) ────────────────────────────── */
   .ve-attn-sections {
     display: flex;
     flex-direction: column;
@@ -236,7 +332,7 @@
     line-height: 1.4;
   }
 
-  /* ── Finance mini cards (Zone 4) ─────────────────────────────── */
+  /* ── Finance mini cards (Zone 4) ─────────────────────────── */
   .ve-fin-cards {
     display: grid;
     grid-template-columns: repeat(4, 1fr);

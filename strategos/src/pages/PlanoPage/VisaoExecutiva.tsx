@@ -1,8 +1,6 @@
 import './VisaoExecutiva.css'
 import { useMemo } from 'react'
-import { ArrowUp, ArrowDown } from 'lucide-react'
 import Card from '../../components/Card/Card'
-import KpiCard from '../../components/KpiCard/KpiCard'
 import { useActivities } from '../../hooks/useActivities'
 import { usePdsConsolidated } from '../../hooks/usePdsEntries'
 import { useRisks } from '../../hooks/useRisks'
@@ -10,7 +8,7 @@ import { useFinancials } from '../../hooks/useFinancials'
 import { useSnapshots } from '../../hooks/useSnapshots'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useDefaultCurrency } from '../../hooks/useDefaultCurrency'
-import { rollupPct, leafStatus } from '../../lib/rollup'
+import { rollupPct, rollupPctPrev, leafStatus } from '../../lib/rollup'
 import { DEFAULT_THRESHOLDS } from '../../lib/riskColors'
 import type { Activity } from '../../types/index'
 
@@ -35,35 +33,16 @@ function fmtCur(v: number, sym: string): string {
   return `${v.toFixed(0)} ${sym}`
 }
 
-function TrendNode({ delta, unit }: { delta: number | null; unit: string }) {
-  if (delta === null) return null
-  if (Math.abs(delta) < 0.05) return <span className="ve-trend-flat">sem alteração</span>
-  if (delta > 0) {
-    return (
-      <span className="ve-trend-up">
-        <ArrowUp size={10} strokeWidth={2.5} />
-        {Math.abs(delta).toFixed(1)}{unit}
-      </span>
-    )
-  }
-  return (
-    <span className="ve-trend-down">
-      <ArrowDown size={10} strokeWidth={2.5} />
-      {Math.abs(delta).toFixed(1)}{unit}
-    </span>
-  )
-}
-
 export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaProps) {
   const today = useMemo(() => new Date().toISOString().split('T')[0], [])
 
-  const { activities, loading: actLoading }        = useActivities({ program_id: programId ?? undefined })
-  const { items: pdsItems, loading: pdsLoading }   = usePdsConsolidated(planoId)
-  const { risks, loading: risksLoading }           = useRisks(programId ?? undefined)
+  const { activities, loading: actLoading }            = useActivities({ program_id: programId ?? undefined })
+  const { items: pdsItems, loading: pdsLoading }       = usePdsConsolidated(planoId)
+  const { risks, loading: risksLoading }               = useRisks(programId ?? undefined)
   const { budgetLines, invoices, loading: finLoading } = useFinancials(programId ?? undefined)
-  const { snapshots }                              = useSnapshots(programId ?? undefined)
-  const { canViewCosts }                           = usePermissions()
-  const { symbol: currSymbol }                     = useDefaultCurrency()
+  const { snapshots }                                  = useSnapshots(programId ?? undefined)
+  const { canViewCosts }                               = usePermissions()
+  const { symbol: currSymbol }                         = useDefaultCurrency()
 
   const loading = actLoading || pdsLoading || risksLoading || finLoading
 
@@ -86,22 +65,39 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
   }, [leaves, today])
 
   // ── KPI calculations ─────────────────────────────────────────
-  const execPct = useMemo(() => rollupPct(leaves), [leaves])
-  const totalN  = leaves.length
-  const doneN   = leaves.filter(a => a.pct >= 100).length
-  const concPct = totalN > 0 ? (doneN / totalN) * 100 : 0
+  const execPct    = useMemo(() => rollupPct(leaves),            [leaves])
+  const execTarget = useMemo(() => rollupPctPrev(leaves, today), [leaves, today])
+  const totalN     = leaves.length
+
+  const concGeralVal    = totalN > 0 ? (actSummary.done / totalN) * 100 : 0
+  const concGeralTarget = totalN > 0 ? ((actSummary.done + actSummary.late) / totalN) * 100 : null
+  const concDataVal     = (actSummary.done + actSummary.late) > 0
+    ? (actSummary.done / (actSummary.done + actSummary.late)) * 100 : null
 
   const openAttention = pdsItems.attention.filter(i => !i.hidden_at)
   const planoRisks    = risks.filter(r => r.plano_id === planoId)
   const criticalRisks = planoRisks.filter(r => r.probability * r.impact > DEFAULT_THRESHOLDS.high)
 
   // ── Snapshot deltas (vs. 7 days ago) ─────────────────────────
-  const { execDelta, concDelta } = useMemo(() => {
+  const {
+    execDelta, concGeralDelta, concDataDelta,
+    delta7Conc, delta7EmDia, delta7EmRisco, delta7EmAtraso,
+  } = useMemo(() => {
+    const nullResult = {
+      execDelta:      null as number | null,
+      concGeralDelta: null as number | null,
+      concDataDelta:  null as number | null,
+      delta7Conc:     null as number | null,
+      delta7EmDia:    null as number | null,
+      delta7EmRisco:  null as number | null,
+      delta7EmAtraso: null as number | null,
+    }
+
     const planoSnaps = snapshots
       .filter(s => s.by_n2 != null && planoId in s.by_n2)
       .sort((a, b) => a.snap_date.localeCompare(b.snap_date))
 
-    if (planoSnaps.length < 2) return { execDelta: null, concDelta: null }
+    if (planoSnaps.length < 2) return nullResult
 
     const latest = planoSnaps[planoSnaps.length - 1]
     const sevenDaysAgo = new Date(today)
@@ -109,18 +105,29 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
     const cutoff = sevenDaysAgo.toISOString().split('T')[0]
     const prev = [...planoSnaps].reverse().find(s => s.snap_date <= cutoff)
 
-    if (!prev || !latest.by_n2 || !prev.by_n2) return { execDelta: null, concDelta: null }
+    if (!prev || !latest.by_n2 || !prev.by_n2) return nullResult
 
     const lk = latest.by_n2[planoId]
     const pk = prev.by_n2[planoId]
-    if (!lk || !pk) return { execDelta: null, concDelta: null }
+    if (!lk || !pk) return nullResult
 
-    const latestConc = lk.total > 0 ? (lk.concluidas / lk.total) * 100 : 0
-    const prevConc   = pk.total > 0 ? (pk.concluidas / pk.total) * 100 : 0
+    const lConcGeral = lk.total > 0 ? (lk.concluidas / lk.total) * 100 : 0
+    const pConcGeral = pk.total > 0 ? (pk.concluidas / pk.total) * 100 : 0
+
+    const lDue = lk.concluidas + lk.em_atraso
+    const pDue = pk.concluidas + pk.em_atraso
+    const lConcData = lDue > 0 ? (lk.concluidas / lDue) * 100 : null
+    const pConcData = pDue > 0 ? (pk.concluidas / pDue) * 100 : null
 
     return {
-      execDelta: lk.exec_media - pk.exec_media,
-      concDelta: latestConc - prevConc,
+      execDelta:      lk.exec_media - pk.exec_media,
+      concGeralDelta: lConcGeral - pConcGeral,
+      concDataDelta:  lConcData !== null && pConcData !== null ? lConcData - pConcData : null,
+      delta7Conc:     lk.concluidas - pk.concluidas,
+      delta7EmDia:    lk.em_dia - pk.em_dia,
+      delta7EmRisco:  lk.em_risco !== undefined && pk.em_risco !== undefined
+        ? lk.em_risco - pk.em_risco : null,
+      delta7EmAtraso: lk.em_atraso - pk.em_atraso,
     }
   }, [snapshots, planoId, today])
 
@@ -159,55 +166,124 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
 
   return (
     <div className="ve-wrap">
-      {/* Zone 2 — 3-card KPI summary */}
+      {/* Zone 2 — 3-card executive KPI summary */}
       <div className="ve-kpi-row">
 
-        {/* Card 1: Resumo Actividades */}
-        <Card title="Resumo Actividades">
-          <div className="kpi-2col">
-            <KpiCard label="Concluídas"  value={actSummary.done}    color="blue"  />
-            <KpiCard label="Em dia"      value={actSummary.ontrack} color="green" />
-            <KpiCard label="Em risco"    value={actSummary.risk}    color="amber" />
-            <KpiCard label="Em atraso"   value={actSummary.late}    color="red"   />
-          </div>
-          <div className="ve-total-row">
-            <span className="ve-total-lbl">Total</span>
-            <span className="ve-total-val">{actSummary.total}</span>
+        {/* Card 1 — ESTADO DAS ACTIVIDADES */}
+        <Card title="Estado das Actividades">
+          <div className="ve-contagem-kpi-grid">
+            <div className="ve-contagem-kpi">
+              <div className="ve-contagem-kpi-numbers">
+                <span className="ve-contagem-kpi-value">{actSummary.done}</span>
+                <span className="ve-contagem-kpi-denom">/ {totalN}</span>
+              </div>
+              <div className="ve-contagem-kpi-label">Concluídas</div>
+              {delta7Conc !== null && (
+                <div className={`ve-contagem-kpi-delta ${delta7Conc > 0 ? 'good' : delta7Conc < 0 ? 'bad' : 'neutral'}`}>
+                  {delta7Conc >= 0 ? '+' : ''}{delta7Conc} vs 7d
+                </div>
+              )}
+            </div>
+            <div className="ve-contagem-kpi">
+              <div className="ve-contagem-kpi-numbers">
+                <span className="ve-contagem-kpi-value">{actSummary.ontrack}</span>
+                <span className="ve-contagem-kpi-denom">/ {totalN}</span>
+              </div>
+              <div className="ve-contagem-kpi-label">Em Dia</div>
+              {delta7EmDia !== null && (
+                <div className={`ve-contagem-kpi-delta ${delta7EmDia > 0 ? 'neutral' : delta7EmDia < 0 ? 'bad' : 'neutral'}`}>
+                  {delta7EmDia >= 0 ? '+' : ''}{delta7EmDia} vs 7d
+                </div>
+              )}
+            </div>
+            <div className="ve-contagem-kpi">
+              <div className="ve-contagem-kpi-numbers">
+                <span className={`ve-contagem-kpi-value${actSummary.risk > 0 ? ' risk' : ''}`}>{actSummary.risk}</span>
+                <span className="ve-contagem-kpi-denom">/ {totalN}</span>
+              </div>
+              <div className="ve-contagem-kpi-label">Em Risco</div>
+              {delta7EmRisco !== null && (
+                <div className={`ve-contagem-kpi-delta ${delta7EmRisco > 0 ? 'bad' : delta7EmRisco < 0 ? 'good' : 'neutral'}`}>
+                  {delta7EmRisco >= 0 ? '+' : ''}{delta7EmRisco} vs 7d
+                </div>
+              )}
+            </div>
+            <div className="ve-contagem-kpi">
+              <div className="ve-contagem-kpi-numbers">
+                <span className={`ve-contagem-kpi-value${actSummary.late > 0 ? ' late' : ''}`}>{actSummary.late}</span>
+                <span className="ve-contagem-kpi-denom">/ {totalN}</span>
+              </div>
+              <div className="ve-contagem-kpi-label">Em Atraso</div>
+              {delta7EmAtraso !== null && (
+                <div className={`ve-contagem-kpi-delta ${delta7EmAtraso > 0 ? 'bad' : delta7EmAtraso < 0 ? 'good' : 'neutral'}`}>
+                  {delta7EmAtraso >= 0 ? '+' : ''}{delta7EmAtraso} vs 7d
+                </div>
+              )}
+            </div>
           </div>
         </Card>
 
-        {/* Card 2: KPI Execução */}
-        <Card title="KPI Execução">
-          <div className="kpi-2col">
-            <KpiCard
-              label="% Execução"
-              value={`${execPct.toFixed(1)}%`}
-              color="navy"
-              trend={<TrendNode delta={execDelta} unit=" pp" />}
-            />
-            <KpiCard
-              label="Concretização"
-              value={`${concPct.toFixed(0)}%`}
-              subtitle={`${doneN} de ${totalN}`}
-              color="navy"
-              trend={<TrendNode delta={concDelta} unit=" pp" />}
-            />
+        {/* Card 2 — EXECUÇÃO */}
+        <Card title="Execução">
+          <div className="ve-exec-kpi-grid">
+            <div className="ve-exec-kpi">
+              <div className="ve-exec-kpi-label">Grau de Execução</div>
+              <div className="ve-exec-kpi-value-row">
+                <span className="ve-exec-kpi-value">{execPct.toFixed(1)}%</span>
+                {execDelta !== null && Math.abs(execDelta) >= 0.05 && (
+                  <span className={`ve-exec-kpi-delta ${execDelta > 0 ? 'positive' : 'negative'}`}>
+                    {execDelta > 0 ? '▲' : '▼'}{Math.abs(execDelta).toFixed(1)}pp
+                  </span>
+                )}
+              </div>
+              <div className="ve-exec-kpi-target">Objectivo: {execTarget.toFixed(1)}%</div>
+            </div>
+            <div className="ve-exec-kpi">
+              <div className="ve-exec-kpi-label">Concretização Geral</div>
+              <div className="ve-exec-kpi-value-row">
+                <span className="ve-exec-kpi-value">{concGeralVal.toFixed(1)}%</span>
+                {concGeralDelta !== null && Math.abs(concGeralDelta) >= 0.05 && (
+                  <span className={`ve-exec-kpi-delta ${concGeralDelta > 0 ? 'positive' : 'negative'}`}>
+                    {concGeralDelta > 0 ? '▲' : '▼'}{Math.abs(concGeralDelta).toFixed(1)}pp
+                  </span>
+                )}
+              </div>
+              {concGeralTarget !== null && (
+                <div className="ve-exec-kpi-target">Objectivo: {concGeralTarget.toFixed(1)}%</div>
+              )}
+            </div>
+            <div className="ve-exec-kpi">
+              <div className="ve-exec-kpi-label">Concretização à Data</div>
+              <div className="ve-exec-kpi-value-row">
+                <span className="ve-exec-kpi-value">
+                  {concDataVal !== null ? `${concDataVal.toFixed(1)}%` : '—'}
+                </span>
+                {concDataDelta !== null && Math.abs(concDataDelta) >= 0.05 && (
+                  <span className={`ve-exec-kpi-delta ${concDataDelta > 0 ? 'positive' : 'negative'}`}>
+                    {concDataDelta > 0 ? '▲' : '▼'}{Math.abs(concDataDelta).toFixed(1)}pp
+                  </span>
+                )}
+              </div>
+              <div className="ve-exec-kpi-target">Objectivo: 100%</div>
+            </div>
           </div>
         </Card>
 
-        {/* Card 3: Atenção */}
-        <Card title="Atenção">
-          <div className="kpi-2col">
-            <KpiCard
-              label="Pontos de Atenção"
-              value={openAttention.length}
-              color={openAttention.length > 0 ? 'amber' : 'text'}
-            />
-            <KpiCard
-              label="Riscos Críticos"
-              value={criticalRisks.length}
-              color={criticalRisks.length > 0 ? 'red' : 'text'}
-            />
+        {/* Card 3 — A REQUERER ATENÇÃO */}
+        <Card title="A Requerer Atenção">
+          <div className="ve-attn-kpi-grid">
+            <div className="ve-attn-kpi">
+              <span className={`ve-attn-kpi-value${criticalRisks.length > 0 ? ' risk' : ''}`}>
+                {criticalRisks.length}
+              </span>
+              <span className="ve-attn-kpi-label">Riscos Críticos</span>
+            </div>
+            <div className="ve-attn-kpi">
+              <span className={`ve-attn-kpi-value${openAttention.length > 0 ? ' amber' : ''}`}>
+                {openAttention.length}
+              </span>
+              <span className="ve-attn-kpi-label">Pontos de Atenção</span>
+            </div>
           </div>
         </Card>
       </div>
