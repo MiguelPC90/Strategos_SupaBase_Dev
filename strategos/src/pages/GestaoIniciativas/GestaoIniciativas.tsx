@@ -323,11 +323,11 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
   const handleN2Change = (e: React.ChangeEvent<HTMLSelectElement>) =>
     onChange({ ...form, n2: e.target.value, n3: '', n4: '', n5: '' })
 
-  const macros   = activities.filter(a => a.n2 === form.n2 && a.level === 3)
-  const actsCand = activities.filter(a => a.n2 === form.n2 && a.level === 4 && a.n3 === form.n3)
-  const tasks    = activities.filter(a =>
+  const macros   = useMemo(() => activities.filter(a => a.n2 === form.n2 && a.level === 3), [activities, form.n2])
+  const actsCand = useMemo(() => activities.filter(a => a.n2 === form.n2 && a.level === 4 && a.n3 === form.n3), [activities, form.n2, form.n3])
+  const tasks    = useMemo(() => activities.filter(a =>
     a.n2 === form.n2 && a.level === 5 && a.n3 === form.n3 && a.n4 === form.n4
-  )
+  ), [activities, form.n2, form.n3, form.n4])
 
   const pctPrev = computePctPrev(form.bs, form.bf)
 
@@ -438,7 +438,7 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
             <div className="gi-date-inline-group">
               <span className="gi-date-inline-lbl">Fim:</span>
               <input
-                className={`gi-date-input${errors.bf ? ' gi-input-error' : ''}`}
+                className={`gi-date-input${errors.bs ? ' gi-input-error' : ''}`}
                 type="date"
                 value={form.bf}
                 disabled={!canEditBaseline}
@@ -446,9 +446,7 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
               />
             </div>
           </div>
-          {(errors.bs || errors.bf) && (
-            <span className="gi-error">{errors.bs || errors.bf}</span>
-          )}
+          {errors.bs && <span className="gi-error">{errors.bs}</span>}
         </div>
         <div className="gi-date-group" style={{ marginTop: 10 }}>
           <span className="gi-field-label">Real</span>
@@ -465,40 +463,34 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
             <div className="gi-date-inline-group">
               <span className="gi-date-inline-lbl">Fim:</span>
               <input
-                className={`gi-date-input${errors.rf ? ' gi-input-error' : ''}`}
+                className={`gi-date-input${errors.rs ? ' gi-input-error' : ''}`}
                 type="date"
                 value={form.rf}
                 onChange={e => onChange({ ...form, rf: e.target.value })}
               />
             </div>
           </div>
-          {(errors.rs || errors.rf) && (
-            <span className="gi-error">{errors.rs || errors.rf}</span>
-          )}
+          {errors.rs && <span className="gi-error">{errors.rs}</span>}
         </div>
       </div>
 
       {/* ── 4. Progresso ── */}
       <div className="gi-section">
         <div className="gi-section-title">Progresso</div>
-        <div className="gi-progress-two-col" style={{ marginTop: 10 }}>
-          <div className="gi-field">
-            <span className="gi-field-label">% Execução</span>
-            <div className="gi-pct-wrap" style={{ justifyContent: 'flex-start', gap: 6 }}>
-              <input
-                className="gi-pct-input"
-                type="number" min={0} max={100} step={1}
-                value={form.pct}
-                onChange={set('pct')}
-                style={{ width: 64 }}
-              />
-              <span className="gi-pct-unit" style={{ fontSize: 13 }}>%</span>
-            </div>
+        <div className="gi-progress-inline" style={{ marginTop: 10 }}>
+          <span className="gi-progress-lbl">% Execução:</span>
+          <div className="gi-pct-wrap">
+            <input
+              className="gi-pct-input"
+              type="number" min={0} max={100} step={1}
+              value={form.pct}
+              onChange={set('pct')}
+              style={{ width: 64 }}
+            />
+            <span className="gi-pct-unit" style={{ fontSize: 13 }}>%</span>
           </div>
-          <div className="gi-field">
-            <span className="gi-field-label">% Previsto</span>
-            <span className="gi-pct-prev-value gi-readonly" style={{ display: 'block', marginTop: 2 }}>{pctPrev}%</span>
-          </div>
+          <span className="gi-progress-lbl" style={{ marginLeft: 16 }}>% Prevista:</span>
+          <span className="gi-pct-prev-value gi-readonly">{pctPrev}%</span>
         </div>
       </div>
 
@@ -1028,12 +1020,12 @@ export default function GestaoIniciativas({
     if (!panelForm.name.trim()) errs.name = 'Designação obrigatória.'
     if ((panelForm.bs && !panelForm.bf) || (!panelForm.bs && panelForm.bf))
       errs.bs = 'Datas baseline devem ser preenchidas.'
-    if (panelForm.bs && panelForm.bf && panelForm.bs > panelForm.bf)
-      errs.bf = 'Data de início baseline tem de ser anterior à data de fim.'
+    else if (panelForm.bs && panelForm.bf && panelForm.bs > panelForm.bf)
+      errs.bs = 'Data de início baseline tem de ser anterior à data de fim.'
     if (panelForm.rf && !panelForm.rs)
       errs.rs = 'Indique a data de início real.'
-    if (panelForm.rs && panelForm.rf && panelForm.rs > panelForm.rf)
-      errs.rf = 'Data de início real tem de ser anterior à data de fim.'
+    else if (panelForm.rs && panelForm.rf && panelForm.rs > panelForm.rf)
+      errs.rs = 'Data de início real tem de ser anterior à data de fim.'
     if (Object.keys(errs).length > 0) { setPanelErrors(errs); return }
     setPanelSaving(true); setPanelErrors({})
     const pct    = Math.min(100, Math.max(0, Number(panelForm.pct) || 0))
