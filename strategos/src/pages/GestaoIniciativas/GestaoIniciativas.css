@@ -806,10 +806,17 @@
     flex-shrink: 0;
   }
 
-  .gi-dep-type-info {
-    color: var(--text3);
-    flex-shrink: 0;
-    cursor: help;
+  .gi-dep-pred-select {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 3px 6px;
+    background: var(--bg);
+    font-family: inherit;
+    color: var(--text);
+    height: 26px;
   }
 
   .gi-dep-type-sel {
@@ -880,32 +887,33 @@
   }
   .gi-dep-remove:hover { color: var(--status-late); background: rgba(184, 74, 63, 0.08); }
 
-  .gi-dep-add-form {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 10px 12px;
-    background: var(--bg2);
-    border: 1px solid var(--bg3);
-    border-radius: var(--r);
-  }
-
-  .gi-dep-add-row {
-    display: flex;
+  .gi-dep-confirm {
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--status-ontrack);
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    padding: 0;
   }
-
-  .gi-dep-add-actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: auto;
-  }
+  .gi-dep-confirm:hover { background: rgba(74, 124, 89, 0.1); }
+  .gi-dep-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .gi-dep-add-btn {
     align-self: flex-start;
     margin-top: 2px;
+  }
+
+  .gi-collapsible-right-slot {
+    margin-left: auto;
+    margin-right: 6px;
+    display: inline-flex;
+    align-items: center;
   }
 
   /* ── Modal breadcrumb ───────────────────────────────────────── */

@@ -1,6 +1,6 @@
 import './GestaoIniciativas.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { Minimize2, Maximize2, AlertTriangle, Info, X } from 'lucide-react'
+import { Minimize2, Maximize2, AlertTriangle, Info, X, Link2, Check } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
@@ -40,6 +40,7 @@ function fmtDate(iso: string | null): string {
 }
 
 const TODAY = new Date().toISOString().slice(0, 10)
+const DEP_TYPE_TOOLTIP = 'FS: Fim → Início · SS: Início → Início · FF: Fim → Fim · SF: Início → Fim'
 
 // ── computePctPrev ─────────────────────────────────────────────
 function computePctPrev(bs: string, bf: string): number {
@@ -52,14 +53,19 @@ function computePctPrev(bs: string, bf: string): number {
 }
 
 // ── Collapsible ────────────────────────────────────────────────
-function Collapsible({ title, defaultOpen = false, children }: {
-  title: string; defaultOpen?: boolean; children: React.ReactNode
+function Collapsible({ title, defaultOpen = false, rightSlot, children }: {
+  title: string; defaultOpen?: boolean; rightSlot?: React.ReactNode; children: React.ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div className="gi-collapsible">
       <button className="gi-collapsible-header" type="button" onClick={() => setOpen(o => !o)}>
         <span className="gi-section-title gi-collapsible-title">{title}</span>
+        {rightSlot && (
+          <span className="gi-collapsible-right-slot" onClick={e => e.stopPropagation()}>
+            {rightSlot}
+          </span>
+        )}
         <span className="gi-collapsible-chevron">{open ? '▲' : '▼'}</span>
       </button>
       {open && <div className="gi-collapsible-body">{children}</div>}
@@ -524,7 +530,10 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
       {/* ── 6. Dependências ── */}
       {level >= 4 && (
         form.id && depProps ? (
-          <Collapsible title="Dependências">
+          <Collapsible
+            title="Dependências"
+            rightSlot={<Info size={12} style={{ color: 'var(--text3)', cursor: 'help' }} title={DEP_TYPE_TOOLTIP} />}
+          >
             <DependenciesEditor
               activityId={form.id}
               predecessors={depProps.predecessors}
@@ -625,7 +634,6 @@ function highlightMatch(text: string, query: string): React.ReactNode {
 }
 
 // ── DependenciesEditor ─────────────────────────────────────────
-const DEP_TYPE_TOOLTIP = 'FS: Fim → Início · SS: Início → Início · FF: Fim → Fim · SF: Início → Fim'
 
 interface DepEditorProps {
   activityId: string
@@ -693,7 +701,6 @@ function DependenciesEditor({
               {pred?.name ?? dep.predecessor_id}
             </span>
             <div className="gi-dep-controls">
-              <Info size={12} className="gi-dep-type-info" title={DEP_TYPE_TOOLTIP} />
               <select
                 className="gi-dep-type-sel"
                 value={dep.dep_type}
@@ -735,59 +742,60 @@ function DependenciesEditor({
       })}
 
       {addOpen && (
-        <div className="gi-dep-add-form">
-          <select
-            className="gi-field-input"
-            value={selPred}
-            onChange={e => { setSelPred(e.target.value); setAddError(null) }}
-          >
-            <option value="">— Actividade predecessora —</option>
-            {candidates.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
-          <div className="gi-dep-add-row">
-            <Info size={12} className="gi-dep-type-info" title={DEP_TYPE_TOOLTIP} />
+        <>
+          <div className="gi-dep-row">
             <select
-              className="gi-dep-type-sel"
-              value={selType}
-              title={DEP_TYPE_TOOLTIP}
-              onChange={e => setSelType(e.target.value as DependencyType)}
+              className="gi-dep-pred-select"
+              value={selPred}
+              onChange={e => { setSelPred(e.target.value); setAddError(null) }}
             >
-              <option value="FS">FS</option>
-              <option value="SS">SS</option>
-              <option value="FF">FF</option>
-              <option value="SF">SF</option>
+              <option value="">— Actividade predecessora —</option>
+              {candidates.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
-            <input
-              type="number"
-              className="gi-dep-lag-input"
-              value={lagDays}
-              min={-999}
-              max={999}
-              placeholder="0"
-              title="Lag (dias)"
-              onChange={e => setLagDays(parseInt(e.target.value, 10) || 0)}
-            />
-            <span className="gi-dep-lag-unit">d</span>
-            <div className="gi-dep-add-actions">
+            <div className="gi-dep-controls">
+              <select
+                className="gi-dep-type-sel"
+                value={selType}
+                title={DEP_TYPE_TOOLTIP}
+                onChange={e => setSelType(e.target.value as DependencyType)}
+              >
+                <option value="FS">FS</option>
+                <option value="SS">SS</option>
+                <option value="FF">FF</option>
+                <option value="SF">SF</option>
+              </select>
+              <input
+                type="number"
+                className="gi-dep-lag-input"
+                value={lagDays}
+                min={-999}
+                max={999}
+                placeholder="0"
+                title="Lag (dias)"
+                onChange={e => setLagDays(parseInt(e.target.value, 10) || 0)}
+              />
+              <span className="gi-dep-lag-unit">d</span>
               <button
                 type="button"
-                className="gi-btn gi-btn-save"
+                className="gi-dep-confirm"
                 onClick={handleAdd}
                 disabled={adding}
+                title="Confirmar"
               >
-                {adding ? '…' : 'Adicionar'}
+                <Check size={14} />
               </button>
               <button
                 type="button"
-                className="gi-btn"
+                className="gi-dep-remove"
                 onClick={() => { setAddOpen(false); setAddError(null) }}
+                title="Cancelar"
               >
-                Cancelar
+                <X size={13} />
               </button>
             </div>
           </div>
           {addError && <span className="gi-error">{addError}</span>}
-        </div>
+        </>
       )}
 
       {!addOpen && (
@@ -915,6 +923,14 @@ export default function GestaoIniciativas({
     () => activities.filter(a => a.level >= 4),
     [activities]
   )
+
+  const predecessorCounts = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const d of dependencies) {
+      m.set(d.successor_id, (m.get(d.successor_id) ?? 0) + 1)
+    }
+    return m
+  }, [dependencies])
 
   // Apply dirty overrides for display
   const localActs = useMemo(() =>
@@ -1425,6 +1441,11 @@ export default function GestaoIniciativas({
           <td>
             <div className="gi-name-cell" style={{ paddingLeft: indent }}>
               <span className="gi-name-text" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
+              {(predecessorCounts.get(a.id) ?? 0) > 0 && (
+                <span className="act-dep-chip" title={predecessorCounts.get(a.id) === 1 ? '1 dependência' : `${predecessorCounts.get(a.id)} dependências`}>
+                  <Link2 size={11} />{predecessorCounts.get(a.id)}
+                </span>
+              )}
             </div>
           </td>
           <td className="gi-td-c">{fmtDate(aEnd ?? null)}</td>
