@@ -59,15 +59,13 @@ function Collapsible({ title, defaultOpen = false, rightSlot, children }: {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div className="gi-collapsible">
-      <button className="gi-collapsible-header" type="button" onClick={() => setOpen(o => !o)}>
-        <span className="gi-section-title gi-collapsible-title">{title}</span>
-        {rightSlot && (
-          <span className="gi-collapsible-right-slot" onClick={e => e.stopPropagation()}>
-            {rightSlot}
-          </span>
-        )}
-        <span className="gi-collapsible-chevron">{open ? '▲' : '▼'}</span>
-      </button>
+      <div className="gi-collapsible-header-row">
+        <button className="gi-collapsible-header" type="button" onClick={() => setOpen(o => !o)}>
+          <span className="gi-section-title gi-collapsible-title">{title}</span>
+          <span className="gi-collapsible-chevron">{open ? '▲' : '▼'}</span>
+        </button>
+        {rightSlot && <span className="gi-collapsible-right-slot">{rightSlot}</span>}
+      </div>
       {open && <div className="gi-collapsible-body">{children}</div>}
     </div>
   )
@@ -532,7 +530,16 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
         form.id && depProps ? (
           <Collapsible
             title="Dependências"
-            rightSlot={<Info size={12} style={{ color: 'var(--text3)', cursor: 'help' }} title={DEP_TYPE_TOOLTIP} />}
+            rightSlot={
+              <span
+                className="gi-tooltip-trigger"
+                data-tooltip={DEP_TYPE_TOOLTIP}
+                onClick={e => e.stopPropagation()}
+                tabIndex={0}
+              >
+                <Info size={14} />
+              </span>
+            }
           >
             <DependenciesEditor
               activityId={form.id}
@@ -700,18 +707,18 @@ function DependenciesEditor({
             <span className="gi-dep-name" title={pred?.name ?? dep.predecessor_id}>
               {pred?.name ?? dep.predecessor_id}
             </span>
-            <div className="gi-dep-controls">
-              <select
-                className="gi-dep-type-sel"
-                value={dep.dep_type}
-                title={DEP_TYPE_TOOLTIP}
-                onChange={e => onUpdate(dep.id, { dep_type: e.target.value as DependencyType })}
-              >
-                <option value="FS">FS</option>
-                <option value="SS">SS</option>
-                <option value="FF">FF</option>
-                <option value="SF">SF</option>
-              </select>
+            <select
+              className="gi-dep-type-sel"
+              value={dep.dep_type}
+              title={DEP_TYPE_TOOLTIP}
+              onChange={e => onUpdate(dep.id, { dep_type: e.target.value as DependencyType })}
+            >
+              <option value="FS">FS</option>
+              <option value="SS">SS</option>
+              <option value="FF">FF</option>
+              <option value="SF">SF</option>
+            </select>
+            <span className="gi-dep-lag-group">
               <input
                 type="number"
                 className="gi-dep-lag-input"
@@ -722,21 +729,24 @@ function DependenciesEditor({
                 onChange={e => onUpdate(dep.id, { lag_days: parseInt(e.target.value, 10) || 0 })}
               />
               <span className="gi-dep-lag-unit">d</span>
-              {showGapWarning && (
-                <span className="gi-dep-gap-warn" title={gapTooltip}>
-                  <AlertTriangle size={13} />
-                  <span className="gi-dep-gap-lbl">gap</span>
-                </span>
-              )}
-              <button
-                type="button"
-                className="gi-dep-remove"
-                onClick={() => onRemove(dep.id)}
-                title="Remover dependência"
-              >
-                <X size={13} />
-              </button>
-            </div>
+            </span>
+            {showGapWarning ? (
+              <span className="gi-dep-gap-warn gi-dep-gap-slot" title={gapTooltip}>
+                <AlertTriangle size={13} />
+                <span className="gi-dep-gap-lbl">gap</span>
+              </span>
+            ) : (
+              <span className="gi-dep-gap-slot" />
+            )}
+            <span />
+            <button
+              type="button"
+              className="gi-dep-remove"
+              onClick={() => onRemove(dep.id)}
+              title="Remover dependência"
+            >
+              <X size={13} />
+            </button>
           </div>
         )
       })}
@@ -752,18 +762,18 @@ function DependenciesEditor({
               <option value="">— Actividade predecessora —</option>
               {candidates.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
-            <div className="gi-dep-controls">
-              <select
-                className="gi-dep-type-sel"
-                value={selType}
-                title={DEP_TYPE_TOOLTIP}
-                onChange={e => setSelType(e.target.value as DependencyType)}
-              >
-                <option value="FS">FS</option>
-                <option value="SS">SS</option>
-                <option value="FF">FF</option>
-                <option value="SF">SF</option>
-              </select>
+            <select
+              className="gi-dep-type-sel"
+              value={selType}
+              title={DEP_TYPE_TOOLTIP}
+              onChange={e => setSelType(e.target.value as DependencyType)}
+            >
+              <option value="FS">FS</option>
+              <option value="SS">SS</option>
+              <option value="FF">FF</option>
+              <option value="SF">SF</option>
+            </select>
+            <span className="gi-dep-lag-group">
               <input
                 type="number"
                 className="gi-dep-lag-input"
@@ -775,24 +785,25 @@ function DependenciesEditor({
                 onChange={e => setLagDays(parseInt(e.target.value, 10) || 0)}
               />
               <span className="gi-dep-lag-unit">d</span>
-              <button
-                type="button"
-                className="gi-dep-confirm"
-                onClick={handleAdd}
-                disabled={adding}
-                title="Confirmar"
-              >
-                <Check size={14} />
-              </button>
-              <button
-                type="button"
-                className="gi-dep-remove"
-                onClick={() => { setAddOpen(false); setAddError(null) }}
-                title="Cancelar"
-              >
-                <X size={13} />
-              </button>
-            </div>
+            </span>
+            <span className="gi-dep-gap-slot" />
+            <button
+              type="button"
+              className="gi-dep-confirm"
+              onClick={handleAdd}
+              disabled={adding}
+              title="Confirmar"
+            >
+              <Check size={14} />
+            </button>
+            <button
+              type="button"
+              className="gi-dep-remove"
+              onClick={() => { setAddOpen(false); setAddError(null) }}
+              title="Cancelar"
+            >
+              <X size={13} />
+            </button>
           </div>
           {addError && <span className="gi-error">{addError}</span>}
         </>
