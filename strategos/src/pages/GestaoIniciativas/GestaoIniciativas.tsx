@@ -8,7 +8,6 @@ import { createPortal } from 'react-dom'
 import Card from '../../components/Card/Card'
 import Modal from '../../components/Modal/Modal'
 import Badge from '../../components/Badge/Badge'
-import DateRangePicker from '../../components/DateRangePicker/DateRangePicker'
 import * as XLSX from 'xlsx'
 import { useActivities } from '../../hooks/useActivities'
 import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
@@ -18,10 +17,11 @@ import { usePlanos } from '../../hooks/usePlanos'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange, leafPctPrev, leafStatus } from '../../lib/rollup'
-import type { Activity, Person, ActivityDependency, DependencyType, Plano } from '../../types/index'
+import type { Activity, ActivityDependency, DependencyType, Plano } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 import { validateNewDependency, propagateDateChanges } from '../../lib/activityDependencies'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
+import { useRole } from '../../hooks/useRole'
 
 // ── Types ──────────────────────────────────────────────────────
 type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey'
@@ -294,13 +294,14 @@ interface PanelProps {
   eixos: string[]
   planos: string[]
   activities: Activity[]
-  internalPeople: Person[]
   errors: Record<string, string>
   onChange: (f: PanelForm) => void
+  canEditBaseline: boolean
+  isEmbedded?: boolean
   depProps?: DependencyEditorProps
 }
 
-function Panel({ form, eixos, planos, activities, internalPeople, errors, onChange, depProps }: PanelProps) {
+function Panel({ form, eixos, planos, activities, errors, onChange, canEditBaseline, isEmbedded, depProps }: PanelProps) {
   const set = (k: keyof PanelForm) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       onChange({ ...form, [k]: e.target.value })
@@ -330,14 +331,20 @@ function Panel({ form, eixos, planos, activities, internalPeople, errors, onChan
 
   const pctPrev = computePctPrev(form.bs, form.bf)
 
+  const breadcrumb = [form.n0, form.n1, form.n2].filter(Boolean).join(' → ')
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+      {breadcrumb && (
+        <div className="gi-modal-breadcrumb">{breadcrumb}</div>
+      )}
 
       {/* ── 1. Identificação ── */}
       <div className="gi-section">
         <div className="gi-section-title">Identificação</div>
         <div className="gi-field" style={{ marginTop: 10 }}>
-          <span className={`gi-field-label${errors.name ? ' gi-label-error' : ''}`}>Nome *</span>
+          <span className={`gi-field-label${errors.name ? ' gi-label-error' : ''}`}>Designação *</span>
           <input
             className={`gi-field-input${errors.name ? ' gi-input-error' : ''}`}
             value={form.name}
@@ -360,22 +367,24 @@ function Panel({ form, eixos, planos, activities, internalPeople, errors, onChan
       {/* ── 2. Hierarquia ── */}
       <div className="gi-section">
         <div className="gi-section-title">Hierarquia</div>
-        <div className="gi-field-row" style={{ marginTop: 10 }}>
-          <div className="gi-field">
-            <span className="gi-field-label">Eixo</span>
-            <select className="styled-select-sm" value={form.n1} onChange={handleN1Change}>
-              <option value="">— seleccionar —</option>
-              {eixos.map(e => <option key={e} value={e}>{e}</option>)}
-            </select>
+        {!isEmbedded && (
+          <div className="gi-field-row" style={{ marginTop: 10 }}>
+            <div className="gi-field">
+              <span className="gi-field-label">Eixo</span>
+              <select className="styled-select-sm" value={form.n1} onChange={handleN1Change}>
+                <option value="">— seleccionar —</option>
+                {eixos.map(e => <option key={e} value={e}>{e}</option>)}
+              </select>
+            </div>
+            <div className="gi-field">
+              <span className="gi-field-label">Plano de Acção</span>
+              <select className="styled-select-sm" value={form.n2} onChange={handleN2Change}>
+                <option value="">— seleccionar —</option>
+                {planos.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
           </div>
-          <div className="gi-field">
-            <span className="gi-field-label">Plano de Acção</span>
-            <select className="styled-select-sm" value={form.n2} onChange={handleN2Change}>
-              <option value="">— seleccionar —</option>
-              {planos.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
-        </div>
+        )}
         {level >= 4 && (
           <div className="gi-field" style={{ marginTop: 10 }}>
             <span className="gi-context-label">Macroactividade</span>
@@ -420,21 +429,57 @@ function Panel({ form, eixos, planos, activities, internalPeople, errors, onChan
       {/* ── 3. Datas ── */}
       <div className="gi-section">
         <div className="gi-section-title">Datas</div>
-        <div style={{ marginTop: 10 }}>
-          <DateRangePicker
-            label="Baseline"
-            startDate={form.bs || null}
-            endDate={form.bf || null}
-            onChange={(s, e) => onChange({ ...form, bs: s ?? '', bf: e ?? '' })}
-          />
+        <div className="gi-date-group" style={{ marginTop: 10 }}>
+          <span className="gi-field-label">Baseline</span>
+          <div className="gi-date-row">
+            <div className="gi-date-subgroup">
+              <span className="gi-date-sublabel">Início</span>
+              <input
+                className={`gi-date-input${errors.bs ? ' gi-input-error' : ''}`}
+                type="date"
+                value={form.bs}
+                disabled={!canEditBaseline}
+                onChange={e => onChange({ ...form, bs: e.target.value })}
+              />
+              {errors.bs && <span className="gi-error">{errors.bs}</span>}
+            </div>
+            <div className="gi-date-subgroup">
+              <span className="gi-date-sublabel">Fim</span>
+              <input
+                className={`gi-date-input${errors.bf ? ' gi-input-error' : ''}`}
+                type="date"
+                value={form.bf}
+                disabled={!canEditBaseline}
+                onChange={e => onChange({ ...form, bf: e.target.value })}
+              />
+              {errors.bf && <span className="gi-error">{errors.bf}</span>}
+            </div>
+          </div>
         </div>
-        <div style={{ marginTop: 10 }}>
-          <DateRangePicker
-            label="Real"
-            startDate={form.rs || null}
-            endDate={form.rf || null}
-            onChange={(s, e) => onChange({ ...form, rs: s ?? '', rf: e ?? '' })}
-          />
+        <div className="gi-date-group" style={{ marginTop: 10 }}>
+          <span className="gi-field-label">Real</span>
+          <div className="gi-date-row">
+            <div className="gi-date-subgroup">
+              <span className="gi-date-sublabel">Início</span>
+              <input
+                className={`gi-date-input${errors.rs ? ' gi-input-error' : ''}`}
+                type="date"
+                value={form.rs}
+                onChange={e => onChange({ ...form, rs: e.target.value })}
+              />
+              {errors.rs && <span className="gi-error">{errors.rs}</span>}
+            </div>
+            <div className="gi-date-subgroup">
+              <span className="gi-date-sublabel">Fim</span>
+              <input
+                className={`gi-date-input${errors.rf ? ' gi-input-error' : ''}`}
+                type="date"
+                value={form.rf}
+                onChange={e => onChange({ ...form, rf: e.target.value })}
+              />
+              {errors.rf && <span className="gi-error">{errors.rf}</span>}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -443,14 +488,15 @@ function Panel({ form, eixos, planos, activities, internalPeople, errors, onChan
         <div className="gi-section-title">Progresso</div>
         <div className="gi-field" style={{ marginTop: 10 }}>
           <span className="gi-field-label">% Execução</span>
-          <div className="gi-slider-row">
+          <div className="gi-pct-wrap" style={{ justifyContent: 'flex-start', gap: 6 }}>
             <input
-              className="gi-slider"
-              type="range" min="0" max="100" step="1"
+              className="gi-pct-input"
+              type="number" min={0} max={100} step={1}
               value={form.pct}
               onChange={set('pct')}
+              style={{ width: 64 }}
             />
-            <span className="gi-slider-val">{form.pct}%</span>
+            <span className="gi-pct-unit" style={{ fontSize: 13 }}>%</span>
           </div>
         </div>
         <div className="gi-progress-row" style={{ marginTop: 8 }}>
@@ -459,27 +505,20 @@ function Panel({ form, eixos, planos, activities, internalPeople, errors, onChan
         </div>
       </div>
 
-      {/* ── 5. Responsável e Sponsor (collapsible) ── */}
-      <Collapsible title="Responsável e Sponsor">
-        <div className="gi-field-row">
-          <div className="gi-field">
-            <span className="gi-field-label">Responsável</span>
-            <select className="gi-field-input" value={form.owner} onChange={set('owner')}>
-              <option value="">— seleccionar —</option>
-              {internalPeople.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-            </select>
-          </div>
-          <div className="gi-field">
-            <span className="gi-field-label">Sponsor</span>
-            <select className="gi-field-input" value={form.sponsor} onChange={set('sponsor')}>
-              <option value="">— seleccionar —</option>
-              {internalPeople.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-            </select>
-          </div>
+      {/* ── 5. Notas (collapsible) ── */}
+      <Collapsible title="Notas">
+        <div className="gi-field">
+          <textarea
+            className="gi-field-textarea"
+            value={form.notes}
+            onChange={set('notes')}
+            rows={3}
+            placeholder="Observações opcionais…"
+          />
         </div>
       </Collapsible>
 
-      {/* ── 5.5 Dependências (collapsible, only for saved leaf activities) ── */}
+      {/* ── 6. Dependências (collapsible, only for saved leaf activities) ── */}
       {form.id && level >= 4 && depProps && (
         <Collapsible title="Dependências">
           <DependenciesEditor
@@ -493,19 +532,6 @@ function Panel({ form, eixos, planos, activities, internalPeople, errors, onChan
           />
         </Collapsible>
       )}
-
-      {/* ── 6. Notas (collapsible) ── */}
-      <Collapsible title="Notas">
-        <div className="gi-field">
-          <textarea
-            className="gi-field-textarea"
-            value={form.notes}
-            onChange={set('notes')}
-            rows={3}
-            placeholder="Observações opcionais…"
-          />
-        </div>
-      </Collapsible>
 
     </div>
   )
@@ -759,6 +785,7 @@ export default function GestaoIniciativas({
   const { filters } = useFilters()
   const [selProgId, setSelProgId] = useState<string | null>(null)
   const readOnly = !useCanEditCurrent('gestao-iniciativas')
+  const { isAdmin, isProgramManager } = useRole()
 
   const programs = useAccessiblePrograms('gestao-iniciativas')
   const { activities: rawActivities, loading, refetch } = useActivities(
@@ -995,6 +1022,12 @@ export default function GestaoIniciativas({
     if (!panelForm) return
     const errs: Record<string, string> = {}
     if (!panelForm.name.trim()) errs.name = 'Nome obrigatório.'
+    if ((panelForm.bs && !panelForm.bf) || (!panelForm.bs && panelForm.bf))
+      errs.bs = 'Datas baseline devem ser preenchidas em par.'
+    if (panelForm.bs && panelForm.bf && panelForm.bs > panelForm.bf)
+      errs.bf = 'Data de fim baseline deve ser igual ou posterior ao início.'
+    if (panelForm.rs && panelForm.rf && panelForm.rs > panelForm.rf)
+      errs.rf = 'Data de fim real deve ser igual ou posterior ao início.'
     if (Object.keys(errs).length > 0) { setPanelErrors(errs); return }
     setPanelSaving(true); setPanelErrors({})
     const pct    = Math.min(100, Math.max(0, Number(panelForm.pct) || 0))
@@ -1358,7 +1391,6 @@ export default function GestaoIniciativas({
               <span className="gi-name-text" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
             </div>
           </td>
-          <td className="gi-td-c" style={{ fontSize: 12, color: 'var(--text2)' }}>{a.owner || '—'}</td>
           <td className="gi-td-c">{fmtDate(aEnd ?? null)}</td>
           <td className="gi-td-c">
             <div className="gi-pct-wrap">
@@ -1409,7 +1441,7 @@ export default function GestaoIniciativas({
             <span className="gi-name-text">{n1g.n1}</span>
           </div>
         </td>
-        <td className="gi-td-c" /><td className="gi-td-c">{fmtDate(n1dr.bf)}</td>
+        <td className="gi-td-c">{fmtDate(n1dr.bf)}</td>
         <td className="gi-td-c"><div className="gi-pct-wrap"><span className="gi-pct-ghost">{Math.round(n1pct)}</span><span className="gi-pct-unit">%</span></div></td><td className="gi-td-r">{Math.round(n1prev)}%</td>
         <td className="gi-td-c"><Badge variant={statusBadge(n1st)}>{n1st}</Badge></td><td />
       </tr>
@@ -1422,7 +1454,6 @@ export default function GestaoIniciativas({
       const n2pct = rollupPct(n2leaves); const n2prev = rollupPctPrev(n2leaves, TODAY)
       const n2st  = rollupStatus(n2leaves, TODAY, delayThreshold); const n2dr = rollupDateRange(n2leaves)
       const n2Plano = dbPlanos.find(p => p.name === n2g.n2)
-      const n2Owner = n2Plano?.owner || '—'
       if (!iE) rows.push(
         <tr key={n2g.key} className="gi-row-n2">
           <td>
@@ -1431,7 +1462,6 @@ export default function GestaoIniciativas({
               <span className="gi-name-text">{n2g.n2}</span>
             </div>
           </td>
-          <td className="gi-td-c" style={{ fontSize: 12 }}>{n2Owner}</td>
           <td className="gi-td-c">{fmtDate(n2dr.bf)}</td>
           <td className="gi-td-c"><div className="gi-pct-wrap"><span className="gi-pct-ghost">{Math.round(n2pct)}</span><span className="gi-pct-unit">%</span></div></td><td className="gi-td-r">{Math.round(n2prev)}%</td>
           <td className="gi-td-c"><Badge variant={statusBadge(n2st)}>{n2st}</Badge></td>
@@ -1486,7 +1516,7 @@ export default function GestaoIniciativas({
                 <span className="gi-name-text">{n3g.n3}</span>
               </div>
             </td>
-            <td className="gi-td-c" /><td className="gi-td-c">{fmtDate(n3dr.bf)}</td>
+            <td className="gi-td-c">{fmtDate(n3dr.bf)}</td>
             <td className="gi-td-c"><div className="gi-pct-wrap"><span className="gi-pct-ghost">{Math.round(n3pct)}</span><span className="gi-pct-unit">%</span></div></td><td className="gi-td-r">{Math.round(n3prev)}%</td>
             <td className="gi-td-c"><Badge variant={statusBadge(n3st)}>{n3st}</Badge></td>
             <td onClick={e => e.stopPropagation()}>
@@ -1541,7 +1571,7 @@ export default function GestaoIniciativas({
                   <span className="gi-name-text">{n4g.n4}</span>
                 </div>
               </td>
-              <td className="gi-td-c" /><td className="gi-td-c">{fmtDate(n4dr.bf)}</td>
+              <td className="gi-td-c">{fmtDate(n4dr.bf)}</td>
               <td className="gi-td-r">{Math.round(n4pct)}%</td><td className="gi-td-r">{Math.round(n4prev)}%</td>
               <td className="gi-td-c"><Badge variant={statusBadge(n4st)}>{n4st}</Badge></td>
               <td onClick={e => e.stopPropagation()}>
@@ -1587,7 +1617,7 @@ export default function GestaoIniciativas({
                       <span className="gi-name-text">{n5g.n5}</span>
                     </div>
                   </td>
-                  <td /><td /><td /><td />
+                  <td /><td /><td />
                   <td />
                   <td onClick={e => e.stopPropagation()}>
                     {!readOnly && n5Rep && (
@@ -1637,7 +1667,7 @@ export default function GestaoIniciativas({
                 <span className="gi-name-text">{eixo.name}</span>
               </div>
             </td>
-            <td className="gi-td-c" /><td className="gi-td-c">—</td>
+            <td className="gi-td-c">—</td>
             <td className="gi-td-r">—</td><td className="gi-td-r">—</td>
             <td className="gi-td-c" /><td />
           </tr>
@@ -1656,7 +1686,6 @@ export default function GestaoIniciativas({
                 <span className="gi-name-text">{plano.name}</span>
               </div>
             </td>
-            <td className="gi-td-c" style={{ fontSize: 12 }}>{plano.owner || '—'}</td>
             <td className="gi-td-c">{fmtDate(plano.end_date)}</td>
             <td className="gi-td-r">—</td><td className="gi-td-r">—</td>
             <td className="gi-td-c" />
@@ -1780,14 +1809,13 @@ export default function GestaoIniciativas({
               <div style={{ overflowX: 'auto' }}>
                 <table className="gi-table">
                   <colgroup>
-                    <col /><col style={{ width: 110 }} /><col style={{ width: 100 }} />
+                    <col /><col style={{ width: 100 }} />
                     <col style={{ width: 90 }} /><col style={{ width: 70 }} />
                     <col style={{ width: 90 }} /><col style={{ width: 46 }} />
                   </colgroup>
                   <thead>
                 <tr>
                   <th style={{ minWidth: 280 }}>Designação</th>
-                  <th className="gi-th-c">Responsável</th>
                   <th className="gi-th-c">Prazo</th>
                   <th className="gi-th-c">% Exec</th>
                   <th className="gi-th-c">% Prev</th>
@@ -1798,7 +1826,7 @@ export default function GestaoIniciativas({
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="gi-empty">
+                    <td colSpan={6} className="gi-empty">
                       Nenhuma actividade para os filtros seleccionados.
                     </td>
                   </tr>
@@ -2117,9 +2145,10 @@ export default function GestaoIniciativas({
         >
           <Panel
             form={panelForm} eixos={eixos} planos={planos} activities={activities}
-            internalPeople={internalPeople}
             errors={panelErrors}
             onChange={setPanelForm}
+            canEditBaseline={!panelForm.id || isAdmin || isProgramManager}
+            isEmbedded={mode === 'embedded'}
             depProps={panelDepProps}
           />
         </Modal>
