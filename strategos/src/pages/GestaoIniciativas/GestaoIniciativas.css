@@ -924,4 +924,33 @@
   }
   .gi-date-input:focus { outline: none; border-color: var(--navy); }
   .gi-date-input:disabled { background: var(--bg3); color: var(--text3); cursor: not-allowed; }
+
+  /* ── Date inline label ──────────────────────────────────────── */
+  .gi-date-inline-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .gi-date-inline-lbl {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text2);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── Progresso two-column ───────────────────────────────────── */
+  .gi-progress-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  /* ── Deps placeholder hint ──────────────────────────────────── */
+  .gi-deps-new-hint {
+    font-size: 12px;
+    color: var(--text3);
+    margin: 6px 0 0;
+  }
 }

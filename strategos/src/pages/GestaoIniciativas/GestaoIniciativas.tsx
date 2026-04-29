@@ -331,20 +331,14 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
 
   const pctPrev = computePctPrev(form.bs, form.bf)
 
-  const breadcrumb = [form.n0, form.n1, form.n2].filter(Boolean).join(' → ')
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-
-      {breadcrumb && (
-        <div className="gi-modal-breadcrumb">{breadcrumb}</div>
-      )}
 
       {/* ── 1. Identificação ── */}
       <div className="gi-section">
         <div className="gi-section-title">Identificação</div>
         <div className="gi-field" style={{ marginTop: 10 }}>
-          <span className={`gi-field-label${errors.name ? ' gi-label-error' : ''}`}>Designação *</span>
+          <span className={`gi-field-label${errors.name ? ' gi-label-error' : ''}`}>Designação</span>
           <input
             className={`gi-field-input${errors.name ? ' gi-input-error' : ''}`}
             value={form.name}
@@ -364,28 +358,27 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
         </div>
       </div>
 
-      {/* ── 2. Hierarquia ── */}
-      <div className="gi-section">
-        <div className="gi-section-title">Hierarquia</div>
-        {!isEmbedded && (
-          <div className="gi-field-row" style={{ marginTop: 10 }}>
-            <div className="gi-field">
-              <span className="gi-field-label">Eixo</span>
-              <select className="styled-select-sm" value={form.n1} onChange={handleN1Change}>
-                <option value="">— seleccionar —</option>
-                {eixos.map(e => <option key={e} value={e}>{e}</option>)}
-              </select>
+      {/* ── 2. Hierarquia (hidden for N3; title hidden for N4+) ── */}
+      {level >= 4 && (
+        <div className="gi-section">
+          {!isEmbedded && (
+            <div className="gi-field-row" style={{ marginTop: 10 }}>
+              <div className="gi-field">
+                <span className="gi-field-label">Eixo</span>
+                <select className="styled-select-sm" value={form.n1} onChange={handleN1Change}>
+                  <option value="">— seleccionar —</option>
+                  {eixos.map(e => <option key={e} value={e}>{e}</option>)}
+                </select>
+              </div>
+              <div className="gi-field">
+                <span className="gi-field-label">Plano de Acção</span>
+                <select className="styled-select-sm" value={form.n2} onChange={handleN2Change}>
+                  <option value="">— seleccionar —</option>
+                  {planos.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
             </div>
-            <div className="gi-field">
-              <span className="gi-field-label">Plano de Acção</span>
-              <select className="styled-select-sm" value={form.n2} onChange={handleN2Change}>
-                <option value="">— seleccionar —</option>
-                {planos.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-          </div>
-        )}
-        {level >= 4 && (
+          )}
           <div className="gi-field" style={{ marginTop: 10 }}>
             <span className="gi-context-label">Macroactividade</span>
             <select
@@ -397,34 +390,34 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
               {macros.map(a => <option key={a.id} value={a.n3}>{a.name}</option>)}
             </select>
           </div>
-        )}
-        {level >= 5 && (
-          <div className="gi-field" style={{ marginTop: 10 }}>
-            <span className="gi-context-label">Actividade</span>
-            <select
-              className="styled-select-sm"
-              value={form.n4}
-              onChange={e => onChange({ ...form, n4: e.target.value, n5: '' })}
-            >
-              <option value="">— seleccionar —</option>
-              {actsCand.map(a => <option key={a.id} value={a.n4}>{a.name}</option>)}
-            </select>
-          </div>
-        )}
-        {level >= 6 && (
-          <div className="gi-field" style={{ marginTop: 10 }}>
-            <span className="gi-context-label">Tarefa</span>
-            <select
-              className="styled-select-sm"
-              value={form.n5}
-              onChange={e => onChange({ ...form, n5: e.target.value })}
-            >
-              <option value="">— seleccionar —</option>
-              {tasks.map(a => <option key={a.id} value={a.n5}>{a.name}</option>)}
-            </select>
-          </div>
-        )}
-      </div>
+          {level >= 5 && (
+            <div className="gi-field" style={{ marginTop: 10 }}>
+              <span className="gi-context-label">Actividade</span>
+              <select
+                className="styled-select-sm"
+                value={form.n4}
+                onChange={e => onChange({ ...form, n4: e.target.value, n5: '' })}
+              >
+                <option value="">— seleccionar —</option>
+                {actsCand.map(a => <option key={a.id} value={a.n4}>{a.name}</option>)}
+              </select>
+            </div>
+          )}
+          {level >= 6 && (
+            <div className="gi-field" style={{ marginTop: 10 }}>
+              <span className="gi-context-label">Tarefa</span>
+              <select
+                className="styled-select-sm"
+                value={form.n5}
+                onChange={e => onChange({ ...form, n5: e.target.value })}
+              >
+                <option value="">— seleccionar —</option>
+                {tasks.map(a => <option key={a.id} value={a.n5}>{a.name}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── 3. Datas ── */}
       <div className="gi-section">
@@ -432,8 +425,8 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
         <div className="gi-date-group" style={{ marginTop: 10 }}>
           <span className="gi-field-label">Baseline</span>
           <div className="gi-date-row">
-            <div className="gi-date-subgroup">
-              <span className="gi-date-sublabel">Início</span>
+            <div className="gi-date-inline-group">
+              <span className="gi-date-inline-lbl">Início:</span>
               <input
                 className={`gi-date-input${errors.bs ? ' gi-input-error' : ''}`}
                 type="date"
@@ -441,10 +434,9 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
                 disabled={!canEditBaseline}
                 onChange={e => onChange({ ...form, bs: e.target.value })}
               />
-              {errors.bs && <span className="gi-error">{errors.bs}</span>}
             </div>
-            <div className="gi-date-subgroup">
-              <span className="gi-date-sublabel">Fim</span>
+            <div className="gi-date-inline-group">
+              <span className="gi-date-inline-lbl">Fim:</span>
               <input
                 className={`gi-date-input${errors.bf ? ' gi-input-error' : ''}`}
                 type="date"
@@ -452,56 +444,61 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
                 disabled={!canEditBaseline}
                 onChange={e => onChange({ ...form, bf: e.target.value })}
               />
-              {errors.bf && <span className="gi-error">{errors.bf}</span>}
             </div>
           </div>
+          {(errors.bs || errors.bf) && (
+            <span className="gi-error">{errors.bs || errors.bf}</span>
+          )}
         </div>
         <div className="gi-date-group" style={{ marginTop: 10 }}>
           <span className="gi-field-label">Real</span>
           <div className="gi-date-row">
-            <div className="gi-date-subgroup">
-              <span className="gi-date-sublabel">Início</span>
+            <div className="gi-date-inline-group">
+              <span className="gi-date-inline-lbl">Início:</span>
               <input
                 className={`gi-date-input${errors.rs ? ' gi-input-error' : ''}`}
                 type="date"
                 value={form.rs}
                 onChange={e => onChange({ ...form, rs: e.target.value })}
               />
-              {errors.rs && <span className="gi-error">{errors.rs}</span>}
             </div>
-            <div className="gi-date-subgroup">
-              <span className="gi-date-sublabel">Fim</span>
+            <div className="gi-date-inline-group">
+              <span className="gi-date-inline-lbl">Fim:</span>
               <input
                 className={`gi-date-input${errors.rf ? ' gi-input-error' : ''}`}
                 type="date"
                 value={form.rf}
                 onChange={e => onChange({ ...form, rf: e.target.value })}
               />
-              {errors.rf && <span className="gi-error">{errors.rf}</span>}
             </div>
           </div>
+          {(errors.rs || errors.rf) && (
+            <span className="gi-error">{errors.rs || errors.rf}</span>
+          )}
         </div>
       </div>
 
       {/* ── 4. Progresso ── */}
       <div className="gi-section">
         <div className="gi-section-title">Progresso</div>
-        <div className="gi-field" style={{ marginTop: 10 }}>
-          <span className="gi-field-label">% Execução</span>
-          <div className="gi-pct-wrap" style={{ justifyContent: 'flex-start', gap: 6 }}>
-            <input
-              className="gi-pct-input"
-              type="number" min={0} max={100} step={1}
-              value={form.pct}
-              onChange={set('pct')}
-              style={{ width: 64 }}
-            />
-            <span className="gi-pct-unit" style={{ fontSize: 13 }}>%</span>
+        <div className="gi-progress-two-col" style={{ marginTop: 10 }}>
+          <div className="gi-field">
+            <span className="gi-field-label">% Execução</span>
+            <div className="gi-pct-wrap" style={{ justifyContent: 'flex-start', gap: 6 }}>
+              <input
+                className="gi-pct-input"
+                type="number" min={0} max={100} step={1}
+                value={form.pct}
+                onChange={set('pct')}
+                style={{ width: 64 }}
+              />
+              <span className="gi-pct-unit" style={{ fontSize: 13 }}>%</span>
+            </div>
           </div>
-        </div>
-        <div className="gi-progress-row" style={{ marginTop: 8 }}>
-          <span className="gi-field-label">% Previsto</span>
-          <span className="gi-pct-prev-value gi-readonly">{pctPrev}%</span>
+          <div className="gi-field">
+            <span className="gi-field-label">% Previsto</span>
+            <span className="gi-pct-prev-value gi-readonly" style={{ display: 'block', marginTop: 2 }}>{pctPrev}%</span>
+          </div>
         </div>
       </div>
 
@@ -518,19 +515,26 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
         </div>
       </Collapsible>
 
-      {/* ── 6. Dependências (collapsible, only for saved leaf activities) ── */}
-      {form.id && level >= 4 && depProps && (
-        <Collapsible title="Dependências">
-          <DependenciesEditor
-            activityId={form.id}
-            predecessors={depProps.predecessors}
-            loading={depProps.loading}
-            leafActivities={depProps.leafActivities}
-            onAdd={depProps.onAdd}
-            onRemove={depProps.onRemove}
-            onUpdate={depProps.onUpdate}
-          />
-        </Collapsible>
+      {/* ── 6. Dependências ── */}
+      {level >= 4 && (
+        form.id && depProps ? (
+          <Collapsible title="Dependências">
+            <DependenciesEditor
+              activityId={form.id}
+              predecessors={depProps.predecessors}
+              loading={depProps.loading}
+              leafActivities={depProps.leafActivities}
+              onAdd={depProps.onAdd}
+              onRemove={depProps.onRemove}
+              onUpdate={depProps.onUpdate}
+            />
+          </Collapsible>
+        ) : !form.id ? (
+          <div className="gi-section">
+            <div className="gi-section-title">Dependências</div>
+            <p className="gi-deps-new-hint">Disponíveis após guardar a actividade.</p>
+          </div>
+        ) : null
       )}
 
     </div>
@@ -1021,13 +1025,15 @@ export default function GestaoIniciativas({
   const handlePanelSave = useCallback(async () => {
     if (!panelForm) return
     const errs: Record<string, string> = {}
-    if (!panelForm.name.trim()) errs.name = 'Nome obrigatório.'
+    if (!panelForm.name.trim()) errs.name = 'Designação obrigatória.'
     if ((panelForm.bs && !panelForm.bf) || (!panelForm.bs && panelForm.bf))
-      errs.bs = 'Datas baseline devem ser preenchidas em par.'
+      errs.bs = 'Datas baseline devem ser preenchidas.'
     if (panelForm.bs && panelForm.bf && panelForm.bs > panelForm.bf)
-      errs.bf = 'Data de fim baseline deve ser igual ou posterior ao início.'
+      errs.bf = 'Data de início baseline tem de ser anterior à data de fim.'
+    if (panelForm.rf && !panelForm.rs)
+      errs.rs = 'Indique a data de início real.'
     if (panelForm.rs && panelForm.rf && panelForm.rs > panelForm.rf)
-      errs.rf = 'Data de fim real deve ser igual ou posterior ao início.'
+      errs.rf = 'Data de início real tem de ser anterior à data de fim.'
     if (Object.keys(errs).length > 0) { setPanelErrors(errs); return }
     setPanelSaving(true); setPanelErrors({})
     const pct    = Math.min(100, Math.max(0, Number(panelForm.pct) || 0))
