@@ -62,9 +62,11 @@ function Collapsible({ title, defaultOpen = false, rightSlot, children }: {
       <div className="gi-collapsible-header-row">
         <button className="gi-collapsible-header" type="button" onClick={() => setOpen(o => !o)}>
           <span className="gi-section-title gi-collapsible-title">{title}</span>
-          <span className="gi-collapsible-chevron">{open ? '▲' : '▼'}</span>
         </button>
         {rightSlot && <span className="gi-collapsible-right-slot">{rightSlot}</span>}
+        <span className="gi-collapsible-chevron" onClick={() => setOpen(o => !o)} aria-hidden="true">
+          {open ? '▲' : '▼'}
+        </span>
       </div>
       {open && <div className="gi-collapsible-body">{children}</div>}
     </div>
@@ -708,7 +710,7 @@ function DependenciesEditor({
               {pred?.name ?? dep.predecessor_id}
             </span>
             <select
-              className="gi-dep-type-sel"
+              className="styled-select-sm gi-dep-type-sel"
               value={dep.dep_type}
               title={DEP_TYPE_TOOLTIP}
               onChange={e => onUpdate(dep.id, { dep_type: e.target.value as DependencyType })}
@@ -755,7 +757,7 @@ function DependenciesEditor({
         <>
           <div className="gi-dep-row">
             <select
-              className="gi-dep-pred-select"
+              className="styled-select-sm gi-dep-pred-select"
               value={selPred}
               onChange={e => { setSelPred(e.target.value); setAddError(null) }}
             >
@@ -763,7 +765,7 @@ function DependenciesEditor({
               {candidates.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
             <select
-              className="gi-dep-type-sel"
+              className="styled-select-sm gi-dep-type-sel"
               value={selType}
               title={DEP_TYPE_TOOLTIP}
               onChange={e => setSelType(e.target.value as DependencyType)}

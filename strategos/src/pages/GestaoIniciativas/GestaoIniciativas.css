@@ -420,12 +420,12 @@
   .gi-collapsible-header-row {
     display: flex;
     align-items: center;
+    gap: 8px;
   }
 
   .gi-collapsible-header {
     flex: 1;
     display: flex;
-    justify-content: space-between;
     align-items: center;
     background: none;
     border: none;
@@ -433,8 +433,6 @@
     cursor: pointer;
     font-family: inherit;
   }
-
-  .gi-collapsible-header:hover .gi-collapsible-chevron { color: var(--text2); }
 
   .gi-collapsible-title {
     border-bottom: none;
@@ -446,7 +444,9 @@
     font-size: 9px;
     color: var(--text3);
     flex-shrink: 0;
+    cursor: pointer;
   }
+  .gi-collapsible-chevron:hover { color: var(--text2); }
 
   .gi-collapsible-body {
     padding-bottom: 14px;
@@ -805,27 +805,8 @@
     white-space: nowrap;
   }
 
-  .gi-dep-pred-select {
-    font-size: 12px;
-    border: 1px solid var(--border2);
-    border-radius: 4px;
-    padding: 3px 6px;
-    background: var(--bg);
-    font-family: inherit;
-    color: var(--text);
-    height: 26px;
-  }
-
   .gi-dep-type-sel {
-    font-size: 12px;
-    border: 1px solid var(--border2);
-    border-radius: 4px;
-    padding: 3px 6px;
-    background: var(--bg);
-    font-family: inherit;
-    color: var(--text);
-    flex-shrink: 0;
-    height: 26px;
+    width: auto;
   }
 
   .gi-dep-lag-input {
@@ -944,7 +925,6 @@
   .gi-tooltip-trigger:focus::before { opacity: 1; }
 
   .gi-collapsible-right-slot {
-    margin-right: 6px;
     display: inline-flex;
     align-items: center;
   }
