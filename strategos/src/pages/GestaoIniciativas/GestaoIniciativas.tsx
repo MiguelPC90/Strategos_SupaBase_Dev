@@ -1,5 +1,6 @@
 import './GestaoIniciativas.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { Minimize2, Maximize2 } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
@@ -796,6 +797,7 @@ export default function GestaoIniciativas({
   const [dirty, setDirty] = useState<Map<string, DirtyChange>>(new Map())
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [bulkAction, setBulkAction] = useState<'collapse' | 'expand'>('collapse')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [menuId, setMenuId] = useState<string | null>(null)
 
@@ -1396,7 +1398,7 @@ export default function GestaoIniciativas({
           </div>
         </td>
         <td className="gi-td-c" /><td className="gi-td-c">{fmtDate(n1dr.bf)}</td>
-        <td className="gi-td-r">{Math.round(n1pct)}%</td><td className="gi-td-r">{Math.round(n1prev)}%</td>
+        <td className="gi-td-c"><div className="gi-pct-wrap"><span className="gi-pct-ghost">{Math.round(n1pct)}</span><span className="gi-pct-unit">%</span></div></td><td className="gi-td-r">{Math.round(n1prev)}%</td>
         <td className="gi-td-c"><Badge variant={statusBadge(n1st)}>{n1st}</Badge></td><td />
       </tr>
     )
@@ -1419,7 +1421,7 @@ export default function GestaoIniciativas({
           </td>
           <td className="gi-td-c" style={{ fontSize: 12 }}>{n2Owner}</td>
           <td className="gi-td-c">{fmtDate(n2dr.bf)}</td>
-          <td className="gi-td-r">{Math.round(n2pct)}%</td><td className="gi-td-r">{Math.round(n2prev)}%</td>
+          <td className="gi-td-c"><div className="gi-pct-wrap"><span className="gi-pct-ghost">{Math.round(n2pct)}</span><span className="gi-pct-unit">%</span></div></td><td className="gi-td-r">{Math.round(n2prev)}%</td>
           <td className="gi-td-c"><Badge variant={statusBadge(n2st)}>{n2st}</Badge></td>
           <td onClick={e => e.stopPropagation()}>
             {!readOnly && n2Plano && (
@@ -1472,7 +1474,7 @@ export default function GestaoIniciativas({
               </div>
             </td>
             <td className="gi-td-c" /><td className="gi-td-c">{fmtDate(n3dr.bf)}</td>
-            <td className="gi-td-r">{Math.round(n3pct)}%</td><td className="gi-td-r">{Math.round(n3prev)}%</td>
+            <td className="gi-td-c"><div className="gi-pct-wrap"><span className="gi-pct-ghost">{Math.round(n3pct)}</span><span className="gi-pct-unit">%</span></div></td><td className="gi-td-r">{Math.round(n3prev)}%</td>
             <td className="gi-td-c"><Badge variant={statusBadge(n3st)}>{n3st}</Badge></td>
             <td onClick={e => e.stopPropagation()}>
               {!readOnly && n3Rep && (
@@ -1716,9 +1718,16 @@ export default function GestaoIniciativas({
           </>
         )}
         <div className="gi-sep" />
-        <button className="gi-btn" onClick={collapseAll}>Colapsar tudo</button>
-        <button className="gi-btn" onClick={expandAll}>Expandir tudo</button>
-        <div className="gi-spacer" />
+        <button
+          className="gi-btn gi-btn-icon"
+          title={bulkAction === 'collapse' ? 'Colapsar tudo' : 'Expandir tudo'}
+          onClick={() => {
+            if (bulkAction === 'collapse') { collapseAll(); setBulkAction('expand') }
+            else { expandAll(); setBulkAction('collapse') }
+          }}
+        >
+          {bulkAction === 'collapse' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+        </button>
         {!readOnly && dirty.size > 0 && (
           <button className="gi-btn gi-btn-save" onClick={handleBatchSave} disabled={batchSaving}>
             {batchSaving ? 'A guardar…' : `Guardar (${dirty.size})`}

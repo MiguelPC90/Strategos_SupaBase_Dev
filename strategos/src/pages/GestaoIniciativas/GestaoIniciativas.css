@@ -9,6 +9,7 @@
   .gi-controls-bar {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 8px;
     flex-wrap: wrap;
     background: var(--bg);
@@ -88,6 +89,13 @@
     font-weight: 600;
   }
   .gi-btn-secondary:hover:not(:disabled) { background: var(--bg2); }
+
+  .gi-btn-icon {
+    padding: 5px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
   /* ── Table ──────────────────────────────────────────────────── */
   .gi-table {
@@ -190,6 +198,15 @@
   .gi-pct-input { -moz-appearance: textfield; }
 
   .gi-pct-unit { font-size: 11px; color: var(--text3); }
+
+  .gi-pct-ghost {
+    width: 46px;
+    display: inline-block;
+    padding: 2px 4px;
+    font-size: 12px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
 
   /* ── ⋯ menu ─────────────────────────────────────────────────── */
   .gi-menu-wrap {
