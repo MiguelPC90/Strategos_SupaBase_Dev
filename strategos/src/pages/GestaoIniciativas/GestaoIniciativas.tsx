@@ -815,6 +815,7 @@ export default function GestaoIniciativas({
   const [parsedActivities, setParsedActivities] = useState<ParsedActivity[]>([])
   const [parseErrors, setParseErrors]           = useState<ParseError[]>([])
   const fileInputRef                            = useRef<HTMLInputElement>(null)
+  const tableRef                                = useRef<HTMLDivElement>(null)
 
   const [batchSaving, setBatchSaving] = useState(false)
   const [delayThreshold, setDelayThreshold] = useState(20)
@@ -923,6 +924,17 @@ export default function GestaoIniciativas({
   }, [tree])
 
   const expandAll = useCallback(() => setCollapsed(new Set()), [])
+
+  // ── Click-outside deselect ────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (tableRef.current && !tableRef.current.contains(e.target as Node)) {
+        setSelectedId(null)
+      }
+    }
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [])
 
   // ── Inline pct ───────────────────────────────────────────────
   const handlePct = useCallback((id: string, raw: string) => {
@@ -1338,7 +1350,7 @@ export default function GestaoIniciativas({
         <tr
           key={a.id}
           className={`gi-row-${level} gi-row-leaf${isSelected ? ' selected' : ''}`}
-          onClick={() => setSelectedId(isSelected ? null : a.id)}
+          onClick={() => setSelectedId(a.id)}
           onDoubleClick={() => openPanel(a)}
         >
           <td>
@@ -1461,8 +1473,9 @@ export default function GestaoIniciativas({
         rows.push(
           <tr
             key={n3g.key}
-            className={`gi-row-n3${n3Rep ? ' gi-row-editable' : ''}`}
-            onClick={n3Rep ? () => openPanel(n3Rep) : undefined}
+            className={`gi-row-n3${n3Rep ? ' gi-row-editable' : ''}${n3Rep && selectedId === n3Rep.id ? ' selected' : ''}`}
+            onClick={n3Rep ? () => setSelectedId(n3Rep.id) : undefined}
+            onDoubleClick={n3Rep ? () => openPanel(n3Rep) : undefined}
           >
             <td>
               <div className="gi-name-cell" style={{ paddingLeft: iE ? 4 : 36 }}>
@@ -1735,6 +1748,7 @@ export default function GestaoIniciativas({
         )}
       </div>
 
+      <div ref={tableRef}>
       <Card title="Actividades">
         {loading && rawActivities.length === 0 ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
@@ -1796,6 +1810,7 @@ export default function GestaoIniciativas({
           </>
         )}
       </Card>
+      </div>
 
       {planoModalOpen && (
         <Modal

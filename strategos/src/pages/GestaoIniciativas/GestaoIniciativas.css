@@ -137,8 +137,12 @@
 
   .gi-row-leaf:hover td { background: #f8f9fa; cursor: pointer; }
   .gi-row-editable:hover td { background: #f8f9fa; cursor: pointer; }
-  .gi-row-leaf.selected td { background: #eef4ff; }
-  .gi-row-leaf.selected td:first-child { border-left: 3px solid var(--blue); }
+
+  .gi-row-leaf.selected td,
+  .gi-row-n3.selected td { background: rgba(200, 154, 60, 0.05); }
+
+  .gi-row-leaf.selected td:first-child,
+  .gi-row-n3.selected td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
 
   /* ── Name cell ──────────────────────────────────────────────── */
   .gi-name-cell {
