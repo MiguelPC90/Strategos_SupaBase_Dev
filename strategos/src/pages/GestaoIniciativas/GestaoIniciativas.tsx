@@ -1,6 +1,6 @@
 import './GestaoIniciativas.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { Minimize2, Maximize2 } from 'lucide-react'
+import { Minimize2, Maximize2, AlertTriangle, Info, X } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
@@ -19,7 +19,7 @@ import { supabase } from '../../lib/supabase'
 import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange, leafPctPrev, leafStatus } from '../../lib/rollup'
 import type { Activity, ActivityDependency, DependencyType, Plano } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
-import { validateNewDependency, propagateDateChanges } from '../../lib/activityDependencies'
+import { validateNewDependency, propagateDateChanges, computeDepGap, DEP_GAP_WARNING_THRESHOLD } from '../../lib/activityDependencies'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 import { useRole } from '../../hooks/useRole'
 
@@ -625,6 +625,8 @@ function highlightMatch(text: string, query: string): React.ReactNode {
 }
 
 // ── DependenciesEditor ─────────────────────────────────────────
+const DEP_TYPE_TOOLTIP = 'FS: Fim → Início · SS: Início → Início · FF: Fim → Fim · SF: Início → Fim'
+
 interface DepEditorProps {
   activityId: string
   predecessors: ActivityDependency[]
@@ -670,43 +672,64 @@ function DependenciesEditor({
     setSelPred(''); setSelType('FS'); setLagDays(0); setAddError(null); setAddOpen(false)
   }
 
+  const successor = actById.get(activityId)
+
   return (
     <div className="gi-deps">
-      {loading && predecessors.length === 0 ? (
+      {loading && predecessors.length === 0 && (
         <span className="gi-deps-loading">A carregar…</span>
-      ) : !loading && predecessors.length === 0 && !addOpen ? (
-        <span className="gi-deps-empty">Sem predecessores definidos.</span>
-      ) : null}
+      )}
 
       {predecessors.map(dep => {
         const pred = actById.get(dep.predecessor_id)
+        const gap  = successor && pred ? computeDepGap(pred, successor, dep) : null
+        const showGapWarning = gap !== null && gap > DEP_GAP_WARNING_THRESHOLD
+        const gapTooltip = showGapWarning
+          ? `Gap de ${gap} dias entre o fim do predecessor e o início do sucessor (lag declarado: ${dep.lag_days}d). Verifique se a dependência ainda faz sentido.`
+          : ''
         return (
           <div key={dep.id} className="gi-dep-row">
-            <span className="gi-dep-type-badge">{dep.dep_type}</span>
             <span className="gi-dep-name" title={pred?.name ?? dep.predecessor_id}>
               {pred?.name ?? dep.predecessor_id}
             </span>
-            <select
-              className="gi-dep-type-sel"
-              value={dep.dep_type}
-              onChange={e => onUpdate(dep.id, { dep_type: e.target.value as DependencyType })}
-            >
-              <option value="FS">FS</option>
-              <option value="SS">SS</option>
-              <option value="FF">FF</option>
-              <option value="SF">SF</option>
-            </select>
-            <input
-              type="number"
-              className="gi-dep-lag-input"
-              value={dep.lag_days}
-              min={-999}
-              max={999}
-              title="Lag (dias)"
-              onChange={e => onUpdate(dep.id, { lag_days: parseInt(e.target.value, 10) || 0 })}
-            />
-            <span className="gi-dep-lag-unit">d</span>
-            <button type="button" className="gi-dep-remove" onClick={() => onRemove(dep.id)} title="Remover">×</button>
+            <div className="gi-dep-controls">
+              <Info size={12} className="gi-dep-type-info" title={DEP_TYPE_TOOLTIP} />
+              <select
+                className="gi-dep-type-sel"
+                value={dep.dep_type}
+                title={DEP_TYPE_TOOLTIP}
+                onChange={e => onUpdate(dep.id, { dep_type: e.target.value as DependencyType })}
+              >
+                <option value="FS">FS</option>
+                <option value="SS">SS</option>
+                <option value="FF">FF</option>
+                <option value="SF">SF</option>
+              </select>
+              <input
+                type="number"
+                className="gi-dep-lag-input"
+                value={dep.lag_days}
+                min={-999}
+                max={999}
+                title="Lag (dias)"
+                onChange={e => onUpdate(dep.id, { lag_days: parseInt(e.target.value, 10) || 0 })}
+              />
+              <span className="gi-dep-lag-unit">d</span>
+              {showGapWarning && (
+                <span className="gi-dep-gap-warn" title={gapTooltip}>
+                  <AlertTriangle size={13} />
+                  <span className="gi-dep-gap-lbl">gap</span>
+                </span>
+              )}
+              <button
+                type="button"
+                className="gi-dep-remove"
+                onClick={() => onRemove(dep.id)}
+                title="Remover dependência"
+              >
+                <X size={13} />
+              </button>
+            </div>
           </div>
         )
       })}
@@ -718,13 +741,15 @@ function DependenciesEditor({
             value={selPred}
             onChange={e => { setSelPred(e.target.value); setAddError(null) }}
           >
-            <option value="">— predecessora —</option>
+            <option value="">— Actividade predecessora —</option>
             {candidates.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
           <div className="gi-dep-add-row">
+            <Info size={12} className="gi-dep-type-info" title={DEP_TYPE_TOOLTIP} />
             <select
               className="gi-dep-type-sel"
               value={selType}
+              title={DEP_TYPE_TOOLTIP}
               onChange={e => setSelType(e.target.value as DependencyType)}
             >
               <option value="FS">FS</option>
@@ -743,23 +768,23 @@ function DependenciesEditor({
               onChange={e => setLagDays(parseInt(e.target.value, 10) || 0)}
             />
             <span className="gi-dep-lag-unit">d</span>
-            <button
-              type="button"
-              className="gi-btn gi-btn-primary"
-              style={{ fontSize: 12, padding: '4px 10px' }}
-              onClick={handleAdd}
-              disabled={adding}
-            >
-              {adding ? '…' : 'Adicionar'}
-            </button>
-            <button
-              type="button"
-              className="gi-btn"
-              style={{ fontSize: 12, padding: '4px 10px' }}
-              onClick={() => { setAddOpen(false); setAddError(null) }}
-            >
-              Cancelar
-            </button>
+            <div className="gi-dep-add-actions">
+              <button
+                type="button"
+                className="gi-btn gi-btn-save"
+                onClick={handleAdd}
+                disabled={adding}
+              >
+                {adding ? '…' : 'Adicionar'}
+              </button>
+              <button
+                type="button"
+                className="gi-btn"
+                onClick={() => { setAddOpen(false); setAddError(null) }}
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
           {addError && <span className="gi-error">{addError}</span>}
         </div>
@@ -768,8 +793,7 @@ function DependenciesEditor({
       {!addOpen && (
         <button
           type="button"
-          className="gi-btn"
-          style={{ alignSelf: 'flex-start', marginTop: predecessors.length > 0 ? 6 : 0 }}
+          className="gi-btn gi-dep-add-btn"
           onClick={() => setAddOpen(true)}
         >
           + Predecessora

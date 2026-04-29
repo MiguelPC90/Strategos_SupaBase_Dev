@@ -1,5 +1,6 @@
 import './Actividades.css'
 import { useState, useMemo, useCallback, useRef, useEffect, type ReactNode } from 'react'
+import { Link2 } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
@@ -8,6 +9,7 @@ import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import { useFilters } from '../../context/FilterContext'
+import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 import type { Activity, Program } from '../../types/index'
 import type { PlanoThresholds } from '../../hooks/useThresholdsMap'
 import { leafPctPrev, leafStatus, computeRowState, type RowState } from '../../lib/rollup'
@@ -326,7 +328,16 @@ export default function Actividades() {
   })
   const { programs } = usePrograms()
   const thresholdsMap = useThresholdsMap()
+  const { dependencies } = useActivityDependencies()
   const multiProg = programs.length > 1
+
+  const predecessorCounts = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const d of dependencies) {
+      m.set(d.successor_id, (m.get(d.successor_id) ?? 0) + 1)
+    }
+    return m
+  }, [dependencies])
 
   const filtered = useMemo(() => getFilteredActivities(activities), [activities, getFilteredActivities])
 
@@ -466,6 +477,11 @@ export default function Actividades() {
                   <td>
                     <div className="act-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
                       <span className="act-name-n4" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
+                      {(predecessorCounts.get(a.id) ?? 0) > 0 && (
+                        <span className="act-dep-chip" title={predecessorCounts.get(a.id) === 1 ? '1 dependência' : `${predecessorCounts.get(a.id)} dependências`}>
+                          <Link2 size={11} />{predecessorCounts.get(a.id)}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="act-td-c">
@@ -492,6 +508,11 @@ export default function Actividades() {
                   <td>
                     <div className="act-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
                       <span className="act-name-n4" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
+                      {(predecessorCounts.get(a.id) ?? 0) > 0 && (
+                        <span className="act-dep-chip" title={predecessorCounts.get(a.id) === 1 ? '1 dependência' : `${predecessorCounts.get(a.id)} dependências`}>
+                          <Link2 size={11} />{predecessorCounts.get(a.id)}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="act-td-c">
@@ -541,6 +562,11 @@ export default function Actividades() {
                 <td>
                   <div className="act-name-cell" style={{ paddingLeft: n1Indent + 48 }}>
                     <span className="act-name-n4" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
+                    {(predecessorCounts.get(a.id) ?? 0) > 0 && (
+                      <span className="act-dep-chip" title={predecessorCounts.get(a.id) === 1 ? '1 dependência' : `${predecessorCounts.get(a.id)} dependências`}>
+                        <Link2 size={11} />{predecessorCounts.get(a.id)}
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td className="act-td-c">

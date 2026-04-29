@@ -187,6 +187,44 @@ function computeSuccessorDates(
   }
 }
 
+// ── Gap computation ───────────────────────────────────────────
+
+// TODO: per-program gap threshold (currently hardcoded to 7 days)
+export const DEP_GAP_WARNING_THRESHOLD = 7
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Computes the actual gap in days between the dependency anchor dates.
+ * FS: successor.bs − predecessor.bf − lag
+ * SS: successor.bs − predecessor.bs − lag
+ * FF: successor.bf − predecessor.bf − lag
+ * SF: successor.bf − predecessor.bs − lag
+ * Returns null when any required date is missing.
+ */
+export function computeDepGap(
+  predecessor: Activity,
+  successor: Activity,
+  dep: ActivityDependency,
+): number | null {
+  const preStart = predecessor.bs ? new Date(predecessor.bs).getTime() : null
+  const preEnd   = predecessor.bf ? new Date(predecessor.bf).getTime() : null
+  const sucStart = successor.bs   ? new Date(successor.bs).getTime()   : null
+  const sucEnd   = successor.bf   ? new Date(successor.bf).getTime()   : null
+  const lagMs    = dep.lag_days * DAY_MS
+
+  let anchorMs: number | null
+  let checkMs:  number | null
+
+  if (dep.dep_type === 'FS')      { anchorMs = preEnd;   checkMs = sucStart }
+  else if (dep.dep_type === 'SS') { anchorMs = preStart; checkMs = sucStart }
+  else if (dep.dep_type === 'FF') { anchorMs = preEnd;   checkMs = sucEnd   }
+  else                            { anchorMs = preStart; checkMs = sucEnd   }
+
+  if (anchorMs == null || checkMs == null) return null
+  return Math.round((checkMs - anchorMs - lagMs) / DAY_MS)
+}
+
 // ── Leaf check ────────────────────────────────────────────────
 
 /** Only leaf activities (level 4+) may have dependencies. */
