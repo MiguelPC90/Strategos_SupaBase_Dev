@@ -138,6 +138,12 @@
   .gi-row-leaf:hover td { background: #f8f9fa; cursor: pointer; }
   .gi-row-editable:hover td { background: #f8f9fa; cursor: pointer; }
 
+  .gi-row-leaf,
+  .gi-row-editable {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
   .gi-row-leaf.selected td,
   .gi-row-n3.selected td { background: rgba(200, 154, 60, 0.05); }
 
