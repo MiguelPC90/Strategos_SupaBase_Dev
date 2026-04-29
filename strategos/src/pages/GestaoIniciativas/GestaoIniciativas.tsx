@@ -423,13 +423,19 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
       <div className="gi-section">
         <div className="gi-section-title">Datas</div>
         <div className="gi-date-group" style={{ marginTop: 10 }}>
-          <span className="gi-field-label">Baseline</span>
+          <div className="gi-date-group-header">
+            <span className="gi-field-label">Baseline</span>
+            {(form.bs || form.bf) && canEditBaseline && (
+              <button type="button" className="gi-date-clear" onClick={() => onChange({ ...form, bs: '', bf: '' })}>Limpar</button>
+            )}
+          </div>
           <div className="gi-date-row">
             <div className="gi-date-inline-group">
               <span className="gi-date-inline-lbl">Início:</span>
               <input
                 className={`gi-date-input${errors.bs ? ' gi-input-error' : ''}`}
                 type="date"
+                autoComplete="off"
                 value={form.bs}
                 disabled={!canEditBaseline}
                 onChange={e => onChange({ ...form, bs: e.target.value })}
@@ -440,6 +446,7 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
               <input
                 className={`gi-date-input${errors.bs ? ' gi-input-error' : ''}`}
                 type="date"
+                autoComplete="off"
                 value={form.bf}
                 disabled={!canEditBaseline}
                 onChange={e => onChange({ ...form, bf: e.target.value })}
@@ -449,13 +456,19 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
           {errors.bs && <span className="gi-error">{errors.bs}</span>}
         </div>
         <div className="gi-date-group" style={{ marginTop: 10 }}>
-          <span className="gi-field-label">Real</span>
+          <div className="gi-date-group-header">
+            <span className="gi-field-label">Real</span>
+            {(form.rs || form.rf) && (
+              <button type="button" className="gi-date-clear" onClick={() => onChange({ ...form, rs: '', rf: '' })}>Limpar</button>
+            )}
+          </div>
           <div className="gi-date-row">
             <div className="gi-date-inline-group">
               <span className="gi-date-inline-lbl">Início:</span>
               <input
                 className={`gi-date-input${errors.rs ? ' gi-input-error' : ''}`}
                 type="date"
+                autoComplete="off"
                 value={form.rs}
                 onChange={e => onChange({ ...form, rs: e.target.value })}
               />
@@ -465,6 +478,7 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
               <input
                 className={`gi-date-input${errors.rs ? ' gi-input-error' : ''}`}
                 type="date"
+                autoComplete="off"
                 value={form.rf}
                 onChange={e => onChange({ ...form, rf: e.target.value })}
               />

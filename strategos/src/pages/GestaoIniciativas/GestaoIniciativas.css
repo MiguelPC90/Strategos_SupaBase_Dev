@@ -925,6 +925,25 @@
   .gi-date-input:focus { outline: none; border-color: var(--navy); }
   .gi-date-input:disabled { background: var(--bg3); color: var(--text3); cursor: not-allowed; }
 
+  .gi-date-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .gi-date-clear {
+    font-size: 11px;
+    color: var(--text3);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    line-height: 1;
+  }
+  .gi-date-clear:hover { color: var(--red); }
+
   /* ── Date inline label ──────────────────────────────────────── */
   .gi-date-inline-group {
     display: flex;
