@@ -27,6 +27,121 @@ Strategos is a PMO (Project Management Office) dashboard for organizations manag
 - **Credentials:** in `.env.local` (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
 - **Users:** migcacoelho@gmail.com (admin), miguelstrategos@gmail.com (editor), vasco.candeias97@gmail.com (viewer)
 
+## Brand Identity (v1.0 — locked)
+
+The product is **Stratgos** — without the `e`. The italic *g* 
+occupies the place of the missing *e* in the wordmark. The 
+typographic quirk IS the brand. Never spell it "Strategos".
+
+### Palette · Nocturne (brand)
+
+- `--stratgos-ink-900: #0B1220` — primary brand · body text · topbar
+- `--stratgos-ink-700: #1E2A44` — secondary surface · heading accent
+- `--stratgos-ink-500: #475369` — body text alternate · secondary labels
+- `--stratgos-ink-300: #8B93A3`
+- `--stratgos-ink-100: #D8DCE4` — dividers · disabled states
+- `--stratgos-ember:   #C8553D` — accent · links · italic g · CTAs
+- `--stratgos-moss:    #5B7A3A` — positive signals · confirmations
+- `--stratgos-parchment: #F4F0E8` — page background · documents
+- `--stratgos-cream:    #FBF8F2` — card background · modals
+
+### Palette · Semantic (status pills only)
+
+These colours have ONE job each. Must NEVER be used decoratively, 
+in marketing, or anywhere outside their semantic role. Brand and 
+semantic palettes do not overlap.
+
+- `--status-ontrack: #4A7C59` — "Em dia"
+- `--status-late:    #B84A3F` — "Em atraso"
+- `--status-done:    #2F5F8F` — "Concluída"
+- `--status-risk:    #C89A3C` — "Em risco"
+
+### Hover state
+
+- `--stratgos-ember-dark: #B34B36` — primary button hover, ember-on-hover
+
+### Typography · four faces, one voice
+
+Four typefaces total. Never a fifth.
+
+- `--font-display: 'Instrument Serif'` — wordmark, hero, section 
+  titles, pull quotes. Regular only — never bold.
+- `--font-serif: 'Fraunces'` — editorial body for brand documents, 
+  executive reports, PDS narrative text. Regular + Medium. 
+  **Not used in product UI.**
+- `--font-sans: 'Inter'` — product UI: dashboards, tables, forms. 
+  12–15px. Regular / Medium / Semibold. Never italic in UI.
+- `--font-mono: 'JetBrains Mono'` — labels, kickers, metadata, 
+  IDs, timestamps. 10–13px. Always tracked (letter-spacing 
+  0.12–0.2em) when uppercase.
+
+### Type scale
+
+| Level | Size / line-height | Font / weight |
+|---|---|---|
+| Display XL | 88 / 0.95 | Instrument Serif |
+| Display | 48 / 1.0 | Instrument Serif |
+| Headline | 32 / 1.1 | Fraunces |
+| Title | 20 / 1.3 | Inter 600 |
+| Body L | 18 / 1.5 | Fraunces (editorial only) |
+| Body | 15 / 1.55 | Inter 400 |
+| Label | 11 / 1.4 | JetBrains Mono uppercase tracked |
+
+### Voice
+
+Two registers, applied by surface:
+
+**Full Stratgos voice** (direct, opinionated, dry) — marketing site, 
+landing pages, board-facing reports, sales decks, brand documents.
+
+**Neutral functional voice** (transactional, no personality) — 
+product UI labels, buttons, empty states, system messages, errors, 
+email notifications, anything the end-user sees while working. 
+Reason: in cobrand deployments the customer's logo sits next to 
+ours; the product UI is shared infrastructure, not marketing.
+
+Four principles (apply to both registers):
+1. Numbers first — lead with the specific fact, then interpretation
+2. No exclamation marks — boards don't shout
+3. Portuguese-first (European Portuguese, neutral register)
+4. Dry over witty — never witty in transactional UI
+
+### Iconography
+
+Lucide / Feather only. Stroke-based, 1.5px, rounded caps and joins. 
+Optically aligned to a 24×24 grid. Monochrome (ink-900 or cream). 
+Ember accent only for active/selected states. Never filled, never 
+multi-colour, never gradients, never mixed icon libraries.
+
+### Cobranding (deferred — three modes, future feature)
+
+Stratgos ships into customer environments. Three modes governed by 
+`app_config.branding.mode`:
+
+- `stratgos` — Stratgos-only (default for marketing, demo, 
+  single-tenant)
+- `cobrand` — italic g mark + 1px divider + customer logo + 
+  customer name (default for customers)
+- `whitelabel` — customer logo only, "powered by Stratgos" footer 
+  (premium tier; non-negotiable footer protects the brand)
+
+The ink-900 topbar is shared infrastructure. Never customisable 
+to client colours. Logo goes ON it, not behind it.
+
+### Authority of this section
+
+This section is the source of truth. When a request conflicts with 
+brand guidance here, follow this section and flag the conflict 
+back to the user before proceeding. Examples:
+
+- "Make the topbar blue" → conflict (topbar is always ink-900); 
+  flag and ask
+- "Use red for status" → conflict (red is reserved for late status); 
+  use --status-late
+- "Add a green button" → conflict if green is brand decoration 
+  (use moss); not conflict if it's confirmation semantic (use 
+  status-ontrack)
+
 ## Project Structure
 
 ```
