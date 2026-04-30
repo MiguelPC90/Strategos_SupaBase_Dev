@@ -1,61 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
+@import "./styles/tokens.css";
 
 @layer base {
-  /* ── Stratgos Brand Tokens ─────────────────────────────────── */
-  :root {
-    /* === Primary Palette · Nocturne === */
-    --stratgos-ink-900:   #0B1220;
-    --stratgos-ink-700:   #1E2A44;
-    --stratgos-ink-500:   #475369;
-    --stratgos-ink-300:   #8B93A3;
-    --stratgos-ink-100:   #D8DCE4;
-    --stratgos-ember:     #C8553D;
-    --stratgos-moss:      #5B7A3A;
-    --stratgos-parchment: #FCFCFB;
-    --stratgos-cream:     #FFFFFF;
-    --stratgos-parchment-deep: #FBF8F2;
-
-    /* === Semantic Palette (status pills only) === */
-    --status-ontrack: #4A7C59;
-    --status-late:    #B84A3F;
-    --status-done:    #2F5F8F;
-    --status-risk:    #C89A3C;
-
-    /* === Typography === */
-    --font-display: 'Instrument Serif', 'Fraunces', Georgia, serif;
-    --font-serif:   'Fraunces', 'Iowan Old Style', Georgia, serif;
-    --font-sans:    'Inter', system-ui, -apple-system, sans-serif;
-    --font-mono:    'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
-
-    /* === Legacy aliases (backwards compatibility — do NOT remove) === */
-    --navy:    var(--stratgos-ink-700);
-    --navy2:   #2A3A5C;
-    --green:   var(--status-ontrack);
-    --bg:      var(--stratgos-parchment);
-    --bg2:     var(--stratgos-cream);
-    --bg3:     #EDE7D8;
-    --text:    var(--stratgos-ink-900);
-    --text2:   var(--stratgos-ink-500);
-    --text3:   var(--stratgos-ink-300);
-    --border:  var(--stratgos-ink-100);
-    --border2: #B8BFCC;
-    --r:       8px;
-    --rl:      12px;
-    --blue:    #185FA5;
-    --red:     var(--status-late);
-    --amber:   var(--status-risk);
-    --blue-bg:  #dce8f5;
-    --green-bg: #eaf2d4;
-    --amber-bg: rgba(200, 154, 60, 0.1);
-    --red-bg:   rgba(184, 74, 63, 0.1);
-
-    /* === Structural === */
-    --sidebar-w:     220px;
-    --sidebar-w-col: 56px;
-    --topbar-h:      52px;
-  }
-
   /* ── Reset / base ──────────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; }
 

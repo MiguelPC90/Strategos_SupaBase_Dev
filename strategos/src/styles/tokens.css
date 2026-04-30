@@ -1,0 +1,163 @@
+/* ─────────────────────────────────────────────────────────────────
+   Stratgos Design Tokens — single source of truth for all CSS
+   custom properties. Imported by src/index.css; do not @import
+   this file directly from components.
+   Brand Identity v1.0 locked 2026-04-20.
+───────────────────────────────────────────────────────────────── */
+
+:root {
+
+  /* ── 1. Brand · Nocturne ──────────────────────────────────────
+     Source of truth: CLAUDE.md "Palette · Nocturne (brand)".
+     These values are locked — do not change without updating
+     Brand Identity in CLAUDE.md first.                         */
+
+  --stratgos-ink-900:   #0B1220;   /* primary brand · body text · topbar     */
+  --stratgos-ink-700:   #1E2A44;   /* secondary surface · sidebar · headings  */
+  --stratgos-ink-500:   #475369;   /* body text alternate · secondary labels  */
+  --stratgos-ink-300:   #8B93A3;   /* tertiary text · placeholders            */
+  --stratgos-ink-100:   #D8DCE4;   /* dividers · disabled states              */
+  --stratgos-ember:     #C8553D;   /* accent · links · italic-g · CTAs        */
+  --stratgos-ember-dark:#B34B36;   /* primary button hover (ember darkened)   */
+  --stratgos-moss:      #5B7A3A;   /* positive signals · confirmations         */
+  --stratgos-parchment: #F4F0E8;   /* page background · documents             */
+  --stratgos-cream:     #FBF8F2;   /* card background · modals                */
+
+  /* Extra surface token not in brand spec — kept for component
+     compatibility (used by act-row-n0, gi-table row backgrounds).
+     Equals the old cream value; candidate for deprecation Phase 3. */
+  --stratgos-parchment-deep: #FBF8F2;
+
+
+  /* ── 2. Semantic · Status ─────────────────────────────────────
+     ONE job each. Never decorative. Never in marketing surfaces.
+     Brand and semantic palettes must not overlap.               */
+
+  --status-ontrack: #4A7C59;   /* "Em dia"    */
+  --status-late:    #B84A3F;   /* "Em atraso" */
+  --status-done:    #2F5F8F;   /* "Concluída" */
+  --status-risk:    #C89A3C;   /* "Em risco"  */
+
+
+  /* ── 3. Status tints ──────────────────────────────────────────
+     For row selections, panel backgrounds, and subtle state
+     indicators. The 0.08 alpha is the standard tint weight.
+     status-risk-tint-subtle (0.05) is used for selected row bg.
+     Pills (.status-pill in index.css) use 0.12 — kept inline
+     there as they are a component rule, not a surface token.    */
+
+  --status-ontrack-tint:     rgba(74,  124, 89,  0.08);
+  --status-late-tint:        rgba(184, 74,  63,  0.08);
+  --status-done-tint:        rgba(47,  95,  143, 0.08);
+  --status-risk-tint:        rgba(200, 154, 60,  0.08);
+  --status-risk-tint-subtle: rgba(200, 154, 60,  0.05);
+
+
+  /* ── 4. Application aliases ───────────────────────────────────
+     Backwards-compatible shorthands. Component CSS continues to
+     use --bg, --text, --navy etc. without immediate migration.
+     Do not remove without a full codebase search.              */
+
+  --navy:    var(--stratgos-ink-700);
+  --navy2:   #2A3A5C;            /* legacy; near-zero usage; do not spread */
+  --green:   var(--status-ontrack);
+  --bg:      var(--stratgos-parchment);
+  --bg2:     var(--stratgos-cream);
+  --bg3:     #EDE7D8;            /* tertiary surface; hover states           */
+  --text:    var(--stratgos-ink-900);
+  --text2:   var(--stratgos-ink-500);
+  --text3:   var(--stratgos-ink-300);
+  --border:  var(--stratgos-ink-100);
+  --border2: #B8BFCC;
+  --blue:    #185FA5;            /* legacy accent; prefer --status-done      */
+  --red:     var(--status-late);
+  --amber:   var(--status-risk);
+  --blue-bg:  #dce8f5;
+  --green-bg: #eaf2d4;
+  --amber-bg: rgba(200, 154, 60, 0.1);
+  --red-bg:   rgba(184, 74,  63, 0.1);
+
+
+  /* ── 5. Spacing scale ─────────────────────────────────────────
+     4px base unit, powers of 2 plus common intermediates.
+     Phase 2 will migrate hardcoded padding/gap/margin to these. */
+
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+
+
+  /* ── 6. Font-size scale ───────────────────────────────────────
+     Derived from audit findings (10/11/12/13/14/18/28px are the
+     dominant sizes across 467 font-size declarations).
+     Phase 2 will migrate hardcoded font-size literals.          */
+
+  --text-xs:   10px;   /* table super-labels, tiny metadata      */
+  --text-sm:   11px;   /* table headers, badges, pills           */
+  --text-base: 12px;   /* secondary text, form inputs, buttons   */
+  --text-md:   13px;   /* primary body alternate                 */
+  --text-lg:   14px;   /* body (matches body font-size)          */
+  --text-xl:   18px;   /* secondary KPI values                   */
+  --text-2xl:  28px;   /* primary KPI values                     */
+
+
+  /* ── 7. Shadows ───────────────────────────────────────────────
+     Four levels. Audit found 10+ ad-hoc shadow values; these
+     collapse to a consistent elevation scale.
+     Phase 2 will migrate hardcoded box-shadow declarations.     */
+
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.10);   /* dropdowns, tooltips  */
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);   /* cards, panels        */
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.14);   /* profile dropdown     */
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.18);  /* modals               */
+
+
+  /* ── 8. Topbar tints ──────────────────────────────────────────
+     White-on-dark overlays for the ink-900 topbar and sidebar.
+     Audit found 28+ inline rgba(255,255,255,...) in Layout.css.
+     Values derived from actual alpha usage in that file.
+     Phase 2 will migrate Layout.css to use these tokens.        */
+
+  /* Text / icon opacity levels */
+  --topbar-text:       #fff;                        /* solid — primary labels     */
+  --topbar-text-dim:   rgba(255, 255, 255, 0.85);   /* button / icon text         */
+  --topbar-text-muted: rgba(255, 255, 255, 0.65);   /* collapsed nav labels       */
+  --topbar-text-faint: rgba(255, 255, 255, 0.35);   /* collapsed icons, hints     */
+
+  /* Background tints */
+  --topbar-overlay-subtle: rgba(255, 255, 255, 0.08);  /* default nav item bg     */
+  --topbar-overlay-light:  rgba(255, 255, 255, 0.10);  /* hover bg                */
+  --topbar-overlay-medium: rgba(255, 255, 255, 0.15);  /* active / selected bg    */
+
+  /* Border tints */
+  --topbar-border-subtle: rgba(255, 255, 255, 0.18);   /* input borders           */
+  --topbar-border-light:  rgba(255, 255, 255, 0.30);   /* button borders default  */
+  --topbar-border-active: rgba(255, 255, 255, 0.50);   /* hover / active borders  */
+
+
+  /* ── 9. Structural ────────────────────────────────────────────
+     Layout constants. Do not change without updating Layout.tsx
+     and all CSS that calculates against these.                  */
+
+  --r:             8px;    /* base radius — buttons, inputs, small cards */
+  --rl:            12px;   /* large radius — panels, modals, popovers    */
+  --sidebar-w:     220px;
+  --sidebar-w-col: 56px;
+  --topbar-h:      52px;
+
+
+  /* ── 10. Typography ───────────────────────────────────────────
+     Four typefaces — never a fifth. Source: CLAUDE.md
+     "Typography · four faces, one voice".                       */
+
+  --font-display: 'Instrument Serif', 'Fraunces', Georgia, serif;
+  --font-serif:   'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-sans:    'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+
+}
