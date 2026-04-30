@@ -1,4 +1,4 @@
-# TODO — Strategos Migration
+# TODO — Stratgos Migration
 
 ## Done
 

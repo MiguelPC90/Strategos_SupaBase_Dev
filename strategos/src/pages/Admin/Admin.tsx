@@ -3223,7 +3223,7 @@ function ExportarTab() {
         XLSX.utils.book_append_sheet(wb, ws, table)
       }
       const date = new Date().toISOString().slice(0, 10)
-      XLSX.writeFile(wb, `Strategos_export_${date}.xlsx`)
+      XLSX.writeFile(wb, `Stratgos_export_${date}.xlsx`)
       showToast('Exportação concluída!')
     } catch {
       showToast('Erro na exportação', 'error')

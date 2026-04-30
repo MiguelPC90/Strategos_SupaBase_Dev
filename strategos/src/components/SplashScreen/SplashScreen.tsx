@@ -27,10 +27,10 @@ export default function SplashScreen({ logoUrl, visible }: SplashScreenProps) {
     <div className={`splash-screen${fadingOut ? ' fading-out' : ''}`}>
       <div className="splash-logo-container">
         {logoUrl ? (
-          <img src={logoUrl} alt="Strategos" className="splash-logo" />
+          <img src={logoUrl} alt="Stratgos" className="splash-logo" />
         ) : (
           <div className="splash-logo-fallback">
-            <span className="splash-logo-text">Strategos</span>
+            <span className="splash-logo-text">Stratgos</span>
           </div>
         )}
       </div>

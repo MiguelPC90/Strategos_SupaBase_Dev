@@ -441,7 +441,7 @@ export default function Layout() {
         <div className="page-body">
           <Outlet />
         </div>
-        <footer className="app-footer">Powered by Strategos</footer>
+        <footer className="app-footer">Powered by Stratgos</footer>
         <ToastList />
       </main>
     </>
