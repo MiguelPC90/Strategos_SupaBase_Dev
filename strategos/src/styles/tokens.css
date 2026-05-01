@@ -10,23 +10,32 @@
   /* ── 1. Brand · Nocturne ──────────────────────────────────────
      Source of truth: CLAUDE.md "Palette · Nocturne (brand)".
      These values are locked — do not change without updating
-     Brand Identity in CLAUDE.md first.                         */
+     Brand Identity in CLAUDE.md first.
+
+     Neutral surface palette — "Subtle Warm Family" variant
+     Tested 2026-05-01. Replaces the prior near-white palette
+     (#FCFCFB / #FBF8F2) with a coherent warm-leaning trio:
+       - parchment (page bg):  #FAF9F6
+       - cream (card bg):      #FFFFFF (unchanged for density)
+       - parchment-deep (KPI): #F5F2EB
+     Goal: visual coherence between page bg, card surfaces, and
+     elevated KPI surfaces while preserving white-card density.  */
 
   --stratgos-ink-900:   #0B1220;   /* primary brand · body text · topbar     */
   --stratgos-ink-700:   #1E2A44;   /* secondary surface · sidebar · headings  */
   --stratgos-ink-500:   #475369;   /* body text alternate · secondary labels  */
   --stratgos-ink-300:   #8B93A3;   /* tertiary text · placeholders            */
-  --stratgos-ink-100:   #D8DCE4;   /* dividers · disabled states              */
+  --stratgos-ink-100:   #E8E5DE;   /* dividers · disabled states (warm-leaning)*/
   --stratgos-ember:     #C8553D;   /* accent · links · italic-g · CTAs        */
   --stratgos-ember-dark:#B34B36;   /* primary button hover (ember darkened)   */
   --stratgos-moss:      #5B7A3A;   /* positive signals · confirmations         */
-  --stratgos-parchment: #F4F0E8;   /* page background · documents             */
-  --stratgos-cream:     #FBF8F2;   /* card background · modals                */
+  --stratgos-parchment: #FAF9F6;   /* page background · documents             */
+  --stratgos-cream:     #FFFFFF;   /* card background · modals                */
 
   /* Extra surface token not in brand spec — kept for component
      compatibility (used by act-row-n0, gi-table row backgrounds).
-     Equals the old cream value; candidate for deprecation Phase 3. */
-  --stratgos-parchment-deep: #FBF8F2;
+     Candidate for deprecation Phase 3. */
+  --stratgos-parchment-deep: #F5F2EB;
 
 
   /* ── 2. Semantic · Status ─────────────────────────────────────
