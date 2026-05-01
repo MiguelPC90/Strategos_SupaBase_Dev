@@ -62,11 +62,11 @@
 
   .pds-btn-save {
     background: var(--stratgos-ember);
-    color: #fff;
+    color: var(--topbar-text);
     border-color: var(--stratgos-ember);
     font-weight: 600;
   }
-  .pds-btn-save:hover:not(:disabled) { background: #B34B36; }
+  .pds-btn-save:hover:not(:disabled) { background: var(--stratgos-ember-dark); }
 
   /* ── Status / empty ─────────────────────────────────────────── */
   .pds-status {

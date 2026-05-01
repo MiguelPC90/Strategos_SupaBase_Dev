@@ -53,19 +53,19 @@
 
   .gr-btn-primary {
     background: var(--stratgos-ember);
-    color: #fff;
+    color: var(--topbar-text);
     border-color: var(--stratgos-ember);
     font-weight: 600;
   }
-  .gr-btn-primary:hover:not(:disabled) { background: #B34B36; }
+  .gr-btn-primary:hover:not(:disabled) { background: var(--stratgos-ember-dark); }
 
   .gr-btn-save {
     background: var(--stratgos-ember);
-    color: #fff;
+    color: var(--topbar-text);
     border-color: var(--stratgos-ember);
     font-weight: 600;
   }
-  .gr-btn-save:hover:not(:disabled) { background: #B34B36; }
+  .gr-btn-save:hover:not(:disabled) { background: var(--stratgos-ember-dark); }
 
   .gr-btn-danger {
     color: var(--red);
@@ -88,7 +88,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #fff;
+    color: var(--topbar-text);
     background: var(--navy);
     white-space: nowrap;
   }

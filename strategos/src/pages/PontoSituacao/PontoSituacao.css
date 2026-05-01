@@ -80,7 +80,7 @@
   .pds-plan-name {
     font-size: 13px;
     font-weight: 600;
-    color: #fff;
+    color: var(--topbar-text);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -105,9 +105,9 @@
 
   /* ── Plan navigation arrows ──────────────────────────────────── */
   .pds-nav-btn {
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.2);
-    color: white;
+    background: var(--topbar-overlay-light);
+    border: 1px solid rgba(255,255,255,0.2); /* TODO: outlier — between border-subtle(0.18) and border-light(0.30) */
+    color: var(--topbar-text);
     padding: 4px 10px;
     border-radius: var(--r);
     cursor: pointer;
@@ -368,7 +368,7 @@
     height: 16px;
     border-radius: 50%;
     background: var(--navy);
-    color: #fff;
+    color: var(--topbar-text);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -377,7 +377,7 @@
   }
 
   .pds-risk-dot.selected {
-    background: #fff;
+    background: var(--bg2);
     color: var(--navy);
     border: 2px solid var(--navy);
   }

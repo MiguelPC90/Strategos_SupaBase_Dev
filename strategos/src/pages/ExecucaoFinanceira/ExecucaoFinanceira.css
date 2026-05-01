@@ -66,7 +66,7 @@
 
   .ef-type-btn.active {
     background: var(--navy);
-    color: #fff;
+    color: var(--topbar-text);
   }
 
   /* ── Empty states ───────────────────────────────────────────── */
@@ -182,12 +182,12 @@
 
   .ef-alert-badge.overdue.active {
     background: var(--red);
-    color: #fff;
+    color: var(--topbar-text);
   }
 
   .ef-alert-badge.due-soon.active {
     background: var(--amber);
-    color: #fff;
+    color: var(--topbar-text);
   }
 
   /* ── Charts rows ────────────────────────────────────────────── */
@@ -363,7 +363,7 @@
 
   .ef-detail-tab.active .ef-tab-count {
     background: var(--navy);
-    color: #fff;
+    color: var(--topbar-text);
   }
 
   .ef-detail-body {

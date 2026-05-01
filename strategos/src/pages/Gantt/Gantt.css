@@ -103,7 +103,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: rgba(255,255,255,0.8);
-    border-bottom: 2px solid rgba(255,255,255,0.15);
+    border-bottom: 2px solid var(--topbar-overlay-medium);
     white-space: nowrap;
     text-align: left;
     background: var(--navy);

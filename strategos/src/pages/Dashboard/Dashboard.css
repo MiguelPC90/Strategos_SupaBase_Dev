@@ -85,7 +85,7 @@
   .chip:hover { background: var(--bg3); }
   .chip.active {
     background: var(--navy);
-    color: #fff;
+    color: var(--topbar-text);
     border-color: var(--navy);
   }
 
