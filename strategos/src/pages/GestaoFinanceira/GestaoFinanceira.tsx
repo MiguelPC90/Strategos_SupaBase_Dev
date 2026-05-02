@@ -179,7 +179,7 @@ function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, readOnly,
     <div className="gf-budget-wrap">
       <div className="gf-budget-toolbar">
         <span className="gf-budget-toolbar-title">Rubricas Orçamentais</span>
-        {!readOnly && <button className="gf-btn gf-btn-primary" onClick={addRow}>+ Rubrica</button>}
+        {!readOnly && <button className="btn-primary" onClick={addRow}>+ Rubrica</button>}
       </div>
 
       {lines.length === 0 ? (
@@ -375,7 +375,7 @@ function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew, currencies
     <div className="gf-contracts-wrap">
       {!readOnly && (
         <div className="gf-contracts-toolbar">
-          <button className="gf-btn gf-btn-primary" onClick={onNew}>+ Novo Contrato</button>
+          <button className="btn-primary" onClick={onNew}>+ Novo Contrato</button>
         </div>
       )}
       {contracts.length === 0 ? (
@@ -396,8 +396,8 @@ function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew, currencies
                 </div>
                 {!readOnly && (
                   <div className="gf-contract-actions">
-                    <button className="gf-btn" onClick={() => onEdit(c)}>Editar</button>
-                    <button className="gf-btn gf-btn-danger" onClick={() => onDelete(c.id)}>Eliminar</button>
+                    <button className="btn" onClick={() => onEdit(c)}>Editar</button>
+                    <button className="btn-danger" onClick={() => onDelete(c.id)}>Eliminar</button>
                   </div>
                 )}
               </div>
@@ -647,7 +647,7 @@ function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts
           ))}
         </div>
         <div style={{ flex: 1 }} />
-        {!readOnly && <button className="gf-btn gf-btn-primary" onClick={onNew}>+ Factura</button>}
+        {!readOnly && <button className="btn-primary" onClick={onNew}>+ Factura</button>}
       </div>
 
       <div className="gf-invoices-table-wrap">
@@ -1334,13 +1334,13 @@ export default function GestaoFinanceira({
         footer={
           <>
             {contractPanel?.id && (
-              <button className="gf-btn gf-btn-danger" onClick={() => { deleteContract(contractPanel.id!); setContractPanel(null) }}
+              <button className="btn-danger" onClick={() => { deleteContract(contractPanel.id!); setContractPanel(null) }}
                 style={{ marginRight: 'auto' }}>
                 Eliminar
               </button>
             )}
-            <button className="gf-btn" onClick={() => setContractPanel(null)}>Cancelar</button>
-            <button className="gf-btn gf-btn-save" onClick={confirmContract}>Guardar</button>
+            <button className="btn" onClick={() => setContractPanel(null)}>Cancelar</button>
+            <button className="btn-primary" onClick={confirmContract}>Guardar</button>
             {panelErr && <span className="gf-panel-err">{panelErr}</span>}
           </>
         }
@@ -1363,13 +1363,13 @@ export default function GestaoFinanceira({
         footer={
           <>
             {invoiceModal?.id && (
-              <button className="gf-btn gf-btn-danger" onClick={deleteInvoiceFromModal}
+              <button className="btn-danger" onClick={deleteInvoiceFromModal}
                 style={{ marginRight: 'auto' }}>
                 Eliminar
               </button>
             )}
-            <button className="gf-btn" onClick={() => setInvoiceModal(null)}>Cancelar</button>
-            <button className="gf-btn gf-btn-save" onClick={confirmInvoice}>Guardar</button>
+            <button className="btn" onClick={() => setInvoiceModal(null)}>Cancelar</button>
+            <button className="btn-primary" onClick={confirmInvoice}>Guardar</button>
             {invModalErr && <span className="gf-panel-err">{invModalErr}</span>}
           </>
         }

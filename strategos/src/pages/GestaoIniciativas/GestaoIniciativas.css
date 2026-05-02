@@ -45,51 +45,7 @@
     font-weight: 600;
   }
 
-  /* ── Buttons ────────────────────────────────────────────────── */
-  .gi-btn {
-    padding: 5px 12px;
-    border: 1px solid var(--border2);
-    border-radius: var(--r);
-    background: var(--bg);
-    color: var(--text);
-    font-size: var(--text-base);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.1s;
-    font-family: inherit;
-  }
-  .gi-btn:hover:not(:disabled) { background: var(--bg2); }
-  .gi-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
-  .gi-btn-primary {
-    background: var(--stratgos-ember);
-    color: var(--topbar-text);
-    border-color: var(--stratgos-ember);
-  }
-  .gi-btn-primary:hover:not(:disabled) { background: var(--stratgos-ember-dark); }
-
-  .gi-btn-save {
-    background: var(--stratgos-ember);
-    color: var(--topbar-text);
-    border-color: var(--stratgos-ember);
-    font-weight: 600;
-  }
-  .gi-btn-save:hover:not(:disabled) { background: var(--stratgos-ember-dark); }
-
-  .gi-btn-danger {
-    color: var(--red);
-    border-color: var(--red);
-  }
-  .gi-btn-danger:hover:not(:disabled) { background: #fff0f0; }
-
-  .gi-btn-secondary {
-    background: white;
-    color: var(--navy);
-    border: 1px solid var(--navy);
-    font-weight: 600;
-  }
-  .gi-btn-secondary:hover:not(:disabled) { background: var(--bg2); }
-
+  /* ── Button modifiers ────────────────────────────────────────── */
   .gi-btn-icon {
     padding: 5px 8px;
     display: flex;

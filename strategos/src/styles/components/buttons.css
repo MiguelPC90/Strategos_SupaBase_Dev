@@ -1,0 +1,108 @@
+/* buttons.css · Stratgos design system — Phase 3 component library
+ * Canonical button classes: .btn, .btn-primary, .btn-secondary,
+ * .btn-danger + .btn-lg size modifier.
+ *
+ * Replaces 19 duplicate per-page button definitions:
+ * - 9 primary classes (gi/gr/gf/gres/pds-btn-primary, gi/gr/gf/gres/
+ *   pds-btn-save) + admin/login/drp primaries
+ * - 5 neutral base classes (gi/gr/gf/gres/pds-btn)
+ * - 1 secondary (gi-btn-secondary)
+ * - 4 danger classes (gi/gr/gf/gres-btn-danger)
+ */
+
+@layer components {
+  /* Base — neutral / cancel button */
+  .btn {
+    padding: 5px 12px;
+    font-size: var(--text-base);
+    font-weight: 500;
+    font-family: inherit;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.1s;
+  }
+  .btn:hover {
+    background: var(--bg2);
+  }
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Primary — ember filled CTA */
+  .btn-primary {
+    padding: 5px 12px;
+    font-size: var(--text-base);
+    font-weight: 600;
+    font-family: inherit;
+    border: 1px solid var(--stratgos-ember);
+    border-radius: var(--r);
+    background: var(--stratgos-ember);
+    color: var(--topbar-text);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.1s;
+  }
+  .btn-primary:hover {
+    background: var(--stratgos-ember-dark);
+    border-color: var(--stratgos-ember-dark);
+  }
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Secondary — navy outlined CTA */
+  .btn-secondary {
+    padding: 5px 12px;
+    font-size: var(--text-base);
+    font-weight: 600;
+    font-family: inherit;
+    border: 1px solid var(--navy);
+    border-radius: var(--r);
+    background: white;
+    color: var(--navy);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.1s;
+  }
+  .btn-secondary:hover {
+    background: var(--bg2);
+  }
+  .btn-secondary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Danger — red outlined */
+  .btn-danger {
+    padding: 5px 12px;
+    font-size: var(--text-base);
+    font-weight: 500;
+    font-family: inherit;
+    border: 1px solid var(--red);
+    border-radius: var(--r);
+    background: var(--bg);
+    color: var(--red);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.1s;
+  }
+  .btn-danger:hover {
+    background: #fff0f0; /* TODO: add --red-bg-hover token */
+  }
+  .btn-danger:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Size modifier — large (used by Admin primary) */
+  .btn-lg {
+    padding: 8px 18px;
+    font-size: 13.5px; /* TODO: outlier — review token candidate */
+  }
+}

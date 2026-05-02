@@ -192,8 +192,8 @@ function PdsSection({
                     </label>
                   )}
                   <div className="pds-item-edit-actions">
-                    <button className="pds-btn pds-btn-save" onClick={onEditSave}>Guardar</button>
-                    <button className="pds-btn" onClick={onEditCancel}>Cancelar</button>
+                    <button className="btn-primary" onClick={onEditSave}>Guardar</button>
+                    <button className="btn" onClick={onEditCancel}>Cancelar</button>
                   </div>
                 </div>
               ) : (
@@ -731,9 +731,9 @@ export default function GestaoPDS({
           width={420}
           footer={
             <>
-              <button className="pds-btn" onClick={() => setAddModal(null)}>Cancelar</button>
+              <button className="btn" onClick={() => setAddModal(null)}>Cancelar</button>
               <button
-                className="pds-btn pds-btn-save"
+                className="btn-primary"
                 onClick={handleModalAdd}
                 disabled={addSaving || !newItemText.trim()}
               >

@@ -126,24 +126,6 @@
     color: var(--red);
     margin: 0;
   }
-  .login-btn {
-    height: 38px;
-    background: var(--navy);
-    color: var(--topbar-text);
-    border: none;
-    border-radius: var(--r);
-    font-size: var(--text-md);
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.15s;
-    margin-top: 4px;
-  }
-  .login-btn:hover:not(:disabled) { opacity: 0.88; }
-  .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
   /* ── Spinner ───────────────────────────────────────────────── */
   .login-spinner {
     width: 16px;

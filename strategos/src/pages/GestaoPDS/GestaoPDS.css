@@ -44,30 +44,6 @@
     white-space: nowrap;
   }
 
-  /* ── Buttons ────────────────────────────────────────────────── */
-  .pds-btn {
-    padding: 5px 12px;
-    border: 1px solid var(--border2);
-    border-radius: var(--r);
-    background: var(--bg);
-    color: var(--text);
-    font-size: var(--text-base);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.1s;
-    font-family: inherit;
-  }
-  .pds-btn:hover:not(:disabled) { background: var(--bg2); }
-  .pds-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
-  .pds-btn-save {
-    background: var(--stratgos-ember);
-    color: var(--topbar-text);
-    border-color: var(--stratgos-ember);
-    font-weight: 600;
-  }
-  .pds-btn-save:hover:not(:disabled) { background: var(--stratgos-ember-dark); }
-
   /* ── Status / empty ─────────────────────────────────────────── */
   .pds-status {
     text-align: center;

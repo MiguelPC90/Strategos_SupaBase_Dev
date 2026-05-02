@@ -814,7 +814,7 @@ function DependenciesEditor({
       {!addOpen && (
         <button
           type="button"
-          className="gi-btn gi-dep-add-btn"
+          className="btn gi-dep-add-btn"
           onClick={() => setAddOpen(true)}
         >
           + Predecessora
@@ -1818,12 +1818,12 @@ export default function GestaoIniciativas({
         {!readOnly && (
           <>
             {mode === 'standalone' && (
-              <button className="gi-btn gi-btn-secondary" onClick={handleOpenPlano} disabled={!selProgId}
+              <button className="btn-secondary" onClick={handleOpenPlano} disabled={!selProgId}
                 title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
                 Novo Plano
               </button>
             )}
-            <button className="gi-btn gi-btn-primary" onClick={openNew} disabled={!selProgId}
+            <button className="btn-primary" onClick={openNew} disabled={!selProgId}
               title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
               Nova Actividade
             </button>
@@ -1831,7 +1831,7 @@ export default function GestaoIniciativas({
         )}
         <div className="gi-sep" />
         <button
-          className="gi-btn gi-btn-icon"
+          className="btn gi-btn-icon"
           title={bulkAction === 'collapse' ? 'Colapsar tudo' : 'Expandir tudo'}
           onClick={() => {
             if (bulkAction === 'collapse') { collapseAll(); setBulkAction('expand') }
@@ -1841,7 +1841,7 @@ export default function GestaoIniciativas({
           {bulkAction === 'collapse' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
         </button>
         {!readOnly && dirty.size > 0 && (
-          <button className="gi-btn gi-btn-save" onClick={handleBatchSave} disabled={batchSaving}>
+          <button className="btn-primary" onClick={handleBatchSave} disabled={batchSaving}>
             {batchSaving ? 'A guardar…' : `Guardar (${dirty.size})`}
           </button>
         )}
@@ -1918,20 +1918,20 @@ export default function GestaoIniciativas({
           width={560}
           footer={
             <>
-              <button className="gi-btn" onClick={handleClosePlano}>Cancelar</button>
+              <button className="btn" onClick={handleClosePlano}>Cancelar</button>
               {planoToEdit ? (
-                <button className="gi-btn gi-btn-save" onClick={handleSavePlanoEdit} disabled={planoSaving}>
+                <button className="btn-primary" onClick={handleSavePlanoEdit} disabled={planoSaving}>
                   {planoSaving ? 'A guardar…' : 'Guardar'}
                 </button>
               ) : planoStep === 1 ? (
-                <button className="gi-btn gi-btn-primary" onClick={goToStep2}>
+                <button className="btn-primary" onClick={goToStep2}>
                   Continuar →
                 </button>
               ) : (
                 <>
-                  <button className="gi-btn" onClick={() => setPlanoStep(1)}>← Anterior</button>
+                  <button className="btn" onClick={() => setPlanoStep(1)}>← Anterior</button>
                   <button
-                    className="gi-btn gi-btn-save"
+                    className="btn-primary"
                     onClick={handleSavePlanoWithActivities}
                     disabled={planoSaving || parseErrors.length > 0}
                   >
@@ -2201,12 +2201,12 @@ export default function GestaoIniciativas({
           footer={
             <>
               {panelForm.id && (
-                <button className="gi-btn gi-btn-danger" onClick={handlePanelDelete} disabled={panelSaving} style={{ marginRight: 'auto' }}>
+                <button className="btn-danger" onClick={handlePanelDelete} disabled={panelSaving} style={{ marginRight: 'auto' }}>
                   Eliminar
                 </button>
               )}
-              <button className="gi-btn" onClick={closePanel}>Cancelar</button>
-              <button className="gi-btn gi-btn-save" onClick={handlePanelSave} disabled={panelSaving}>
+              <button className="btn" onClick={closePanel}>Cancelar</button>
+              <button className="btn-primary" onClick={handlePanelSave} disabled={panelSaving}>
                 {panelSaving ? 'A guardar…' : 'Guardar'}
               </button>
               {panelErrors._ && <span style={{ fontSize: 12, color: 'var(--red)', width: '100%' }}>{panelErrors._}</span>}

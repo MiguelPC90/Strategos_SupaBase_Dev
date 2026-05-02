@@ -245,7 +245,7 @@ function AdminGeral() {
             </div>
 
             <button
-              className="adm-btn-primary"
+              className="btn-primary btn-lg"
               onClick={handleSave}
               disabled={saving}
             >
@@ -1265,7 +1265,7 @@ function AdminUtilizadores() {
                 </select>
               </div>
               <div style={{ display: 'flex', gap: 8, paddingBottom: 1 }}>
-                <button className="adm-btn-primary" onClick={handleInvite} disabled={inviting || !invite.email.trim()}>
+                <button className="btn-primary btn-lg" onClick={handleInvite} disabled={inviting || !invite.email.trim()}>
                   {inviting ? 'A enviar…' : 'Convidar'}
                 </button>
                 <button className="adm-btn-secondary" onClick={() => setShowInvite(false)}>Cancelar</button>
@@ -1361,7 +1361,7 @@ function AdminUtilizadores() {
         footer={
           <>
             <button className="adm-btn-secondary" onClick={() => setDowngradeConfirm(null)}>Cancelar</button>
-            <button className="adm-btn-primary" onClick={confirmDowngradeAndSave} disabled={saving}>
+            <button className="btn-primary btn-lg" onClick={confirmDowngradeAndSave} disabled={saving}>
               {saving ? 'A guardar…' : 'Continuar'}
             </button>
           </>
@@ -1642,7 +1642,7 @@ function StringListEditor({ configKey, label, defaults = [] }: { configKey: stri
         <button className="adm-add-btn" onClick={() => setItems(prev => [...prev, ''])}>
           + Adicionar
         </button>
-        <button className="adm-btn-primary" onClick={save} disabled={saving}>
+        <button className="btn-primary btn-lg" onClick={save} disabled={saving}>
           {saving ? 'A guardar…' : 'Guardar'}
         </button>
       </div>
@@ -2577,7 +2577,7 @@ function AdminFinanceiro() {
               % calculado sobre o prazo entre data de emissão e vencimento. ≥{invoiceOverdue}% = atrasada, ≥{invoiceDueSoon}% = a vencer.
             </span>
           </div>
-          <button className="adm-btn-primary" onClick={handleSaveAlerts} disabled={savingAlerts}>
+          <button className="btn-primary btn-lg" onClick={handleSaveAlerts} disabled={savingAlerts}>
             {savingAlerts ? 'A guardar…' : 'Guardar'}
           </button>
         </div>
@@ -2739,7 +2739,7 @@ function MatrizTab() {
         </div>
       </div>
 
-      <button className="adm-btn-primary" onClick={saveThresholds} disabled={saving}
+      <button className="btn-primary btn-lg" onClick={saveThresholds} disabled={saving}
         style={{ marginBottom: 24 }}>
         {saving ? 'A guardar…' : 'Guardar limiares'}
       </button>
@@ -3190,10 +3190,10 @@ function ImportarTab() {
       {/* Action buttons */}
       {file && (
         <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-          <button className="adm-btn-primary" onClick={handlePreview} disabled={previewing}>
+          <button className="btn-primary btn-lg" onClick={handlePreview} disabled={previewing}>
             {previewing ? 'A carregar…' : 'Pré-visualizar'}
           </button>
-          <button className="adm-btn-primary" disabled={!hasPreviewed}
+          <button className="btn-primary btn-lg" disabled={!hasPreviewed}
             onClick={() => showToast('Importação via UI disponível em breve. Usa o script de importação para já.', 'info')}>
             Importar
           </button>
@@ -3237,7 +3237,7 @@ function ExportarTab() {
       <p className="adm-section-desc">
         Exporta todos os dados do Supabase para um ficheiro Excel com múltiplas folhas.
       </p>
-      <button className="adm-btn-primary" onClick={handleExport} disabled={exporting}>
+      <button className="btn-primary btn-lg" onClick={handleExport} disabled={exporting}>
         {exporting ? 'A exportar…' : 'Exportar tudo para Excel'}
       </button>
     </>
@@ -3328,7 +3328,7 @@ function RotulosTab() {
       </div>
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 4 }}>
-        <button className="adm-btn-primary" onClick={handleSave} disabled={saving || !selProgId}>
+        <button className="btn-primary btn-lg" onClick={handleSave} disabled={saving || !selProgId}>
           {saving ? 'A guardar…' : 'Guardar'}
         </button>
       </div>

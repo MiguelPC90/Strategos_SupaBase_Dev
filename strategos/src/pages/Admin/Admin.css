@@ -111,26 +111,6 @@
     display: none;
   }
 
-  .adm-btn-primary {
-    padding: 8px 18px;
-    background: var(--stratgos-ember);
-    color: var(--topbar-text);
-    border: none;
-    border-radius: var(--r);
-    font-size: 13.5px; /* TODO: outlier — review token candidate */
-    font-weight: 500;
-    cursor: pointer;
-  }
-
-  .adm-btn-primary:hover:not(:disabled) {
-    background: var(--stratgos-ember-dark);
-  }
-
-  .adm-btn-primary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
   .adm-btn-secondary {
     padding: 7px 16px;
     background: var(--bg2);

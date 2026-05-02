@@ -113,7 +113,7 @@ export default function Login() {
                 />
               </div>
               {error && <p className="login-error">{error}</p>}
-              <button className="login-btn" type="submit" disabled={loading}>
+              <button className="btn-primary" type="submit" disabled={loading}>
                 {loading ? <span className="login-spinner" /> : 'Entrar'}
               </button>
             </form>
@@ -146,7 +146,7 @@ export default function Login() {
                     />
                   </div>
                   {mlError && <p className="login-error">{mlError}</p>}
-                  <button className="login-btn" type="submit" disabled={mlLoading}>
+                  <button className="btn-primary" type="submit" disabled={mlLoading}>
                     {mlLoading ? <span className="login-spinner" /> : 'Enviar link'}
                   </button>
                 </>

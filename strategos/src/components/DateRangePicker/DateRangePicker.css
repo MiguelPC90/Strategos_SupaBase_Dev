@@ -230,18 +230,4 @@
     background: var(--bg2);
   }
 
-  .drp-btn-apply {
-    background: var(--navy);
-    color: white;
-    border-color: var(--navy);
-  }
-
-  .drp-btn-apply:hover:not(:disabled) {
-    background: #003f7a;
-  }
-
-  .drp-btn-apply:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
 }

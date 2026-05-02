@@ -557,7 +557,7 @@ function ImportPanel({ planOptions, currentPlanKey, allResources, onImport, onCl
       <div className="gres-panel">
         <div className="gres-panel-header">
           <span className="gres-panel-title">Importar de outro Plano</span>
-          <button className="gres-btn" onClick={onClose}>✕</button>
+          <button className="btn" onClick={onClose}>✕</button>
         </div>
         <div className="gres-panel-body">
           <div>
@@ -606,13 +606,13 @@ function ImportPanel({ planOptions, currentPlanKey, allResources, onImport, onCl
         </div>
         <div className="gres-panel-footer">
           <button
-            className="gres-btn gres-btn-primary"
+            className="btn-primary"
             onClick={confirmImport}
             disabled={selected.size === 0}
           >
             Importar {selected.size > 0 ? `(${selected.size})` : ''}
           </button>
-          <button className="gres-btn" onClick={onClose}>Cancelar</button>
+          <button className="btn" onClick={onClose}>Cancelar</button>
         </div>
       </div>
     </>
@@ -998,14 +998,14 @@ export default function GestaoRecursos({
           {!readOnly && (
             <>
               <button
-                className="gres-btn"
+                className="btn"
                 onClick={() => setShowImport(true)}
                 disabled={!selectedPlan}
               >
                 Importar de outro plano
               </button>
               <button
-                className="gres-btn gres-btn-save"
+                className="btn-primary"
                 onClick={handleSave}
                 disabled={!selectedPlan || !isDirty || saving}
               >
@@ -1033,14 +1033,14 @@ export default function GestaoRecursos({
           {!readOnly && (
             <>
               <button
-                className="gres-btn"
+                className="btn"
                 onClick={() => setShowImport(true)}
                 disabled={!selectedPlan}
               >
                 Importar de outro plano
               </button>
               <button
-                className="gres-btn gres-btn-save"
+                className="btn-primary"
                 onClick={handleSave}
                 disabled={!selectedPlan || !isDirty || saving}
               >
@@ -1106,7 +1106,7 @@ export default function GestaoRecursos({
           <div className="gres-cards-section">
             <div className="gres-cards-toolbar">
               <span className="gres-cards-title">Recursos Alocados ({draft.length})</span>
-              {!readOnly && <button className="gres-btn gres-btn-primary" onClick={openNewResource}>+ Adicionar Recurso</button>}
+              {!readOnly && <button className="btn-primary" onClick={openNewResource}>+ Adicionar Recurso</button>}
             </div>
 
             {draft.length === 0 ? (
@@ -1156,12 +1156,12 @@ export default function GestaoRecursos({
         footer={
           <>
             {resourceModal?.id && (
-              <button className="gres-btn gres-btn-danger" onClick={deleteFromModal} style={{ marginRight: 'auto' }}>
+              <button className="btn-danger" onClick={deleteFromModal} style={{ marginRight: 'auto' }}>
                 Eliminar
               </button>
             )}
-            <button className="gres-btn" onClick={() => setResourceModal(null)}>Cancelar</button>
-            <button className="gres-btn gres-btn-save" onClick={confirmResource}>Guardar</button>
+            <button className="btn" onClick={() => setResourceModal(null)}>Cancelar</button>
+            <button className="btn-primary" onClick={confirmResource}>Guardar</button>
             {resModalErr && <span className="gres-save-err">{resModalErr}</span>}
           </>
         }

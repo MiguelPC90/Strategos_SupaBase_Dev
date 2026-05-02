@@ -238,7 +238,7 @@ export default function DateRangePicker({
             </button>
             <button
               type="button"
-              className="drp-btn drp-btn-apply"
+              className="btn-primary"
               onClick={handleApply}
               disabled={dateError}
             >

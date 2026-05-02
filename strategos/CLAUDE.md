@@ -240,7 +240,7 @@ Use these shared utilities instead of page-specific implementations:
 - `.styled-select` — page-level selectors (Programa, Plano, Ano)
 - `.styled-select-sm` — compact selects inside modals and table rows
 - `.status-pill` — 88px min-width pill for all status badges
-- `.gi-btn-secondary` — outlined navy button (e.g. “Novo Plano”)
+- `.btn-secondary` — outlined navy button (e.g. “Novo Plano”)
 
 -----
 
@@ -735,7 +735,7 @@ Legacy aliases (all mapped to Stratgos tokens):
 1. **Breadcrumb FilterContext API** — `filters.programIds[0]` / `n1Values[0]` / `n2Values[0]`, `setFilter(key, value)`
 1. **Activity `level` starts at 0** — Programa=0, Eixo=1, Plano=2, Macro=3, Actividade=4, Sub=5, Detalhe=6
 1. **Plano as standalone entity** — separate table; `sync_plano_id()` trigger maintains consistency
-1. **Secondary buttons** — `.gi-btn-secondary` (outlined navy) for “Novo Plano”, etc.
+1. **Secondary buttons** — `.btn-secondary` (outlined navy) for “Novo Plano”, etc.
 1. **Search preserves hierarchy** — matches show ancestors for context
 1. **Splash screen mandatory** — on initial load, min 500ms
 1. **Empty states for all pages without data** — use EmptyState component

@@ -476,7 +476,7 @@ export default function GestaoRiscos({
 
           {!readOnly && (
             <button
-              className="gr-btn gr-btn-primary"
+              className="btn-primary"
               onClick={openNew}
               disabled={!selectedPlan}
             >
@@ -490,7 +490,7 @@ export default function GestaoRiscos({
       {mode === 'embedded' && !readOnly && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
           <button
-            className="gr-btn gr-btn-primary"
+            className="btn-primary"
             onClick={openNew}
             disabled={!selectedPlan}
           >
@@ -607,12 +607,12 @@ export default function GestaoRiscos({
           footer={
             <>
               {panelForm.id && (
-                <button className="gr-btn gr-btn-danger" onClick={handlePanelDelete} disabled={panelSaving} style={{ marginRight: 'auto' }}>
+                <button className="btn-danger" onClick={handlePanelDelete} disabled={panelSaving} style={{ marginRight: 'auto' }}>
                   Eliminar
                 </button>
               )}
-              <button className="gr-btn" onClick={closePanel}>Cancelar</button>
-              <button className="gr-btn gr-btn-save" onClick={handleSave} disabled={panelSaving}>
+              <button className="btn" onClick={closePanel}>Cancelar</button>
+              <button className="btn-primary" onClick={handleSave} disabled={panelSaving}>
                 {panelSaving ? 'A guardar…' : 'Guardar'}
               </button>
               {panelErr && <span style={{ fontSize: 12, color: 'var(--red)', width: '100%' }}>{panelErr}</span>}
