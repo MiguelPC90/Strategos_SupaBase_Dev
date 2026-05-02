@@ -10,7 +10,7 @@
     align-items: center;
     justify-content: center;
     min-height: 200px;
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--text3);
   }
 
@@ -42,7 +42,7 @@
 
   .ve-contagem-kpi-value {
     font-family: var(--font-serif);
-    font-size: 36px;
+    font-size: 36px; /* TODO: outlier — review token candidate */
     font-weight: 400;
     color: var(--stratgos-ink-900, var(--text));
     line-height: 1;
@@ -53,7 +53,7 @@
 
   .ve-contagem-kpi-denom {
     font-family: var(--font-serif);
-    font-size: 18px;
+    font-size: var(--text-xl);
     font-weight: 400;
     color: var(--stratgos-ink-300, var(--text3));
     line-height: 1;
@@ -61,7 +61,7 @@
 
   .ve-contagem-kpi-label {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--text-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -70,7 +70,7 @@
   }
 
   .ve-contagem-kpi-delta {
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-weight: 500;
     margin-top: 2px;
   }
@@ -96,7 +96,7 @@
   }
 
   .ve-exec-kpi-label {
-    font-size: 10px;
+    font-size: var(--text-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -113,7 +113,7 @@
 
   .ve-exec-kpi-value {
     font-family: var(--font-serif, Georgia, serif);
-    font-size: 28px;
+    font-size: var(--text-2xl);
     font-weight: 700;
     color: var(--stratgos-ink-900, var(--text));
     line-height: 1;
@@ -121,7 +121,7 @@
   }
 
   .ve-exec-kpi-delta {
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-weight: 600;
     padding: 2px 6px;
     border-radius: 4px;
@@ -132,7 +132,7 @@
   .ve-exec-kpi-delta.neutral  { background: var(--bg3); color: var(--text3); }
 
   .ve-exec-kpi-target {
-    font-size: 12px;
+    font-size: var(--text-base);
     color: var(--stratgos-ink-400, var(--text3));
     margin-top: 6px;
   }
@@ -152,7 +152,7 @@
 
   .ve-attn-kpi-value {
     font-family: var(--font-serif);
-    font-size: 48px;
+    font-size: 48px; /* TODO: outlier — review token candidate */
     font-weight: 400;
     color: var(--stratgos-ink-900, var(--text));
     line-height: 1;
@@ -163,7 +163,7 @@
 
   .ve-attn-kpi-label {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--text-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -186,7 +186,7 @@
   }
 
   .ve-panel-title {
-    font-size: 12px;
+    font-size: var(--text-base);
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -195,7 +195,7 @@
   }
 
   .ve-panel-empty {
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--text3);
     margin: 0;
     padding: 12px 0;
@@ -204,7 +204,7 @@
   /* ── Status badges ───────────────────────────────────────── */
   .ve-badge {
     display: inline-block;
-    font-size: 10px;
+    font-size: var(--text-xs);
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 10px;
@@ -241,7 +241,7 @@
   }
 
   .ve-act-name {
-    font-size: 13px;
+    font-size: var(--text-md);
     font-weight: 500;
     color: var(--text);
     flex: 1;
@@ -273,7 +273,7 @@
   }
 
   .ve-act-pct {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
     font-family: var(--font-mono);
     min-width: 28px;
@@ -281,7 +281,7 @@
   }
 
   .ve-act-date {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
   }
 
@@ -294,7 +294,7 @@
 
   .ve-attn-group-lbl {
     display: block;
-    font-size: 10px;
+    font-size: var(--text-xs);
     font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -329,7 +329,7 @@
   .ve-attn-pds  .ve-attn-dot { background: var(--amber); }
 
   .ve-attn-text {
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--text2);
     line-height: 1.4;
   }
@@ -352,7 +352,7 @@
   }
 
   .ve-fin-card-lbl {
-    font-size: 10px;
+    font-size: var(--text-xs);
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -360,7 +360,7 @@
   }
 
   .ve-fin-card-val {
-    font-size: 20px;
+    font-size: 20px; /* TODO: outlier — review token candidate */
     font-weight: 600;
     font-family: var(--font-mono);
     color: var(--text);
@@ -371,7 +371,7 @@
   .ve-fin-card-committed { color: var(--amber); }
 
   .ve-fin-card-pct {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
     font-family: var(--font-mono);
   }

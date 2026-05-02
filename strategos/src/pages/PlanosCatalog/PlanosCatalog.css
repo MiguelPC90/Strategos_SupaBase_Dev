@@ -23,14 +23,14 @@
 
   .pc-title {
     font-family: var(--font-display);
-    font-size: 22px;
+    font-size: 22px; /* TODO: outlier — review token candidate */
     font-weight: 600;
     color: var(--text);
     margin: 0;
   }
 
   .pc-count {
-    font-size: 12px;
+    font-size: var(--text-base);
     color: var(--text3);
   }
 
@@ -87,7 +87,7 @@
     background: var(--bg2);
     color: var(--text);
     font: inherit;
-    font-size: 13px;
+    font-size: var(--text-md);
     width: 240px;
     flex-shrink: 0;
     transition: border-color 0.15s;
@@ -120,7 +120,7 @@
     background: var(--bg2);
     color: var(--text2);
     font: inherit;
-    font-size: 12px;
+    font-size: var(--text-base);
     font-weight: 500;
     cursor: pointer;
     transition: border-color 0.15s, color 0.15s, background 0.15s;
@@ -144,7 +144,7 @@
     background: none;
     color: var(--text3);
     font: inherit;
-    font-size: 12px;
+    font-size: var(--text-base);
     cursor: pointer;
     text-decoration: underline;
     transition: color 0.15s;
@@ -184,14 +184,14 @@
   .pc-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: var(--text-md);
     table-layout: fixed;
   }
 
   .pc-th {
     padding: 10px 14px;
     text-align: left;
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -217,7 +217,7 @@
   .pc-td-star { padding: 8px 4px 8px 12px; width: 40px; }
   .pc-td-meta {
     color: var(--text2);
-    font-size: 12px;
+    font-size: var(--text-base);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -241,7 +241,7 @@
   .pc-row-link:hover .pc-row-name { color: var(--stratgos-ember); }
 
   .pc-row-code {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
     font-family: var(--font-mono);
     background: var(--bg3);
@@ -275,7 +275,7 @@
   }
 
   .pc-prog-label {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
     font-family: var(--font-mono);
     white-space: nowrap;
@@ -329,7 +329,7 @@
   }
 
   .pc-card-name {
-    font-size: 14px;
+    font-size: var(--text-lg);
     font-weight: 600;
     color: var(--text);
     white-space: nowrap;
@@ -341,7 +341,7 @@
   .pc-card-name-wrap:hover .pc-card-name { color: var(--stratgos-ember); }
 
   .pc-card-code {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
     font-family: var(--font-mono);
   }
@@ -353,9 +353,9 @@
     flex-wrap: wrap;
   }
 
-  .pc-card-prog  { font-size: 12px; color: var(--text3); }
-  .pc-card-dot   { font-size: 12px; color: var(--border2); }
-  .pc-card-eixo  { font-size: 12px; color: var(--text3); }
+  .pc-card-prog  { font-size: var(--text-base); color: var(--text3); }
+  .pc-card-dot   { font-size: var(--text-base); color: var(--border2); }
+  .pc-card-eixo  { font-size: var(--text-base); color: var(--text3); }
 
   .pc-card-footer {
     display: flex;
@@ -373,7 +373,7 @@
   }
 
   .pc-card-person {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
     background: var(--bg3);
     padding: 2px 7px;

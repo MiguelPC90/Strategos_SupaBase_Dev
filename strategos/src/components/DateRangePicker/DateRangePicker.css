@@ -9,7 +9,7 @@
   /* ── Label ──────────────────────────────────────────────────── */
   .drp-label {
     display: block;
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -26,7 +26,7 @@
   .drp-error {
     display: block;
     color: var(--red);
-    font-size: 11px;
+    font-size: var(--text-sm);
     margin-top: 4px;
   }
 
@@ -39,7 +39,7 @@
     border: 1px solid var(--border);
     border-radius: var(--r);
     background: var(--stratgos-cream);
-    font-size: 13px;
+    font-size: var(--text-md);
     font-family: inherit;
     cursor: pointer;
     min-width: 240px;
@@ -64,7 +64,7 @@
 
   .drp-trigger.sm {
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: var(--text-base);
   }
 
   .drp-trigger.disabled {
@@ -111,7 +111,7 @@
     color: var(--text3);
     cursor: pointer;
     padding: 0;
-    font-size: 16px;
+    font-size: 16px; /* TODO: outlier — review token candidate */
     line-height: 1;
     display: flex;
     align-items: center;
@@ -148,7 +148,7 @@
 
   .drp-popup-field label {
     display: block;
-    font-size: 10px;
+    font-size: var(--text-xs);
     color: var(--text3);
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -161,7 +161,7 @@
     padding: 6px 10px;
     border: 1px solid var(--border);
     border-radius: var(--r);
-    font-size: 13px;
+    font-size: var(--text-md);
     font-family: inherit;
     color: var(--text);
     background: white;
@@ -186,7 +186,7 @@
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 12px;
-    font-size: 11px;
+    font-size: var(--text-sm);
     cursor: pointer;
     color: var(--text2);
     font-family: inherit;
@@ -201,7 +201,7 @@
   /* ── Validation warning ─────────────────────────────────────── */
   .drp-warn {
     color: var(--red);
-    font-size: 11px;
+    font-size: var(--text-sm);
     margin-bottom: 8px;
   }
 
@@ -217,7 +217,7 @@
   .drp-btn {
     padding: 6px 14px;
     border-radius: var(--r);
-    font-size: 12px;
+    font-size: var(--text-base);
     font-family: inherit;
     cursor: pointer;
     border: 1px solid var(--border2);

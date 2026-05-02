@@ -26,7 +26,7 @@
   }
 
   .sidebar-group-lbl {
-    font-size: 10px;
+    font-size: var(--text-xs);
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -87,7 +87,7 @@
     stroke-linejoin: round;
   }
   .nav-label {
-    font-size: 13px;
+    font-size: var(--text-md);
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
@@ -104,7 +104,7 @@
   }
 
   .nav-fav-name {
-    font-size: 12px;
+    font-size: var(--text-base);
     font-weight: 500;
     color: inherit;
     overflow: hidden;
@@ -112,7 +112,7 @@
   }
 
   .nav-fav-prog {
-    font-size: 10px;
+    font-size: var(--text-xs);
     font-weight: 400;
     color: rgba(255, 255, 255, 0.45); /* TODO: outlier — between text-faint(0.35) and text-muted(0.65) */
     overflow: hidden;
@@ -173,7 +173,7 @@
     border-radius: 5px;
     background: var(--green);
     color: var(--topbar-text);
-    font-size: 12px;
+    font-size: var(--text-base);
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -186,7 +186,7 @@
     gap: 1px;
   }
   .topbar-title {
-    font-size: 15px;
+    font-size: 15px; /* TODO: outlier — review token candidate */
     font-weight: 700;
     color: var(--topbar-text);
     letter-spacing: 0.01em;
@@ -194,7 +194,7 @@
     line-height: 1.2;
   }
   .topbar-subtitle {
-    font-size: 10px;
+    font-size: var(--text-xs);
     color: rgba(255,255,255,0.55); /* TODO: outlier — between text-faint(0.35) and text-muted(0.65) */
     white-space: nowrap;
     line-height: 1;
@@ -222,7 +222,7 @@
     color: var(--topbar-text);
   }
   .topbar-search-hint {
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-family: var(--font-mono);
     color: rgba(255, 255, 255, 0.45); /* TODO: outlier — between text-faint(0.35) and text-muted(0.65) */
     letter-spacing: 0.02em;
@@ -234,7 +234,7 @@
     border: 1px solid var(--topbar-border-light);
     background: transparent;
     border-radius: var(--r);
-    font-size: 12px;
+    font-size: var(--text-base);
     font-weight: 500;
     color: var(--topbar-text-dim);
     cursor: pointer;
@@ -272,7 +272,7 @@
     right: -5px;
     background: var(--amber);
     color: var(--topbar-text);
-    font-size: 9px;
+    font-size: 9px; /* TODO: outlier — review token candidate */
     font-weight: 700;
     border-radius: 10px;
     min-width: 16px;
@@ -308,12 +308,12 @@
     border: 1px solid var(--border2);
     border-radius: 100px;
     background: var(--bg2);
-    font-size: 12px;
+    font-size: var(--text-base);
     white-space: nowrap;
   }
   .filter-chip-label {
     color: var(--text3);
-    font-size: 11px;
+    font-size: var(--text-sm);
   }
   .filter-chip-value {
     color: var(--text);
@@ -324,7 +324,7 @@
     border: none;
     cursor: pointer;
     color: var(--text3);
-    font-size: 10px;
+    font-size: var(--text-xs);
     padding: 0 0 0 2px;
     line-height: 1;
     display: flex;
@@ -332,7 +332,7 @@
   }
   .filter-chip-remove:hover { color: var(--red); }
   .filter-chip-clear-all {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
     background: none;
     border: none;
@@ -348,7 +348,7 @@
     border-radius: 50%;
     background: var(--topbar-overlay-medium);
     color: var(--topbar-text);
-    font-size: 12px;
+    font-size: var(--text-base);
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -378,12 +378,12 @@
     margin-bottom: 4px;
   }
   .profile-dropdown-name {
-    font-size: 13px;
+    font-size: var(--text-md);
     font-weight: 600;
     color: var(--text);
   }
   .profile-dropdown-email {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
     margin-top: 2px;
     word-break: break-all;
@@ -401,7 +401,7 @@
     background: transparent;
     width: 100%;
     text-align: left;
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--text2);
     cursor: pointer;
     transition: background 0.12s;
@@ -426,7 +426,7 @@
   .app-footer {
     padding: 12px 24px;
     text-align: center;
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
     border-top: 1px solid var(--border);
     margin-top: auto;

@@ -7,7 +7,7 @@
     padding: 8px 20px;
     background: var(--bg);
     border-bottom: 1px solid var(--border);
-    font-size: 12px;
+    font-size: var(--text-base);
     flex-wrap: wrap;
   }
 
@@ -31,7 +31,7 @@
     border: none;
     border-radius: var(--r);
     color: var(--text2);
-    font-size: 12px;
+    font-size: var(--text-base);
     font-weight: 500;
     cursor: pointer;
     transition: background 100ms ease, color 100ms ease;
@@ -60,7 +60,7 @@
 
   .breadcrumb-separator {
     color: var(--text3);
-    font-size: 13px;
+    font-size: var(--text-md);
     margin: 0 1px;
     user-select: none;
   }
@@ -89,7 +89,7 @@
     border: none;
     border-radius: calc(var(--r) - 2px);
     text-align: left;
-    font-size: 12px;
+    font-size: var(--text-base);
     color: var(--text);
     cursor: pointer;
     transition: background 100ms ease;
@@ -117,7 +117,7 @@
     background: color-mix(in srgb, var(--amber) 12%, transparent);
     border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
     border-radius: 10px;
-    font-size: 10px;
+    font-size: var(--text-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -142,7 +142,7 @@
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 12px;
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text2);
   }
 
@@ -152,7 +152,7 @@
     color: var(--text3);
     cursor: pointer;
     padding: 0;
-    font-size: 14px;
+    font-size: var(--text-lg);
     line-height: 1;
     margin-left: 2px;
   }
@@ -177,7 +177,7 @@
     border: 1px dashed var(--border2);
     border-radius: 12px;
     color: var(--text2);
-    font-size: 11px;
+    font-size: var(--text-sm);
     cursor: pointer;
     transition: all 100ms ease;
     white-space: nowrap;
@@ -216,7 +216,7 @@
   }
 
   .bfp-group-title {
-    font-size: 10px;
+    font-size: var(--text-xs);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--text3);
@@ -229,7 +229,7 @@
     align-items: center;
     gap: 8px;
     padding: 4px 6px;
-    font-size: 12px;
+    font-size: var(--text-base);
     color: var(--text);
     cursor: pointer;
     border-radius: calc(var(--r) - 2px);
@@ -245,7 +245,7 @@
   }
 
   .breadcrumb-no-access {
-    font-size: 12px;
+    font-size: var(--text-base);
     color: var(--text3);
     font-style: italic;
   }

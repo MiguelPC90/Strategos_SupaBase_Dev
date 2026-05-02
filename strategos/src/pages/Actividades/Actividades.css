@@ -25,7 +25,7 @@
   }
 
   .act-filter-info {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
     font-style: italic;
     white-space: nowrap;
@@ -44,7 +44,7 @@
     background: var(--bg2);
     border: 1px solid var(--border2);
     border-radius: var(--r);
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--text);
     cursor: pointer;
     height: 32px;
@@ -74,7 +74,7 @@
     padding: 6px 10px;
     cursor: pointer;
     border-radius: calc(var(--r) - 2px);
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--stratgos-ink-700);
     user-select: none;
   }
@@ -82,7 +82,7 @@
   .act-statusfilter-option input { margin: 0; cursor: pointer; }
 
   .act-statusfilter-icon {
-    font-size: 13px;
+    font-size: var(--text-md);
     font-weight: 700;
     display: inline-flex;
     justify-content: center;
@@ -98,7 +98,7 @@
     gap: 8px;
   }
   .act-group-label {
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--stratgos-ink-500);
     white-space: nowrap;
   }
@@ -138,12 +138,12 @@
   .act-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12px;
+    font-size: var(--text-base);
   }
   .act-table th {
     text-align: left;
     padding: 7px 10px;
-    font-size: 10px;
+    font-size: var(--text-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -179,7 +179,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 9px;
+    font-size: 9px; /* TODO: outlier — review token candidate */
     padding: 0 4px;
     color: var(--navy);
     font-weight: 700;
@@ -194,7 +194,7 @@
     align-items: center;
     gap: 4px;
   }
-  .act-name-n0 { font-weight: 700; font-size: 13px; color: var(--stratgos-ink-700); }
+  .act-name-n0 { font-weight: 700; font-size: var(--text-md); color: var(--stratgos-ink-700); }
   .act-name-n1 { font-weight: 600; color: var(--stratgos-ink-700); }
   .act-name-n2 { font-weight: 500; color: var(--stratgos-ink-900); }
   .act-name-n3 { color: var(--stratgos-ink-500); }
@@ -238,7 +238,7 @@
     transition: width 200ms ease, background 200ms ease;
   }
   .act-dualbar-label {
-    font-size: 10px;
+    font-size: var(--text-xs);
     min-width: 54px;
     text-align: left;
     white-space: nowrap;
@@ -250,7 +250,7 @@
     align-items: center;
     gap: 10px;
     font-variant-numeric: tabular-nums;
-    font-size: 12px;
+    font-size: var(--text-base);
   }
   .act-cda-item {
     display: inline-flex;
@@ -258,7 +258,7 @@
     gap: 4px;
   }
   .act-cda-icon {
-    font-size: 13px;
+    font-size: var(--text-md);
     font-weight: 700;
     display: inline-flex;
     justify-content: center;
@@ -268,19 +268,19 @@
 
   /* Deadline cell — two-line Prazo */
   .act-deadline {
-    font-size: 11px;
+    font-size: var(--text-sm);
     white-space: nowrap;
     color: var(--text2);
     line-height: 1.5;
   }
   .act-deadline.late { color: var(--status-late); }
   .act-prazo-bf {
-    font-size: 10px;
+    font-size: var(--text-xs);
     color: var(--stratgos-ink-300);
   }
   .act-prazo-bf.late { color: var(--status-late); }
   .act-prazo-rf {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--stratgos-ink-500);
     font-weight: 500;
   }
@@ -291,7 +291,7 @@
     text-align: center;
     color: var(--text3);
     padding: 32px;
-    font-size: 13px;
+    font-size: var(--text-md);
   }
 
   /* Predecessor count chip — inline after activity name in leaf rows */
@@ -305,7 +305,7 @@
     border-radius: 4px;
     background: var(--bg3);
     color: var(--text2);
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-variant-numeric: tabular-nums;
     vertical-align: middle;
     white-space: nowrap;

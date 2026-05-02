@@ -9,7 +9,7 @@
     border: 1px solid var(--border2);
     border-radius: var(--r);
     background: var(--stratgos-cream);
-    font-size: 12px;
+    font-size: var(--text-base);
     color: var(--text2);
     cursor: pointer;
     display: flex;
@@ -25,7 +25,7 @@
   .ms-label {
     font-weight: 600;
     color: var(--text3);
-    font-size: 11px;
+    font-size: var(--text-sm);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     flex-shrink: 0;
@@ -64,13 +64,13 @@
     padding: 6px 8px;
     border-radius: var(--r);
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--text);
     transition: background 0.12s;
   }
   .ms-option:hover { background: var(--bg2); }
   .ms-option input[type="checkbox"] { accent-color: var(--navy); cursor: pointer; }
-  .ms-empty { padding: 10px 8px; font-size: 13px; color: var(--text3); }
+  .ms-empty { padding: 10px 8px; font-size: var(--text-md); color: var(--text3); }
   .ms-clear {
     width: 100%;
     margin-top: 4px;
@@ -78,7 +78,7 @@
     border: none;
     border-top: 1px solid var(--border);
     background: none;
-    font-size: 12px;
+    font-size: var(--text-base);
     color: var(--text3);
     cursor: pointer;
     text-align: left;

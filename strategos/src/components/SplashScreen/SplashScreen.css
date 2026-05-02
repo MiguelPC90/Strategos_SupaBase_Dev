@@ -36,7 +36,7 @@
   }
 
   .splash-logo-text {
-    font-size: 28px;
+    font-size: var(--text-2xl);
     font-weight: 700;
     color: white;
     letter-spacing: 0.02em;

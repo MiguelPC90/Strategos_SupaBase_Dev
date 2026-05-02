@@ -23,7 +23,7 @@
   .progress-fill.red    { background: var(--red); }
   .progress-fill.amber  { background: var(--amber); }
   .progress-pct {
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-weight: 600;
     color: var(--text2);
     min-width: 30px;

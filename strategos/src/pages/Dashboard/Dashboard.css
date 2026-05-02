@@ -34,7 +34,7 @@
 
   /* ── Program scope label ─────────────────────────────────── */
   .dash-prog-label {
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-weight: 500;
     color: var(--text3);
     white-space: nowrap;
@@ -74,7 +74,7 @@
   .chip {
     padding: 4px 14px;
     border-radius: 100px;
-    font-size: 12px;
+    font-size: var(--text-base);
     font-weight: 500;
     border: 1px solid var(--border2);
     background: var(--bg);
@@ -124,14 +124,14 @@
   }
 
   .dev-bar-values {
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-variant-numeric: tabular-nums;
     line-height: 1.3;
     white-space: nowrap;
   }
 
   .dev-val-sep    { color: var(--stratgos-ink-300); }
-  .dev-val-target { color: var(--stratgos-ink-500); font-size: 10px; }
+  .dev-val-target { color: var(--stratgos-ink-500); font-size: var(--text-xs); }
 
   /* ── Executive Brief container ───────────────────────────── */
   .executive-brief {
@@ -147,7 +147,7 @@
 
   .executive-brief-title {
     font-family: var(--font-sans);
-    font-size: 12px;
+    font-size: var(--text-base);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -206,7 +206,7 @@
     gap: 6px;
   }
   .executive-kpi-label {
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -219,14 +219,14 @@
   }
   .executive-kpi-value {
     font-family: var(--font-serif, Georgia, serif);
-    font-size: 32px;
+    font-size: 32px; /* TODO: outlier — review token candidate */
     font-weight: 700;
     color: var(--stratgos-ink-900, var(--text));
     line-height: 1;
     font-variant-numeric: tabular-nums;
   }
   .executive-kpi-delta {
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-weight: 600;
     padding: 2px 6px;
     border-radius: 4px;
@@ -235,7 +235,7 @@
   .executive-kpi-delta.negative { background: #fee2e2; color: #991b1b; }
   .executive-kpi-delta.neutral  { background: var(--bg3); color: var(--text3); }
   .executive-kpi-target {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--stratgos-ink-400, var(--text3));
   }
 
@@ -257,7 +257,7 @@
   }
   .contagem-kpi-value {
     font-family: var(--font-serif);
-    font-size: 36px;
+    font-size: 36px; /* TODO: outlier — review token candidate */
     font-weight: 400;
     color: var(--stratgos-ink-900, var(--text));
     line-height: 1;
@@ -265,21 +265,21 @@
   .contagem-kpi-value.late { color: var(--status-late, var(--red)); }
   .contagem-kpi-denom {
     font-family: var(--font-serif);
-    font-size: 18px;
+    font-size: var(--text-xl);
     font-weight: 400;
     color: var(--stratgos-ink-300, #ccc);
     line-height: 1;
   }
   .contagem-kpi-label {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-sm);
     text-transform: uppercase;
     letter-spacing: 0;
     color: var(--stratgos-ink-500, var(--text2));
     margin-top: 6px;
   }
   .contagem-kpi-delta {
-    font-size: 12px;
+    font-size: var(--text-base);
     font-weight: 500;
     color: var(--stratgos-ink-500, var(--text2));
   }
@@ -314,7 +314,7 @@
   .alerts-list::-webkit-scrollbar-track  { background: transparent; }
   .alerts-list::-webkit-scrollbar-thumb  { background: var(--stratgos-ink-100, #e0e0e0); border-radius: 3px; }
   .alert-zone-title {
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -322,7 +322,7 @@
     margin-bottom: 2px;
   }
   .alert-zone-empty {
-    font-size: 13px;
+    font-size: var(--text-md);
     font-style: italic;
     color: var(--stratgos-ink-300, var(--text3));
     text-align: center;
@@ -342,23 +342,23 @@
   .alert-card.severity-medium   { border-left-color: var(--blue, #185FA5); background: #f0f6ff; }
   .alert-card.severity-low      { border-left-color: var(--stratgos-ink-300, #ccc); background: var(--bg2); }
   .alert-card-icon {
-    font-size: 14px;
+    font-size: var(--text-lg);
     flex-shrink: 0;
     margin-top: 1px;
   }
   .alert-card-body { flex: 1; min-width: 0; }
   .alert-card-title {
-    font-size: 13px;
+    font-size: var(--text-md);
     font-weight: 600;
     color: var(--text);
   }
   .alert-card-desc {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text2);
     margin-top: 2px;
   }
   .alert-card-link {
-    font-size: 14px;
+    font-size: var(--text-lg);
     color: var(--text3);
     text-decoration: none;
     flex-shrink: 0;

@@ -20,7 +20,7 @@
     flex-shrink: 0;
   }
   .card-title {
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-weight: 700;
     color: var(--navy);
     text-transform: uppercase;

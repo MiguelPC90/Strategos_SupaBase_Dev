@@ -18,7 +18,7 @@
     text-align: left;
     padding: 9px 14px;
     border-radius: var(--r);
-    font-size: 13.5px;
+    font-size: 13.5px; /* TODO: outlier — review token candidate */
     color: var(--text2);
     background: transparent;
     border: none;
@@ -41,7 +41,7 @@
   }
 
   .adm-section-desc {
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--text2);
     margin: 0 0 14px;
   }
@@ -65,7 +65,7 @@
   }
 
   .adm-label {
-    font-size: 13px;
+    font-size: var(--text-md);
     font-weight: 500;
     color: var(--text2);
   }
@@ -74,7 +74,7 @@
     border: 1px solid var(--border2);
     border-radius: var(--r);
     padding: 7px 10px;
-    font-size: 13.5px;
+    font-size: 13.5px; /* TODO: outlier — review token candidate */
     width: 100%;
     background: var(--bg);
     color: var(--text);
@@ -87,7 +87,7 @@
   }
 
   .adm-help {
-    font-size: 12px;
+    font-size: var(--text-base);
     color: var(--text3);
     margin-top: 2px;
   }
@@ -117,7 +117,7 @@
     color: var(--topbar-text);
     border: none;
     border-radius: var(--r);
-    font-size: 13.5px;
+    font-size: 13.5px; /* TODO: outlier — review token candidate */
     font-weight: 500;
     cursor: pointer;
   }
@@ -137,7 +137,7 @@
     color: var(--text);
     border: 1px solid var(--border2);
     border-radius: var(--r);
-    font-size: 13px;
+    font-size: var(--text-md);
     cursor: pointer;
     align-self: flex-start;
   }
@@ -155,7 +155,7 @@
     background: transparent;
     border: none;
     color: var(--red);
-    font-size: 13px;
+    font-size: var(--text-md);
     cursor: pointer;
     padding: 4px 8px;
   }
@@ -172,7 +172,7 @@
     color: white;
     padding: 10px 18px;
     border-radius: var(--r);
-    font-size: 13px;
+    font-size: var(--text-md);
     z-index: 999;
   }
 
@@ -186,13 +186,13 @@
   .adm-panel-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: var(--text-md);
   }
 
   .adm-panel-table th {
     text-align: left;
     padding: 7px 10px;
-    font-size: 12px;
+    font-size: var(--text-base);
     color: var(--text3);
     border-bottom: 1px solid var(--border);
   }
@@ -214,7 +214,7 @@
     border: 1px solid var(--border2);
     border-radius: 4px;
     padding: 4px 7px;
-    font-size: 13px;
+    font-size: var(--text-md);
     width: 100%;
     box-sizing: border-box;
     outline: none;
@@ -231,7 +231,7 @@
     padding: 3px 6px;
     border-radius: 4px;
     color: var(--text2);
-    font-size: 13px;
+    font-size: var(--text-md);
   }
 
   .adm-icon-btn:hover {
@@ -247,7 +247,7 @@
     background: none;
     border: none;
     color: var(--navy);
-    font-size: 13px;
+    font-size: var(--text-md);
     cursor: pointer;
     font-weight: 500;
   }
@@ -261,7 +261,7 @@
     padding: 24px;
     text-align: center;
     color: var(--text3);
-    font-size: 13px;
+    font-size: var(--text-md);
     font-style: italic;
     margin: 0;
   }
@@ -282,7 +282,7 @@
     border: 1px solid var(--border2);
     border-radius: var(--r);
     padding: 7px 32px 7px 10px;
-    font-size: 13.5px;
+    font-size: 13.5px; /* TODO: outlier — review token candidate */
     background: var(--bg);
     color: var(--text);
     outline: none;
@@ -305,7 +305,7 @@
     align-items: center;
     gap: 10px;
     margin-bottom: 14px;
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--text2);
   }
 
@@ -315,14 +315,14 @@
 
   .adm-matrix {
     border-collapse: collapse;
-    font-size: 12px;
+    font-size: var(--text-base);
     width: 100%;
   }
 
   .adm-matrix th {
     padding: 6px 8px;
     text-align: center;
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
@@ -341,14 +341,14 @@
 
   .adm-matrix td.adm-matrix-name {
     text-align: left;
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--text);
   }
 
   /* .styled-select-sm handles visuals; only layout + flash overrides here */
   .adm-perm-matrix .styled-select-sm {
     padding: 4px 24px 4px 6px;
-    font-size: 11px;
+    font-size: var(--text-sm);
     min-width: 70px;
   }
 
@@ -372,7 +372,7 @@
 
   .adm-tab {
     padding: 7px 14px;
-    font-size: 13px;
+    font-size: var(--text-md);
     border: none;
     background: none;
     cursor: pointer;
@@ -403,7 +403,7 @@
     border: 1px solid var(--border2);
     border-radius: var(--r);
     padding: 7px 10px;
-    font-size: 13.5px;
+    font-size: 13.5px; /* TODO: outlier — review token candidate */
     background: var(--bg);
     color: var(--text);
     outline: none;
@@ -419,7 +419,7 @@
     display: inline-block;
     padding: 3px 9px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-weight: 500;
     cursor: pointer;
     user-select: none;
@@ -444,7 +444,7 @@
     border-radius: var(--r);
     border: 1px solid var(--border2);
     background: white;
-    font-size: 13px;
+    font-size: var(--text-md);
     cursor: pointer;
     color: var(--text2);
   }
@@ -491,14 +491,14 @@
   }
 
   .adm-level-label {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text2);
     text-align: center;
     white-space: nowrap;
   }
 
   .adm-level-auto {
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--text3);
     font-style: italic;
   }
@@ -515,7 +515,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-weight: 500;
     border-radius: 3px;
   }
@@ -526,12 +526,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
   }
 
   .adm-axis-label {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--text3);
     margin-top: 6px;
     display: inline-block;
@@ -546,7 +546,7 @@
   }
 
   .adm-snap-info {
-    font-size: 12px;
+    font-size: var(--text-base);
     color: var(--text3);
   }
 
@@ -556,7 +556,7 @@
     background: white;
     padding: 6px 14px;
     border-radius: var(--r);
-    font-size: 13px;
+    font-size: var(--text-md);
     cursor: pointer;
     font-weight: 500;
   }
@@ -571,7 +571,7 @@
     gap: 12px;
     align-items: center;
     margin-bottom: 14px;
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--text2);
   }
 
@@ -583,7 +583,7 @@
     text-align: center;
     cursor: pointer;
     color: var(--text3);
-    font-size: 14px;
+    font-size: var(--text-lg);
     transition: border-color 0.15s, color 0.15s;
     margin-top: 12px;
   }
@@ -599,7 +599,7 @@
   }
 
   .adm-file-info {
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--text2);
     margin: 10px 0;
     display: flex;
@@ -615,7 +615,7 @@
   }
 
   .adm-preview-table {
-    font-size: 12px;
+    font-size: var(--text-base);
     border-collapse: collapse;
     width: 100%;
   }
@@ -662,7 +662,7 @@
   }
 
   .adm-health-block-title {
-    font-size: 13px;
+    font-size: var(--text-md);
     font-weight: 600;
     color: var(--text);
   }
@@ -674,7 +674,7 @@
 
   .adm-health-op-btn {
     padding: 3px 10px;
-    font-size: 11px;
+    font-size: var(--text-sm);
     font-weight: 600;
     border: 1px solid var(--border2);
     background: var(--bg2);
@@ -703,13 +703,13 @@
 
   .adm-health-rule-label {
     flex: 1;
-    font-size: 12px;
+    font-size: var(--text-base);
     color: var(--text2);
   }
 
   .adm-health-threshold-input {
     width: 68px;
     padding: 4px 8px;
-    font-size: 12px;
+    font-size: var(--text-base);
   }
 }

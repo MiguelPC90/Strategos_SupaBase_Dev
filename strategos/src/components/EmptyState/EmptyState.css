@@ -22,17 +22,17 @@
   .empty-state-lg .empty-state-icon { margin-bottom: 20px; }
 
   .empty-state-title {
-    font-size: 16px;
+    font-size: 16px; /* TODO: outlier — review token candidate */
     font-weight: 600;
     color: var(--text);
     margin: 0 0 8px 0;
   }
 
-  .empty-state-sm .empty-state-title { font-size: 14px; }
-  .empty-state-lg .empty-state-title { font-size: 18px; }
+  .empty-state-sm .empty-state-title { font-size: var(--text-lg); }
+  .empty-state-lg .empty-state-title { font-size: var(--text-xl); }
 
   .empty-state-description {
-    font-size: 13px;
+    font-size: var(--text-md);
     color: var(--text3);
     margin: 0 0 16px 0;
     max-width: 400px;
@@ -40,12 +40,12 @@
   }
 
   .empty-state-sm .empty-state-description {
-    font-size: 12px;
+    font-size: var(--text-base);
     margin-bottom: 12px;
   }
 
   .empty-state-lg .empty-state-description {
-    font-size: 14px;
+    font-size: var(--text-lg);
     max-width: 500px;
   }
 
@@ -57,7 +57,7 @@
     color: white;
     border: none;
     border-radius: var(--r);
-    font-size: 13px;
+    font-size: var(--text-md);
     font-weight: 600;
     cursor: pointer;
     text-decoration: none;
