@@ -133,7 +133,7 @@
     background: var(--stratgos-cream);
     border: 1px solid var(--border);
     border-radius: var(--r);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-sm);
     padding: 14px;
     min-width: 320px;
   }

@@ -19,7 +19,7 @@
     background: var(--stratgos-cream);
     border: 1px solid var(--border2);
     border-radius: var(--rl);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+    box-shadow: var(--shadow-xl);
     width: min(var(--modal-w, 560px), calc(100vw - 48px));
     max-height: calc(100vh - 80px);
     display: flex;

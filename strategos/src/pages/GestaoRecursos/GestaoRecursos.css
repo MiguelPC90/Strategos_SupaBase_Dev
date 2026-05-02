@@ -340,7 +340,7 @@
     width: 480px;
     background: var(--bg);
     border-left: 1px solid var(--border2);
-    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12); /* TODO: outlier — review token candidate */
     z-index: 201;
     display: flex;
     flex-direction: column;
@@ -472,7 +472,7 @@
     background: var(--bg);
     border: 1px solid var(--border2);
     border-radius: var(--r);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-md);
     max-height: 240px;
     overflow-y: auto;
   }

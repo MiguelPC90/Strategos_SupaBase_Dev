@@ -355,7 +355,7 @@
 
   .pds-risk-cell.has-risks:hover {
     transform: scale(1.08);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15); /* TODO: outlier — review token candidate */
   }
 
   .pds-risk-cell.selected {

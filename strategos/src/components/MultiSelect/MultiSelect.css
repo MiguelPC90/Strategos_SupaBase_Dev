@@ -50,7 +50,7 @@
     background: var(--stratgos-cream);
     border: 1px solid var(--border2);
     border-radius: var(--rl);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1); /* TODO: outlier — review token candidate */
     padding: 6px;
     min-width: 180px;
     z-index: 300;

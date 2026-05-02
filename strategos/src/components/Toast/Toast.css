@@ -16,7 +16,7 @@
     padding: 10px 16px;
     border-radius: var(--r);
     background: white;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.12); /* TODO: outlier — review token candidate */
     font-size: var(--text-md);
     min-width: 220px;
     max-width: 380px;

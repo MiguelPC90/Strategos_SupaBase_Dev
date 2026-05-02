@@ -68,7 +68,7 @@
   .pc-view-btn-active {
     background: var(--bg2);
     color: var(--stratgos-ember);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* TODO: outlier — review token candidate */
   }
 
   /* ── Filters ── */

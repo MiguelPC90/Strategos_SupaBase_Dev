@@ -371,7 +371,7 @@
     min-width: 220px;
     max-width: 320px;
     pointer-events: none;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* TODO: outlier — review token candidate */
   }
 
   .rec-tt-header {
@@ -429,7 +429,7 @@
     width: 340px;
     background: var(--bg);
     border-left: 1px solid var(--border2);
-    box-shadow: -6px 0 24px rgba(0, 0, 0, 0.12);
+    box-shadow: -6px 0 24px rgba(0, 0, 0, 0.12); /* TODO: outlier — review token candidate */
     z-index: 50;
     overflow-y: auto;
     display: flex;
