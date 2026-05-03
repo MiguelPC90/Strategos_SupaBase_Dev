@@ -1004,14 +1004,14 @@ export default function Recursos() {
           {/* ── Row 1: Primary KPIs ──────────────────────────────── */}
           <div className="rec-kpi-row-primary">
             <div className="rec-kpi-card-primary">
-              <div className="rec-kpi-label">Recursos únicos</div>
+              <div className="rec-kpi-label t-label">Recursos únicos</div>
               <div className="rec-kpi-value-primary" style={{ color: 'var(--navy)' }}>
                 {uniqueResources.size}
               </div>
             </div>
 
             <div className="rec-kpi-card-primary">
-              <div className="rec-kpi-label">FTE médio</div>
+              <div className="rec-kpi-label t-label">FTE médio</div>
               <div className="rec-kpi-value-primary" style={{ color: 'var(--blue)' }}>
                 {kpiFteMed.toFixed(2)}
               </div>
@@ -1019,7 +1019,7 @@ export default function Recursos() {
             </div>
 
             <div className="rec-kpi-card-primary">
-              <div className="rec-kpi-label">Custo total</div>
+              <div className="rec-kpi-label t-label">Custo total</div>
               <div className="rec-kpi-value-primary" style={{ color: 'var(--navy)' }}>
                 {fmt(kpiCusto)}
               </div>
@@ -1030,7 +1030,7 @@ export default function Recursos() {
           {/* ── Row 2: Secondary KPIs ────────────────────────────── */}
           <div className="rec-kpi-row-secondary">
             <div className="rec-kpi-card-secondary">
-              <div className="rec-kpi-label">Internos / Externos</div>
+              <div className="rec-kpi-label t-label">Internos / Externos</div>
               <div className="rec-kpi-value-secondary" style={{ color: 'var(--text)' }}>
                 {kpiInternos} / {kpiExternos}
               </div>
@@ -1038,7 +1038,7 @@ export default function Recursos() {
             </div>
 
             <div className="rec-kpi-card-secondary">
-              <div className="rec-kpi-label">Sobrealocações</div>
+              <div className="rec-kpi-label t-label">Sobrealocações</div>
               <div
                 className="rec-kpi-value-secondary"
                 style={{ color: kpiSobrealloc > 0 ? 'var(--red)' : 'var(--text3)' }}
@@ -1049,7 +1049,7 @@ export default function Recursos() {
             </div>
 
             <div className="rec-kpi-card-secondary">
-              <div className="rec-kpi-label">A terminar</div>
+              <div className="rec-kpi-label t-label">A terminar</div>
               <div
                 className="rec-kpi-value-secondary"
                 style={{ color: kpiExpiring > 0 ? 'var(--amber)' : 'var(--text3)' }}

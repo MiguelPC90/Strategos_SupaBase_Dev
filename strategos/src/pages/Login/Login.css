@@ -54,8 +54,6 @@
   }
 
   .login-heading {
-    font-size: var(--text-xl);
-    font-weight: 700;
     color: var(--navy);
     margin: 0 0 20px;
   }

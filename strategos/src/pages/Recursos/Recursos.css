@@ -72,11 +72,7 @@
   }
 
   .rec-kpi-label {
-    font-size: var(--text-sm);
     color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-weight: 600;
     margin-bottom: 6px;
   }
 

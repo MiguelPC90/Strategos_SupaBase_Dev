@@ -25,7 +25,7 @@ export default function KpiCard({ label, value, subtitle, trend, color = 'text' 
   return (
     <div className="kpi-card">
       <span className="kpi-label">{label}</span>
-      <span className="kpi-value" style={{ color: colorMap[color] }}>
+      <span className="kpi-value t-title" style={{ color: colorMap[color] }}>
         {value ?? '—'}
       </span>
       {trend !== undefined && <span className="kpi-trend">{trend}</span>}

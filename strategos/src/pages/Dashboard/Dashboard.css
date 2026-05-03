@@ -206,10 +206,6 @@
     gap: 6px;
   }
   .executive-kpi-label {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
     color: var(--stratgos-ink-500, var(--text2));
   }
   .executive-kpi-value-row {
@@ -314,10 +310,6 @@
   .alerts-list::-webkit-scrollbar-track  { background: transparent; }
   .alerts-list::-webkit-scrollbar-thumb  { background: var(--stratgos-ink-100, #e0e0e0); border-radius: 3px; }
   .alert-zone-title {
-    font-size: var(--text-sm);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
     color: var(--stratgos-ink-500, var(--text2));
     margin-bottom: 2px;
   }

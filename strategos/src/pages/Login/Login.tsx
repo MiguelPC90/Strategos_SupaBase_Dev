@@ -65,7 +65,7 @@ export default function Login() {
       {/* ── Centered card ── */}
       <div className="login-center">
         <div className="login-card">
-          <h1 className="login-heading">Iniciar sessão</h1>
+          <h1 className="login-heading t-title">Iniciar sessão</h1>
 
           {/* ── Tabs ── */}
           <div className="login-tabs">

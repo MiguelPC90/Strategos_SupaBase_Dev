@@ -114,6 +114,11 @@
   --text-xl:   18px;   /* secondary KPI values                   */
   --text-2xl:  28px;   /* primary KPI values                     */
 
+  /* Display tier (Phase 4 — type scale) */
+  --text-3xl:  32px;   /* Headline                               */
+  --text-4xl:  48px;   /* Display                                */
+  --text-5xl:  88px;   /* Display XL                             */
+
 
   /* ── 7. Shadows ───────────────────────────────────────────────
      Four levels. Audit found 10+ ad-hoc shadow values; these

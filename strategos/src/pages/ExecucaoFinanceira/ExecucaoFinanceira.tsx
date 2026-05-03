@@ -650,12 +650,12 @@ export default function ExecucaoFinanceira() {
           {/* ── Row 1: Primary KPIs ──────────────────────────────── */}
           <div className="ef-kpi-row-primary">
             <div className="ef-kpi-card-primary">
-              <div className="ef-kpi-label">Orçamento Total</div>
+              <div className="ef-kpi-label t-label">Orçamento Total</div>
               <div className="ef-kpi-value-primary" style={{ color: 'var(--navy)' }}>{fmt(kpiOrc)}</div>
             </div>
 
             <div className="ef-kpi-card-primary">
-              <div className="ef-kpi-label">Comprometido</div>
+              <div className="ef-kpi-label t-label">Comprometido</div>
               <div className="ef-kpi-value-primary" style={{ color: 'var(--blue)' }}>{fmt(kpiAdj)}</div>
               {kpiOrc > 0 && (
                 <div className="ef-kpi-sub">{fmtPct(kpiAdj / kpiOrc * 100)} do orçamento</div>
@@ -663,7 +663,7 @@ export default function ExecucaoFinanceira() {
             </div>
 
             <div className="ef-kpi-card-primary">
-              <div className="ef-kpi-label">Disponível</div>
+              <div className="ef-kpi-label t-label">Disponível</div>
               <div className="ef-kpi-value-primary" style={{ color: kpiDisp >= 0 ? 'var(--green)' : 'var(--red)' }}>
                 {fmt(kpiDisp)}
               </div>
@@ -696,7 +696,7 @@ export default function ExecucaoFinanceira() {
                   )}
                 </div>
               )}
-              <div className="ef-kpi-label">Facturado</div>
+              <div className="ef-kpi-label t-label">Facturado</div>
               <div className="ef-kpi-value-secondary" style={{ color: 'var(--amber)' }}>{fmt(kpiFact)}</div>
               {kpiAdj > 0 && (
                 <div className="ef-kpi-sub">{fmtPct(kpiFact / kpiAdj * 100)} do comprometido</div>
@@ -704,7 +704,7 @@ export default function ExecucaoFinanceira() {
             </div>
 
             <div className="ef-kpi-card-secondary">
-              <div className="ef-kpi-label">Pago</div>
+              <div className="ef-kpi-label t-label">Pago</div>
               <div className="ef-kpi-value-secondary" style={{ color: 'var(--green)' }}>{fmt(kpiPago)}</div>
               {kpiFact > 0 && (
                 <div className="ef-kpi-sub">{fmtPct(kpiPago / kpiFact * 100)} do facturado</div>
@@ -712,7 +712,7 @@ export default function ExecucaoFinanceira() {
             </div>
 
             <div className="ef-kpi-card-secondary">
-              <div className="ef-kpi-label">Por Facturar</div>
+              <div className="ef-kpi-label t-label">Por Facturar</div>
               <div className="ef-kpi-value-secondary" style={{ color: 'var(--text2)' }}>{fmt(kpiPorFact)}</div>
               {kpiAdj > 0 && (
                 <div className="ef-kpi-sub">{fmtPct(kpiPorFact / kpiAdj * 100)} do comprometido</div>

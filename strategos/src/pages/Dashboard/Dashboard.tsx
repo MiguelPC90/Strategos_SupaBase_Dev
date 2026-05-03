@@ -133,7 +133,7 @@ function SmartKpi({ label, value, delta, target }: SmartKpiProps) {
   const cls   = delta === null || abs < 0.05 ? 'neutral' : delta > 0 ? 'positive' : 'negative'
   return (
     <div className="executive-kpi">
-      <div className="executive-kpi-label">{label}</div>
+      <div className="executive-kpi-label t-label">{label}</div>
       <div className="executive-kpi-value-row">
         <span className="executive-kpi-value">
           {value !== null ? `${value.toFixed(1)}%` : '—'}

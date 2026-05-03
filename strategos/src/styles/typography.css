@@ -1,0 +1,65 @@
+/* typography.css · Stratgos design system — Phase 4 type scale
+ * Utility classes aligned with the brand identity type scale.
+ * Apply to elements via className. Keep semantic HTML separate
+ * from typographic styling.
+ *
+ * Levels: Display XL → Display → Headline → Title → Body L → Body → Label
+ */
+
+@layer components {
+  .t-display-xl {
+    font-family: var(--font-display);
+    font-size: var(--text-5xl);
+    line-height: 0.95;
+    font-weight: 400;
+  }
+
+  .t-display {
+    font-family: var(--font-display);
+    font-size: var(--text-4xl);
+    line-height: 1.0;
+    font-weight: 400;
+  }
+
+  .t-headline {
+    font-family: var(--font-serif);
+    font-size: var(--text-3xl);
+    line-height: 1.1;
+    font-weight: 400;
+  }
+
+  .t-title {
+    font-family: var(--font-sans);
+    font-size: 20px;       /* TODO: outlier — review token candidate */
+    line-height: 1.3;
+    font-weight: 600;
+  }
+
+  .t-body-l {
+    font-family: var(--font-serif);
+    font-size: var(--text-xl);
+    line-height: 1.5;
+    font-weight: 400;
+  }
+
+  .t-body {
+    font-family: var(--font-sans);
+    font-size: 15px;       /* TODO: outlier — review token candidate */
+    line-height: 1.55;
+    font-weight: 400;
+  }
+
+  .t-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Modifier — composable with any type class */
+  .t-tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
