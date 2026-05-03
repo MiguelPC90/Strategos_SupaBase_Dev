@@ -526,7 +526,7 @@ export default function GestaoRiscos({
           />
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table className="gr-table">
+            <table className="gr-table tbl-default">
               <colgroup>
                 <col />
                 <col style={{ width: 70 }} />
@@ -538,13 +538,13 @@ export default function GestaoRiscos({
               </colgroup>
               <thead>
                 <tr>
-                  <th>Descrição</th>
-                  <th className="gr-th-c">Impacto</th>
-                  <th className="gr-th-c">Probabilidade</th>
-                  <th className="gr-th-c">Grau</th>
-                  <th className="gr-th-c">Estado</th>
-                  <th>Mitigação</th>
-                  <th className="gr-th-c" />
+                  <th className="t-label">Descrição</th>
+                  <th className="gr-th-c t-label">Impacto</th>
+                  <th className="gr-th-c t-label">Probabilidade</th>
+                  <th className="gr-th-c t-label">Grau</th>
+                  <th className="gr-th-c t-label">Estado</th>
+                  <th className="t-label">Mitigação</th>
+                  <th className="gr-th-c t-label" />
                 </tr>
               </thead>
               <tbody>

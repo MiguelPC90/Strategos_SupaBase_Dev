@@ -48,16 +48,8 @@
   .gr-table th {
     padding: 7px 10px;
     text-align: left;
-    font-size: var(--text-sm);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--topbar-text);
-    background: var(--navy);
     white-space: nowrap;
   }
-  .gr-table th:first-child { border-radius: 6px 0 0 0; }
-  .gr-table th:last-child  { border-radius: 0 6px 0 0; }
 
   .gr-table td {
     padding: 7px 10px;
