@@ -77,9 +77,6 @@
   }
 
   .rec-kpi-value-primary {
-    font-size: var(--text-2xl);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
     margin-bottom: 6px;
   }
 

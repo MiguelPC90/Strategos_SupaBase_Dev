@@ -28,6 +28,13 @@
     font-weight: 400;
   }
 
+  .t-headline-sm {
+    font-family: var(--font-serif);
+    font-size: var(--text-2xl);
+    line-height: 1.0;
+    font-weight: 400;
+  }
+
   .t-title {
     font-family: var(--font-sans);
     font-size: 20px;       /* TODO: outlier — review token candidate */

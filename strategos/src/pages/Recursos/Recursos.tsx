@@ -1005,14 +1005,14 @@ export default function Recursos() {
           <div className="rec-kpi-row-primary">
             <div className="rec-kpi-card-primary">
               <div className="rec-kpi-label t-label">Recursos únicos</div>
-              <div className="rec-kpi-value-primary" style={{ color: 'var(--navy)' }}>
+              <div className="rec-kpi-value-primary t-headline-sm t-tabular" style={{ color: 'var(--navy)' }}>
                 {uniqueResources.size}
               </div>
             </div>
 
             <div className="rec-kpi-card-primary">
               <div className="rec-kpi-label t-label">FTE médio</div>
-              <div className="rec-kpi-value-primary" style={{ color: 'var(--blue)' }}>
+              <div className="rec-kpi-value-primary t-headline-sm t-tabular" style={{ color: 'var(--blue)' }}>
                 {kpiFteMed.toFixed(2)}
               </div>
               <div className="rec-kpi-sub">por recurso</div>
@@ -1020,7 +1020,7 @@ export default function Recursos() {
 
             <div className="rec-kpi-card-primary">
               <div className="rec-kpi-label t-label">Custo total</div>
-              <div className="rec-kpi-value-primary" style={{ color: 'var(--navy)' }}>
+              <div className="rec-kpi-value-primary t-headline-sm t-tabular" style={{ color: 'var(--navy)' }}>
                 {fmt(kpiCusto)}
               </div>
               <div className="rec-kpi-sub">no período</div>

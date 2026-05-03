@@ -214,12 +214,7 @@
     gap: 8px;
   }
   .executive-kpi-value {
-    font-family: var(--font-serif, Georgia, serif);
-    font-size: 32px; /* TODO: outlier — review token candidate */
-    font-weight: 700;
     color: var(--stratgos-ink-900, var(--text));
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
   }
   .executive-kpi-delta {
     font-size: var(--text-sm);
@@ -252,11 +247,7 @@
     gap: 8px;
   }
   .contagem-kpi-value {
-    font-family: var(--font-serif);
-    font-size: 36px; /* TODO: outlier — review token candidate */
-    font-weight: 400;
     color: var(--stratgos-ink-900, var(--text));
-    line-height: 1;
   }
   .contagem-kpi-value.late { color: var(--status-late, var(--red)); }
   .contagem-kpi-denom {

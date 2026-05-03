@@ -174,7 +174,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
           <div className="ve-contagem-kpi-grid">
             <div className="ve-contagem-kpi">
               <div className="ve-contagem-kpi-numbers">
-                <span className="ve-contagem-kpi-value">{actSummary.done}</span>
+                <span className="ve-contagem-kpi-value t-headline t-tabular">{actSummary.done}</span>
                 <span className="ve-contagem-kpi-denom">/ {totalN}</span>
               </div>
               <div className="ve-contagem-kpi-label">Concluídas</div>
@@ -186,7 +186,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
             </div>
             <div className="ve-contagem-kpi">
               <div className="ve-contagem-kpi-numbers">
-                <span className="ve-contagem-kpi-value">{actSummary.ontrack}</span>
+                <span className="ve-contagem-kpi-value t-headline t-tabular">{actSummary.ontrack}</span>
                 <span className="ve-contagem-kpi-denom">/ {totalN}</span>
               </div>
               <div className="ve-contagem-kpi-label">Em Dia</div>
@@ -198,7 +198,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
             </div>
             <div className="ve-contagem-kpi">
               <div className="ve-contagem-kpi-numbers">
-                <span className={`ve-contagem-kpi-value${actSummary.risk > 0 ? ' risk' : ''}`}>{actSummary.risk}</span>
+                <span className={`ve-contagem-kpi-value t-headline t-tabular${actSummary.risk > 0 ? ' risk' : ''}`}>{actSummary.risk}</span>
                 <span className="ve-contagem-kpi-denom">/ {totalN}</span>
               </div>
               <div className="ve-contagem-kpi-label">Em Risco</div>
@@ -210,7 +210,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
             </div>
             <div className="ve-contagem-kpi">
               <div className="ve-contagem-kpi-numbers">
-                <span className={`ve-contagem-kpi-value${actSummary.late > 0 ? ' late' : ''}`}>{actSummary.late}</span>
+                <span className={`ve-contagem-kpi-value t-headline t-tabular${actSummary.late > 0 ? ' late' : ''}`}>{actSummary.late}</span>
                 <span className="ve-contagem-kpi-denom">/ {totalN}</span>
               </div>
               <div className="ve-contagem-kpi-label">Em Atraso</div>
@@ -228,7 +228,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
           <div className="ve-exec-kpi-grid">
             <div className="ve-exec-kpi">
               <div className="ve-exec-kpi-value-row">
-                <span className="ve-exec-kpi-value">{execPct.toFixed(1)}%</span>
+                <span className="ve-exec-kpi-value t-headline-sm t-tabular">{execPct.toFixed(1)}%</span>
                 {execDelta !== null && (
                   Math.abs(execDelta) < 0.05
                     ? <span className="ve-exec-kpi-delta neutral">0pp</span>
@@ -242,7 +242,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
             </div>
             <div className="ve-exec-kpi">
               <div className="ve-exec-kpi-value-row">
-                <span className="ve-exec-kpi-value">{concGeralVal.toFixed(1)}%</span>
+                <span className="ve-exec-kpi-value t-headline-sm t-tabular">{concGeralVal.toFixed(1)}%</span>
                 {concGeralDelta !== null && (
                   Math.abs(concGeralDelta) < 0.05
                     ? <span className="ve-exec-kpi-delta neutral">0pp</span>
@@ -259,7 +259,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
             </div>
             <div className="ve-exec-kpi">
               <div className="ve-exec-kpi-value-row">
-                <span className="ve-exec-kpi-value">
+                <span className="ve-exec-kpi-value t-headline-sm t-tabular">
                   {concDataVal !== null ? `${concDataVal.toFixed(1)}%` : '—'}
                 </span>
                 {concDataDelta !== null && (
@@ -280,13 +280,13 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
         <Card title="A Requerer Atenção">
           <div className="ve-attn-kpi-grid">
             <div className="ve-attn-kpi">
-              <span className={`ve-attn-kpi-value${criticalRisks.length > 0 ? ' risk' : ''}`}>
+              <span className={`ve-attn-kpi-value t-display t-tabular${criticalRisks.length > 0 ? ' risk' : ''}`}>
                 {criticalRisks.length}
               </span>
               <span className="ve-attn-kpi-label">Riscos Críticos</span>
             </div>
             <div className="ve-attn-kpi">
-              <span className={`ve-attn-kpi-value${openAttention.length > 0 ? ' amber' : ''}`}>
+              <span className={`ve-attn-kpi-value t-display t-tabular${openAttention.length > 0 ? ' amber' : ''}`}>
                 {openAttention.length}
               </span>
               <span className="ve-attn-kpi-label">Pontos de Atenção</span>

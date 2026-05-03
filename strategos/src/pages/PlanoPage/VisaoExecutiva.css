@@ -41,11 +41,7 @@
   }
 
   .ve-contagem-kpi-value {
-    font-family: var(--font-serif);
-    font-size: 36px; /* TODO: outlier — review token candidate */
-    font-weight: 400;
     color: var(--stratgos-ink-900, var(--text));
-    line-height: 1;
   }
 
   .ve-contagem-kpi-value.risk { color: var(--status-risk, var(--amber)); }
@@ -112,12 +108,7 @@
   }
 
   .ve-exec-kpi-value {
-    font-family: var(--font-serif, Georgia, serif);
-    font-size: var(--text-2xl);
-    font-weight: 700;
     color: var(--stratgos-ink-900, var(--text));
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
   }
 
   .ve-exec-kpi-delta {
@@ -151,11 +142,7 @@
   }
 
   .ve-attn-kpi-value {
-    font-family: var(--font-serif);
-    font-size: 48px; /* TODO: outlier — review token candidate */
-    font-weight: 400;
     color: var(--stratgos-ink-900, var(--text));
-    line-height: 1;
   }
 
   .ve-attn-kpi-value.risk  { color: var(--status-late, var(--red)); }

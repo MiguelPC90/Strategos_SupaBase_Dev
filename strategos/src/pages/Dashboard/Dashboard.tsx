@@ -135,7 +135,7 @@ function SmartKpi({ label, value, delta, target }: SmartKpiProps) {
     <div className="executive-kpi">
       <div className="executive-kpi-label t-label">{label}</div>
       <div className="executive-kpi-value-row">
-        <span className="executive-kpi-value">
+        <span className="executive-kpi-value t-headline t-tabular">
           {value !== null ? `${value.toFixed(1)}%` : '—'}
         </span>
         {delta !== null && abs >= 0.05 && (
@@ -166,7 +166,7 @@ function ContagemKpi({ value, total, label, delta, variant = 'default', deltaVar
   return (
     <div className="contagem-kpi">
       <div className="contagem-kpi-numbers">
-        <span className={`contagem-kpi-value${isLate ? ' late' : ''}`}>{value}</span>
+        <span className={`contagem-kpi-value t-headline t-tabular${isLate ? ' late' : ''}`}>{value}</span>
         <span className="contagem-kpi-denom">/ {total}</span>
       </div>
       <div className="contagem-kpi-label">{label}</div>

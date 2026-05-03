@@ -651,12 +651,12 @@ export default function ExecucaoFinanceira() {
           <div className="ef-kpi-row-primary">
             <div className="ef-kpi-card-primary">
               <div className="ef-kpi-label t-label">Orçamento Total</div>
-              <div className="ef-kpi-value-primary" style={{ color: 'var(--navy)' }}>{fmt(kpiOrc)}</div>
+              <div className="ef-kpi-value-primary t-headline-sm t-tabular" style={{ color: 'var(--navy)' }}>{fmt(kpiOrc)}</div>
             </div>
 
             <div className="ef-kpi-card-primary">
               <div className="ef-kpi-label t-label">Comprometido</div>
-              <div className="ef-kpi-value-primary" style={{ color: 'var(--blue)' }}>{fmt(kpiAdj)}</div>
+              <div className="ef-kpi-value-primary t-headline-sm t-tabular" style={{ color: 'var(--blue)' }}>{fmt(kpiAdj)}</div>
               {kpiOrc > 0 && (
                 <div className="ef-kpi-sub">{fmtPct(kpiAdj / kpiOrc * 100)} do orçamento</div>
               )}
@@ -664,7 +664,7 @@ export default function ExecucaoFinanceira() {
 
             <div className="ef-kpi-card-primary">
               <div className="ef-kpi-label t-label">Disponível</div>
-              <div className="ef-kpi-value-primary" style={{ color: kpiDisp >= 0 ? 'var(--green)' : 'var(--red)' }}>
+              <div className="ef-kpi-value-primary t-headline-sm t-tabular" style={{ color: kpiDisp >= 0 ? 'var(--green)' : 'var(--red)' }}>
                 {fmt(kpiDisp)}
               </div>
               {kpiOrc > 0 && (
