@@ -195,9 +195,9 @@ function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate,
           </div>
           {!readOnly && (
             <div className="gres-card-actions">
-              <button className="gres-icon-btn" onClick={onEdit} title="Editar" style={{ fontSize: 14 }}>✎</button>
-              <button className="gres-icon-btn" onClick={onDuplicate} title="Duplicar">⧉</button>
-              <button className="gres-icon-btn danger" onClick={onDelete} title="Eliminar">✕</button>
+              <button className="btn-icon" onClick={onEdit} title="Editar" style={{ fontSize: 14 }}>✎</button>
+              <button className="btn-icon" onClick={onDuplicate} title="Duplicar">⧉</button>
+              <button className="btn-icon danger" onClick={onDelete} title="Eliminar">✕</button>
             </div>
           )}
         </div>

@@ -620,7 +620,7 @@ function RowMenu({ actId, openId, canUp, canDown, onOpen, onEdit, onDuplicate, o
 
   return (
     <div className="gi-menu-wrap">
-      <button ref={btnRef} className="gi-icon-btn" onClick={handleClick} title="Acções">⋯</button>
+      <button ref={btnRef} className="btn-icon" onClick={handleClick} title="Acções">⋯</button>
       {open && pos !== null && createPortal(menu, document.body)}
     </div>
   )

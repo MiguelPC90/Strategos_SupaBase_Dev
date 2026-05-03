@@ -209,7 +209,7 @@ function RowMenu({ riskId, openId, onOpen, onEdit, onDuplicate, onDelete }: RowM
 
   return (
     <div className="gr-menu-wrap">
-      <button ref={btnRef} className="gr-icon-btn" onClick={handleClick} title="Acções">
+      <button ref={btnRef} className="btn-icon" onClick={handleClick} title="Acções">
         ⋯
       </button>
       {open && pos !== null && createPortal(menu, document.body)}

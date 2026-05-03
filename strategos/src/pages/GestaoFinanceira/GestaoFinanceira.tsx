@@ -597,7 +597,7 @@ function InvRowMenu({ invId, openId, onOpen, onEdit, onDuplicate, onDelete }: In
 
   return (
     <>
-      <button ref={btnRef} className="gf-menu-btn" onClick={handleClick} title="Acções">⋯</button>
+      <button ref={btnRef} className="btn-icon" onClick={handleClick} title="Acções">⋯</button>
       {open && pos !== null && createPortal(menu, document.body)}
     </>
   )
