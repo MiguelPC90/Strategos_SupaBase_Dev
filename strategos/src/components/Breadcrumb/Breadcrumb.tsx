@@ -117,9 +117,10 @@ interface BreadcrumbSegmentProps {
   current: string | null
   onSelect: (value: string | null) => void
   isFirst?: boolean
+  displayOnly?: boolean
 }
 
-function BreadcrumbSegment({ label, options, current, onSelect, isFirst }: BreadcrumbSegmentProps) {
+function BreadcrumbSegment({ label, options, current, onSelect, isFirst, displayOnly }: BreadcrumbSegmentProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -138,6 +139,14 @@ function BreadcrumbSegment({ label, options, current, onSelect, isFirst }: Bread
       document.removeEventListener('keydown', handleKey)
     }
   }, [open])
+
+  if (displayOnly) {
+    return (
+      <div className="breadcrumb-segment">
+        <span className="breadcrumb-segment-static">{label}</span>
+      </div>
+    )
+  }
 
   return (
     <div className="breadcrumb-segment" ref={ref}>
@@ -243,6 +252,13 @@ export default function Breadcrumb() {
     }
   }, [accessiblePrograms, programId, setFilter])
 
+  // Auto-select when only one program is accessible
+  useEffect(() => {
+    if (accessiblePrograms.length !== 1) return
+    const only = accessiblePrograms[0]
+    if (programId !== only.id) setFilter('programIds', [only.id])
+  }, [accessiblePrograms]) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (isGestaoCurrent && accessiblePrograms.length === 0) {
     return (
       <div className="breadcrumb">
@@ -258,10 +274,11 @@ export default function Breadcrumb() {
   return (
     <div className="breadcrumb">
       <div className="breadcrumb-main">
-        {/* Programa — always visible */}
+        {/* Programa — always visible; display-only when only one program accessible */}
         <BreadcrumbSegment
           label={currentProgram?.name ?? 'Todos os programas'}
           isFirst
+          displayOnly={accessiblePrograms.length === 1}
           options={[
             { value: null, label: 'Todos os programas' },
             ...accessiblePrograms.map(p => ({ value: p.id, label: p.name })),

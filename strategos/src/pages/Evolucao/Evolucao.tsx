@@ -9,7 +9,6 @@ import {
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import { useSnapshots } from '../../hooks/useSnapshots'
-import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useEixos } from '../../hooks/useEixos'
 import { useFilters } from '../../context/FilterContext'
 import type { Snapshot, SnapshotKpi } from '../../types/index'
@@ -108,7 +107,7 @@ const BLUE  = colors.status.done
 
 // ── Component ──────────────────────────────────────────────────
 export default function Evolucao() {
-  const { filters, setFilter }         = useFilters()
+  const { filters }                    = useFilters()
   const programId                      = filters.programIds[0] ?? ''
   const [periodOption, setPeriodOption] = useState<PeriodOption>('6m')
   const [dateFrom,     setDateFrom]     = useState(() => computePeriodDates('6m').from)
@@ -121,7 +120,7 @@ export default function Evolucao() {
     setDateTo(to)
   }, [periodOption])
 
-  const programs                       = useAccessiblePrograms('evolucao')
+
   const { snapshots, loading, error } = useSnapshots(programId || undefined)
   const { eixos }                     = useEixos(programId || undefined)
 
@@ -244,20 +243,6 @@ export default function Evolucao() {
 
       {/* ── Controls bar ───────────────────────────────────────── */}
       <div className="evol-controls-bar">
-        <span className="evol-ctrl-label">Programa</span>
-        <select
-          className="styled-select"
-          value={programId}
-          onChange={e => setFilter('programIds', e.target.value ? [e.target.value] : [])}
-        >
-          <option value="">Todos os programas</option>
-          {programs.map(p => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-
-        <div className="evol-ctrl-sep" />
-
         <span className="evol-ctrl-label">Período</span>
         <select
           className="styled-select"

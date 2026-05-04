@@ -735,17 +735,9 @@ export default function GestaoFinanceira({
   const { filters }  = useFilters()
   const programs = useAccessiblePrograms('gestao-financeira')
   const readOnly = !useCanEditCurrent('gestao-financeira')
-  const [selProgId, setSelProgId] = useState<string>('')
-
-  // Initialise from global filter or first available program (once)
-  useEffect(() => {
-    if (mode === 'embedded') return
-    if (selProgId) return
-    const init = filters.programIds[0] ?? programs[0]?.id
-    if (init) setSelProgId(init)
-  }, [programs]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const programId = mode === 'embedded' ? propProgramId : (selProgId || undefined)
+  const programId = mode === 'embedded'
+    ? propProgramId
+    : (filters.programIds[0] ?? programs[0]?.id)
 
   // ── Admin config: categories, currencies, management years ───
   const [categories,      setCategories]      = useState<CategoryOption[]>([])
@@ -1169,18 +1161,6 @@ export default function GestaoFinanceira({
       {/* Controls bar */}
       {mode === 'standalone' && (
         <div className="gf-controls-bar">
-          {programs.length > 1 && (
-            <>
-              <label className="gf-label">Programa:</label>
-              <select
-                className="styled-select"
-                value={selProgId}
-                onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
-              >
-                {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </>
-          )}
           <label className="gf-label">Plano de Acção:</label>
           <select
             className="styled-select"

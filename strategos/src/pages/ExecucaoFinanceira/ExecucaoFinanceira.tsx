@@ -233,7 +233,8 @@ export default function ExecucaoFinanceira() {
   const { filters }  = useFilters()
   const programs = useAccessiblePrograms()
 
-  const [selProgId,           setSelProgId]           = useState<string | null>(null)
+  const programId = filters.programIds[0] ?? programs[0]?.id
+
   const [selectedPlanoLabels, setSelectedPlanoLabels] = useState<string[]>([])
   const [selectedYears,       setSelectedYears]       = useState<string[]>([])
   const [tipoFilter,          setTipoFilter]          = useState<TipoFilter>('todos')
@@ -245,20 +246,11 @@ export default function ExecucaoFinanceira() {
   const [sortBy,              setSortBy]              = useState('supplier')
   const [sortDir,             setSortDir]             = useState<'asc' | 'desc'>('asc')
 
-  // Initialise program from global filter or first program
-  useEffect(() => {
-    if (programs.length === 0) return
-    setSelProgId(prev => {
-      if (prev && programs.some(p => p.id === prev)) return prev
-      return filters.programIds[0] ?? programs[0].id
-    })
-  }, [programs, filters.programIds])
-
   // Reset plano/year selection when program changes
   useEffect(() => {
     setSelectedPlanoLabels([])
     setSelectedYears([])
-  }, [selProgId])
+  }, [programId])
 
   // Fetch default currency symbol
   useEffect(() => {
@@ -284,21 +276,19 @@ export default function ExecucaoFinanceira() {
 
   // Fetch management years for the selected program
   useEffect(() => {
-    if (!selProgId) { setMgmtYears([]); return }
+    if (!programId) { setMgmtYears([]); return }
     let cancelled = false
     supabase
       .from('management_years')
       .select('year')
-      .eq('program_id', selProgId)
+      .eq('program_id', programId)
       .order('year')
       .then(({ data }) => {
         if (cancelled) return
         setMgmtYears(data?.map(r => String(r.year)) ?? [])
       })
     return () => { cancelled = true }
-  }, [selProgId])
-
-  const programId = selProgId ?? undefined
+  }, [programId])
 
   const { budgetLines, contracts, invoices, loading } = useFinancials(programId)
   const { planos }                                    = usePlanos(programId)
@@ -583,21 +573,7 @@ export default function ExecucaoFinanceira() {
 
       {/* ── Filter bar ─────────────────────────────────────────── */}
       <div className="ef-filter-bar">
-        {/* Programa — zone 1 (1fr) */}
-        <div className="ef-filter-zone">
-          <select
-            className="styled-select"
-            value={selProgId ?? ''}
-            onChange={e => setSelProgId(e.target.value || null)}
-          >
-            {programs.length > 1 && <option value="">Todos os programas</option>}
-            {programs.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Plano — zone 2 (1.5fr) */}
+        {/* Plano — zone 1 (1.5fr) */}
         <div className="ef-filter-zone">
           <MultiSelect
             label="Plano"

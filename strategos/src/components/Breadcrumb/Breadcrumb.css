@@ -47,6 +47,16 @@
     font-weight: 600;
   }
 
+  .breadcrumb-segment-static {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    color: var(--text);
+    font-size: var(--text-base);
+    font-weight: 600;
+    user-select: none;
+  }
+
   .breadcrumb-chevron {
     color: var(--text3);
     opacity: 0.6;

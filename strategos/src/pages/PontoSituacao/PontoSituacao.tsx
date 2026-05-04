@@ -287,7 +287,6 @@ export default function PontoSituacao() {
   const { filters }   = useFilters()
   const programs = useAccessiblePrograms()
   // ── State ──────────────────────────────────────────────────
-  const [selProgId,         setSelProgId]         = useState<string | null>(null)
   const [selectedKey,       setSelectedKey]       = useState('')
   const [hideCompletedDays, setHideCompletedDays] = useState(90)
   const [selectedRiskIds,   setSelectedRiskIds]   = useState<string[]>([])
@@ -300,7 +299,7 @@ export default function PontoSituacao() {
   const [attnSort,          setAttnSort]          = useState<SortDir>('asc')
 
   // ── Data hooks ─────────────────────────────────────────────
-  const programId = selProgId ?? undefined
+  const programId = filters.programIds[0] ?? programs[0]?.id
   const { entries, loading: entriesLoading } = usePdsEntries(programId)
   const { items: consolidated, loading: consLoading } = usePdsConsolidated(selectedKey || undefined)
   const loading = entriesLoading || consLoading
@@ -310,19 +309,10 @@ export default function PontoSituacao() {
 
   // ── Effects ────────────────────────────────────────────────
 
-  // Initialize selProgId from global filter or first program
-  useEffect(() => {
-    if (programs.length === 0) return
-    setSelProgId(prev => {
-      if (prev && programs.some(p => p.id === prev)) return prev
-      return filters.programIds[0] ?? programs[0].id
-    })
-  }, [programs, filters.programIds])
-
   // Reset plan selection when program changes
   useEffect(() => {
     setSelectedKey('')
-  }, [selProgId])
+  }, [programId])
 
   // Reset risk selection when plan changes
   useEffect(() => {
@@ -372,8 +362,8 @@ export default function PontoSituacao() {
   )
 
   const selectedProgram = useMemo(
-    () => programs.find(p => p.id === selProgId) ?? null,
-    [programs, selProgId]
+    () => programs.find(p => p.id === programId) ?? null,
+    [programs, programId]
   )
 
   const psThresholdLeaves = useMemo(
@@ -537,21 +527,6 @@ export default function PontoSituacao() {
 
       {/* Plan selector bar */}
       <div className="pds-selector-bar">
-        {programs.length > 1 && (
-          <>
-            <span className="pds-selector-label">Programa</span>
-            <select
-              className="styled-select"
-              value={selProgId ?? ''}
-              onChange={e => setSelProgId(e.target.value || null)}
-            >
-              {programs.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-            <span className="pds-selector-sep" />
-          </>
-        )}
         <span className="pds-selector-label">Plano</span>
         <select
           className="styled-select"
