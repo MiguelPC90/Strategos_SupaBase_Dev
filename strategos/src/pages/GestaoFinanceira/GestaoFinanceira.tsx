@@ -185,15 +185,15 @@ function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, readOnly,
       {lines.length === 0 ? (
         <div className="gf-empty" style={{ border: 'none' }}>Sem rubricas. Clique em + Rubrica para adicionar.</div>
       ) : (
-        <table className="gf-budget-table">
+        <table className="gf-budget-table tbl-default">
           <thead>
             <tr>
-              <th style={{ width: 28 }} />
-              <th style={{ width: 180 }}>Rubrica</th>
-              <th className="gf-th-c" style={{ width: 72 }}>Tipo</th>
-              <th className="gf-th-c" style={{ width: 62 }}>Moeda</th>
+              <th className="t-label" style={{ width: 28 }} />
+              <th className="t-label" style={{ width: 180 }}>Rubrica</th>
+              <th className="gf-th-c t-label" style={{ width: 72 }}>Tipo</th>
+              <th className="gf-th-c t-label" style={{ width: 62 }}>Moeda</th>
               {years.map(y => (
-                <th key={y} className="gf-th-r" style={{ width: 110 }}>
+                <th key={y} className="gf-th-r t-label" style={{ width: 110 }}>
                   {y}
                   {!readOnly && (
                     <button
@@ -205,8 +205,8 @@ function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, readOnly,
                   )}
                 </th>
               ))}
-              <th className="gf-th-r" style={{ width: 110 }}>Total</th>
-              <th style={{ width: 120 }}>Nota</th>
+              <th className="gf-th-r t-label" style={{ width: 110 }}>Total</th>
+              <th className="t-label" style={{ width: 120 }}>Nota</th>
             </tr>
           </thead>
           <tbody>
@@ -656,19 +656,19 @@ function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts
             {invoices.length === 0 ? 'Sem facturas.' : 'Nenhuma factura com este estado.'}
           </div>
         ) : (
-          <table className="gf-invoices-table">
+          <table className="gf-invoices-table tbl-default">
             <thead>
               <tr>
-                <th style={{ width: 100 }}>Referência</th>
-                <th style={{ width: 140 }}>Fornecedor</th>
-                <th style={{ width: 160 }}>Contrato</th>
-                <th style={{ width: 86 }}>Tipo Doc.</th>
-                <th className="gf-th-r" style={{ width: 120 }}>Montante</th>
-                <th style={{ width: 90 }}>Emissão</th>
-                <th style={{ width: 90 }}>Vencimento</th>
-                <th style={{ width: 90 }}>Pagamento</th>
-                <th style={{ width: 80 }}>Estado</th>
-                <th style={{ width: 40 }} />
+                <th className="t-label" style={{ width: 100 }}>Referência</th>
+                <th className="t-label" style={{ width: 140 }}>Fornecedor</th>
+                <th className="t-label" style={{ width: 160 }}>Contrato</th>
+                <th className="t-label" style={{ width: 86 }}>Tipo Doc.</th>
+                <th className="gf-th-r t-label" style={{ width: 120 }}>Montante</th>
+                <th className="t-label" style={{ width: 90 }}>Emissão</th>
+                <th className="t-label" style={{ width: 90 }}>Vencimento</th>
+                <th className="t-label" style={{ width: 90 }}>Pagamento</th>
+                <th className="t-label" style={{ width: 80 }}>Estado</th>
+                <th className="t-label" style={{ width: 40 }} />
               </tr>
             </thead>
             <tbody>

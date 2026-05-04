@@ -133,15 +133,8 @@
   .gf-budget-table th {
     padding: 7px 10px;
     text-align: left;
-    font-size: var(--text-sm);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--topbar-text);
-    background: var(--navy);
     white-space: nowrap;
   }
-  .gf-budget-table th:first-child { border-radius: 0; }
   .gf-budget-table th.gf-th-c { text-align: center; }
   .gf-budget-table th.gf-th-r { text-align: right; }
 
@@ -367,12 +360,6 @@
   .gf-invoices-table th {
     padding: 7px 10px;
     text-align: left;
-    font-size: var(--text-sm);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--topbar-text);
-    background: var(--navy);
     white-space: nowrap;
   }
   .gf-invoices-table th.gf-th-c { text-align: center; }

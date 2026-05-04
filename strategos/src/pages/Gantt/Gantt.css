@@ -98,15 +98,11 @@
   /* ── Fix 4: Header — navy background, white text ────────────── */
   .gantt-th {
     padding: 7px 8px;
-    font-size: var(--text-sm);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: rgba(255,255,255,0.8);
-    border-bottom: 2px solid var(--topbar-overlay-medium);
+    color: var(--stratgos-ink-500);
+    border-bottom: 2px solid var(--stratgos-ink-100);
     white-space: nowrap;
     text-align: left;
-    background: var(--navy);
+    background: var(--stratgos-cream);
     position: sticky;
     top: 0;
     z-index: 4;
@@ -115,11 +111,9 @@
   .gantt-th.gantt-th-period {
     text-align: center !important;
     padding: 0;
-    border-left: 1px solid rgba(255,255,255,0.12);
-    font-weight: 500;
-    font-size: var(--text-xs);
+    border-left: 1px solid var(--stratgos-ink-100);
   }
-  /* Filler header (empty, navy bg, no border-left) */
+  /* Filler header (empty, no border-left) */
   .gantt-th.gantt-th-filler {
     border-left: none;
     padding: 0;
@@ -139,7 +133,7 @@
   .gantt-th.gantt-sticky {
     padding: 0;
     z-index: 5;
-    background: var(--navy);
+    background: var(--stratgos-cream);
     box-shadow: none;
   }
 

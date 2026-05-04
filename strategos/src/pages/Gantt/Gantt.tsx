@@ -993,7 +993,7 @@ export default function Gantt() {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th className="gantt-th gantt-sticky">
+                    <th className="gantt-th gantt-sticky t-label">
                       <div className="gantt-sticky-cell">
                         <div className="gantt-sticky-name" style={{ paddingLeft: 8 }}>Designação</div>
                         <div className="gantt-sticky-status">Estado</div>
@@ -1001,7 +1001,7 @@ export default function Gantt() {
                       </div>
                     </th>
                     {periods.map((p, i) => (
-                      <th key={i} className="gantt-th gantt-th-period">{p.label}</th>
+                      <th key={i} className="gantt-th gantt-th-period t-label">{p.label}</th>
                     ))}
                     {/* Issue 4: filler header — empty, navy bg extends to right edge */}
                     <th className="gantt-th gantt-th-filler" />
