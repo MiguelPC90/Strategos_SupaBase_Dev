@@ -14,6 +14,7 @@ import GestaoFinanceira from '../GestaoFinanceira/GestaoFinanceira'
 import { invoiceStatusStyle } from '../../lib/invoiceHelpers'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
+import type { FinBudgetLine } from '../../types/index'
 
 // ── Helpers ─────────────────────────────────────────────────────────
 interface CurrencyOption { code: string; symbol: string }
@@ -43,19 +44,105 @@ function fmtDate(d: string | null | undefined): string {
 // ── Types ────────────────────────────────────────────────────────────
 type BpTab = 'budget' | 'contracts' | 'invoices'
 
-interface PlanoSubRow {
-  lineId: string
-  catName: string | null
-  isCapex: boolean | null
-  yearValues: Record<string, number>
-  total: number
-}
-interface PlanoAggRow {
-  planoId: string
-  planoName: string
+interface TreeNode {
+  id: string
+  level: 'program' | 'eixo' | 'plano' | 'rubrica'
+  designation: string
+  tipo: string
   yearTotals: Record<string, number>
   total: number
-  subRows: PlanoSubRow[]
+  children: TreeNode[]
+}
+
+// ── TreeRow — recursive table rows ───────────────────────────────────
+interface TreeRowProps {
+  node: TreeNode
+  depth: number
+  budgetYears: string[]
+  defaultSymbol: string
+  expandedKeys: Set<string>
+  toggleExpand: (id: string) => void
+}
+
+function TreeRow({ node, depth, budgetYears, defaultSymbol, expandedKeys, toggleExpand }: TreeRowProps) {
+  const isExpanded = expandedKeys.has(node.id)
+  const hasChildren = node.children.length > 0
+  const isLeaf = node.level === 'rubrica'
+  const desigPadding = 8 + depth * 16
+
+  return (
+    <Fragment>
+      <tr
+        className={depth === 0 ? 'bp-agg-row' : 'bp-sub-row'}
+        style={
+          depth === 0 && !hasChildren ? { cursor: 'default' } :
+          depth > 0 && hasChildren ? { cursor: 'pointer' } :
+          undefined
+        }
+        onClick={hasChildren ? () => toggleExpand(node.id) : undefined}
+      >
+        <td>
+          {hasChildren && (
+            <button
+              className="gf-icon-btn"
+              onClick={e => { e.stopPropagation(); toggleExpand(node.id) }}
+            >
+              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </button>
+          )}
+        </td>
+        <td
+          className="bp-desig-cell"
+          title={node.designation}
+          style={{
+            paddingLeft: desigPadding,
+            fontWeight: depth === 0 ? 600 : undefined,
+            color: isLeaf ? 'var(--text2)' : undefined,
+            fontSize: isLeaf ? 12 : undefined,
+          }}
+        >
+          {node.designation}
+        </td>
+        <td className="gf-td-c">
+          {isLeaf && node.tipo !== '—' ? (
+            <span style={{
+              display: 'inline-block', padding: '2px 8px', borderRadius: 999,
+              fontSize: 11, fontWeight: 500,
+              background: node.tipo === 'CAPEX' ? '#EBF0FA' : '#FDF3E7',
+              color: node.tipo === 'CAPEX' ? 'var(--blue)' : 'var(--amber)',
+            }}>
+              {node.tipo}
+            </span>
+          ) : (
+            <span style={{ color: 'var(--text3)', fontSize: 13 }}>—</span>
+          )}
+        </td>
+        {budgetYears.map(y => (
+          <td key={y} className="gf-td-r"
+            style={isLeaf ? { color: 'var(--text2)', fontSize: 12 } : undefined}>
+            {fmtEur(node.yearTotals[y] ?? 0, defaultSymbol)}
+          </td>
+        ))}
+        <td
+          className={isLeaf ? 'gf-td-r' : 'gf-td-total'}
+          style={isLeaf ? { color: 'var(--text2)', fontSize: 12, fontWeight: 600 } : undefined}
+        >
+          {fmtEur(node.total, defaultSymbol)}
+        </td>
+      </tr>
+      {isExpanded && node.children.map(child => (
+        <TreeRow
+          key={child.id}
+          node={child}
+          depth={depth + 1}
+          budgetYears={budgetYears}
+          defaultSymbol={defaultSymbol}
+          expandedKeys={expandedKeys}
+          toggleExpand={toggleExpand}
+        />
+      ))}
+    </Fragment>
+  )
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -109,7 +196,6 @@ export default function BudgetPage() {
   const isModeA = n2Name !== null && scopedPlanos.length === 1
 
   // ── KPIs ─────────────────────────────────────────────────────────
-  // defaultSymbol: prefer the marked-default currency; fall back to first in list, then 'Kz'
   const defaultSymbol = useMemo(
     () => currencies.find(c => c.code === defaultCurrency)?.symbol ?? currencies[0]?.symbol ?? 'Kz',
     [currencies, defaultCurrency])
@@ -126,7 +212,7 @@ export default function BudgetPage() {
     }
   }, [scopedBudget, scopedContracts, scopedInvoices])
 
-  // ── Mode B tab + expand state ────────────────────────────────────
+  // ── Mode B state ─────────────────────────────────────────────────
   const [activeTab,       setActiveTab]       = useState<BpTab>('budget')
   const [expandedKeys,    setExpandedKeys]    = useState<Set<string>>(new Set())
   const [invStatusFilter, setInvStatusFilter] = useState('Todos')
@@ -135,48 +221,130 @@ export default function BudgetPage() {
 
   useEffect(() => { setInvPage(0) }, [invStatusFilter, invPageSize, scopedInvoices.length])
 
-  // ── Mode B: rubricas by plano ────────────────────────────────────
+  const toggleExpand = (id: string) => setExpandedKeys(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    return next
+  })
+
+  // ── Budget years ─────────────────────────────────────────────────
   const budgetYears = useMemo(() => {
     const ks = new Set<string>()
     scopedBudget.forEach(b => Object.keys(b.values).forEach(k => ks.add(k)))
     return Array.from(ks).sort()
   }, [scopedBudget])
 
-  const planoNameMap = useMemo(() => new Map(scopedPlanos.map(p => [p.id, p.name])), [scopedPlanos])
-
-  const planoRows = useMemo((): PlanoAggRow[] => {
-    // Initialise one row per scoped plano (preserves order from usePlanos)
-    const rows: PlanoAggRow[] = scopedPlanos.map(p => ({
-      planoId: p.id, planoName: p.name,
-      yearTotals: {}, total: 0, subRows: [],
-    }))
-    const rowMap = new Map(rows.map(r => [r.planoId, r]))
-
+  // ── Hierarchical budget tree ──────────────────────────────────────
+  // Depth depends on scope:
+  //   no programId  → program → eixo → plano → rubrica
+  //   programId     → eixo → plano → rubrica
+  //   programId + n1Name → plano → rubrica  (current 2-level)
+  const budgetTree = useMemo((): TreeNode[] => {
+    // Index budget lines by plano_id
+    const linesByPlano = new Map<string, FinBudgetLine[]>()
     scopedBudget.forEach(b => {
-      const planoId = b.plano_id ?? ''
-      const row = rowMap.get(planoId)
-      if (!row) return
-      const catName = b.cost_categories?.name ?? null
-      const isCapex = b.cost_categories != null ? b.cost_categories.is_capex : null
-      const sub: PlanoSubRow = { lineId: b.id, catName, isCapex, yearValues: {}, total: 0 }
-      Object.entries(b.values).forEach(([y, v]) => {
-        row.yearTotals[y] = (row.yearTotals[y] ?? 0) + v
-        sub.yearValues[y] = (sub.yearValues[y] ?? 0) + v
-        row.total += v
-        sub.total += v
-      })
-      row.subRows.push(sub)
+      const pid = b.plano_id ?? ''
+      const arr = linesByPlano.get(pid)
+      if (arr) arr.push(b)
+      else linesByPlano.set(pid, [b])
     })
 
-    return rows.filter(r => r.subRows.length > 0)
-  }, [scopedBudget, scopedPlanos])
+    // ── Plano nodes ──────────────────────────────────────────────
+    const planoNodeMap = new Map<string, TreeNode>()
+    scopedPlanos.forEach(p => {
+      const lines = linesByPlano.get(p.id) ?? []
+      const rubricaKids: TreeNode[] = lines.map(b => {
+        const yt: Record<string, number> = {}
+        let tot = 0
+        Object.entries(b.values).forEach(([y, v]) => { yt[y] = v; tot += v })
+        const capex = b.cost_categories?.is_capex
+        return {
+          id: `rubrica:${b.id}`, level: 'rubrica',
+          designation: b.cost_categories?.name ?? 'Sem categoria',
+          tipo: capex == null ? '—' : capex ? 'CAPEX' : 'OPEX',
+          yearTotals: yt, total: tot, children: [],
+        }
+      })
+      const yt: Record<string, number> = {}
+      let tot = 0
+      rubricaKids.forEach(r => {
+        Object.entries(r.yearTotals).forEach(([y, v]) => { yt[y] = (yt[y] ?? 0) + v })
+        tot += r.total
+      })
+      planoNodeMap.set(p.id, {
+        id: `plano:${p.id}`, level: 'plano',
+        designation: p.name, tipo: '—', yearTotals: yt, total: tot, children: rubricaKids,
+      })
+    })
 
-  const grandBudgetTotal = useMemo(() => planoRows.reduce((s, r) => s + r.total, 0), [planoRows])
+    // ── Scope: eixo selected → plano nodes are roots ──────────────
+    if (n1Name) {
+      return scopedPlanos.map(p => planoNodeMap.get(p.id)).filter((n): n is TreeNode => n != null)
+    }
+
+    // ── Eixo grouping (ordered by first plano appearance) ─────────
+    const eixoOrder: string[] = []
+    const eixoMeta = new Map<string, { progId: string; name: string; kids: TreeNode[] }>()
+    scopedPlanos.forEach(p => {
+      const ek = `${p.program_id ?? ''}::${p.eixo?.name ?? ''}`
+      if (!eixoMeta.has(ek)) {
+        eixoOrder.push(ek)
+        eixoMeta.set(ek, { progId: p.program_id ?? '', name: p.eixo?.name ?? 'Sem eixo', kids: [] })
+      }
+      const pNode = planoNodeMap.get(p.id)
+      if (pNode) eixoMeta.get(ek)!.kids.push(pNode)
+    })
+
+    const progEixoMap = new Map<string, TreeNode[]>()
+    eixoOrder.forEach(ek => {
+      const meta = eixoMeta.get(ek)!
+      const yt: Record<string, number> = {}
+      let tot = 0
+      meta.kids.forEach(k => {
+        Object.entries(k.yearTotals).forEach(([y, v]) => { yt[y] = (yt[y] ?? 0) + v })
+        tot += k.total
+      })
+      const node: TreeNode = {
+        id: `eixo:${ek}`, level: 'eixo',
+        designation: meta.name, tipo: '—', yearTotals: yt, total: tot, children: meta.kids,
+      }
+      const arr = progEixoMap.get(meta.progId)
+      if (arr) arr.push(node)
+      else progEixoMap.set(meta.progId, [node])
+    })
+
+    // ── Scope: program selected → eixo nodes are roots ────────────
+    if (programId) {
+      return progEixoMap.get(programId) ?? []
+    }
+
+    // ── Scope: all programs → program nodes are roots ─────────────
+    return programs.map(prog => {
+      const kids = progEixoMap.get(prog.id) ?? []
+      const yt: Record<string, number> = {}
+      let tot = 0
+      kids.forEach(k => {
+        Object.entries(k.yearTotals).forEach(([y, v]) => { yt[y] = (yt[y] ?? 0) + v })
+        tot += k.total
+      })
+      return {
+        id: `program:${prog.id}`, level: 'program',
+        designation: prog.name, tipo: '—', yearTotals: yt, total: tot, children: kids,
+      }
+    })
+  }, [scopedBudget, scopedPlanos, programs, programId, n1Name])
+
+  // ── Footer totals ─────────────────────────────────────────────────
+  const grandBudgetTotal = useMemo(() => scopedBudget.reduce((s, b) => s + lineTotal(b), 0), [scopedBudget])
   const yearGrandTotals  = useMemo(() => {
     const t: Record<string, number> = {}
-    planoRows.forEach(r => budgetYears.forEach(y => { t[y] = (t[y] ?? 0) + (r.yearTotals[y] ?? 0) }))
+    scopedBudget.forEach(b => Object.entries(b.values).forEach(([y, v]) => { t[y] = (t[y] ?? 0) + v }))
     return t
-  }, [planoRows, budgetYears])
+  }, [scopedBudget])
+
+  // ── Plano name map (contracts + invoices tabs) ────────────────────
+  const planoNameMap = useMemo(() => new Map(scopedPlanos.map(p => [p.id, p.name])), [scopedPlanos])
 
   // ── Mode B: sorted contracts ─────────────────────────────────────
   const sortedContracts = useMemo(() => {
@@ -279,7 +447,7 @@ export default function BudgetPage() {
               onClick={canCreate ? onCreateClick : undefined}
             >+ Rubrica</button>
           </div>
-          {planoRows.length === 0 ? (
+          {budgetTree.length === 0 ? (
             <div className="gf-empty" style={{ border: 'none' }}>Sem rubricas orçamentais.</div>
           ) : (
             <table className="gf-budget-table tbl-default" style={{ tableLayout: 'fixed', width: '100%' }}>
@@ -295,69 +463,17 @@ export default function BudgetPage() {
                 </tr>
               </thead>
               <tbody>
-                {planoRows.map(row => {
-                  const isExpanded = expandedKeys.has(row.planoId)
-                  const toggle = () => setExpandedKeys(prev => {
-                    const next = new Set(prev)
-                    if (next.has(row.planoId)) next.delete(row.planoId)
-                    else next.add(row.planoId)
-                    return next
-                  })
-                  return (
-                    <Fragment key={row.planoId}>
-                      <tr className="bp-agg-row" onClick={toggle}>
-                        <td>
-                          <button
-                            className="gf-icon-btn"
-                            onClick={e => { e.stopPropagation(); toggle() }}
-                          >
-                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                          </button>
-                        </td>
-                        <td className="bp-desig-cell" title={row.planoName} style={{ fontWeight: 600 }}>
-                          {row.planoName}
-                        </td>
-                        <td className="gf-td-c" style={{ color: 'var(--text3)', fontSize: 13 }}>—</td>
-                        {budgetYears.map(y => (
-                          <td key={y} className="gf-td-r">{fmtEur(row.yearTotals[y] ?? 0, defaultSymbol)}</td>
-                        ))}
-                        <td className="gf-td-total">{fmtEur(row.total, defaultSymbol)}</td>
-                      </tr>
-                      {isExpanded && row.subRows.map(sub => (
-                        <tr key={sub.lineId} className="bp-sub-row">
-                          <td />
-                          <td className="bp-desig-cell"
-                            title={sub.catName ?? 'Sem categoria'}
-                            style={{ paddingLeft: 28, color: 'var(--text2)', fontSize: 12 }}>
-                            {sub.catName ?? <span style={{ color: 'var(--text3)' }}>Sem categoria</span>}
-                          </td>
-                          <td className="gf-td-c">
-                            {sub.isCapex !== null ? (
-                              <span style={{
-                                display: 'inline-block', padding: '2px 8px', borderRadius: 999,
-                                fontSize: 11, fontWeight: 500,
-                                background: sub.isCapex ? '#EBF0FA' : '#FDF3E7',
-                                color: sub.isCapex ? 'var(--blue)' : 'var(--amber)',
-                              }}>
-                                {sub.isCapex ? 'CAPEX' : 'OPEX'}
-                              </span>
-                            ) : (
-                              <span style={{ color: 'var(--text3)', fontSize: 12 }}>—</span>
-                            )}
-                          </td>
-                          {budgetYears.map(y => (
-                            <td key={y} className="gf-td-r" style={{ color: 'var(--text2)', fontSize: 12 }}>
-                              {fmtEur(sub.yearValues[y] ?? 0, defaultSymbol)}
-                            </td>
-                          ))}
-                          <td className="gf-td-r" style={{ color: 'var(--text2)', fontSize: 12, fontWeight: 600 }}>
-                            {fmtEur(sub.total, defaultSymbol)}
-                          </td>
-                        </tr>
-                      ))}
-                    </Fragment>
-                  )
-                })}
+                {budgetTree.map(node => (
+                  <TreeRow
+                    key={node.id}
+                    node={node}
+                    depth={0}
+                    budgetYears={budgetYears}
+                    defaultSymbol={defaultSymbol}
+                    expandedKeys={expandedKeys}
+                    toggleExpand={toggleExpand}
+                  />
+                ))}
               </tbody>
               <tfoot>
                 <tr className="gf-total-row">
