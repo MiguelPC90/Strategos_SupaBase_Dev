@@ -1,0 +1,111 @@
+@layer components {
+  .ss-root {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    font: inherit;
+    font-size: var(--text-sm, 13px);
+  }
+
+  .ss-root--disabled { opacity: 0.5; pointer-events: none; }
+
+  .ss-trigger {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 8px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    cursor: pointer;
+    user-select: none;
+    min-height: 30px;
+    outline: none;
+  }
+
+  .ss-root--open .ss-trigger { border-color: var(--stratgos-ember); }
+  .ss-trigger:focus-visible   { outline: 2px solid var(--stratgos-ember); outline-offset: 1px; }
+
+  .ss-value {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text);
+  }
+  .ss-value--placeholder { color: var(--text3); }
+
+  .ss-clear {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text3);
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 2px;
+    flex-shrink: 0;
+  }
+  .ss-clear:hover { color: var(--text); }
+
+  .ss-chevron { font-size: 10px; color: var(--text3); flex-shrink: 0; }
+
+  .ss-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 100%;
+    min-width: 200px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    z-index: 400;
+    overflow: hidden;
+  }
+
+  .ss-search-wrap { padding: 6px 6px 0; }
+
+  .ss-search {
+    width: 100%;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    font: inherit;
+    font-size: var(--text-sm, 13px);
+    background: var(--bg);
+    outline: none;
+    box-sizing: border-box;
+    color: var(--text);
+  }
+  .ss-search:focus { border-color: var(--stratgos-ember); }
+
+  .ss-list {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0 0 4px;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .ss-option {
+    padding: 7px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: var(--text-sm, 13px);
+    color: var(--text);
+  }
+
+  .ss-option:hover,
+  .ss-option--active        { background: var(--bg3, #EDE7D8); }
+  .ss-option--selected      { font-weight: 600; color: var(--stratgos-ember); }
+  .ss-option--disabled      { color: var(--text3); cursor: not-allowed; }
+  .ss-option--disabled:hover { background: none; }
+
+  .ss-empty {
+    padding: 8px 10px;
+    color: var(--text3);
+    font-size: var(--text-sm, 13px);
+  }
+}
