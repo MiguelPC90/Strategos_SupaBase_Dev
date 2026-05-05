@@ -15,6 +15,13 @@
   .bp-sub-row td { background: var(--bg2); }
   .bp-sub-row:last-child td { border-bottom: none; }
 
+  /* Designação column — flexible, truncates long names */
+  .bp-desig-cell {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   /* Tab navigation (Mode B) */
   .bp-tab-nav {
     display: flex;

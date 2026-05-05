@@ -275,17 +275,16 @@ export default function BudgetPage() {
           {planoRows.length === 0 ? (
             <div className="gf-empty" style={{ border: 'none' }}>Sem rubricas orçamentais.</div>
           ) : (
-            <table className="gf-budget-table tbl-default">
+            <table className="gf-budget-table tbl-default" style={{ tableLayout: 'fixed', width: '100%' }}>
               <thead>
                 <tr>
                   <th className="t-label" style={{ width: 28 }} />
-                  <th className="t-label" style={{ minWidth: 200 }}>Plano</th>
-                  <th className="t-label" style={{ width: 160 }}>Rubrica</th>
-                  <th className="gf-th-c t-label" style={{ width: 72 }}>Tipo</th>
+                  <th className="t-label">Designação</th>
+                  <th className="gf-th-c t-label" style={{ width: 80 }}>Tipo</th>
                   {budgetYears.map(y => (
                     <th key={y} className="gf-th-r t-label" style={{ width: 110 }}>{y}</th>
                   ))}
-                  <th className="gf-th-r t-label" style={{ width: 110 }}>Total</th>
+                  <th className="gf-th-r t-label" style={{ width: 130 }}>Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -308,8 +307,9 @@ export default function BudgetPage() {
                             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                           </button>
                         </td>
-                        <td style={{ fontWeight: 600 }}>{row.planoName}</td>
-                        <td style={{ color: 'var(--text3)', fontSize: 13 }}>—</td>
+                        <td className="bp-desig-cell" title={row.planoName} style={{ fontWeight: 600 }}>
+                          {row.planoName}
+                        </td>
                         <td className="gf-td-c" style={{ color: 'var(--text3)', fontSize: 13 }}>—</td>
                         {budgetYears.map(y => (
                           <td key={y} className="gf-td-r">{fmtEur(row.yearTotals[y] ?? 0, defaultSymbol)}</td>
@@ -319,10 +319,12 @@ export default function BudgetPage() {
                       {isExpanded && row.subRows.map(sub => (
                         <tr key={sub.lineId} className="bp-sub-row">
                           <td />
-                          <td style={{ paddingLeft: 28, color: 'var(--text2)', fontSize: 12 }}>
+                          <td className="bp-desig-cell"
+                            title={sub.catName ?? 'Sem categoria'}
+                            style={{ paddingLeft: 28, color: 'var(--text2)', fontSize: 12 }}>
+                            <span style={{ color: 'var(--text3)', marginRight: 4, userSelect: 'none' }}>↳</span>
                             {sub.catName ?? <span style={{ color: 'var(--text3)' }}>Sem categoria</span>}
                           </td>
-                          <td />
                           <td className="gf-td-c">
                             {sub.isCapex !== null ? (
                               <span style={{
@@ -354,7 +356,7 @@ export default function BudgetPage() {
               <tfoot>
                 <tr className="gf-total-row">
                   <td />
-                  <td colSpan={3}>Total orçamentado</td>
+                  <td colSpan={2}>Total orçamentado</td>
                   {budgetYears.map(y => (
                     <td key={y} className="gf-td-r">{fmtEur(yearGrandTotals[y] ?? 0, defaultSymbol)}</td>
                   ))}
