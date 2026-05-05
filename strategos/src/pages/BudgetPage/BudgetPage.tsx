@@ -13,6 +13,7 @@ import EmptyState from '../../components/EmptyState/EmptyState'
 import GestaoFinanceira from '../GestaoFinanceira/GestaoFinanceira'
 import { invoiceStatusStyle } from '../../lib/invoiceHelpers'
 import { supabase } from '../../lib/supabase'
+import { useToast } from '../../context/ToastContext'
 
 // ── Helpers ─────────────────────────────────────────────────────────
 interface CurrencyOption { code: string; symbol: string }
@@ -59,6 +60,7 @@ interface PlanoAggRow {
 
 // ── Component ────────────────────────────────────────────────────────
 export default function BudgetPage() {
+  const { showToast } = useToast()
   const { filters } = useFilters()
   const programs    = useAccessiblePrograms('gestao-financeira')
   const programId   = filters.programIds[0] ?? programs[0]?.id
@@ -226,8 +228,9 @@ export default function BudgetPage() {
     )
   }
 
+  const canCreate = !!programId
   const disabledBtnStyle: React.CSSProperties = { opacity: 0.5, cursor: 'not-allowed' }
-  const disabledTitle = 'Selecciona um plano específico para criar'
+  const onCreateClick = () => showToast('Funcionalidade em desenvolvimento — disponível em breve', 'info')
 
   const TABS: { id: BpTab; label: string }[] = [
     { id: 'budget',    label: 'Orçamento'  },
@@ -268,9 +271,13 @@ export default function BudgetPage() {
         <div className="gf-budget-wrap">
           <div className="gf-budget-toolbar">
             <span className="gf-budget-toolbar-title">Rubricas Orçamentais</span>
-            <button className="btn-primary" disabled title={disabledTitle} style={disabledBtnStyle}>
-              + Rubrica
-            </button>
+            <button
+              className="btn-primary"
+              disabled={!canCreate}
+              title={canCreate ? undefined : 'Selecciona um programa para criar'}
+              style={canCreate ? undefined : disabledBtnStyle}
+              onClick={canCreate ? onCreateClick : undefined}
+            >+ Rubrica</button>
           </div>
           {planoRows.length === 0 ? (
             <div className="gf-empty" style={{ border: 'none' }}>Sem rubricas orçamentais.</div>
@@ -282,9 +289,9 @@ export default function BudgetPage() {
                   <th className="t-label">Designação</th>
                   <th className="gf-th-c t-label" style={{ width: 80 }}>Tipo</th>
                   {budgetYears.map(y => (
-                    <th key={y} className="gf-th-r t-label" style={{ width: 110 }}>{y}</th>
+                    <th key={y} className="gf-th-r t-label" style={{ width: 130 }}>{y}</th>
                   ))}
-                  <th className="gf-th-r t-label" style={{ width: 130 }}>Total</th>
+                  <th className="gf-th-r t-label" style={{ width: 150 }}>Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -322,7 +329,6 @@ export default function BudgetPage() {
                           <td className="bp-desig-cell"
                             title={sub.catName ?? 'Sem categoria'}
                             style={{ paddingLeft: 28, color: 'var(--text2)', fontSize: 12 }}>
-                            <span style={{ color: 'var(--text3)', marginRight: 4, userSelect: 'none' }}>↳</span>
                             {sub.catName ?? <span style={{ color: 'var(--text3)' }}>Sem categoria</span>}
                           </td>
                           <td className="gf-td-c">
@@ -372,9 +378,13 @@ export default function BudgetPage() {
       {activeTab === 'contracts' && (
         <div className="gf-contracts-wrap">
           <div className="gf-contracts-toolbar">
-            <button className="btn-primary" disabled title={disabledTitle} style={disabledBtnStyle}>
-              + Novo Contrato
-            </button>
+            <button
+              className="btn-primary"
+              disabled={!canCreate}
+              title={canCreate ? undefined : 'Selecciona um programa para criar'}
+              style={canCreate ? undefined : disabledBtnStyle}
+              onClick={canCreate ? onCreateClick : undefined}
+            >+ Novo Contrato</button>
           </div>
           {sortedContracts.length === 0 ? (
             <div className="gf-empty">Sem contratos.</div>
@@ -456,9 +466,13 @@ export default function BudgetPage() {
               ))}
             </div>
             <div style={{ flex: 1 }} />
-            <button className="btn-primary" disabled title={disabledTitle} style={disabledBtnStyle}>
-              + Factura
-            </button>
+            <button
+              className="btn-primary"
+              disabled={!canCreate}
+              title={canCreate ? undefined : 'Selecciona um programa para criar'}
+              style={canCreate ? undefined : disabledBtnStyle}
+              onClick={canCreate ? onCreateClick : undefined}
+            >+ Factura</button>
           </div>
 
           <div className="gf-invoices-table-wrap">

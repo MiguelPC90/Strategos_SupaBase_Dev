@@ -22,6 +22,10 @@
     white-space: nowrap;
   }
 
+  /* Prevent number wrapping in all numeric cells */
+  .bp-page .gf-td-r,
+  .bp-page .gf-td-total { white-space: nowrap; }
+
   /* Tab navigation (Mode B) */
   .bp-tab-nav {
     display: flex;
