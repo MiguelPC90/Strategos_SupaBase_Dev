@@ -13,7 +13,7 @@ import Recursos from './pages/Recursos/Recursos'
 import GestaoIniciativas from './pages/GestaoIniciativas/GestaoIniciativas'
 import GestaoPDS from './pages/GestaoPDS/GestaoPDS'
 import GestaoRiscos from './pages/GestaoRiscos/GestaoRiscos'
-import GestaoFinanceira from './pages/GestaoFinanceira/GestaoFinanceira'
+import BudgetPage from './pages/BudgetPage/BudgetPage'
 import GestaoRecursos from './pages/GestaoRecursos/GestaoRecursos'
 import Admin from './pages/Admin/Admin'
 import PlanosCatalog from './pages/PlanosCatalog/PlanosCatalog'
@@ -153,7 +153,7 @@ export default function App() {
           <Route path="gestao-iniciativas" element={<PageGuard page="gestao-iniciativas"><GestaoIniciativas /> </PageGuard>} />
           <Route path="gestao-pds"         element={<PageGuard page="gestao-pds">        <GestaoPDS />         </PageGuard>} />
           <Route path="gestao-riscos"      element={<PageGuard page="gestao-riscos">     <GestaoRiscos />      </PageGuard>} />
-          <Route path="gestao-financeira"  element={<PageGuard page="gestao-financeira"> <GestaoFinanceira />  </PageGuard>} />
+          <Route path="gestao-financeira"  element={<PageGuard page="gestao-financeira"> <BudgetPage />        </PageGuard>} />
           <Route path="gestao-recursos"    element={<PageGuard page="gestao-recursos">   <GestaoRecursos />    </PageGuard>} />
           <Route path="admin"              element={<AdminGuard><Admin /></AdminGuard>} />
           <Route path="planos"            element={<PlanosCatalog />} />

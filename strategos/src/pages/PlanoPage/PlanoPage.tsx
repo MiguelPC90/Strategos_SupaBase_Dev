@@ -240,7 +240,6 @@ export default function PlanoPage() {
         )}
         {activeTab === 'financeira' && planoId && (
           <GestaoFinanceira
-            mode="embedded"
             planoId={planoId}
             programId={plano.program_id ?? undefined}
           />

@@ -5,9 +5,7 @@ import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
-import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
-import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useFinancials } from '../../hooks/useFinancials'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import ProgressBar from '../../components/ProgressBar/ProgressBar'
@@ -18,8 +16,6 @@ import { invoiceStatusStyle } from '../../lib/invoiceHelpers'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 
 // ── Types ──────────────────────────────────────────────────────────
-type Tab = 'orcamento' | 'contratos' | 'facturas'
-
 interface PlanOption {
   key: string
   label: string
@@ -721,24 +717,17 @@ function InvoicesTab({ invoices, onNew, onEdit, onDelete, onDuplicate, contracts
 
 // ── Main component ─────────────────────────────────────────────────
 interface GestaoFinanceiraProps {
-  mode?: 'standalone' | 'embedded'
   planoId?: string
   programId?: string
 }
 
 export default function GestaoFinanceira({
-  mode = 'standalone',
   planoId: propPlanoId,
   programId: propProgramId,
 }: GestaoFinanceiraProps = {}) {
   const { showToast } = useToast()
-  const { filters }  = useFilters()
-  const n2Name = filters.n2Values[0] ?? null
-  const programs = useAccessiblePrograms('gestao-financeira')
-  const readOnly = !useCanEditCurrent('gestao-financeira')
-  const programId = mode === 'embedded'
-    ? propProgramId
-    : (filters.programIds[0] ?? programs[0]?.id)
+  const readOnly  = !useCanEditCurrent('gestao-financeira')
+  const programId = propProgramId
 
   // ── Admin config: categories, currencies, management years ───
   const [categories,      setCategories]      = useState<CategoryOption[]>([])
@@ -817,10 +806,7 @@ export default function GestaoFinanceira({
     [planos]
   )
 
-  // selectedKey: embedded → propPlanoId; standalone → derive from breadcrumb n2Name
-  const selectedKey = mode === 'embedded'
-    ? (propPlanoId ?? '')
-    : (planos.find(p => p.name === n2Name)?.id ?? '')
+  const selectedKey = propPlanoId ?? ''
 
   const selectedPlan = useMemo(
     () => planOptions.find(p => p.key === selectedKey) ?? null,
@@ -1078,9 +1064,6 @@ export default function GestaoFinanceira({
     [currencies, defaultCurrency],
   )
 
-  // ── Tab ──────────────────────────────────────────────────────
-  const [tab, setTab] = useState<Tab>('orcamento')
-
   // ── KPIs ─────────────────────────────────────────────────────
   const kpis = useMemo(() => {
     const budgetTotal = draft.budget.reduce((s, b) => s + lineTotal(b), 0)
@@ -1143,8 +1126,7 @@ export default function GestaoFinanceira({
   }, [selectedPlan, showToast])
 
   // ── Render ───────────────────────────────────────────────────
-  const noProgram = mode === 'embedded' ? false : !programId
-  const noPlans   = mode === 'embedded' ? false : (!noProgram && !planosLoading && planOptions.length === 0)
+  const noPlans = !planosLoading && planOptions.length === 0
 
   return (
     <div className="gf-page">
@@ -1152,20 +1134,12 @@ export default function GestaoFinanceira({
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
           <Spinner />
         </div>
-      ) : noProgram ? (
-        <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
-          Selecciona um programa para visualizar as finanças.
-        </div>
       ) : noPlans ? (
         <EmptyState
           icon="data"
           title="Sem planos de acção"
           description="Não existem planos de acção disponíveis para este programa."
         />
-      ) : (!selectedPlan && mode === 'standalone') ? (
-        <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
-          Selecciona um plano de acção.
-        </div>
       ) : (
         <>
           {/* KPI row */}
@@ -1183,8 +1157,7 @@ export default function GestaoFinanceira({
             />
           </div>
 
-          {mode === 'embedded' ? (
-            <div className="gf-stacked">
+          <div className="gf-stacked">
               <section className="gf-stacked-section">
                 <h3 className="gf-stacked-title">Orçamento</h3>
                 <BudgetTab
@@ -1226,55 +1199,6 @@ export default function GestaoFinanceira({
                 />
               </section>
             </div>
-          ) : (
-            <>
-              {/* Tabs */}
-              <div className="gf-tabs">
-                {([['orcamento', 'Orçamento'], ['contratos', 'Contratos'], ['facturas', 'Facturas']] as [Tab, string][]).map(([t, lbl]) => (
-                  <button key={t} className={`gf-tab${tab === t ? ' gf-tab--active' : ''}`}
-                    onClick={() => setTab(t)}>{lbl}</button>
-                ))}
-              </div>
-
-              {tab === 'orcamento' && (
-                <BudgetTab
-                  lines={draft.budget}
-                  setLines={setBudget}
-                  onDelete={deleteBudget}
-                  onSaveLine={saveBudgetLine}
-                  savedRows={rowSaved}
-                  readOnly={readOnly}
-                  categories={categories}
-                  currencies={currencies}
-                  defaultCurrency={defaultCurrency}
-                  managementYears={managementYears}
-                />
-              )}
-              {tab === 'contratos' && (
-                <ContractsTab
-                  contracts={draft.contracts}
-                  invoices={draft.invoices}
-                  onEdit={openEditContract}
-                  onDelete={deleteContract}
-                  onNew={openNewContract}
-                  currencies={currencies}
-                  readOnly={readOnly}
-                />
-              )}
-              {tab === 'facturas' && (
-                <InvoicesTab
-                  invoices={draft.invoices}
-                  onNew={openNewInvoice}
-                  onEdit={openEditInvoice}
-                  onDelete={deleteInvoice}
-                  onDuplicate={duplicateInvoice}
-                  contracts={draft.contracts}
-                  currencies={currencies}
-                  readOnly={readOnly}
-                />
-              )}
-            </>
-          )}
         </>
       )}
 
