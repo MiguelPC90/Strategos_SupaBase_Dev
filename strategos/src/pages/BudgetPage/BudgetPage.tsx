@@ -63,7 +63,7 @@ export default function BudgetPage() {
   const { showToast } = useToast()
   const { filters } = useFilters()
   const programs    = useAccessiblePrograms('gestao-financeira')
-  const programId   = filters.programIds[0] ?? programs[0]?.id
+  const programId   = filters.programIds[0]
   const n1Name      = filters.n1Values[0]   ?? null
   const n2Name      = filters.n2Values[0]   ?? null
 
