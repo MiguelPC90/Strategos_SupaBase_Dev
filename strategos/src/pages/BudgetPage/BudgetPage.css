@@ -5,23 +5,27 @@
     gap: 14px;
   }
 
-  .bp-placeholder {
+  /* Expandable aggregate row in rubricas table */
+  .bp-agg-row {
+    cursor: pointer;
+  }
+  .bp-agg-row:hover td { background: var(--bg2); }
+
+  /* Per-plano sub-row (expanded breakdown) */
+  .bp-sub-row td { background: var(--bg3); }
+  .bp-sub-row:last-child td { border-bottom: none; }
+
+  /* Pagination bar below invoices table */
+  .bp-pagination {
     display: flex;
-    flex-direction: column;
     align-items: center;
     gap: 8px;
-    text-align: center;
-    color: var(--text3);
-    padding: 48px 24px;
-    font-size: var(--text-md);
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--rl);
   }
 
-  .bp-placeholder-scope {
+  .bp-page-info {
     font-size: var(--text-sm);
-    color: var(--text3);
-    font-style: italic;
+    color: var(--text2);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 }
