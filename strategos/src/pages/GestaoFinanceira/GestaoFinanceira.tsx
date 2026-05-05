@@ -733,6 +733,7 @@ export default function GestaoFinanceira({
 }: GestaoFinanceiraProps = {}) {
   const { showToast } = useToast()
   const { filters }  = useFilters()
+  const n2Name = filters.n2Values[0] ?? null
   const programs = useAccessiblePrograms('gestao-financeira')
   const readOnly = !useCanEditCurrent('gestao-financeira')
   const programId = mode === 'embedded'
@@ -816,21 +817,10 @@ export default function GestaoFinanceira({
     [planos]
   )
 
-  const [selectedKey, setSelectedKey] = useState('')
-  useEffect(() => {
-    if (mode === 'embedded') return
-    setSelectedKey('')
-  }, [programId]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (mode === 'embedded') {
-      if (propPlanoId) setSelectedKey(propPlanoId)
-      return
-    }
-    if (planOptions.length === 0) return
-    if (planOptions.some(p => p.key === selectedKey)) return
-    setSelectedKey(planOptions[0].key)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planOptions, propPlanoId])
+  // selectedKey: embedded → propPlanoId; standalone → derive from breadcrumb n2Name
+  const selectedKey = mode === 'embedded'
+    ? (propPlanoId ?? '')
+    : (planos.find(p => p.name === n2Name)?.id ?? '')
 
   const selectedPlan = useMemo(
     () => planOptions.find(p => p.key === selectedKey) ?? null,
@@ -1158,24 +1148,6 @@ export default function GestaoFinanceira({
 
   return (
     <div className="gf-page">
-      {/* Controls bar */}
-      {mode === 'standalone' && (
-        <div className="gf-controls-bar">
-          <label className="gf-label">Plano de Acção:</label>
-          <select
-            className="styled-select"
-            value={selectedKey}
-            onChange={e => setSelectedKey(e.target.value)}
-            disabled={noProgram || noPlans}
-          >
-            {noProgram  ? <option value="">— selecciona um programa —</option>
-             : noPlans  ? <option value="">— sem planos disponíveis —</option>
-             : planOptions.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
-          </select>
-          <div className="gf-spacer" />
-        </div>
-      )}
-
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
           <Spinner />

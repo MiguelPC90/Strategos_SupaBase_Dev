@@ -284,10 +284,12 @@ function RiskTable({ risks, size, thresholds, selectedIds, onSelect }: RiskTable
 
 // ── Main page ──────────────────────────────────────────────────
 export default function PontoSituacao() {
-  const { filters }   = useFilters()
+  const { filters, setFilter } = useFilters()
   const programs = useAccessiblePrograms()
+  const n1Name = filters.n1Values[0] ?? null
+  const n2Name = filters.n2Values[0] ?? null
+
   // ── State ──────────────────────────────────────────────────
-  const [selectedKey,       setSelectedKey]       = useState('')
   const [hideCompletedDays, setHideCompletedDays] = useState(90)
   const [selectedRiskIds,   setSelectedRiskIds]   = useState<string[]>([])
   const [matrixSize,        setMatrixSize]        = useState(5)
@@ -301,18 +303,19 @@ export default function PontoSituacao() {
   // ── Data hooks ─────────────────────────────────────────────
   const programId = filters.programIds[0] ?? programs[0]?.id
   const { entries, loading: entriesLoading } = usePdsEntries(programId)
-  const { items: consolidated, loading: consLoading } = usePdsConsolidated(selectedKey || undefined)
-  const loading = entriesLoading || consLoading
   const { planos }           = usePlanos(programId)
   const { risks }            = useRisks(programId)
   const { activities }       = useActivities({ program_id: programId })
 
-  // ── Effects ────────────────────────────────────────────────
+  // selectedKey derived from breadcrumb n2Name (plano name → plano id)
+  const selectedKey = useMemo(
+    () => planos.find(p => p.name === n2Name)?.id ?? '',
+    [planos, n2Name]
+  )
+  const { items: consolidated, loading: consLoading } = usePdsConsolidated(selectedKey || undefined)
+  const loading = entriesLoading || consLoading
 
-  // Reset plan selection when program changes
-  useEffect(() => {
-    setSelectedKey('')
-  }, [programId])
+  // ── Effects ────────────────────────────────────────────────
 
   // Reset risk selection when plan changes
   useEffect(() => {
@@ -431,17 +434,21 @@ export default function PontoSituacao() {
   }, [planLeaves, psThresholdLeaves])
 
   // ── Plan navigation ────────────────────────────────────────
-  const planosInProgram = planos  // already sorted by sort_order from hook
+  // Scope arrows to eixo selected in breadcrumb (or all planos in program)
+  const planosInScope = useMemo(
+    () => n1Name ? planos.filter(p => p.eixo?.name === n1Name) : planos,
+    [planos, n1Name]
+  )
   const currentIdx = useMemo(
-    () => planosInProgram.findIndex(p => p.id === selectedKey),
-    [planosInProgram, selectedKey],
+    () => planosInScope.findIndex(p => p.id === selectedKey),
+    [planosInScope, selectedKey],
   )
   const goPrev = useCallback(() => {
-    if (currentIdx > 0) setSelectedKey(planosInProgram[currentIdx - 1].id)
-  }, [currentIdx, planosInProgram])
+    if (currentIdx > 0) setFilter('n2Values', [planosInScope[currentIdx - 1].name])
+  }, [currentIdx, planosInScope, setFilter])
   const goNext = useCallback(() => {
-    if (currentIdx < planosInProgram.length - 1) setSelectedKey(planosInProgram[currentIdx + 1].id)
-  }, [currentIdx, planosInProgram])
+    if (currentIdx < planosInScope.length - 1) setFilter('n2Values', [planosInScope[currentIdx + 1].name])
+  }, [currentIdx, planosInScope, setFilter])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -525,21 +532,6 @@ export default function PontoSituacao() {
   return (
     <div className="pds-page">
 
-      {/* Plan selector bar */}
-      <div className="pds-selector-bar">
-        <span className="pds-selector-label">Plano</span>
-        <select
-          className="styled-select"
-          value={selectedKey}
-          onChange={e => setSelectedKey(e.target.value)}
-        >
-          <option value="">— Seleccionar plano —</option>
-          {planOptions.map(o => (
-            <option key={o.key} value={o.key}>{o.label}</option>
-          ))}
-        </select>
-      </div>
-
       {/* Empty / no-selection states */}
       {!loading && planOptions.length === 0 ? (
         <EmptyState
@@ -549,7 +541,7 @@ export default function PontoSituacao() {
         />
       ) : !selectedKey ? (
         <div className="pds-placeholder">
-          Seleccione um plano para ver o ponto de situação.
+          Seleccione um plano no filtro acima para ver o ponto de situação.
         </div>
       ) : loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
@@ -576,7 +568,7 @@ export default function PontoSituacao() {
               <button
                 className="pds-nav-btn"
                 onClick={goNext}
-                disabled={currentIdx >= planosInProgram.length - 1}
+                disabled={currentIdx >= planosInScope.length - 1}
                 title="Plano seguinte (Alt+→)"
               >→</button>
             </div>
