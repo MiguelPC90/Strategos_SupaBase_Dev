@@ -1,4 +1,7 @@
+import { useState, useEffect } from 'react'
 import Modal from '../Modal/Modal'
+import SearchableSelect from '../SearchableSelect/SearchableSelect'
+import type { SelectOption } from '../SearchableSelect/SearchableSelect'
 
 export interface ContractForm {
   id: string | null
@@ -18,13 +21,15 @@ interface CategoryOption { id: string; name: string; is_capex: boolean }
 interface ContratoModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: () => void
+  onSave: (planoId?: string) => void | Promise<void>
   onDelete?: () => void
   form: ContractForm | null
   setForm: (f: ContractForm) => void
   categories: CategoryOption[]
   currencies: CurrencyOption[]
   errorMessage?: string | null
+  planoOptions?: SelectOption[]
+  defaultPlanoId?: string
 }
 
 export default function ContratoModal({
@@ -37,8 +42,21 @@ export default function ContratoModal({
   categories,
   currencies,
   errorMessage,
+  planoOptions,
+  defaultPlanoId,
 }: ContratoModalProps) {
   const set = (patch: Partial<ContractForm>) => form && setForm({ ...form, ...patch })
+
+  const [selectedPlanoId, setSelectedPlanoId] = useState<string>(
+    planoOptions?.length === 1 ? planoOptions[0].value : (defaultPlanoId ?? '')
+  )
+
+  useEffect(() => {
+    if (!isOpen) return
+    setSelectedPlanoId(
+      planoOptions?.length === 1 ? planoOptions[0].value : (defaultPlanoId ?? '')
+    )
+  }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Modal
@@ -54,13 +72,26 @@ export default function ContratoModal({
             </button>
           )}
           <button className="btn" onClick={onClose}>Cancelar</button>
-          <button className="btn-primary" onClick={onSave}>Guardar</button>
+          <button className="btn-primary" onClick={() => onSave(selectedPlanoId || undefined)}>Guardar</button>
           {errorMessage && <span className="gf-panel-err">{errorMessage}</span>}
         </>
       }
     >
       {form && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {planoOptions !== undefined && (
+            <div className="gf-field">
+              <label className="gf-field-label">Plano *</label>
+              <SearchableSelect
+                options={planoOptions}
+                value={selectedPlanoId || null}
+                onChange={val => setSelectedPlanoId(val ?? '')}
+                placeholder="Seleccionar plano…"
+                disabled={planoOptions.length === 1}
+                required
+              />
+            </div>
+          )}
           <div className="gf-field">
             <label className="gf-field-label">Fornecedor *</label>
             <input

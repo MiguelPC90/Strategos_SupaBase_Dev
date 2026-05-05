@@ -1,5 +1,7 @@
-import { useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Modal from '../Modal/Modal'
+import SearchableSelect from '../SearchableSelect/SearchableSelect'
+import type { SelectOption } from '../SearchableSelect/SearchableSelect'
 import type { FinContract } from '../../types/index'
 
 export interface InvoiceForm {
@@ -25,7 +27,7 @@ const INV_STATUSES = ['Prevista', 'Recebida', 'Aprovada', 'Paga', 'Rejeitada']
 interface FacturaModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: () => void
+  onSave: (planoId?: string) => void | Promise<void>
   onDelete?: () => void
   form: InvoiceForm | null
   setForm: (f: InvoiceForm) => void
@@ -34,6 +36,8 @@ interface FacturaModalProps {
   supplierFilter: string
   setSupplierFilter: (s: string) => void
   errorMessage?: string | null
+  planoOptions?: SelectOption[]
+  defaultPlanoId?: string
 }
 
 export default function FacturaModal({
@@ -48,17 +52,42 @@ export default function FacturaModal({
   supplierFilter,
   setSupplierFilter,
   errorMessage,
+  planoOptions,
+  defaultPlanoId,
 }: FacturaModalProps) {
   const set = (patch: Partial<InvoiceForm>) => form && setForm({ ...form, ...patch })
 
+  const [selectedPlanoId, setSelectedPlanoId] = useState<string>(
+    planoOptions?.length === 1 ? planoOptions[0].value : (defaultPlanoId ?? '')
+  )
+
+  useEffect(() => {
+    if (!isOpen) return
+    setSelectedPlanoId(
+      planoOptions?.length === 1 ? planoOptions[0].value : (defaultPlanoId ?? '')
+    )
+  }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePlanoChange = (val: string | null) => {
+    setSelectedPlanoId(val ?? '')
+    setSupplierFilter('')
+    if (form) setForm({ ...form, app_contract_id: '', supplier: '' })
+  }
+
+  // When planoOptions provided, restrict contracts to the selected plano
+  const contractsForPlano = useMemo(() => {
+    if (planoOptions === undefined || !selectedPlanoId) return contracts
+    return contracts.filter(c => c.plano_id === selectedPlanoId)
+  }, [contracts, planoOptions, selectedPlanoId])
+
   const suppliers = useMemo(() => {
-    const seen = new Set(contracts.map(c => c.supplier).filter(Boolean))
+    const seen = new Set(contractsForPlano.map(c => c.supplier).filter(Boolean))
     return Array.from(seen).sort()
-  }, [contracts])
+  }, [contractsForPlano])
 
   const filteredContracts = supplierFilter
-    ? contracts.filter(c => c.supplier === supplierFilter)
-    : contracts
+    ? contractsForPlano.filter(c => c.supplier === supplierFilter)
+    : contractsForPlano
 
   return (
     <Modal
@@ -74,13 +103,26 @@ export default function FacturaModal({
             </button>
           )}
           <button className="btn" onClick={onClose}>Cancelar</button>
-          <button className="btn-primary" onClick={onSave}>Guardar</button>
+          <button className="btn-primary" onClick={() => onSave(selectedPlanoId || undefined)}>Guardar</button>
           {errorMessage && <span className="gf-panel-err">{errorMessage}</span>}
         </>
       }
     >
       {form && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {planoOptions !== undefined && (
+            <div className="gf-field">
+              <label className="gf-field-label">Plano *</label>
+              <SearchableSelect
+                options={planoOptions}
+                value={selectedPlanoId || null}
+                onChange={handlePlanoChange}
+                placeholder="Seleccionar plano…"
+                disabled={planoOptions.length === 1}
+                required
+              />
+            </div>
+          )}
           <div className="gf-field-row">
             <div className="gf-field">
               <label className="gf-field-label">Fornecedor</label>

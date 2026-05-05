@@ -1,5 +1,5 @@
 import './BudgetPage.css'
-import { useState, useMemo, useEffect, Fragment } from 'react'
+import { useState, useMemo, useEffect, useCallback, Fragment } from 'react'
 import { ChevronRight, ChevronDown } from 'lucide-react'
 import { useFilters } from '../../context/FilterContext'
 import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
@@ -14,7 +14,10 @@ import GestaoFinanceira from '../GestaoFinanceira/GestaoFinanceira'
 import { invoiceStatusStyle } from '../../lib/invoiceHelpers'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
-import type { FinBudgetLine } from '../../types/index'
+import type { FinBudgetLine, InvoiceStatus } from '../../types/index'
+import RubricaModal,  { type RubricaForm }  from '../../components/Modals/RubricaModal'
+import ContratoModal, { type ContractForm } from '../../components/Modals/ContratoModal'
+import FacturaModal,  { type InvoiceForm }  from '../../components/Modals/FacturaModal'
 
 // ── Helpers ─────────────────────────────────────────────────────────
 interface CurrencyOption { code: string; symbol: string }
@@ -27,6 +30,9 @@ const CURRENCY_FALLBACK: CurrencyOption[] = [
 
 const INV_STATUSES = ['Prevista', 'Recebida', 'Aprovada', 'Paga', 'Rejeitada']
 const TODAY = new Date().toISOString().slice(0, 10)
+
+let _seq = 0
+function newAppId(): string { return 'bp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5) + (++_seq) }
 
 function toEur(amount: number, rate: number | null): number { return amount * (rate ?? 1) }
 function fmtEur(n: number, symbol: string): string {
@@ -43,6 +49,8 @@ function fmtDate(d: string | null | undefined): string {
 
 // ── Types ────────────────────────────────────────────────────────────
 type BpTab = 'budget' | 'contracts' | 'invoices'
+
+interface CategoryOption { id: string; name: string; is_capex: boolean }
 
 interface TreeNode {
   id: string
@@ -148,14 +156,14 @@ function TreeRow({ node, depth, budgetYears, defaultSymbol, expandedKeys, toggle
 // ── Component ────────────────────────────────────────────────────────
 export default function BudgetPage() {
   const { showToast } = useToast()
-  const { filters } = useFilters()
-  const programs    = useAccessiblePrograms('gestao-financeira')
-  const programId   = filters.programIds[0]
-  const n1Name      = filters.n1Values[0]   ?? null
-  const n2Name      = filters.n2Values[0]   ?? null
+  const { filters }  = useFilters()
+  const programs     = useAccessiblePrograms('gestao-financeira')
+  const programId    = filters.programIds[0]
+  const n1Name       = filters.n1Values[0]   ?? null
+  const n2Name       = filters.n2Values[0]   ?? null
 
   const { planos, loading: planosLoading } = usePlanos(programId)
-  const { budgetLines, contracts: allContracts, invoices: allInvoices, loading: finLoading } = useFinancials(programId)
+  const { budgetLines, contracts: allContracts, invoices: allInvoices, loading: finLoading, refetch } = useFinancials(programId)
 
   // Currencies — global, fetched once
   const [currencies,      setCurrencies]      = useState<CurrencyOption[]>(CURRENCY_FALLBACK)
@@ -173,6 +181,35 @@ export default function BudgetPage() {
       })
     return () => { cancelled = true }
   }, [])
+
+  // Categories + management years — per program
+  const [categories,      setCategories]      = useState<CategoryOption[]>([])
+  const [managementYears, setManagementYears] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!programId) { setCategories([]); setManagementYears([]); return }
+    let cancelled = false
+    Promise.all([
+      supabase.from('cost_category_programs')
+        .select('category_id')
+        .eq('program_id', programId)
+        .then(async ({ data: links }) => {
+          if (!links || links.length === 0) return []
+          const ids = (links as { category_id: string }[]).map(l => l.category_id)
+          const { data: cats } = await supabase
+            .from('cost_categories').select('id, name, is_capex').in('id', ids).order('name')
+          return (cats ?? []).map((c: { id: string; name: string; is_capex: boolean }) => c)
+        }),
+      supabase.from('management_years')
+        .select('year').eq('program_id', programId).order('year')
+        .then(({ data }) => (data ?? []).map((y: { year: number }) => String(y.year))),
+    ]).then(([cats, years]) => {
+      if (cancelled) return
+      setCategories(cats)
+      setManagementYears(years)
+    })
+    return () => { cancelled = true }
+  }, [programId])
 
   // ── Scope derivation ─────────────────────────────────────────────
   const scopedPlanos = useMemo(() => {
@@ -212,6 +249,12 @@ export default function BudgetPage() {
     }
   }, [scopedBudget, scopedContracts, scopedInvoices])
 
+  // ── Plano selector options (for create modals) ────────────────────
+  const planoOptions = useMemo(
+    () => scopedPlanos.map(p => ({ value: p.id, label: p.name })),
+    [scopedPlanos])
+  const defaultPlanoId = scopedPlanos.length === 1 ? scopedPlanos[0].id : undefined
+
   // ── Mode B state ─────────────────────────────────────────────────
   const [activeTab,       setActiveTab]       = useState<BpTab>('budget')
   const [expandedKeys,    setExpandedKeys]    = useState<Set<string>>(new Set())
@@ -236,12 +279,7 @@ export default function BudgetPage() {
   }, [scopedBudget])
 
   // ── Hierarchical budget tree ──────────────────────────────────────
-  // Depth depends on scope:
-  //   no programId  → program → eixo → plano → rubrica
-  //   programId     → eixo → plano → rubrica
-  //   programId + n1Name → plano → rubrica  (current 2-level)
   const budgetTree = useMemo((): TreeNode[] => {
-    // Index budget lines by plano_id
     const linesByPlano = new Map<string, FinBudgetLine[]>()
     scopedBudget.forEach(b => {
       const pid = b.plano_id ?? ''
@@ -250,7 +288,6 @@ export default function BudgetPage() {
       else linesByPlano.set(pid, [b])
     })
 
-    // ── Plano nodes ──────────────────────────────────────────────
     const planoNodeMap = new Map<string, TreeNode>()
     scopedPlanos.forEach(p => {
       const lines = linesByPlano.get(p.id) ?? []
@@ -278,12 +315,10 @@ export default function BudgetPage() {
       })
     })
 
-    // ── Scope: eixo selected → plano nodes are roots ──────────────
     if (n1Name) {
       return scopedPlanos.map(p => planoNodeMap.get(p.id)).filter((n): n is TreeNode => n != null)
     }
 
-    // ── Eixo grouping (ordered by first plano appearance) ─────────
     const eixoOrder: string[] = []
     const eixoMeta = new Map<string, { progId: string; name: string; kids: TreeNode[] }>()
     scopedPlanos.forEach(p => {
@@ -314,12 +349,8 @@ export default function BudgetPage() {
       else progEixoMap.set(meta.progId, [node])
     })
 
-    // ── Scope: program selected → eixo nodes are roots ────────────
-    if (programId) {
-      return progEixoMap.get(programId) ?? []
-    }
+    if (programId) return progEixoMap.get(programId) ?? []
 
-    // ── Scope: all programs → program nodes are roots ─────────────
     return programs.map(prog => {
       const kids = progEixoMap.get(prog.id) ?? []
       const yt: Record<string, number> = {}
@@ -369,6 +400,131 @@ export default function BudgetPage() {
     filteredInvoices.slice(invPage * invPageSize, (invPage + 1) * invPageSize),
     [filteredInvoices, invPage, invPageSize])
 
+  // ── Modal: Rubrica ────────────────────────────────────────────────
+  const BLANK_RUBRICA: RubricaForm = { category_id: null, currency: defaultCurrency, values: {}, note: '' }
+  const [rubricaOpen, setRubricaOpen] = useState(false)
+  const [rubricaForm, setRubricaForm] = useState<RubricaForm>(BLANK_RUBRICA)
+  const [rubricaErr,  setRubricaErr]  = useState<string | null>(null)
+
+  const openRubrica = () => {
+    const baseValues: Record<string, number> = Object.fromEntries(managementYears.map(y => [y, 0]))
+    setRubricaForm({ category_id: null, currency: defaultCurrency, values: baseValues, note: '' })
+    setRubricaErr(null)
+    setRubricaOpen(true)
+  }
+
+  const confirmRubrica = useCallback(async (planoId: string, form: RubricaForm) => {
+    if (!programId) { setRubricaErr('Programa não seleccionado.'); return }
+    if (!form.category_id) { setRubricaErr('Categoria obrigatória.'); return }
+    const plano = scopedPlanos.find(p => p.id === planoId)
+    if (!plano) { setRubricaErr('Plano inválido.'); return }
+    try {
+      const { error } = await supabase.from('fin_budget_lines').insert({
+        plano_id: planoId, program_id: programId, app_id: newAppId(),
+        category_id: form.category_id, currency: form.currency,
+        values: form.values, note: form.note || null, source_ref: null, sort_order: 0,
+      })
+      if (error) throw error
+      showToast(`Criado em ${plano.name}`, 'success')
+      setRubricaOpen(false)
+      setRubricaErr(null)
+      refetch()
+    } catch (e) {
+      setRubricaErr(e instanceof Error ? e.message : 'Erro ao guardar.')
+    }
+  }, [programId, scopedPlanos, showToast, refetch])
+
+  // ── Modal: Contrato ───────────────────────────────────────────────
+  const BLANK_CONTRACT: ContractForm = {
+    id: null, supplier: '', category: '', total_amount: '',
+    currency: defaultCurrency, exchange_rate_ref: '', award_date: '', end_date: '', description: '',
+  }
+  const [contratoOpen, setContratoOpen] = useState(false)
+  const [contratoForm, setContratoForm] = useState<ContractForm>(BLANK_CONTRACT)
+  const [contratoErr,  setContratoErr]  = useState<string | null>(null)
+
+  const openContrato = () => {
+    setContratoForm({ ...BLANK_CONTRACT, currency: defaultCurrency })
+    setContratoErr(null)
+    setContratoOpen(true)
+  }
+
+  const confirmContrato = useCallback(async (planoId?: string) => {
+    if (!planoId || !programId) { setContratoErr('Plano e programa obrigatórios.'); return }
+    if (!contratoForm.supplier.trim()) { setContratoErr('Fornecedor obrigatório.'); return }
+    const totalAmt = parseFloat(contratoForm.total_amount)
+    if (isNaN(totalAmt) || totalAmt < 0) { setContratoErr('Valor inválido.'); return }
+    const plano  = scopedPlanos.find(p => p.id === planoId)
+    const exRate = contratoForm.exchange_rate_ref !== '' ? parseFloat(contratoForm.exchange_rate_ref) : null
+    try {
+      const { error } = await supabase.from('fin_contracts').insert({
+        plano_id: planoId, program_id: programId, app_id: newAppId(),
+        supplier: contratoForm.supplier.trim(), category: contratoForm.category,
+        total_amount: totalAmt, currency: contratoForm.currency,
+        exchange_rate_ref: exRate,
+        award_date: contratoForm.award_date || null,
+        end_date: contratoForm.end_date || null,
+        description: contratoForm.description || null,
+        sort_order: 0,
+      })
+      if (error) throw error
+      showToast(`Criado em ${plano?.name ?? planoId}`, 'success')
+      setContratoOpen(false)
+      setContratoErr(null)
+      refetch()
+    } catch (e) {
+      setContratoErr(e instanceof Error ? e.message : 'Erro ao guardar.')
+    }
+  }, [contratoForm, programId, scopedPlanos, showToast, refetch])
+
+  // ── Modal: Factura ────────────────────────────────────────────────
+  const BLANK_INVOICE: InvoiceForm = {
+    id: null, ref: '', supplier: '', app_contract_id: '', doc_type: 'Factura',
+    amount: '', currency: defaultCurrency, exchange_rate: '',
+    issue_date: '', due_date: '', payment_date: '', status: 'Prevista',
+  }
+  const [facturaOpen,           setFacturaOpen]           = useState(false)
+  const [facturaForm,           setFacturaForm]           = useState<InvoiceForm>(BLANK_INVOICE)
+  const [facturaErr,            setFacturaErr]            = useState<string | null>(null)
+  const [facturaSupplierFilter, setFacturaSupplierFilter] = useState('')
+
+  const openFactura = () => {
+    setFacturaForm({ ...BLANK_INVOICE, currency: defaultCurrency })
+    setFacturaErr(null)
+    setFacturaSupplierFilter('')
+    setFacturaOpen(true)
+  }
+
+  const confirmFactura = useCallback(async (planoId?: string) => {
+    if (!planoId || !programId) { setFacturaErr('Plano e programa obrigatórios.'); return }
+    const amount = parseFloat(facturaForm.amount)
+    if (isNaN(amount) || amount < 0) { setFacturaErr('Montante inválido.'); return }
+    const plano  = scopedPlanos.find(p => p.id === planoId)
+    const exRate = facturaForm.exchange_rate !== '' ? parseFloat(facturaForm.exchange_rate) : null
+    const ctrId  = scopedContracts.find(c => c.app_id === facturaForm.app_contract_id)?.id ?? null
+    try {
+      const { error } = await supabase.from('fin_invoices').insert({
+        plano_id: planoId, program_id: programId, app_id: newAppId(),
+        app_contract_id: facturaForm.app_contract_id,
+        contract_id: ctrId, ref: facturaForm.ref,
+        supplier: facturaForm.supplier, doc_type: facturaForm.doc_type,
+        amount, currency: facturaForm.currency, exchange_rate: exRate,
+        issue_date: facturaForm.issue_date || null,
+        due_date: facturaForm.due_date || null,
+        payment_date: facturaForm.payment_date || null,
+        status: facturaForm.status as InvoiceStatus,
+        sort_order: 0,
+      })
+      if (error) throw error
+      showToast(`Criado em ${plano?.name ?? planoId}`, 'success')
+      setFacturaOpen(false)
+      setFacturaErr(null)
+      refetch()
+    } catch (e) {
+      setFacturaErr(e instanceof Error ? e.message : 'Erro ao guardar.')
+    }
+  }, [facturaForm, programId, scopedPlanos, scopedContracts, showToast, refetch])
+
   // ── Render ────────────────────────────────────────────────────────
   const loading = planosLoading || finLoading
   if (loading) return <Spinner />
@@ -398,17 +554,16 @@ export default function BudgetPage() {
 
   const canCreate = !!programId
   const disabledBtnStyle: React.CSSProperties = { opacity: 0.5, cursor: 'not-allowed' }
-  const onCreateClick = () => showToast('Funcionalidade em desenvolvimento — disponível em breve', 'info')
 
   const TABS: { id: BpTab; label: string }[] = [
-    { id: 'budget',    label: 'Orçamento'  },
-    { id: 'contracts', label: 'Contratos'  },
-    { id: 'invoices',  label: 'Facturas'   },
+    { id: 'budget',    label: 'Orçamento' },
+    { id: 'contracts', label: 'Contratos' },
+    { id: 'invoices',  label: 'Facturas'  },
   ]
 
   return (
     <div className="bp-page">
-      {/* ── KPI row — always visible ── */}
+      {/* ── KPI row ── */}
       <div className="gf-kpi-row">
         <KpiCard label="Orçamento Total"  value={fmtEur(kpis.budgetTotal,  defaultSymbol)} color="navy"  />
         <KpiCard label="Adjudicado"        value={fmtEur(kpis.adjudicado,  defaultSymbol)} color="blue"  />
@@ -444,7 +599,7 @@ export default function BudgetPage() {
               disabled={!canCreate}
               title={canCreate ? undefined : 'Selecciona um programa para criar'}
               style={canCreate ? undefined : disabledBtnStyle}
-              onClick={canCreate ? onCreateClick : undefined}
+              onClick={canCreate ? openRubrica : undefined}
             >+ Rubrica</button>
           </div>
           {budgetTree.length === 0 ? (
@@ -499,7 +654,7 @@ export default function BudgetPage() {
               disabled={!canCreate}
               title={canCreate ? undefined : 'Selecciona um programa para criar'}
               style={canCreate ? undefined : disabledBtnStyle}
-              onClick={canCreate ? onCreateClick : undefined}
+              onClick={canCreate ? openContrato : undefined}
             >+ Novo Contrato</button>
           </div>
           {sortedContracts.length === 0 ? (
@@ -587,7 +742,7 @@ export default function BudgetPage() {
               disabled={!canCreate}
               title={canCreate ? undefined : 'Selecciona um programa para criar'}
               style={canCreate ? undefined : disabledBtnStyle}
-              onClick={canCreate ? onCreateClick : undefined}
+              onClick={canCreate ? openFactura : undefined}
             >+ Factura</button>
           </div>
 
@@ -667,11 +822,9 @@ export default function BudgetPage() {
               >
                 {[10, 25, 50].map(n => <option key={n} value={n}>{n} por página</option>)}
               </select>
-              <button
-                className="btn"
-                onClick={() => setInvPage(p => p - 1)}
-                disabled={invPage === 0}
-              >← Anterior</button>
+              <button className="btn" onClick={() => setInvPage(p => p - 1)} disabled={invPage === 0}>
+                ← Anterior
+              </button>
               <button
                 className="btn"
                 onClick={() => setInvPage(p => p + 1)}
@@ -681,6 +834,50 @@ export default function BudgetPage() {
           )}
         </div>
       )}
+
+      {/* ── Create modals ── */}
+      <RubricaModal
+        isOpen={rubricaOpen}
+        onClose={() => setRubricaOpen(false)}
+        onSave={confirmRubrica}
+        form={rubricaForm}
+        setForm={setRubricaForm}
+        categories={categories}
+        currencies={currencies}
+        managementYears={managementYears}
+        errorMessage={rubricaErr}
+        planoOptions={planoOptions}
+        defaultPlanoId={defaultPlanoId}
+        mode="create"
+      />
+
+      <ContratoModal
+        isOpen={contratoOpen}
+        onClose={() => setContratoOpen(false)}
+        onSave={confirmContrato}
+        form={contratoForm}
+        setForm={setContratoForm}
+        categories={categories}
+        currencies={currencies}
+        errorMessage={contratoErr}
+        planoOptions={planoOptions}
+        defaultPlanoId={defaultPlanoId}
+      />
+
+      <FacturaModal
+        isOpen={facturaOpen}
+        onClose={() => setFacturaOpen(false)}
+        onSave={confirmFactura}
+        form={facturaForm}
+        setForm={setFacturaForm}
+        contracts={scopedContracts}
+        currencies={currencies}
+        supplierFilter={facturaSupplierFilter}
+        setSupplierFilter={setFacturaSupplierFilter}
+        errorMessage={facturaErr}
+        planoOptions={planoOptions}
+        defaultPlanoId={defaultPlanoId}
+      />
     </div>
   )
 }
