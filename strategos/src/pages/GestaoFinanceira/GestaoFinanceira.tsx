@@ -1064,6 +1064,8 @@ export default function GestaoFinanceira({
     [currencies, defaultCurrency],
   )
 
+  const [activeTab, setActiveTab] = useState<'budget' | 'contracts' | 'invoices'>('budget')
+
   // ── KPIs ─────────────────────────────────────────────────────
   const kpis = useMemo(() => {
     const budgetTotal = draft.budget.reduce((s, b) => s + lineTotal(b), 0)
@@ -1157,48 +1159,49 @@ export default function GestaoFinanceira({
             />
           </div>
 
-          <div className="gf-stacked">
-              <section className="gf-stacked-section">
-                <h3 className="gf-stacked-title">Orçamento</h3>
-                <BudgetTab
-                  lines={draft.budget}
-                  setLines={setBudget}
-                  onDelete={deleteBudget}
-                  onSaveLine={saveBudgetLine}
-                  savedRows={rowSaved}
-                  readOnly={readOnly}
-                  categories={categories}
-                  currencies={currencies}
-                  defaultCurrency={defaultCurrency}
-                  managementYears={managementYears}
-                />
-              </section>
-              <section className="gf-stacked-section">
-                <h3 className="gf-stacked-title">Contratos</h3>
-                <ContractsTab
-                  contracts={draft.contracts}
-                  invoices={draft.invoices}
-                  onEdit={openEditContract}
-                  onDelete={deleteContract}
-                  onNew={openNewContract}
-                  currencies={currencies}
-                  readOnly={readOnly}
-                />
-              </section>
-              <section className="gf-stacked-section">
-                <h3 className="gf-stacked-title">Facturas</h3>
-                <InvoicesTab
-                  invoices={draft.invoices}
-                  onNew={openNewInvoice}
-                  onEdit={openEditInvoice}
-                  onDelete={deleteInvoice}
-                  onDuplicate={duplicateInvoice}
-                  contracts={draft.contracts}
-                  currencies={currencies}
-                  readOnly={readOnly}
-                />
-              </section>
-            </div>
+          <div className="gf-tab-nav">
+            <button className={`gf-tab-btn${activeTab === 'budget' ? ' active' : ''}`} onClick={() => setActiveTab('budget')}>Orçamento</button>
+            <button className={`gf-tab-btn${activeTab === 'contracts' ? ' active' : ''}`} onClick={() => setActiveTab('contracts')}>Contratos</button>
+            <button className={`gf-tab-btn${activeTab === 'invoices' ? ' active' : ''}`} onClick={() => setActiveTab('invoices')}>Facturas</button>
+          </div>
+
+          {activeTab === 'budget' && (
+            <BudgetTab
+              lines={draft.budget}
+              setLines={setBudget}
+              onDelete={deleteBudget}
+              onSaveLine={saveBudgetLine}
+              savedRows={rowSaved}
+              readOnly={readOnly}
+              categories={categories}
+              currencies={currencies}
+              defaultCurrency={defaultCurrency}
+              managementYears={managementYears}
+            />
+          )}
+          {activeTab === 'contracts' && (
+            <ContractsTab
+              contracts={draft.contracts}
+              invoices={draft.invoices}
+              onEdit={openEditContract}
+              onDelete={deleteContract}
+              onNew={openNewContract}
+              currencies={currencies}
+              readOnly={readOnly}
+            />
+          )}
+          {activeTab === 'invoices' && (
+            <InvoicesTab
+              invoices={draft.invoices}
+              onNew={openNewInvoice}
+              onEdit={openEditInvoice}
+              onDelete={deleteInvoice}
+              onDuplicate={duplicateInvoice}
+              contracts={draft.contracts}
+              currencies={currencies}
+              readOnly={readOnly}
+            />
+          )}
         </>
       )}
 

@@ -12,8 +12,37 @@
   .bp-agg-row:hover td { background: var(--bg2); }
 
   /* Per-plano sub-row (expanded breakdown) */
-  .bp-sub-row td { background: var(--bg3); }
+  .bp-sub-row td { background: var(--bg2); }
   .bp-sub-row:last-child td { border-bottom: none; }
+
+  /* Tab navigation (Mode B) */
+  .bp-tab-nav {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .bp-tab-btn {
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--text-md);
+    font-weight: 500;
+    color: var(--text2);
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .bp-tab-btn:hover { color: var(--text); }
+
+  .bp-tab-btn.active {
+    color: var(--stratgos-ember);
+    border-bottom-color: var(--stratgos-ember);
+    font-weight: 600;
+  }
 
   /* Pagination bar below invoices table */
   .bp-pagination {
