@@ -3,6 +3,8 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TrendingUp, TrendingDown, AlertTriangle, ChevronRight } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
+import SmartKpi from '../../components/Kpi/SmartKpi'
+import ContagemKpi from '../../components/Kpi/ContagemKpi'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LabelList,
@@ -119,65 +121,6 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Map<string, T[]> {
     else map.set(key, [item])
   }
   return map
-}
-
-// ── SmartKpi ───────────────────────────────────────────────────
-interface SmartKpiProps {
-  label: string
-  value: number | null
-  delta: number | null
-  target: number | null
-}
-
-function SmartKpi({ label, value, delta, target }: SmartKpiProps) {
-  const abs   = delta !== null ? Math.abs(delta) : 0
-  const cls   = delta === null || abs < 0.05 ? 'neutral' : delta > 0 ? 'positive' : 'negative'
-  return (
-    <div className="executive-kpi">
-      <div className="executive-kpi-label t-label">{label}</div>
-      <div className="executive-kpi-value-row">
-        <span className="executive-kpi-value t-headline t-tabular">
-          {value !== null ? `${value.toFixed(1)}%` : '—'}
-        </span>
-        {delta !== null && abs >= 0.05 && (
-          <span className={`executive-kpi-delta ${cls}`}>
-            {delta > 0 ? <TrendingUp size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} /> : <TrendingDown size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />}{abs.toFixed(1)}pp
-          </span>
-        )}
-      </div>
-      {target !== null && (
-        <div className="executive-kpi-target">Objectivo: {target.toFixed(1)}%</div>
-      )}
-    </div>
-  )
-}
-
-// ── ContagemKpi ────────────────────────────────────────────────
-interface ContagemKpiProps {
-  value: number
-  total: number
-  label: string
-  delta: number | null
-  variant?: 'default' | 'late'
-  deltaVariant?: 'good' | 'bad' | 'neutral'
-}
-
-function ContagemKpi({ value, total, label, delta, variant = 'default', deltaVariant = 'neutral' }: ContagemKpiProps) {
-  const isLate = variant === 'late'
-  return (
-    <div className="contagem-kpi">
-      <div className="contagem-kpi-numbers">
-        <span className={`contagem-kpi-value t-headline t-tabular${isLate ? ' late' : ''}`}>{value}</span>
-        <span className="contagem-kpi-denom">/ {total}</span>
-      </div>
-      <div className="contagem-kpi-label">{label}</div>
-      {delta !== null && (
-        <div className={`contagem-kpi-delta ${deltaVariant}`}>
-          {delta >= 0 ? '+' : ''}{delta} últimos 7 dias
-        </div>
-      )}
-    </div>
-  )
 }
 
 // ── AlertsZone ─────────────────────────────────────────────────

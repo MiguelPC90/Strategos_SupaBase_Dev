@@ -5,6 +5,8 @@ import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
+import SmartKpi from '../../components/Kpi/SmartKpi'
+import ContagemKpi from '../../components/Kpi/ContagemKpi'
 import Badge from '../../components/Badge/Badge'
 import { usePdsEntries, usePdsConsolidated } from '../../hooks/usePdsEntries'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -576,54 +578,44 @@ export default function PontoSituacao() {
             <span className="pds-header-date">{fmtDate(planEntries[0]?.updated_at ?? TODAY)}</span>
           </div>
 
-          {/* KPI cards — 3-card top row */}
-          <div className="pds-kpi-grid">
-            <Card title="Dados Gerais">
-              <div className="kpi-2col">
-                <KpiCard label="Total actividades" value={kpi.total} />
-                <KpiCard label="Concluídas" value={kpi.concluidas} color="green" />
-                <KpiCard label="Em dia"     value={kpi.emDia}      color="blue" />
-                <KpiCard label="Em risco"   value={kpi.emRisco}    color="amber" />
-                <KpiCard label="Em atraso"  value={kpi.emAtraso}   color="red" />
+          {/* KPI brief — 2-column layout mirroring Dashboard */}
+          <div className="pds-brief">
+            <div className="pds-brief-grid">
+              <div className="pds-brief-column pds-brief-column-main">
+                <div className="pds-brief-header">
+                  <h2 className="pds-brief-title">Resumo Executivo</h2>
+                </div>
+                <div className="pds-brief-card kpis-card">
+                  <div className="executive-kpi-grid">
+                    <SmartKpi label="Grau de Execução"    value={kpi.pct}       target={kpi.pctPrev} />
+                    <SmartKpi label="Concretização Geral" value={kpi.geralReal} target={kpi.geralObj} />
+                    <SmartKpi label="Conc. à Data"        value={kpi.aDataReal} target={100} />
+                  </div>
+                  <div className="contagem-kpi-grid">
+                    <ContagemKpi value={kpi.concluidas} total={kpi.total} label="concluídas" deltaVariant="good" />
+                    <ContagemKpi value={kpi.emDia}      total={kpi.total} label="em dia"     deltaVariant="neutral" />
+                    <ContagemKpi value={kpi.emRisco}    total={kpi.total} label="em risco"   deltaVariant="bad" />
+                    <ContagemKpi value={kpi.emAtraso}   total={kpi.total} label="em atraso"  variant="late" deltaVariant="bad" />
+                  </div>
+                </div>
               </div>
-            </Card>
 
-            <Card title="Indicadores de Concretização">
-              <div className="ind-section">
-                <div className="ind-section-header">
-                  <span className="ind-dot" style={{ background: 'var(--navy)' }} />
-                  Realizado
+              <div className="pds-brief-column pds-brief-column-aside">
+                <div className="pds-brief-header">
+                  <h2 className="pds-brief-title">
+                    Riscos{riskKpis.open > 0 && ` · ${riskKpis.open} activos`}
+                  </h2>
                 </div>
-                <div className="kpi-3col">
-                  <KpiCard label="Grau execução" value={`${kpi.pct}%`}        color="navy" />
-                  <KpiCard label="Conc. geral"   value={`${kpi.geralReal}%`}  color="navy" />
-                  <KpiCard label="Conc. à data"  value={`${kpi.aDataReal}%`}  color="navy" />
-                </div>
-              </div>
-              <div className="ind-section">
-                <div className="ind-section-header">
-                  <span className="ind-dot" style={{ background: 'var(--green)' }} />
-                  Objectivo
-                </div>
-                <div className="kpi-3col ind-dashed">
-                  <KpiCard label="Exec. obj."       value={`${kpi.pctPrev}%`}  color="green" />
-                  <KpiCard label="Conc. geral obj." value={`${kpi.geralObj}%`} color="green" />
-                  <KpiCard label="Conc. data obj."  value="100%"               color="green" />
+                <div className="pds-brief-card riscos-card">
+                  <div className="kpi-2col">
+                    <KpiCard label="Total"     value={riskKpis.total}     />
+                    <KpiCard label="Críticos"  value={riskKpis.critical}  color="red"   />
+                    <KpiCard label="Abertos"   value={riskKpis.open}      color="amber" />
+                    <KpiCard label="Mitigados" value={riskKpis.mitigated} color="green" />
+                  </div>
                 </div>
               </div>
-            </Card>
-
-            <Card
-              title="Riscos"
-              actions={<span className="pds-kpi-risk-active">{riskKpis.open} activos</span>}
-            >
-              <div className="kpi-2col">
-                <KpiCard label="Total"     value={riskKpis.total}     />
-                <KpiCard label="Críticos"  value={riskKpis.critical}  color="red"   />
-                <KpiCard label="Abertos"   value={riskKpis.open}      color="amber" />
-                <KpiCard label="Mitigados" value={riskKpis.mitigated} color="green" />
-              </div>
-            </Card>
+            </div>
           </div>
 
           {/* 2×2 card grid */}

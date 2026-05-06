@@ -1,0 +1,44 @@
+@layer components {
+  .contagem-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .contagem-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .contagem-kpi-numbers {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .contagem-kpi-value {
+    color: var(--stratgos-ink-900, var(--text));
+  }
+  .contagem-kpi-value.late { color: var(--status-late, var(--red)); }
+  .contagem-kpi-denom {
+    font-family: var(--font-serif);
+    font-size: var(--text-xl);
+    font-weight: 400;
+    color: var(--stratgos-ink-300, #ccc);
+    line-height: 1;
+  }
+  .contagem-kpi-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+    letter-spacing: 0;
+    color: var(--stratgos-ink-500, var(--text2));
+    margin-top: 6px;
+  }
+  .contagem-kpi-delta {
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--stratgos-ink-500, var(--text2));
+  }
+  .contagem-kpi-delta.good    { color: var(--status-ontrack, #166534); }
+  .contagem-kpi-delta.bad     { color: var(--status-late, var(--red)); }
+  .contagem-kpi-delta.neutral { color: var(--stratgos-ink-500, var(--text2)); }
+}

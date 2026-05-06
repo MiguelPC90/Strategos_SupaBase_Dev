@@ -125,17 +125,53 @@
     cursor: not-allowed;
   }
 
-  /* ── KPI cards top grid (3 cards: Geral | Concretização | Riscos) ── */
-  .pds-kpi-grid {
+  /* ── Executive brief — 2-column layout ──────────────────────── */
+  .pds-brief {
+    margin-bottom: 14px;
+  }
+
+  .pds-brief-grid {
     display: grid;
-    grid-template-columns: 1fr 1.5fr 1fr;
+    grid-template-columns: 2fr 1fr;
     gap: 14px;
   }
 
-  .pds-kpi-risk-active {
-    font-size: var(--text-base);
-    color: var(--text3);
-    font-weight: 400;
+  .pds-brief-column {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .pds-brief-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .pds-brief-title {
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+  }
+
+  .pds-brief-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 16px;
+  }
+
+  .pds-brief-card.kpis-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  @media (max-width: 768px) {
+    .pds-brief-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   /* ── 2×2 card grid ───────────────────────────────────────────── */
