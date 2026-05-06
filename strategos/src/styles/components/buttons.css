@@ -13,6 +13,9 @@
 @layer components {
   /* Base — neutral / cancel button */
   .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 5px 12px;
     font-size: var(--text-base);
     font-weight: 500;
@@ -35,6 +38,9 @@
 
   /* Primary — ember filled CTA */
   .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 5px 12px;
     font-size: var(--text-base);
     font-weight: 600;
@@ -58,6 +64,9 @@
 
   /* Secondary — navy outlined CTA */
   .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 5px 12px;
     font-size: var(--text-base);
     font-weight: 600;
@@ -80,6 +89,9 @@
 
   /* Danger — red outlined */
   .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 5px 12px;
     font-size: var(--text-base);
     font-weight: 500;
