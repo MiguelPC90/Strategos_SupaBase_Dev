@@ -153,7 +153,8 @@ export default function App() {
           <Route path="gestao-iniciativas" element={<PageGuard page="gestao-iniciativas"><GestaoIniciativas /> </PageGuard>} />
           <Route path="gestao-pds"         element={<PageGuard page="gestao-pds">        <GestaoPDS />         </PageGuard>} />
           <Route path="gestao-riscos"      element={<PageGuard page="gestao-riscos">     <GestaoRiscos />      </PageGuard>} />
-          <Route path="gestao-financeira"  element={<PageGuard page="gestao-financeira"> <BudgetPage />        </PageGuard>} />
+          <Route path="gestao-financeira"  element={<Navigate to="/budget" replace />} />
+          <Route path="budget"             element={<PageGuard page="gestao-financeira"> <BudgetPage />        </PageGuard>} />
           <Route path="gestao-recursos"    element={<PageGuard page="gestao-recursos">   <GestaoRecursos />    </PageGuard>} />
           <Route path="admin"              element={<AdminGuard><Admin /></AdminGuard>} />
           <Route path="planos"            element={<PlanosCatalog />} />

@@ -619,7 +619,7 @@ export default function ExecucaoFinanceira() {
           title="Sem dados financeiros"
           description="Não existem dados financeiros para os filtros seleccionados."
           actionLabel="Ir para Gestão Financeira"
-          actionHref="/gestao-financeira"
+          actionHref="/budget"
         />
       ) : (
         <>

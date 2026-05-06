@@ -180,7 +180,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
               <div className="ve-contagem-kpi-label">Concluídas</div>
               {delta7Conc !== null && (
                 <div className={`ve-contagem-kpi-delta ${delta7Conc > 0 ? 'good' : delta7Conc < 0 ? 'bad' : 'neutral'}`}>
-                  {delta7Conc > 0 ? '+' : ''}{delta7Conc} vs 7d
+                  {delta7Conc > 0 ? '+' : ''}{delta7Conc} últimos 7 dias
                 </div>
               )}
             </div>
@@ -192,7 +192,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
               <div className="ve-contagem-kpi-label">Em Dia</div>
               {delta7EmDia !== null && (
                 <div className={`ve-contagem-kpi-delta ${delta7EmDia > 0 ? 'neutral' : delta7EmDia < 0 ? 'bad' : 'neutral'}`}>
-                  {delta7EmDia > 0 ? '+' : ''}{delta7EmDia} vs 7d
+                  {delta7EmDia > 0 ? '+' : ''}{delta7EmDia} últimos 7 dias
                 </div>
               )}
             </div>
@@ -204,7 +204,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
               <div className="ve-contagem-kpi-label">Em Risco</div>
               {delta7EmRisco !== null && (
                 <div className={`ve-contagem-kpi-delta ${delta7EmRisco > 0 ? 'bad' : delta7EmRisco < 0 ? 'good' : 'neutral'}`}>
-                  {delta7EmRisco > 0 ? '+' : ''}{delta7EmRisco} vs 7d
+                  {delta7EmRisco > 0 ? '+' : ''}{delta7EmRisco} últimos 7 dias
                 </div>
               )}
             </div>
@@ -216,7 +216,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
               <div className="ve-contagem-kpi-label">Em Atraso</div>
               {delta7EmAtraso !== null && (
                 <div className={`ve-contagem-kpi-delta ${delta7EmAtraso > 0 ? 'bad' : delta7EmAtraso < 0 ? 'good' : 'neutral'}`}>
-                  {delta7EmAtraso > 0 ? '+' : ''}{delta7EmAtraso} vs 7d
+                  {delta7EmAtraso > 0 ? '+' : ''}{delta7EmAtraso} últimos 7 dias
                 </div>
               )}
             </div>

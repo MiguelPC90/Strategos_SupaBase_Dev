@@ -869,7 +869,7 @@ export default function GestaoFinanceira({
     const budgetTotal = draft.budget.reduce((s, b) => s + lineTotal(b), 0)
     const adjudicado  = draft.contracts.reduce((s, c) => s + toEur(c.total_amount, c.exchange_rate_ref), 0)
     const pago        = draft.invoices.filter(i => i.status === 'Paga').reduce((s, i) => s + toEur(i.amount, i.exchange_rate), 0)
-    const emPagamento = draft.invoices.filter(i => i.status === 'Aprovado').reduce((s, i) => s + toEur(i.amount, i.exchange_rate), 0)
+    const emPagamento = draft.invoices.filter(i => i.status === 'Aprovada').reduce((s, i) => s + toEur(i.amount, i.exchange_rate), 0)
     return { budgetTotal, adjudicado, pago, emPagamento,
       porFacturar: adjudicado - pago - emPagamento,
       desvio:      adjudicado - budgetTotal }

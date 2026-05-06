@@ -17,6 +17,10 @@ function numWord(n: number, gender: 'f' | 'm'): string {
   return gender === 'f' ? FEM[n] : MASC[n]
 }
 
+function capFirst(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
 export function generateStatusNarrative(p: NarrativeParams): string {
   const sentences: string[] = []
 
@@ -48,5 +52,5 @@ export function generateStatusNarrative(p: NarrativeParams): string {
     sentences.push(`${n} risco${n > 1 ? 's' : ''} escalado${n > 1 ? 's' : ''} neste ciclo.`)
   }
 
-  return sentences.join(' ')
+  return sentences.map(capFirst).join(' ')
 }

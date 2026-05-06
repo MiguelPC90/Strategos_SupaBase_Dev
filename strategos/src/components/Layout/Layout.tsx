@@ -154,7 +154,7 @@ const NAV_MANAGE: NavItemConfig[] = [
     ),
   },
   {
-    to: '/gestao-financeira',
+    to: '/budget',
     label: 'Gestão Financeira',
     icon: (
       <svg viewBox="0 0 24 24">
