@@ -56,6 +56,10 @@ function newId(): string { return 'new_' + (++_seq) + '_' + Math.random().toStri
 function newAppId(): string { return 'gf_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5) }
 function isNew(id: string): boolean { return id.startsWith('new_') }
 function toEur(amount: number, rate: number | null): number { return amount * (rate ?? 1) }
+
+const REAL_STATUSES      = ['Recebida', 'Aprovada', 'Paga']
+const COMMITTED_STATUSES = ['Prevista', 'Recebida', 'Aprovada', 'Paga']
+
 function fmtEur(n: number, symbol = '€'): string {
   return new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 0 }).format(Math.round(n)) + ' ' + symbol
 }
@@ -266,9 +270,21 @@ interface ContractsTabProps {
 }
 
 function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew, currencies, readOnly }: ContractsTabProps) {
-  const invoicedFor = useCallback((c: FinContract) =>
+  const realInvoicedFor = useCallback((c: FinContract) =>
     invoices
-      .filter(i => i.app_contract_id === c.app_id || i.contract_id === c.id)
+      .filter(i =>
+        (i.app_contract_id === c.app_id || i.contract_id === c.id) &&
+        REAL_STATUSES.includes(i.status)
+      )
+      .reduce((s, i) => s + toEur(i.amount, i.exchange_rate), 0),
+    [invoices])
+
+  const committedFor = useCallback((c: FinContract) =>
+    invoices
+      .filter(i =>
+        (i.app_contract_id === c.app_id || i.contract_id === c.id) &&
+        COMMITTED_STATUSES.includes(i.status)
+      )
       .reduce((s, i) => s + toEur(i.amount, i.exchange_rate), 0),
     [invoices])
 
@@ -283,16 +299,21 @@ function ContractsTab({ contracts, invoices, onEdit, onDelete, onNew, currencies
         <div className="gf-empty">Sem contratos. Clique em + Novo Contrato para adicionar.</div>
       ) : (
         contracts.map(c => {
-          const sym = currencies.find(cur => cur.code === c.currency)?.symbol ?? '€'
-          const invoicedEur = invoicedFor(c)
-          const totalEur = toEur(c.total_amount, c.exchange_rate_ref)
+          const sym            = currencies.find(cur => cur.code === c.currency)?.symbol ?? '€'
+          const invoicedEur    = realInvoicedFor(c)
+          const committedEur   = committedFor(c)
+          const totalEur       = toEur(c.total_amount, c.exchange_rate_ref)
           const nativeInvoiced = c.exchange_rate_ref ? invoicedEur / c.exchange_rate_ref : invoicedEur
-          const pct = totalEur > 0 ? Math.round((invoicedEur / totalEur) * 100) : 0
+          const pct            = totalEur > 0 ? Math.round((invoicedEur / totalEur) * 100) : 0
+          const isOverCommitted = totalEur > 0 && committedEur > totalEur
           return (
-            <div key={c.id} className="gf-contract-card">
+            <div key={c.id} className={`gf-contract-card${isOverCommitted ? ' is-overflow' : ''}`}>
               <div className="gf-contract-header">
                 <div style={{ flex: 1 }}>
-                  <div className="gf-contract-title">{c.supplier || '(sem fornecedor)'}</div>
+                  <div className="gf-contract-title">
+                    {c.supplier || '(sem fornecedor)'}
+                    {isOverCommitted && <span className="gf-contract-overflow-badge">Excedido</span>}
+                  </div>
                   {c.category && <Badge variant="grey">{c.category}</Badge>}
                 </div>
                 {!readOnly && (
@@ -928,6 +949,21 @@ export default function GestaoFinanceira({
   // ── Render ───────────────────────────────────────────────────
   const noPlans = !planosLoading && planOptions.length === 0
 
+  const _factCid      = invoiceModal?.app_contract_id ?? ''
+  const _factContract = draft.contracts.find(c => c.app_id === _factCid)
+  const factModalContractTotal = _factContract
+    ? toEur(_factContract.total_amount, _factContract.exchange_rate_ref)
+    : undefined
+  const factModalInvoicedTotal = _factContract
+    ? draft.invoices
+        .filter(i =>
+          (i.app_contract_id === _factCid || i.contract_id === _factContract.id) &&
+          i.id !== invoiceModal?.id &&
+          COMMITTED_STATUSES.includes(i.status)
+        )
+        .reduce((s, i) => s + toEur(i.amount, i.exchange_rate), 0)
+    : undefined
+
   return (
     <div className="gf-page">
       {loading ? (
@@ -1027,6 +1063,8 @@ export default function GestaoFinanceira({
         supplierFilter={invModalSupplierFilter}
         setSupplierFilter={setInvModalSupplierFilter}
         errorMessage={invModalErr}
+        contractTotal={factModalContractTotal}
+        contractInvoicedTotal={factModalInvoicedTotal}
       />
     </div>
   )

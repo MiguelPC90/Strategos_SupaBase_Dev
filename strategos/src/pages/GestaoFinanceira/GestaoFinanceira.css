@@ -454,4 +454,31 @@
   .gf-inv-menu-item:hover { background: var(--bg2); }
   .gf-inv-menu-item.danger { color: var(--red); }
   .gf-inv-menu-item.danger:hover { background: #fff0f0; }
+
+  /* ── Contract overflow indicators ───────────────────────────── */
+  .gf-contract-card.is-overflow {
+    border-left: 3px solid var(--stratgos-ember);
+  }
+
+  .gf-contract-overflow-badge {
+    display: inline-block;
+    background: var(--stratgos-ember);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  /* ── Invoice overflow warning (modal body) ───────────────────── */
+  .gf-panel-warning {
+    background: rgba(200, 154, 60, 0.1);
+    color: var(--amber);
+    padding: 8px 12px;
+    border-left: 3px solid var(--amber);
+    border-radius: 4px;
+    font-size: 13px;
+  }
 }

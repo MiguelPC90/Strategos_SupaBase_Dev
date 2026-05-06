@@ -35,6 +35,10 @@ let _seq = 0
 function newAppId(): string { return 'bp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5) + (++_seq) }
 
 function toEur(amount: number, rate: number | null): number { return amount * (rate ?? 1) }
+
+const REAL_STATUSES      = ['Recebida', 'Aprovada', 'Paga']
+const COMMITTED_STATUSES = ['Prevista', 'Recebida', 'Aprovada', 'Paga']
+
 function fmtEur(n: number, symbol: string): string {
   return new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 0 }).format(Math.round(n)) + ' ' + symbol
 }
@@ -555,6 +559,21 @@ export default function BudgetPage() {
   const canCreate = !!programId
   const disabledBtnStyle: React.CSSProperties = { opacity: 0.5, cursor: 'not-allowed' }
 
+  const _bpFactCid      = facturaForm.app_contract_id
+  const _bpFactContract = scopedContracts.find(c => c.app_id === _bpFactCid)
+  const facturaContractTotal = _bpFactContract
+    ? toEur(_bpFactContract.total_amount, _bpFactContract.exchange_rate_ref)
+    : undefined
+  const facturaContractInvoicedTotal = _bpFactContract
+    ? scopedInvoices
+        .filter(i =>
+          (i.app_contract_id === _bpFactCid || i.contract_id === _bpFactContract.id) &&
+          i.id !== facturaForm.id &&
+          COMMITTED_STATUSES.includes(i.status)
+        )
+        .reduce((s, i) => s + toEur(i.amount, i.exchange_rate), 0)
+    : undefined
+
   const TABS: { id: BpTab; label: string }[] = [
     { id: 'budget',    label: 'Orçamento' },
     { id: 'contracts', label: 'Contratos' },
@@ -661,19 +680,27 @@ export default function BudgetPage() {
             <div className="gf-empty">Sem contratos.</div>
           ) : (
             sortedContracts.map(c => {
-              const sym         = currencies.find(cur => cur.code === c.currency)?.symbol ?? defaultSymbol
-              const invoicedEur = scopedInvoices
-                .filter(i => i.app_contract_id === c.app_id || i.contract_id === c.id)
+              const sym          = currencies.find(cur => cur.code === c.currency)?.symbol ?? defaultSymbol
+              const contractInvs = scopedInvoices.filter(i => i.app_contract_id === c.app_id || i.contract_id === c.id)
+              const invoicedEur  = contractInvs
+                .filter(i => REAL_STATUSES.includes(i.status))
+                .reduce((s, i) => s + toEur(i.amount, i.exchange_rate), 0)
+              const committedEur   = contractInvs
+                .filter(i => COMMITTED_STATUSES.includes(i.status))
                 .reduce((s, i) => s + toEur(i.amount, i.exchange_rate), 0)
               const totalEur       = toEur(c.total_amount, c.exchange_rate_ref)
               const nativeInvoiced = c.exchange_rate_ref ? invoicedEur / c.exchange_rate_ref : invoicedEur
               const pct            = totalEur > 0 ? Math.round((invoicedEur / totalEur) * 100) : 0
+              const isOverCommitted = totalEur > 0 && committedEur > totalEur
               const planoName      = planoNameMap.get(c.plano_id ?? '') ?? ''
               return (
-                <div key={c.id} className="gf-contract-card">
+                <div key={c.id} className={`gf-contract-card${isOverCommitted ? ' is-overflow' : ''}`}>
                   <div className="gf-contract-header">
                     <div style={{ flex: 1 }}>
-                      <div className="gf-contract-title">{c.supplier || '(sem fornecedor)'}</div>
+                      <div className="gf-contract-title">
+                        {c.supplier || '(sem fornecedor)'}
+                        {isOverCommitted && <span className="gf-contract-overflow-badge">Excedido</span>}
+                      </div>
                       {planoName && (
                         <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
                           <span className="gf-meta-label" style={{ marginRight: 4 }}>Plano</span>
@@ -877,6 +904,8 @@ export default function BudgetPage() {
         errorMessage={facturaErr}
         planoOptions={planoOptions}
         defaultPlanoId={defaultPlanoId}
+        contractTotal={facturaContractTotal}
+        contractInvoicedTotal={facturaContractInvoicedTotal}
       />
     </div>
   )

@@ -38,6 +38,8 @@ interface FacturaModalProps {
   errorMessage?: string | null
   planoOptions?: SelectOption[]
   defaultPlanoId?: string
+  contractTotal?: number
+  contractInvoicedTotal?: number
 }
 
 export default function FacturaModal({
@@ -54,6 +56,8 @@ export default function FacturaModal({
   errorMessage,
   planoOptions,
   defaultPlanoId,
+  contractTotal,
+  contractInvoicedTotal,
 }: FacturaModalProps) {
   const set = (patch: Partial<InvoiceForm>) => form && setForm({ ...form, ...patch })
 
@@ -88,6 +92,14 @@ export default function FacturaModal({
   const filteredContracts = supplierFilter
     ? contractsForPlano.filter(c => c.supplier === supplierFilter)
     : contractsForPlano
+
+  const isOverflow = useMemo(() => {
+    if (contractTotal === undefined || !form?.app_contract_id) return false
+    const amt  = parseFloat(form.amount || '0')
+    const rate = form.exchange_rate !== '' ? parseFloat(form.exchange_rate || '1') : 1
+    const amtEur = (isNaN(amt) ? 0 : amt) * (isNaN(rate) ? 1 : rate)
+    return (contractInvoicedTotal ?? 0) + amtEur > contractTotal
+  }, [form?.amount, form?.exchange_rate, form?.app_contract_id, contractTotal, contractInvoicedTotal])
 
   return (
     <Modal
@@ -240,6 +252,11 @@ export default function FacturaModal({
               </select>
             </div>
           </div>
+          {isOverflow && (
+            <div className="gf-panel-warning">
+              Aviso: o total facturado para este contrato excede o valor contratado.
+            </div>
+          )}
         </div>
       )}
     </Modal>
