@@ -1,5 +1,6 @@
 import './PontoSituacao.css'
 import { useState, useMemo, useEffect, useCallback, type ReactNode } from 'react'
+import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Card from '../../components/Card/Card'
@@ -39,7 +40,7 @@ function SortBtn({ dir, onToggle }: { dir: SortDir; onToggle: () => void }) {
       onClick={onToggle}
       title={dir === 'asc' ? 'Ordenar: mais recente primeiro' : 'Ordenar: mais antigo primeiro'}
     >
-      {dir === 'asc' ? '↑' : '↓'}
+      {dir === 'asc' ? <ArrowUp size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} /> : <ArrowDown size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />}
     </button>
   )
 }
@@ -564,13 +565,13 @@ export default function PontoSituacao() {
                 onClick={goPrev}
                 disabled={currentIdx <= 0}
                 title="Plano anterior (Alt+←)"
-              >←</button>
+              ><ChevronLeft size={14} strokeWidth={1.5} /></button>
               <button
                 className="pds-nav-btn"
                 onClick={goNext}
                 disabled={currentIdx >= planosInScope.length - 1}
                 title="Plano seguinte (Alt+→)"
-              >→</button>
+              ><ChevronRight size={14} strokeWidth={1.5} /></button>
             </div>
             <span className="pds-header-date">{fmtDate(planEntries[0]?.updated_at ?? TODAY)}</span>
           </div>

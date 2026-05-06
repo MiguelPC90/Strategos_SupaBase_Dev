@@ -1,6 +1,7 @@
 import './Dashboard.css'
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { TrendingUp, TrendingDown, AlertTriangle, ChevronRight } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
@@ -140,7 +141,7 @@ function SmartKpi({ label, value, delta, target }: SmartKpiProps) {
         </span>
         {delta !== null && abs >= 0.05 && (
           <span className={`executive-kpi-delta ${cls}`}>
-            {delta > 0 ? '▲' : '▼'}{abs.toFixed(1)}pp
+            {delta > 0 ? <TrendingUp size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} /> : <TrendingDown size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />}{abs.toFixed(1)}pp
           </span>
         )}
       </div>
@@ -189,12 +190,12 @@ function AlertsZone({ alerts }: { alerts: Alert[] }) {
         <div className="alerts-list">
           {alerts.map(a => (
             <div key={a.id} className={`alert-card severity-${a.severity}`}>
-              <div className="alert-card-icon">⚠</div>
+              <div className="alert-card-icon"><AlertTriangle size={14} strokeWidth={1.5} /></div>
               <div className="alert-card-body">
                 <div className="alert-card-title">{a.title}</div>
                 <div className="alert-card-desc">{a.description}</div>
               </div>
-              {a.href && <a href={a.href} className="alert-card-link">→</a>}
+              {a.href && <a href={a.href} className="alert-card-link"><ChevronRight size={14} strokeWidth={1.5} /></a>}
             </div>
           ))}
         </div>

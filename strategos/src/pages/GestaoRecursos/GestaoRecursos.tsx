@@ -1,5 +1,6 @@
 import './GestaoRecursos.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { Link2, AlertTriangle } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
@@ -171,7 +172,7 @@ function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate,
             <span className="gres-field-label">Nome</span>
             <strong style={{ fontSize: 13 }}>{res.name || <span style={{ color: 'var(--text3)' }}>—</span>}</strong>
             {res.person_id
-              ? <span className="gr-person-linked-chip">🔗 Catálogo</span>
+              ? <span className="gr-person-linked-chip"><Link2 size={14} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Catálogo</span>
               : <span className="gr-person-unlinked-chip">Não ligado</span>
             }
           </div>
@@ -235,8 +236,8 @@ function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate,
               {` (${monthsBetween(res.start_date, res.end_date)} meses × ${workDays} dias/mês)`}
             </span>
           )}
-          {isExpired && <span className="gres-inactive-hint">⚠ Data fim passada — considere marcar como Inactivo</span>}
-          {dateErr && <span className="gres-inactive-hint">⚠ Data fim anterior a data início</span>}
+          {isExpired && <span className="gres-inactive-hint"><AlertTriangle size={14} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Data fim passada — considere marcar como Inactivo</span>}
+          {dateErr && <span className="gres-inactive-hint"><AlertTriangle size={14} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Data fim anterior a data início</span>}
         </div>
       )}
     </div>
@@ -346,7 +347,7 @@ function PersonAutocomplete({ value, personId, people, onNameChange, onSelect, o
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
         />
-        {personId && <span className="gr-person-linked-icon" title="Ligado ao catálogo">🔗</span>}
+        {personId && <span className="gr-person-linked-icon" title="Ligado ao catálogo"><Link2 size={14} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /></span>}
       </div>
 
       {hasDropdown && (
@@ -387,7 +388,7 @@ function PersonAutocomplete({ value, personId, people, onNameChange, onSelect, o
 
       {showDupWarn && (
         <div className="gr-person-duplicate-warn">
-          ⚠ Nome semelhante encontrado — selecciona da lista para ligar ao catálogo
+          <AlertTriangle size={14} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Nome semelhante encontrado — selecciona da lista para ligar ao catálogo
         </div>
       )}
     </div>
@@ -993,7 +994,7 @@ export default function GestaoRecursos({
           <div className="gres-spacer" />
           {saveErr    && <span className="gres-save-err">{saveErr}</span>}
           {conflicts.length > 0 && (
-            <span className="gres-warn">⚠ Sobrealocação: {conflicts.join(', ')}</span>
+            <span className="gres-warn"><AlertTriangle size={14} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Sobrealocação: {conflicts.join(', ')}</span>
           )}
           {!readOnly && (
             <>
@@ -1028,7 +1029,7 @@ export default function GestaoRecursos({
           <div className="gres-spacer" />
           {saveErr    && <span className="gres-save-err">{saveErr}</span>}
           {conflicts.length > 0 && (
-            <span className="gres-warn">⚠ Sobrealocação: {conflicts.join(', ')}</span>
+            <span className="gres-warn"><AlertTriangle size={14} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Sobrealocação: {conflicts.join(', ')}</span>
           )}
           {!readOnly && (
             <>

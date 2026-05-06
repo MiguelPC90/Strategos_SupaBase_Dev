@@ -1,5 +1,6 @@
 import './VisaoExecutiva.css'
 import { useMemo } from 'react'
+import { TrendingUp, TrendingDown } from 'lucide-react'
 import Card from '../../components/Card/Card'
 import { useActivities } from '../../hooks/useActivities'
 import { usePdsConsolidated } from '../../hooks/usePdsEntries'
@@ -233,7 +234,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
                   Math.abs(execDelta) < 0.05
                     ? <span className="ve-exec-kpi-delta neutral">0pp</span>
                     : <span className={`ve-exec-kpi-delta ${execDelta > 0 ? 'positive' : 'negative'}`}>
-                        {execDelta > 0 ? '▲' : '▼'}{Math.abs(execDelta).toFixed(1)}pp
+                        {execDelta > 0 ? <TrendingUp size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} /> : <TrendingDown size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />}{Math.abs(execDelta).toFixed(1)}pp
                       </span>
                 )}
               </div>
@@ -247,7 +248,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
                   Math.abs(concGeralDelta) < 0.05
                     ? <span className="ve-exec-kpi-delta neutral">0pp</span>
                     : <span className={`ve-exec-kpi-delta ${concGeralDelta > 0 ? 'positive' : 'negative'}`}>
-                        {concGeralDelta > 0 ? '▲' : '▼'}{Math.abs(concGeralDelta).toFixed(1)}pp
+                        {concGeralDelta > 0 ? <TrendingUp size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} /> : <TrendingDown size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />}{Math.abs(concGeralDelta).toFixed(1)}pp
                       </span>
                 )}
               </div>
@@ -266,7 +267,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
                   Math.abs(concDataDelta) < 0.05
                     ? <span className="ve-exec-kpi-delta neutral">0pp</span>
                     : <span className={`ve-exec-kpi-delta ${concDataDelta > 0 ? 'positive' : 'negative'}`}>
-                        {concDataDelta > 0 ? '▲' : '▼'}{Math.abs(concDataDelta).toFixed(1)}pp
+                        {concDataDelta > 0 ? <TrendingUp size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} /> : <TrendingDown size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />}{Math.abs(concDataDelta).toFixed(1)}pp
                       </span>
                 )}
               </div>

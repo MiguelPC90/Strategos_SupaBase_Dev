@@ -1,5 +1,6 @@
 import './Breadcrumb.css'
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { X } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { useFilters } from '../../context/FilterContext'
 import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
@@ -188,7 +189,7 @@ function FilterChip({ label, onRemove }: FilterChipProps) {
   return (
     <div className="breadcrumb-chip">
       <span>{label}</span>
-      <button className="breadcrumb-chip-remove" onClick={onRemove} title="Remover filtro">×</button>
+      <button className="breadcrumb-chip-remove" onClick={onRemove} title="Remover filtro"><X size={14} strokeWidth={1.5} /></button>
     </div>
   )
 }

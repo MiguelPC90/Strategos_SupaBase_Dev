@@ -1,5 +1,6 @@
 import './SearchableSelect.css'
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { ChevronUp, ChevronDown, X } from 'lucide-react'
 
 export interface SelectOption {
   value: string
@@ -109,9 +110,9 @@ export default function SearchableSelect({
           {selected ? selected.label : placeholder}
         </span>
         {!required && value && !disabled && (
-          <button className="ss-clear" onClick={clear} tabIndex={-1} aria-label="Limpar">×</button>
+          <button className="ss-clear" onClick={clear} tabIndex={-1} aria-label="Limpar"><X size={14} strokeWidth={1.5} /></button>
         )}
-        <span className="ss-chevron" aria-hidden>{open ? '▲' : '▼'}</span>
+        <span className="ss-chevron" aria-hidden>{open ? <ChevronUp size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</span>
       </div>
 
       {open && (

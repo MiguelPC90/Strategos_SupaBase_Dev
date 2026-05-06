@@ -1,6 +1,6 @@
 import './Actividades.css'
 import { useState, useMemo, useCallback, useRef, useEffect, type ReactNode } from 'react'
-import { Link2 } from 'lucide-react'
+import { Link2, ChevronDown, ChevronRight, X, Check } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
@@ -299,7 +299,7 @@ function CdaCell({ concluidas, em_dia, em_risco, em_atraso }: { concluidas: numb
     <td className="act-td-c">
       <div className="act-cda" title={`Concluídas: ${concluidas} · Em dia: ${em_dia} · Em risco: ${em_risco} · Em atraso: ${em_atraso}`}>
         <span className="act-cda-item" style={{ color: 'var(--status-done)' }} title={`Concluídas: ${concluidas}`}>
-          <span className="act-cda-icon">✓</span>
+          <span className="act-cda-icon"><Check size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} /></span>
           <span>{concluidas}</span>
         </span>
         <span className="act-cda-item" style={{ color: 'var(--status-ontrack)' }} title={`Em dia: ${em_dia}`}>
@@ -423,7 +423,7 @@ export default function Actividades() {
           <td>
             <div className="act-name-cell" style={{ paddingLeft: n1Indent }}>
               <button className="act-toggle" onClick={() => toggle(n1key)}>
-                {n1col ? '▶' : '▼'}
+                {n1col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}
               </button>
               <span className="act-name-n1">{highlightMatch(n1g.n1, searchQuery)}</span>
             </div>
@@ -451,7 +451,7 @@ export default function Actividades() {
             <td>
               <div className="act-name-cell" style={{ paddingLeft: n1Indent + 16 }}>
                 <button className="act-toggle" onClick={() => toggle(n2key)}>
-                  {n2col ? '▶' : '▼'}
+                  {n2col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}
                 </button>
                 <span className="act-name-n2">{highlightMatch(n2g.n2, searchQuery)}</span>
               </div>
@@ -538,7 +538,7 @@ export default function Actividades() {
               <td>
                 <div className="act-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
                   <button className="act-toggle" onClick={() => toggle(n3key)}>
-                    {n3col ? '▶' : '▼'}
+                    {n3col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}
                   </button>
                   <span className="act-name-n3">{highlightMatch(n3g.n3, searchQuery)}</span>
                 </div>
@@ -596,7 +596,7 @@ export default function Actividades() {
           <td>
             <div className="act-name-cell" style={{ paddingLeft: 4 }}>
               <button className="act-toggle" onClick={() => toggle(n0key)}>
-                {n0col ? '▶' : '▼'}
+                {n0col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}
               </button>
               <span className="act-name-n0">{highlightMatch(n0g.progName, searchQuery)}</span>
             </div>
@@ -646,7 +646,7 @@ export default function Actividades() {
                 onChange={e => setSearchQuery(e.target.value)}
               />
               {searchQuery && (
-                <button type="button" className="gi-search-clear" onClick={() => setSearchQuery('')} title="Limpar pesquisa">×</button>
+                <button type="button" className="gi-search-clear" onClick={() => setSearchQuery('')} title="Limpar pesquisa"><X size={14} strokeWidth={1.5} /></button>
               )}
             </div>
             {filterInfo && <span className="act-filter-info">{filterInfo}</span>}

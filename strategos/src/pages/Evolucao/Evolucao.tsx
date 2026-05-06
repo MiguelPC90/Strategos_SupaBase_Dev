@@ -1,5 +1,6 @@
 import './Evolucao.css'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, type ReactNode } from 'react'
+import { TrendingUp, TrendingDown } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import {
@@ -83,11 +84,16 @@ interface CompGroup {
   rows: CompRow[]
 }
 
-function varStyle(variation: number, invertColor: boolean): { color: string; prefix: string } {
+function varStyle(variation: number, invertColor: boolean): { color: string; prefix: ReactNode } {
   if (variation === 0) return { color: 'var(--text3)', prefix: '' }
   const isPositive = variation > 0
   const isGood = invertColor ? !isPositive : isPositive
-  return { color: isGood ? VAR_GREEN : VAR_RED, prefix: isPositive ? '▲ ' : '▼ ' }
+  return {
+    color: isGood ? VAR_GREEN : VAR_RED,
+    prefix: isPositive
+      ? <TrendingUp size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />
+      : <TrendingDown size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />,
+  }
 }
 
 function fmtVal(v: number, isPercent: boolean): string {

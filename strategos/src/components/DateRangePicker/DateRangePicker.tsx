@@ -1,5 +1,6 @@
 import './DateRangePicker.css'
 import { useState, useEffect, useRef } from 'react'
+import { X } from 'lucide-react'
 
 // ── Props ──────────────────────────────────────────────────────
 export interface DateRangePickerProps {
@@ -179,7 +180,7 @@ export default function DateRangePicker({
             title="Limpar"
             tabIndex={-1}
           >
-            ×
+            <X size={14} strokeWidth={1.5} />
           </button>
         )}
       </div>

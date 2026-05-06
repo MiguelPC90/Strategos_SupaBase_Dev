@@ -1,5 +1,6 @@
 import './ExecucaoFinanceira.css'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, type ReactNode } from 'react'
+import { ArrowUp, ArrowDown } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import MultiSelect from '../../components/MultiSelect/MultiSelect'
@@ -503,7 +504,11 @@ export default function ExecucaoFinanceira() {
     if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortBy(col); setSortDir('asc') }
   }
-  const arrow = (col: string) => sortBy === col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''
+  const arrow = (col: string): ReactNode => sortBy === col
+    ? (sortDir === 'asc'
+        ? <ArrowUp size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />
+        : <ArrowDown size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />)
+    : null
 
   // ── Category rows ─────────────────────────────────────────────
   const catRows = useMemo(() => {

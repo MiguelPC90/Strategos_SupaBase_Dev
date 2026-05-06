@@ -1,5 +1,6 @@
 import './GestaoRiscos.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { MoreHorizontal } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import { createPortal } from 'react-dom'
@@ -210,7 +211,7 @@ function RowMenu({ riskId, openId, onOpen, onEdit, onDuplicate, onDelete }: RowM
   return (
     <div className="gr-menu-wrap">
       <button ref={btnRef} className="btn-icon" onClick={handleClick} title="Acções">
-        ⋯
+        <MoreHorizontal size={16} strokeWidth={1.5} />
       </button>
       {open && pos !== null && createPortal(menu, document.body)}
     </div>

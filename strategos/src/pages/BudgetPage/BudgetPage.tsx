@@ -1,6 +1,6 @@
 import './BudgetPage.css'
 import { useState, useMemo, useEffect, useCallback, Fragment } from 'react'
-import { ChevronRight, ChevronDown } from 'lucide-react'
+import { ChevronRight, ChevronDown, ChevronLeft } from 'lucide-react'
 import { useFilters } from '../../context/FilterContext'
 import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -850,13 +850,13 @@ export default function BudgetPage() {
                 {[10, 25, 50].map(n => <option key={n} value={n}>{n} por página</option>)}
               </select>
               <button className="btn" onClick={() => setInvPage(p => p - 1)} disabled={invPage === 0}>
-                ← Anterior
+                <ChevronLeft size={14} strokeWidth={1.5} /> Anterior
               </button>
               <button
                 className="btn"
                 onClick={() => setInvPage(p => p + 1)}
                 disabled={(invPage + 1) * invPageSize >= totalInvoices}
-              >Próxima →</button>
+              >Próxima <ChevronRight size={14} strokeWidth={1.5} /></button>
             </div>
           )}
         </div>

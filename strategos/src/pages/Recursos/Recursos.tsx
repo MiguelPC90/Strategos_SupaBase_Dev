@@ -1,5 +1,6 @@
 import './Recursos.css'
 import { useState, useMemo, useEffect } from 'react'
+import { ChevronDown, ChevronRight, AlertTriangle, ArrowUp, ArrowDown } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Card from '../../components/Card/Card'
@@ -134,7 +135,7 @@ function PlanView({ resources, planoNames, expanded, onToggle, sym, showCosts }:
           const rows = [
             <tr key={`p-${g.key}`} className="res-plan-row" onClick={() => onToggle(g.key)}>
               <td className="res-plan-name">
-                <span className="res-toggle-icon">{isOpen ? '▼' : '▶'}</span>
+                <span className="res-toggle-icon">{isOpen ? <ChevronDown size={14} strokeWidth={1.5} /> : <ChevronRight size={14} strokeWidth={1.5} />}</span>
                 {g.label}
               </td>
               <td className="res-td-c">{names.size}</td>
@@ -384,7 +385,7 @@ function ResourceHeatmap({ resources, globalAllocByPersonMonth, months, planoNam
           <div className="rec-tt-total">
             Global: {hoverCell.globalPct}%
             {hoverCell.globalPct > 100 && (
-              <span className="rec-tt-warning"> ⚠ Sobrealocado</span>
+              <span className="rec-tt-warning"> <AlertTriangle size={14} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Sobrealocado</span>
             )}
           </div>
         </div>
@@ -534,7 +535,7 @@ function ListaCompleta({ resources, planoNames, sym, showCosts }: ListaCompletaP
     return (
       <th className={cls} onClick={() => handleSort(col)}>
         {label}
-        {active && <span className="sort-arrow">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+        {active && <span className="sort-arrow">{sortDir === 'asc' ? <ArrowUp size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} /> : <ArrowDown size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />}</span>}
       </th>
     )
   }

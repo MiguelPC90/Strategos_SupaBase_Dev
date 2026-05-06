@@ -1,5 +1,6 @@
 import './GestaoFinanceira.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { MoreHorizontal } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
@@ -412,7 +413,7 @@ function InvRowMenu({ invId, openId, onOpen, onEdit, onDuplicate, onDelete }: In
 
   return (
     <>
-      <button ref={btnRef} className="btn-icon" onClick={handleClick} title="Acções">⋯</button>
+      <button ref={btnRef} className="btn-icon" onClick={handleClick} title="Acções"><MoreHorizontal size={16} strokeWidth={1.5} /></button>
       {open && pos !== null && createPortal(menu, document.body)}
     </>
   )

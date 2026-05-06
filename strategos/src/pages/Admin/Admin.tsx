@@ -1,5 +1,6 @@
 import './Admin.css'
 import { useState, useEffect, useRef, type ChangeEvent } from 'react'
+import { Check } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import * as XLSX from 'xlsx'
 import Card from '../../components/Card/Card'
@@ -604,7 +605,7 @@ function AdminProgramas() {
                         <td>
                           {editing ? (
                             <span style={{ whiteSpace: 'nowrap' }}>
-                              <button className="adm-icon-btn" title="Guardar"  onClick={e => { e.stopPropagation(); saveProg() }}>✓</button>
+                              <button className="adm-icon-btn" title="Guardar"  onClick={e => { e.stopPropagation(); saveProg() }}><Check size={14} strokeWidth={1.5} /></button>
                               <button className="adm-icon-btn" title="Cancelar" onClick={e => { e.stopPropagation(); setDraft(null) }}>✕</button>
                             </span>
                           ) : (
@@ -655,7 +656,7 @@ function AdminProgramas() {
                       </td>
                       <td>
                         <span style={{ whiteSpace: 'nowrap' }}>
-                          <button className="adm-icon-btn" title="Guardar"  onClick={saveProg}>✓</button>
+                          <button className="adm-icon-btn" title="Guardar"  onClick={saveProg}><Check size={14} strokeWidth={1.5} /></button>
                           <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
                         </span>
                       </td>
@@ -727,7 +728,7 @@ function AdminProgramas() {
                           <td>
                             {editing ? (
                               <span style={{ whiteSpace: 'nowrap' }}>
-                                <button className="adm-icon-btn" title="Guardar"  onClick={ev => { ev.stopPropagation(); saveEixo() }}>✓</button>
+                                <button className="adm-icon-btn" title="Guardar"  onClick={ev => { ev.stopPropagation(); saveEixo() }}><Check size={14} strokeWidth={1.5} /></button>
                                 <button className="adm-icon-btn" title="Cancelar" onClick={ev => { ev.stopPropagation(); setEixoDraft(null) }}>✕</button>
                               </span>
                             ) : (
@@ -760,7 +761,7 @@ function AdminProgramas() {
                         </td>
                         <td>
                           <span style={{ whiteSpace: 'nowrap' }}>
-                            <button className="adm-icon-btn" title="Guardar"  onClick={saveEixo}>✓</button>
+                            <button className="adm-icon-btn" title="Guardar"  onClick={saveEixo}><Check size={14} strokeWidth={1.5} /></button>
                             <button className="adm-icon-btn" title="Cancelar" onClick={() => setEixoDraft(null)}>✕</button>
                           </span>
                         </td>
@@ -850,7 +851,7 @@ function AdminProgramas() {
                           <td>
                             {editing ? (
                               <span style={{ whiteSpace: 'nowrap' }}>
-                                <button className="adm-icon-btn" title="Guardar"  onClick={savePlano}>✓</button>
+                                <button className="adm-icon-btn" title="Guardar"  onClick={savePlano}><Check size={14} strokeWidth={1.5} /></button>
                                 <button className="adm-icon-btn" title="Cancelar" onClick={() => setPlanoDraft(null)}>✕</button>
                               </span>
                             ) : (
@@ -897,7 +898,7 @@ function AdminProgramas() {
                         </td>
                         <td>
                           <span style={{ whiteSpace: 'nowrap' }}>
-                            <button className="adm-icon-btn" title="Guardar"  onClick={savePlano}>✓</button>
+                            <button className="adm-icon-btn" title="Guardar"  onClick={savePlano}><Check size={14} strokeWidth={1.5} /></button>
                             <button className="adm-icon-btn" title="Cancelar" onClick={() => setPlanoDraft(null)}>✕</button>
                           </span>
                         </td>
@@ -1314,7 +1315,7 @@ function AdminUtilizadores() {
                         <td>
                           {editing ? (
                             <span style={{ whiteSpace: 'nowrap' }}>
-                              <button className="adm-icon-btn" title="Guardar" onClick={saveRole} disabled={saving}>✓</button>
+                              <button className="adm-icon-btn" title="Guardar" onClick={saveRole} disabled={saving}><Check size={14} strokeWidth={1.5} /></button>
                               <button className="adm-icon-btn" title="Cancelar" onClick={cancelEdit}>✕</button>
                             </span>
                           ) : (
@@ -1516,7 +1517,7 @@ function CostRolesTab() {
                     <td>
                       {editing ? (
                         <span style={{ whiteSpace: 'nowrap' }}>
-                          <button className="adm-icon-btn" title="Guardar"  onClick={saveCostRole}>✓</button>
+                          <button className="adm-icon-btn" title="Guardar"  onClick={saveCostRole}><Check size={14} strokeWidth={1.5} /></button>
                           <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
                         </span>
                       ) : (
@@ -1553,7 +1554,7 @@ function CostRolesTab() {
                   </td>
                   <td>
                     <span style={{ whiteSpace: 'nowrap' }}>
-                      <button className="adm-icon-btn" title="Guardar"  onClick={saveCostRole}>✓</button>
+                      <button className="adm-icon-btn" title="Guardar"  onClick={saveCostRole}><Check size={14} strokeWidth={1.5} /></button>
                       <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
                     </span>
                   </td>
@@ -1847,7 +1848,7 @@ function PessoasTab() {
                     <td>
                       {editing ? (
                         <span style={{ whiteSpace: 'nowrap' }}>
-                          <button className="adm-icon-btn" title="Guardar"  onClick={savePerson}>✓</button>
+                          <button className="adm-icon-btn" title="Guardar"  onClick={savePerson}><Check size={14} strokeWidth={1.5} /></button>
                           <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
                         </span>
                       ) : (
@@ -1924,7 +1925,7 @@ function PessoasTab() {
                   </td>
                   <td>
                     <span style={{ whiteSpace: 'nowrap' }}>
-                      <button className="adm-icon-btn" title="Guardar"  onClick={savePerson}>✓</button>
+                      <button className="adm-icon-btn" title="Guardar"  onClick={savePerson}><Check size={14} strokeWidth={1.5} /></button>
                       <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
                     </span>
                   </td>
@@ -2098,7 +2099,7 @@ function MoedasTab() {
                     <td>
                       {editing ? (
                         <span style={{ whiteSpace: 'nowrap' }}>
-                          <button className="adm-icon-btn" title="Guardar"  onClick={saveCurrency}>✓</button>
+                          <button className="adm-icon-btn" title="Guardar"  onClick={saveCurrency}><Check size={14} strokeWidth={1.5} /></button>
                           <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
                         </span>
                       ) : (
@@ -2137,7 +2138,7 @@ function MoedasTab() {
                   <td />
                   <td>
                     <span style={{ whiteSpace: 'nowrap' }}>
-                      <button className="adm-icon-btn" title="Guardar"  onClick={saveCurrency}>✓</button>
+                      <button className="adm-icon-btn" title="Guardar"  onClick={saveCurrency}><Check size={14} strokeWidth={1.5} /></button>
                       <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
                     </span>
                   </td>
@@ -2307,7 +2308,7 @@ function CategoriasTab({ programs }: ProgTabProps) {
                     <td>
                       {editing ? (
                         <span style={{ whiteSpace: 'nowrap' }}>
-                          <button className="adm-icon-btn" title="Guardar"  onClick={saveCategory}>✓</button>
+                          <button className="adm-icon-btn" title="Guardar"  onClick={saveCategory}><Check size={14} strokeWidth={1.5} /></button>
                           <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
                         </span>
                       ) : (
@@ -2346,7 +2347,7 @@ function CategoriasTab({ programs }: ProgTabProps) {
                   </td>
                   <td>
                     <span style={{ whiteSpace: 'nowrap' }}>
-                      <button className="adm-icon-btn" title="Guardar"  onClick={saveCategory}>✓</button>
+                      <button className="adm-icon-btn" title="Guardar"  onClick={saveCategory}><Check size={14} strokeWidth={1.5} /></button>
                       <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
                     </span>
                   </td>

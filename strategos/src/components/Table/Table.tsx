@@ -1,5 +1,6 @@
 import './Table.css'
 import { useState, type ReactNode } from 'react'
+import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 
 export interface Column {
   key: string
@@ -86,7 +87,11 @@ export default function Table({ columns = [], rows = [], emptyMessage = 'Sem dad
                 {col.label}
                 {col.sortable && (
                   <span className="sort-icon">
-                    {sortKey === col.key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕'}
+                    {sortKey === col.key
+                      ? (sortDir === 'asc'
+                          ? <ArrowUp size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />
+                          : <ArrowDown size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />)
+                      : <ArrowUpDown size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />}
                   </span>
                 )}
               </th>

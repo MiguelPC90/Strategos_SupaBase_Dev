@@ -1,5 +1,6 @@
 import './Gantt.css'
 import { useState, useMemo, useCallback, useRef, useLayoutEffect, useEffect, type ReactNode } from 'react'
+import { ChevronDown, ChevronRight, X } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import EmptyState from '../../components/EmptyState/EmptyState'
@@ -653,7 +654,7 @@ export default function Gantt() {
             <div className="gantt-sticky-cell">
               <div className="gantt-sticky-name">
                 <div className="gantt-name-cell" style={{ paddingLeft: n1Indent }}>
-                  <button className="gantt-toggle" onClick={() => toggle(n1key)}>{n1col ? '▶' : '▼'}</button>
+                  <button className="gantt-toggle" onClick={() => toggle(n1key)}>{n1col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
                   <span className="gantt-name-n1" title={n1g.n1}>{highlightMatch(n1g.n1, searchQuery)}</span>
                 </div>
               </div>
@@ -681,7 +682,7 @@ export default function Gantt() {
               <div className="gantt-sticky-cell">
                 <div className="gantt-sticky-name">
                   <div className="gantt-name-cell" style={{ paddingLeft: n1Indent + 16 }}>
-                    <button className="gantt-toggle" onClick={() => toggle(n2key)}>{n2col ? '▶' : '▼'}</button>
+                    <button className="gantt-toggle" onClick={() => toggle(n2key)}>{n2col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
                     <span className="gantt-name-n2" title={n2g.n2}>{highlightMatch(n2g.n2, searchQuery)}</span>
                   </div>
                 </div>
@@ -768,7 +769,7 @@ export default function Gantt() {
                 <div className="gantt-sticky-cell">
                   <div className="gantt-sticky-name">
                     <div className="gantt-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
-                      <button className="gantt-toggle" onClick={() => toggle(n3key)}>{n3col ? '▶' : '▼'}</button>
+                      <button className="gantt-toggle" onClick={() => toggle(n3key)}>{n3col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
                       <span className="gantt-name-n3" title={n3g.n3}>{highlightMatch(n3g.n3, searchQuery)}</span>
                     </div>
                   </div>
@@ -827,7 +828,7 @@ export default function Gantt() {
             <div className="gantt-sticky-cell">
               <div className="gantt-sticky-name">
                 <div className="gantt-name-cell" style={{ paddingLeft: 4 }}>
-                  <button className="gantt-toggle" onClick={() => toggle(n0key)}>{n0col ? '▶' : '▼'}</button>
+                  <button className="gantt-toggle" onClick={() => toggle(n0key)}>{n0col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
                   <span className="gantt-name-n0" title={n0g.progName}>{highlightMatch(n0g.progName, searchQuery)}</span>
                 </div>
               </div>
@@ -893,7 +894,7 @@ export default function Gantt() {
               />
               {searchQuery && (
                 <button type="button" className="gi-search-clear"
-                        onClick={() => setSearchQuery('')}>×</button>
+                        onClick={() => setSearchQuery('')}><X size={14} strokeWidth={1.5} /></button>
               )}
             </div>
           </div>

@@ -1,6 +1,6 @@
 import './GestaoIniciativas.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { Minimize2, Maximize2, AlertTriangle, Info, X, Link2, Check } from 'lucide-react'
+import { Minimize2, Maximize2, AlertTriangle, Info, X, Link2, Check, ChevronUp, ChevronDown, ChevronRight, ChevronLeft, MoreHorizontal } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
@@ -65,7 +65,7 @@ function Collapsible({ title, defaultOpen = false, rightSlot, children }: {
         </button>
         {rightSlot && <span className="gi-collapsible-right-slot">{rightSlot}</span>}
         <span className="gi-collapsible-chevron" onClick={() => setOpen(o => !o)} aria-hidden="true">
-          {open ? '▲' : '▼'}
+          {open ? <ChevronUp size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}
         </span>
       </div>
       {open && <div className="gi-collapsible-body">{children}</div>}
@@ -620,7 +620,7 @@ function RowMenu({ actId, openId, canUp, canDown, onOpen, onEdit, onDuplicate, o
 
   return (
     <div className="gi-menu-wrap">
-      <button ref={btnRef} className="btn-icon" onClick={handleClick} title="Acções">⋯</button>
+      <button ref={btnRef} className="btn-icon" onClick={handleClick} title="Acções"><MoreHorizontal size={16} strokeWidth={1.5} /></button>
       {open && pos !== null && createPortal(menu, document.body)}
     </div>
   )
@@ -1507,7 +1507,7 @@ export default function GestaoIniciativas({
       <tr key={n1g.key} className="gi-row-n1">
         <td>
           <div className="gi-name-cell" style={{ paddingLeft: 4 }}>
-            <button className="gi-toggle" onClick={() => toggle(n1g.key)}>{n1col ? '▶' : '▼'}</button>
+            <button className="gi-toggle" onClick={() => toggle(n1g.key)}>{n1col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
             <span className="gi-name-text">{n1g.n1}</span>
           </div>
         </td>
@@ -1528,7 +1528,7 @@ export default function GestaoIniciativas({
         <tr key={n2g.key} className="gi-row-n2">
           <td>
             <div className="gi-name-cell" style={{ paddingLeft: 20 }}>
-              <button className="gi-toggle" onClick={() => toggle(n2g.key)}>{n2col ? '▶' : '▼'}</button>
+              <button className="gi-toggle" onClick={() => toggle(n2g.key)}>{n2col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
               <span className="gi-name-text">{n2g.n2}</span>
             </div>
           </td>
@@ -1582,7 +1582,7 @@ export default function GestaoIniciativas({
                 <button
                   className="gi-toggle"
                   onClick={e => { e.stopPropagation(); toggle(n3g.key) }}
-                >{n3col ? '▶' : '▼'}</button>
+                >{n3col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
                 <span className="gi-name-text">{n3g.n3}</span>
               </div>
             </td>
@@ -1637,7 +1637,7 @@ export default function GestaoIniciativas({
                   <button
                     className="gi-toggle"
                     onClick={e => { e.stopPropagation(); toggle(n4g.key) }}
-                  >{n4col ? '▶' : '▼'}</button>
+                  >{n4col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
                   <span className="gi-name-text">{n4g.n4}</span>
                 </div>
               </td>
@@ -1733,7 +1733,7 @@ export default function GestaoIniciativas({
           <tr key={`orphan-eixo:${eixo.id}`} className="gi-row-n1">
             <td>
               <div className="gi-name-cell" style={{ paddingLeft: 4 }}>
-                <button className="gi-toggle" onClick={() => toggle(n1key)}>{n1col ? '▶' : '▼'}</button>
+                <button className="gi-toggle" onClick={() => toggle(n1key)}>{n1col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
                 <span className="gi-name-text">{eixo.name}</span>
               </div>
             </td>
@@ -1752,7 +1752,7 @@ export default function GestaoIniciativas({
           <tr key={`orphan-plano:${plano.id}`} className="gi-row-n2">
             <td>
               <div className="gi-name-cell" style={{ paddingLeft: 20 }}>
-                <button className="gi-toggle" onClick={() => toggle(n2key)}>▼</button>
+                <button className="gi-toggle" onClick={() => toggle(n2key)}><ChevronDown size={14} strokeWidth={1.5} /></button>
                 <span className="gi-name-text">{plano.name}</span>
               </div>
             </td>
@@ -1812,7 +1812,7 @@ export default function GestaoIniciativas({
               className="gi-search-clear"
               onClick={() => setSearchQuery('')}
               title="Limpar pesquisa"
-            >×</button>
+            ><X size={14} strokeWidth={1.5} /></button>
           )}
         </div>
         {!readOnly && (
@@ -1925,11 +1925,11 @@ export default function GestaoIniciativas({
                 </button>
               ) : planoStep === 1 ? (
                 <button className="btn-primary" onClick={goToStep2}>
-                  Continuar →
+                  Continuar <ChevronRight size={14} strokeWidth={1.5} />
                 </button>
               ) : (
                 <>
-                  <button className="btn" onClick={() => setPlanoStep(1)}>← Anterior</button>
+                  <button className="btn" onClick={() => setPlanoStep(1)}><ChevronLeft size={14} strokeWidth={1.5} /> Anterior</button>
                   <button
                     className="btn-primary"
                     onClick={handleSavePlanoWithActivities}
@@ -2130,7 +2130,7 @@ export default function GestaoIniciativas({
                   <div className="gi-upload-selected">
                     <span>📄 {uploadedFile.name}</span>
                     <button type="button" className="gi-upload-clear"
-                      onClick={e => { e.stopPropagation(); clearFile() }}>×</button>
+                      onClick={e => { e.stopPropagation(); clearFile() }}><X size={14} strokeWidth={1.5} /></button>
                   </div>
                 )}
               </div>
@@ -2144,7 +2144,7 @@ export default function GestaoIniciativas({
                         : 'Sem actividades válidas'}
                     </span>
                     {parseErrors.length > 0 && (
-                      <span className="gi-preview-errors-badge">⚠ {parseErrors.length} erro(s)</span>
+                      <span className="gi-preview-errors-badge"><AlertTriangle size={14} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />{parseErrors.length} erro(s)</span>
                     )}
                   </div>
 
