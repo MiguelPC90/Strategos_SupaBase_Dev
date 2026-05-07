@@ -225,7 +225,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 7px 8px;
+    padding: 4px 8px;
     border-radius: 4px;
     border-bottom: 1px solid var(--border);
     font-size: var(--text-md);
@@ -237,7 +237,7 @@
 
   .pds-item-text {
     flex: 1;
-    line-height: 1.5;
+    line-height: 1.4;
     white-space: pre-wrap;
     word-break: break-word;
   }
@@ -274,17 +274,35 @@
   .pds-progress-wrap {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     padding: 4px 0;
   }
 
   .pds-progress-para {
     font-size: var(--text-md);
     color: var(--text);
-    line-height: 1.5;
+    line-height: 1.4;
     margin: 0;
     white-space: pre-wrap;
     word-break: break-word;
+  }
+
+  /* ── Ver mais / Ver menos toggle ─────────────────────────────── */
+  .pds-item-toggle {
+    background: none;
+    border: none;
+    color: var(--stratgos-ember);
+    cursor: pointer;
+    padding: 0;
+    margin-left: 6px;
+    font-size: inherit;
+    font-family: inherit;
+    text-decoration: underline;
+    display: inline;
+  }
+
+  .pds-item-toggle:hover {
+    color: var(--stratgos-ember-dark);
   }
 
   /* Count in Card title — lighter weight */
