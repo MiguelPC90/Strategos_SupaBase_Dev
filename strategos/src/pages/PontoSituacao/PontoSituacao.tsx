@@ -4,9 +4,9 @@ import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Card from '../../components/Card/Card'
-import KpiCard from '../../components/KpiCard/KpiCard'
 import SmartKpi from '../../components/Kpi/SmartKpi'
 import ContagemKpi from '../../components/Kpi/ContagemKpi'
+import RiskMatrix from '../../components/RiskMatrix/RiskMatrix'
 import Badge from '../../components/Badge/Badge'
 import { usePdsEntries, usePdsConsolidated } from '../../hooks/usePdsEntries'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -607,11 +607,21 @@ export default function PontoSituacao() {
                   </h2>
                 </div>
                 <div className="pds-brief-card riscos-card">
-                  <div className="kpi-2col">
-                    <KpiCard label="Total"     value={riskKpis.total}     />
-                    <KpiCard label="Críticos"  value={riskKpis.critical}  color="red"   />
-                    <KpiCard label="Abertos"   value={riskKpis.open}      color="amber" />
-                    <KpiCard label="Mitigados" value={riskKpis.mitigated} color="green" />
+                  <div className="riscos-kpi-row">
+                    <ContagemKpi value={riskKpis.critical}  total={riskKpis.total} label="críticos"  variant="late" />
+                    <ContagemKpi value={riskKpis.open}       total={riskKpis.total} label="abertos"   />
+                    <ContagemKpi value={riskKpis.mitigated}  total={riskKpis.total} label="mitigados" />
+                  </div>
+                  <div className="riscos-matrix-wrapper">
+                    <RiskMatrix
+                      risks={planRisks.filter(r => {
+                        const s = r.status.toLowerCase()
+                        return s !== 'fechado' && s !== 'mitigado'
+                      })}
+                      size={matrixSize}
+                      thresholds={thresholds}
+                      compact
+                    />
                   </div>
                 </div>
               </div>

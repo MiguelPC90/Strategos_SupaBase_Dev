@@ -1,0 +1,140 @@
+@layer components {
+  .rm-wrap {
+    display: inline-flex;
+    flex-direction: column;
+  }
+
+  /* ── Axis layout ─────────────────────────────────────────────── */
+  .rm-body {
+    display: flex;
+    gap: 6px;
+    align-items: stretch;
+  }
+
+  .rm-right {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rm-matrix-row {
+    display: flex;
+    gap: 3px;
+    align-items: stretch;
+  }
+
+  /* ── Y-axis column (numbers) ────────────────────────────────── */
+  .rm-y-col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 18px;
+    flex-shrink: 0;
+  }
+
+  .rm-y-col .rm-axis-num {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 3px;
+  }
+
+  .rm-wrap.compact .rm-y-col .rm-axis-num {
+    height: 28px;
+  }
+
+  /* ── X-axis row (numbers) ───────────────────────────────────── */
+  .rm-x-row {
+    display: flex;
+    gap: 3px;
+    margin-top: 3px;
+  }
+
+  .rm-x-spacer {
+    width: 18px;
+    flex-shrink: 0;
+  }
+
+  .rm-x-nums {
+    display: grid;
+    gap: 3px;
+  }
+
+  .rm-axis-x {
+    justify-content: center;
+    padding-right: 0 !important;
+    padding-top: 2px;
+  }
+
+  /* ── Axis labels ────────────────────────────────────────────── */
+  .rm-axis-num {
+    font-size: var(--text-xs);
+    color: var(--text3);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 2px;
+  }
+
+  .rm-axis-label {
+    font-size: var(--text-xs);
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+  }
+
+  .rm-axis-y {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    flex-shrink: 0;
+    align-self: center;
+  }
+
+  .rm-axis-bottom {
+    text-align: center;
+    margin-top: 4px;
+    display: block;
+  }
+
+  /* ── Grid cells ─────────────────────────────────────────────── */
+  .rm-matrix {
+    display: grid;
+    gap: 3px;
+  }
+
+  .rm-cell {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+  }
+
+  .rm-wrap.compact .rm-cell {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* ── Risk dot indicator ─────────────────────────────────────── */
+  .rm-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--stratgos-ink-900, var(--navy));
+    color: var(--stratgos-cream, #fff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 700;
+  }
+
+  .rm-wrap.compact .rm-dot {
+    width: 11px;
+    height: 11px;
+    font-size: 7px;
+  }
+}
