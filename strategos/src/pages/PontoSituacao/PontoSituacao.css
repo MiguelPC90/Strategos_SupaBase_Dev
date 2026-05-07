@@ -174,16 +174,26 @@
     gap: 12px;
   }
 
-  .riscos-kpi-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+  .riscos-card-body {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  .riscos-kpis-col {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 0 0 auto;
+    min-width: 100px;
+    justify-content: center;
   }
 
   .riscos-matrix-wrapper {
+    flex: 1;
     display: flex;
     justify-content: center;
-    padding-top: 4px;
+    align-items: center;
   }
 
   @media (max-width: 768px) {
@@ -225,7 +235,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 8px;
+    padding: 7px 8px;
     border-radius: 4px;
     border-bottom: 1px solid var(--border);
     font-size: var(--text-md);
@@ -237,7 +247,7 @@
 
   .pds-item-text {
     flex: 1;
-    line-height: 1.4;
+    line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-word;
   }
@@ -274,35 +284,17 @@
   .pds-progress-wrap {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     padding: 4px 0;
   }
 
   .pds-progress-para {
     font-size: var(--text-md);
     color: var(--text);
-    line-height: 1.4;
+    line-height: 1.5;
     margin: 0;
     white-space: pre-wrap;
     word-break: break-word;
-  }
-
-  /* ── Ver mais / Ver menos toggle ─────────────────────────────── */
-  .pds-item-toggle {
-    background: none;
-    border: none;
-    color: var(--stratgos-ember);
-    cursor: pointer;
-    padding: 0;
-    margin-left: 6px;
-    font-size: inherit;
-    font-family: inherit;
-    text-decoration: underline;
-    display: inline;
-  }
-
-  .pds-item-toggle:hover {
-    color: var(--stratgos-ember-dark);
   }
 
   /* Count in Card title — lighter weight */

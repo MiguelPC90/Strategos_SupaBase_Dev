@@ -82,8 +82,6 @@ function renderText(text: string) {
 }
 
 // ── PDS item list ──────────────────────────────────────────────
-const TRUNCATE_LIMIT = 200
-
 type ItemListVariant = 'default' | 'attention' | 'progress'
 
 interface ItemListProps {
@@ -94,17 +92,6 @@ interface ItemListProps {
 }
 
 function ItemList({ items, variant = 'default', emptyMessage = 'Sem itens.', showMeta }: ItemListProps) {
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
-
-  const toggleExpand = (id: string) => {
-    setExpandedIds(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
   if (items.length === 0) {
     return <p className="pds-empty">{emptyMessage}</p>
   }
@@ -113,23 +100,16 @@ function ItemList({ items, variant = 'default', emptyMessage = 'Sem itens.', sho
   if ((variant === 'progress' || variant === 'attention') && items.every(item => !item.date && !item.status)) {
     return (
       <div className="pds-progress-wrap">
-        {items.map((item) => {
-          const isLong = item.text.length > TRUNCATE_LIMIT
-          const isExpanded = expandedIds.has(item.id)
-          const displayText = isLong && !isExpanded ? item.text.slice(0, TRUNCATE_LIMIT) : item.text
-          return (
-            <p key={item.id} className="pds-progress-para">
-              {renderText(displayText)}
-              {isLong && !isExpanded && <>{'…'}<button className="pds-item-toggle" onClick={() => toggleExpand(item.id)}>Ver mais</button></>}
-              {isLong && isExpanded && <button className="pds-item-toggle" onClick={() => toggleExpand(item.id)}>Ver menos</button>}
-              {showMeta && item.created_at && (
-                <span className="pds-item-created">
-                  {item.author ? `${item.author} · ` : ''}{fmtDate(item.created_at.slice(0, 10))}
-                </span>
-              )}
-            </p>
-          )
-        })}
+        {items.map((item, i) => (
+          <p key={i} className="pds-progress-para">
+            {renderText(item.text)}
+            {showMeta && item.created_at && (
+              <span className="pds-item-created">
+                {item.author ? `${item.author} · ` : ''}{fmtDate(item.created_at.slice(0, 10))}
+              </span>
+            )}
+          </p>
+        ))}
       </div>
     )
   }
@@ -141,20 +121,15 @@ function ItemList({ items, variant = 'default', emptyMessage = 'Sem itens.', sho
         <span className="pds-item-header-label col-date">Data</span>
         <span className="pds-item-header-label col-status">Estado</span>
       </div>
-      {items.map((item) => {
+      {items.map((item, i) => {
         const ds = displayStatus(item)
-        const isLong = item.text.length > TRUNCATE_LIMIT
-        const isExpanded = expandedIds.has(item.id)
-        const displayText = isLong && !isExpanded ? item.text.slice(0, TRUNCATE_LIMIT) : item.text
         return (
           <div
-            key={item.id}
+            key={i}
             className={`pds-item-row${variant === 'attention' ? ' pds-attention-row' : ''}`}
           >
             <span className="pds-item-text">
-              {renderText(displayText)}
-              {isLong && !isExpanded && <>{'…'}<button className="pds-item-toggle" onClick={() => toggleExpand(item.id)}>Ver mais</button></>}
-              {isLong && isExpanded && <button className="pds-item-toggle" onClick={() => toggleExpand(item.id)}>Ver menos</button>}
+              {renderText(item.text)}
               {showMeta && item.created_at && (
                 <span className="pds-item-created">
                   {item.author ? `${item.author} · ` : ''}{fmtDate(item.created_at.slice(0, 10))}
@@ -185,7 +160,7 @@ function estadoVariant(status: string): RiskBadge {
 }
 
 // ── Risk matrix component ─────────────────────────────────────
-interface RiskMatrixProps {
+interface InteractiveRiskMatrixProps {
   risks: Risk[]
   size: number
   thresholds: RiskThresholds
@@ -193,7 +168,7 @@ interface RiskMatrixProps {
   onSelect: (ids: string[]) => void
 }
 
-function RiskMatrix({ risks, size, thresholds, selectedIds, onSelect }: RiskMatrixProps) {
+function InteractiveRiskMatrix({ risks, size, thresholds, selectedIds, onSelect }: InteractiveRiskMatrixProps) {
   const cellMap = useMemo(() => {
     const map = new Map<string, Risk[]>()
     for (const r of risks) {
@@ -628,25 +603,27 @@ export default function PontoSituacao() {
               <div className="pds-brief-column pds-brief-column-aside">
                 <div className="pds-brief-header">
                   <h2 className="pds-brief-title">
-                    Riscos{riskKpis.open > 0 && ` · ${riskKpis.open} activos`}
+                    Riscos · {riskKpis.total} total
+                    {riskKpis.mitigated > 0 && ` · ${riskKpis.mitigated} mitigado${riskKpis.mitigated > 1 ? 's' : ''}`}
                   </h2>
                 </div>
                 <div className="pds-brief-card riscos-card">
-                  <div className="riscos-kpi-row">
-                    <ContagemKpi value={riskKpis.critical}  total={riskKpis.total} label="críticos"  variant="late" />
-                    <ContagemKpi value={riskKpis.open}       total={riskKpis.total} label="abertos"   />
-                    <ContagemKpi value={riskKpis.mitigated}  total={riskKpis.total} label="mitigados" />
-                  </div>
-                  <div className="riscos-matrix-wrapper">
-                    <RiskMatrix
-                      risks={planRisks.filter(r => {
-                        const s = r.status.toLowerCase()
-                        return s !== 'fechado' && s !== 'mitigado'
-                      })}
-                      size={matrixSize}
-                      thresholds={thresholds}
-                      compact
-                    />
+                  <div className="riscos-card-body">
+                    <div className="riscos-kpis-col">
+                      <ContagemKpi value={riskKpis.critical} total={riskKpis.total} label="críticos" variant="late" />
+                      <ContagemKpi value={riskKpis.open}     total={riskKpis.total} label="abertos" />
+                    </div>
+                    <div className="riscos-matrix-wrapper">
+                      <RiskMatrix
+                        risks={planRisks.filter(r => {
+                          const s = r.status.toLowerCase()
+                          return s !== 'fechado' && s !== 'mitigado'
+                        })}
+                        size={matrixSize}
+                        thresholds={thresholds}
+                        compact
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -695,7 +672,7 @@ export default function PontoSituacao() {
               <p className="pds-empty">Sem riscos identificados para este plano.</p>
             ) : (
               <div className="pds-risks-split" onClick={e => { if (e.target === e.currentTarget) setSelectedRiskIds([]) }}>
-                <RiskMatrix
+                <InteractiveRiskMatrix
                   risks={planRisks}
                   size={matrixSize}
                   thresholds={thresholds}
