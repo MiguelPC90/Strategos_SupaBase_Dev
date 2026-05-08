@@ -9,6 +9,7 @@ import ContagemKpi from '../../components/Kpi/ContagemKpi'
 import RiskMatrix from '../../components/RiskMatrix/RiskMatrix'
 import InteractiveRiskMatrix from '../../components/InteractiveRiskMatrix/InteractiveRiskMatrix'
 import SortIcon from '../../components/SortIcon/SortIcon'
+import { estadoBadge } from '../../lib/riskHelpers'
 import Badge from '../../components/Badge/Badge'
 import ItemDetailModal from '../../components/ItemDetailModal/ItemDetailModal'
 import { fmtDate, statusVariant, displayStatus, renderText, TODAY } from '../../lib/pdsHelpers'
@@ -148,16 +149,6 @@ function ItemList({ items, variant = 'default', emptyMessage = 'Sem itens.', sho
 }
 
 // ── Risk helpers ────────────────────────────────────────────────
-type RiskBadge = 'green' | 'amber' | 'red' | 'grey'
-
-function estadoVariant(status: string): RiskBadge {
-  const s = status.toLowerCase()
-  if (s === 'aberto')       return 'red'
-  if (s === 'em mitigação') return 'amber'
-  if (s === 'mitigado')     return 'grey'
-  if (s === 'fechado')      return 'green'
-  return 'grey'
-}
 
 // ── Risk table component ──────────────────────────────────────
 type RiskSortKey = 'description' | 'impact' | 'probability' | 'grade' | 'status' | 'mitigation'
@@ -240,7 +231,7 @@ function RiskTable({ risks, size, thresholds, selectedIds, onSelect }: RiskTable
               </span>
             </span>
             <span className="pds-tc">
-              <Badge variant={estadoVariant(r.status)}>{r.status}</Badge>
+              <Badge variant={estadoBadge(r.status)}>{r.status}</Badge>
             </span>
             <span className="pds-risk-mitigation" title={r.mitigation}>{r.mitigation}</span>
           </div>

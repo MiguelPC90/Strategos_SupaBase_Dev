@@ -15,13 +15,12 @@ import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import type { Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
+import { estadoBadge } from '../../lib/riskHelpers'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 import InteractiveRiskMatrix from '../../components/InteractiveRiskMatrix/InteractiveRiskMatrix'
 import SortIcon from '../../components/SortIcon/SortIcon'
 
 // ── Types ──────────────────────────────────────────────────────
-type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
-
 interface PlanOption {
   key:        string
   label:      string
@@ -46,16 +45,6 @@ interface RiskForm {
 // ── Helpers ────────────────────────────────────────────────────
 function calcGrau(impact: number, prob: number): number {
   return impact * prob
-}
-
-const ESTADO_BADGE: Record<string, BadgeVariant> = {
-  'Aberto':        'red',
-  'Em mitigação':  'amber',
-  'Mitigado':      'blue',
-  'Fechado':       'green',
-}
-function estadoBadge(s: string): BadgeVariant {
-  return ESTADO_BADGE[s] ?? 'grey'
 }
 
 function blankForm(): RiskForm {
