@@ -7,6 +7,7 @@ import Card from '../../components/Card/Card'
 import SmartKpi from '../../components/Kpi/SmartKpi'
 import ContagemKpi from '../../components/Kpi/ContagemKpi'
 import RiskMatrix from '../../components/RiskMatrix/RiskMatrix'
+import Modal from '../../components/Modal/Modal'
 import Badge from '../../components/Badge/Badge'
 import { usePdsEntries, usePdsConsolidated } from '../../hooks/usePdsEntries'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -81,6 +82,45 @@ function renderText(text: string) {
   )
 }
 
+// ── Item detail modal ─────────────────────────────────────────
+function ItemDetailModal({ item, onClose }: { item: PdsItem; onClose: () => void }) {
+  const rawTitle = item.text.replace(/\*\*/g, '')
+  const title = rawTitle.length > 60 ? rawTitle.slice(0, 60) + '…' : rawTitle
+  const dateToShow = item.target_date ?? item.date ?? null
+  const ds = displayStatus(item)
+  return (
+    <Modal isOpen onClose={onClose} title={title} width={520}>
+      <div className="pds-item-modal-text">{renderText(item.text)}</div>
+      <div className="pds-item-modal-meta">
+        {item.created_at && (
+          <div className="pds-item-modal-row">
+            <span className="pds-item-modal-label">Criado em</span>
+            <span>{fmtDate(item.created_at.slice(0, 10))}</span>
+          </div>
+        )}
+        {dateToShow && (
+          <div className="pds-item-modal-row">
+            <span className="pds-item-modal-label">Data objectivo</span>
+            <span>{fmtDate(dateToShow)}</span>
+          </div>
+        )}
+        {ds && (
+          <div className="pds-item-modal-row">
+            <span className="pds-item-modal-label">Estado</span>
+            <Badge variant={statusVariant(ds)}>{ds}</Badge>
+          </div>
+        )}
+        {item.author && (
+          <div className="pds-item-modal-row">
+            <span className="pds-item-modal-label">Autor</span>
+            <span>{item.author}</span>
+          </div>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
 // ── PDS item list ──────────────────────────────────────────────
 const TRUNCATE_LIMIT = 200
 
@@ -94,91 +134,88 @@ interface ItemListProps {
 }
 
 function ItemList({ items, variant = 'default', emptyMessage = 'Sem itens.', showMeta }: ItemListProps) {
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
-
-  const toggleExpand = (id: string) => {
-    setExpandedIds(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
+  const [selectedItem, setSelectedItem] = useState<PdsItem | null>(null)
+  const openModal  = (item: PdsItem) => setSelectedItem(item)
+  const closeModal = () => setSelectedItem(null)
 
   if (items.length === 0) {
     return <p className="pds-empty">{emptyMessage}</p>
   }
 
+  const modal = selectedItem
+    ? <ItemDetailModal item={selectedItem} onClose={closeModal} />
+    : null
+
   // Plain-text fallback for progress + attention: all items lack date AND status
   if ((variant === 'progress' || variant === 'attention') && items.every(item => !item.date && !item.status)) {
     return (
-      <div className="pds-progress-wrap">
-        {items.map((item) => {
-          const isLong = item.text.length > TRUNCATE_LIMIT
-          const isExpanded = expandedIds.has(item.id)
-          const displayText = isLong && !isExpanded
-            ? item.text.slice(0, TRUNCATE_LIMIT) + '…'
-            : item.text
-          return (
-            <p key={item.id} className="pds-progress-para">
-              {renderText(displayText)}
-              {isLong && (
-                <button type="button" className="pds-item-toggle" onClick={() => toggleExpand(item.id)}>
-                  {isExpanded ? 'Ver menos' : 'Ver mais'}
-                </button>
-              )}
-              {showMeta && item.created_at && (
-                <span className="pds-item-created">
-                  {item.author ? `${item.author} · ` : ''}{fmtDate(item.created_at.slice(0, 10))}
-                </span>
-              )}
-            </p>
-          )
-        })}
-      </div>
+      <>
+        <div className="pds-progress-wrap">
+          {items.map((item) => {
+            const isLong = item.text.length > TRUNCATE_LIMIT
+            const displayText = isLong ? item.text.slice(0, TRUNCATE_LIMIT) + '…' : item.text
+            return (
+              <p key={item.id} className="pds-progress-para">
+                {renderText(displayText)}
+                {isLong && (
+                  <button type="button" className="pds-item-toggle" onClick={() => openModal(item)}>
+                    Ver mais
+                  </button>
+                )}
+                {showMeta && item.created_at && (
+                  <span className="pds-item-created">
+                    {item.author ? `${item.author} · ` : ''}{fmtDate(item.created_at.slice(0, 10))}
+                  </span>
+                )}
+              </p>
+            )
+          })}
+        </div>
+        {modal}
+      </>
     )
   }
 
   return (
-    <div className="pds-item-rows">
-      <div className="pds-item-header">
-        <span className="pds-item-header-label col-item">Item</span>
-        <span className="pds-item-header-label col-date">Data</span>
-        <span className="pds-item-header-label col-status">Estado</span>
+    <>
+      <div className="pds-item-rows">
+        <div className="pds-item-header">
+          <span className="pds-item-header-label col-item">Item</span>
+          <span className="pds-item-header-label col-date">Data</span>
+          <span className="pds-item-header-label col-status">Estado</span>
+        </div>
+        {items.map((item) => {
+          const ds = displayStatus(item)
+          const isLong = item.text.length > TRUNCATE_LIMIT
+          const displayText = isLong ? item.text.slice(0, TRUNCATE_LIMIT) + '…' : item.text
+          return (
+            <div
+              key={item.id}
+              className={`pds-item-row${variant === 'attention' ? ' pds-attention-row' : ''}`}
+            >
+              <span className="pds-item-text">
+                {renderText(displayText)}
+                {isLong && (
+                  <button type="button" className="pds-item-toggle" onClick={() => openModal(item)}>
+                    Ver mais
+                  </button>
+                )}
+                {showMeta && item.created_at && (
+                  <span className="pds-item-created">
+                    {item.author ? `${item.author} · ` : ''}{fmtDate(item.created_at.slice(0, 10))}
+                  </span>
+                )}
+              </span>
+              <span className="pds-col-date">{item.date ? fmtDate(item.date) : '—'}</span>
+              <span className="pds-item-badge">
+                {ds && <Badge variant={statusVariant(ds)}>{ds}</Badge>}
+              </span>
+            </div>
+          )
+        })}
       </div>
-      {items.map((item) => {
-        const ds = displayStatus(item)
-        const isLong = item.text.length > TRUNCATE_LIMIT
-        const isExpanded = expandedIds.has(item.id)
-        const displayText = isLong && !isExpanded
-          ? item.text.slice(0, TRUNCATE_LIMIT) + '…'
-          : item.text
-        return (
-          <div
-            key={item.id}
-            className={`pds-item-row${variant === 'attention' ? ' pds-attention-row' : ''}`}
-          >
-            <span className="pds-item-text">
-              {renderText(displayText)}
-              {isLong && (
-                <button type="button" className="pds-item-toggle" onClick={() => toggleExpand(item.id)}>
-                  {isExpanded ? 'Ver menos' : 'Ver mais'}
-                </button>
-              )}
-              {showMeta && item.created_at && (
-                <span className="pds-item-created">
-                  {item.author ? `${item.author} · ` : ''}{fmtDate(item.created_at.slice(0, 10))}
-                </span>
-              )}
-            </span>
-            <span className="pds-col-date">{item.date ? fmtDate(item.date) : '—'}</span>
-            <span className="pds-item-badge">
-              {ds && <Badge variant={statusVariant(ds)}>{ds}</Badge>}
-            </span>
-          </div>
-        )
-      })}
-    </div>
+      {modal}
+    </>
   )
 }
 

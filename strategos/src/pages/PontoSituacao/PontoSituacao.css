@@ -286,6 +286,8 @@
     flex-direction: column;
     gap: 6px;
     padding: 4px 0;
+    max-height: 40vh;
+    overflow-y: auto;
   }
 
   .pds-progress-para {
@@ -295,24 +297,82 @@
     margin: 0;
     white-space: pre-wrap;
     word-break: break-word;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pds-progress-para:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
   }
 
-  /* ── Ver mais / Ver menos toggle ─────────────────────────────── */
+  /* ── Item rows scroll ────────────────────────────────────────── */
+  .pds-item-rows {
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+
+  .pds-item-rows::-webkit-scrollbar,
+  .pds-progress-wrap::-webkit-scrollbar { width: 6px; }
+  .pds-item-rows::-webkit-scrollbar-thumb,
+  .pds-progress-wrap::-webkit-scrollbar-thumb {
+    background: var(--border2);
+    border-radius: 3px;
+  }
+
+  /* ── Ver mais toggle (neutral) ───────────────────────────────── */
   .pds-item-toggle {
     background: none;
     border: none;
-    color: var(--stratgos-ember);
+    color: var(--text2);
     cursor: pointer;
     padding: 0;
     margin-left: 6px;
     font-size: inherit;
     font-family: inherit;
-    text-decoration: underline;
+    font-weight: 500;
+    text-decoration: none;
     display: inline;
   }
 
   .pds-item-toggle:hover {
-    color: var(--stratgos-ember-dark);
+    color: var(--text);
+    text-decoration: underline;
+  }
+
+  /* ── Item detail modal ───────────────────────────────────────── */
+  .pds-item-modal-text {
+    font-size: var(--text-md);
+    color: var(--text);
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-bottom: 16px;
+  }
+
+  .pds-item-modal-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+
+  .pds-item-modal-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: var(--text-md);
+    color: var(--text);
+  }
+
+  .pds-item-modal-label {
+    font-size: var(--text-xs);
+    color: var(--text3);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    min-width: 100px;
+    flex-shrink: 0;
   }
 
   /* Count in Card title — lighter weight */
