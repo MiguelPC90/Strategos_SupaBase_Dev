@@ -233,7 +233,6 @@ export default function PlanoPage() {
         )}
         {activeTab === 'riscos' && planoId && (
           <GestaoRiscos
-            mode="embedded"
             planoId={planoId}
             programId={plano.program_id ?? undefined}
           />

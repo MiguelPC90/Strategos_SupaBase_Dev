@@ -9,9 +9,6 @@ import Badge from '../../components/Badge/Badge'
 import Modal from '../../components/Modal/Modal'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { useRisks } from '../../hooks/useRisks'
-import { usePlanos } from '../../hooks/usePlanos'
-import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
-import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import type { Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
@@ -21,18 +18,6 @@ import InteractiveRiskMatrix from '../../components/InteractiveRiskMatrix/Intera
 import SortIcon from '../../components/SortIcon/SortIcon'
 
 // ── Types ──────────────────────────────────────────────────────
-interface PlanOption {
-  key:        string
-  label:      string
-  n0:         string
-  n1:         string
-  n2:         string
-  id0:        string
-  id1:        string
-  id2:        string
-  program_id: string | null
-}
-
 interface RiskForm {
   id:          string | null
   description: string
@@ -211,23 +196,13 @@ function RowMenu({ riskId, openId, onOpen, onEdit, onDuplicate, onDelete }: RowM
 
 // ── Main component ─────────────────────────────────────────────
 interface GestaoRiscosProps {
-  mode?: 'standalone' | 'embedded'
-  /** UUID of the plano — required when mode='embedded' */
-  planoId?: string
-  /** program_id of the plano — passed to avoid an extra lookup */
+  planoId?:   string
   programId?: string
 }
 
-export default function GestaoRiscos({
-  mode = 'standalone',
-  planoId: propPlanoId,
-  programId: propProgramId,
-}: GestaoRiscosProps = {}) {
-  const { filters }  = useFilters()
-  const programs = useAccessiblePrograms('gestao-riscos')
+export default function GestaoRiscos({ planoId, programId }: GestaoRiscosProps = {}) {
   const { showToast } = useToast()
   const readOnly = !useCanEditCurrent('gestao-riscos')
-  const [selProgId,   setSelProgId]   = useState<string>('')
   const [matrixSize,  setMatrixSize]  = useState(5)
   const [thresholds,  setThresholds]  = useState<RiskThresholds>(DEFAULT_THRESHOLDS)
 
@@ -250,70 +225,13 @@ export default function GestaoRiscos({
       })
   }, [])
 
-  // Initialise from global filter or first available program (once)
-  useEffect(() => {
-    if (mode === 'embedded') return
-    if (selProgId) return
-    const init = filters.programIds[0] ?? programs[0]?.id
-    if (init) setSelProgId(init)
-  }, [programs]) // eslint-disable-line react-hooks/exhaustive-deps
+  const { risks, loading, refetch } = useRisks(programId)
 
-  const programId = mode === 'embedded' ? propProgramId : (selProgId || undefined)
-
-  const { planos, loading: planosLoading } = usePlanos(programId)
-  const { risks, loading: risksLoading, refetch } = useRisks(programId)
-  const loading = risksLoading || planosLoading
-
-  // ── Plan options from planos table ──────────────────────────
-  const planOptions = useMemo<PlanOption[]>(() =>
-    planos.map(p => {
-      const eixoName = p.eixo?.name ?? ''
-      return {
-        key:        p.id,
-        label:      eixoName ? `${eixoName} › ${p.name}` : p.name,
-        n0:         '',
-        n1:         eixoName,
-        n2:         p.name,
-        id0:        '',
-        id1:        p.eixo?.code ?? '',
-        id2:        p.code,
-        program_id: p.program_id,
-      }
-    }),
-    [planos]
-  )
-
-  const [selectedKey, setSelectedKey] = useState<string>('')
-
-  // Reset plan when program changes (standalone only)
-  useEffect(() => {
-    if (mode === 'embedded') return
-    setSelectedKey('')
-  }, [programId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-select first plan once options load (or when program changes)
-  useEffect(() => {
-    if (mode === 'embedded') {
-      setSelectedKey(propPlanoId ?? '')
-      return
-    }
-    if (planOptions.length === 0) return
-    if (planOptions.some(p => p.key === selectedKey)) return
-    setSelectedKey(planOptions[0].key)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planOptions, propPlanoId, mode])
-
-  const selectedPlan = useMemo(
-    () => planOptions.find(p => p.key === selectedKey) ?? null,
-    [planOptions, selectedKey],
-  )
-
-  // Filter risks for selected plan via plano_id
+  // Filter risks for selected plano
   const planRisks = useMemo<Risk[]>(() => {
-    const key = mode === 'embedded' ? propPlanoId : selectedPlan?.key
-    if (!key) return []
-    return risks.filter(r => r.plano_id === key)
-  }, [risks, selectedPlan, mode, propPlanoId])
+    if (!planoId) return []
+    return risks.filter(r => r.plano_id === planoId)
+  }, [risks, planoId])
 
   // ── Selection state ──────────────────────────────────────────
   const [selectedRiskIds, setSelectedRiskIds] = useState<string[]>([])
@@ -367,7 +285,7 @@ export default function GestaoRiscos({
 
   // ── Save ─────────────────────────────────────────────────────
   const handleSave = useCallback(async () => {
-    if (!panelForm || !selectedPlan) return
+    if (!panelForm || !planoId) return
     if (!panelForm.description.trim()) {
       setPanelErr('Descrição obrigatória.')
       return
@@ -395,8 +313,8 @@ export default function GestaoRiscos({
         .from('risks')
         .insert({
           ...payload,
-          plano_id:   selectedPlan.key,
-          program_id: selectedPlan.program_id,
+          plano_id:   planoId,
+          program_id: programId,
           sort_order: planRisks.length,
         })
       if (error) errMsg = error.message
@@ -407,7 +325,7 @@ export default function GestaoRiscos({
     setPanelForm(null)
     showToast('Guardado!')
     refetch()
-  }, [panelForm, selectedPlan, planRisks.length, refetch])
+  }, [panelForm, planoId, programId, planRisks.length, refetch])
 
   // ── Delete from panel footer ──────────────────────────────────
   const handlePanelDelete = useCallback(async () => {
@@ -434,10 +352,6 @@ export default function GestaoRiscos({
     showToast('Eliminado.', 'info')
     refetch()
   }, [refetch])
-
-  // ── Derived flags ─────────────────────────────────────────────
-  const noProgram = mode === 'embedded' ? false : !programId
-  const noPlans   = mode === 'embedded' ? false : (!noProgram && !planosLoading && planOptions.length === 0)
 
   // ── Sort state ────────────────────────────────────────────────
   type SortKey = 'description' | 'impact' | 'probability' | 'grade' | 'status' | 'mitigation'
@@ -471,60 +385,13 @@ export default function GestaoRiscos({
 
   return (
     <div className="gr-page">
-      {/* Controls bar — standalone only */}
-      {mode === 'standalone' && (
-        <div className="gr-controls-bar">
-          {programs.length > 1 && (
-            <>
-              <label className="gr-label">Programa:</label>
-              <select
-                className="styled-select"
-                value={selProgId}
-                onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
-              >
-                {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </>
-          )}
-          <label className="gr-label">Plano de Acção:</label>
-          <select
-            className="styled-select"
-            value={selectedKey}
-            onChange={e => setSelectedKey(e.target.value)}
-            disabled={noProgram || noPlans}
-          >
-            {noProgram ? (
-              <option value="">— selecciona um programa —</option>
-            ) : noPlans ? (
-              <option value="">— sem planos disponíveis —</option>
-            ) : (
-              planOptions.map(p => (
-                <option key={p.key} value={p.key}>{p.label}</option>
-              ))
-            )}
-          </select>
-
-          <div className="gr-spacer" />
-
-          {!readOnly && (
-            <button
-              className="btn-primary"
-              onClick={openNew}
-              disabled={!selectedPlan}
-            >
-              Novo Risco
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Embedded action bar */}
-      {mode === 'embedded' && !readOnly && (
+      {/* Action bar */}
+      {!readOnly && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
           <button
             className="btn-primary"
             onClick={openNew}
-            disabled={!selectedPlan}
+            disabled={!planoId}
           >
             Novo Risco
           </button>
@@ -536,18 +403,6 @@ export default function GestaoRiscos({
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
             <Spinner />
-          </div>
-        ) : noProgram ? (
-          <div className="gr-empty">
-            Selecciona um programa para gerir riscos.
-          </div>
-        ) : noPlans ? (
-          <div className="gr-empty">
-            Nenhum plano de acção disponível para este programa.
-          </div>
-        ) : (!selectedPlan && mode === 'standalone') ? (
-          <div className="gr-empty">
-            Seleccione um plano para gerir riscos.
           </div>
         ) : planRisks.length === 0 ? (
           <EmptyState
