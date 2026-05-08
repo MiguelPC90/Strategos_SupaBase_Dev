@@ -67,6 +67,7 @@
     display: flex;
     flex-direction: column;
     min-height: 220px;
+    max-height: 40vh;
     overflow: hidden;
   }
 
@@ -92,7 +93,7 @@
     padding: 8px 8px 12px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
   }
 
   .pds-empty-items {
@@ -162,7 +163,7 @@
     gap: 8px;
     width: 100%;
     box-sizing: border-box;
-    padding: 12px 14px;
+    padding: 9px 12px;
   }
 
   .pds-move-btns {
@@ -451,6 +452,26 @@
     display: flex;
     gap: 8px;
     margin-top: 4px;
+  }
+
+  /* ── Ver mais toggle (neutral) ──────────────────────────────── */
+  .pds-item-toggle {
+    background: none;
+    border: none;
+    color: var(--text2);
+    cursor: pointer;
+    padding: 0;
+    margin-left: 6px;
+    font-size: inherit;
+    font-family: inherit;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline;
+  }
+
+  .pds-item-toggle:hover {
+    color: var(--text);
+    text-decoration: underline;
   }
 
   /* ── Sort toggle button ──────────────────────────────────────── */

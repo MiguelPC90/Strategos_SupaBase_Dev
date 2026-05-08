@@ -7,8 +7,9 @@ import Card from '../../components/Card/Card'
 import SmartKpi from '../../components/Kpi/SmartKpi'
 import ContagemKpi from '../../components/Kpi/ContagemKpi'
 import RiskMatrix from '../../components/RiskMatrix/RiskMatrix'
-import Modal from '../../components/Modal/Modal'
 import Badge from '../../components/Badge/Badge'
+import ItemDetailModal from '../../components/ItemDetailModal/ItemDetailModal'
+import { fmtDate, statusVariant, displayStatus, renderText, TODAY } from '../../lib/pdsHelpers'
 import { usePdsEntries, usePdsConsolidated } from '../../hooks/usePdsEntries'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
@@ -24,8 +25,6 @@ import {
   computeHealth, DEFAULT_HEALTH_CONFIG,
   type HealthConfig, type HealthInput,
 } from '../../lib/healthRules'
-
-const TODAY = new Date().toISOString().slice(0, 10)
 
 type SortDir = 'asc' | 'desc'
 function sortItems(items: PdsItem[], dir: SortDir): PdsItem[] {
@@ -45,79 +44,6 @@ function SortBtn({ dir, onToggle }: { dir: SortDir; onToggle: () => void }) {
     >
       {dir === 'asc' ? <ArrowUp size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} /> : <ArrowDown size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} />}
     </button>
-  )
-}
-
-// ── Date formatter — always dd/mm/yyyy ────────────────────────
-function fmtDate(iso: string): string {
-  const [y, m, d] = iso.slice(0, 10).split('-')
-  return `${d}/${m}/${y}`
-}
-
-// ── Item status → Badge variant ──────────────────────────────
-type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
-function statusVariant(status: string): BadgeVariant {
-  const s = status.toLowerCase()
-  if (s === 'concluído' || s === 'concluída') return 'green'
-  if (s === 'em curso') return 'blue'
-  if (s === 'em atraso') return 'red'
-  return 'grey'
-}
-
-// ── Display status: auto-override to 'Em atraso' when date is past ──
-function displayStatus(item: PdsItem): string | null {
-  if (!item.status) return null
-  const s = item.status.toLowerCase()
-  if (s !== 'concluído' && s !== 'concluída' && item.date && item.date < TODAY) {
-    return 'Em atraso'
-  }
-  return item.status
-}
-
-// ── Text renderer: **bold** + newlines via CSS pre-wrap ────────
-function renderText(text: string) {
-  const parts = text.split(/\*\*(.*?)\*\*/g)
-  return parts.map((p, i) =>
-    i % 2 === 1 ? <strong key={i}>{p}</strong> : <span key={i}>{p}</span>
-  )
-}
-
-// ── Item detail modal ─────────────────────────────────────────
-function ItemDetailModal({ item, onClose }: { item: PdsItem; onClose: () => void }) {
-  const rawTitle = item.text.replace(/\*\*/g, '')
-  const title = rawTitle.length > 60 ? rawTitle.slice(0, 60) + '…' : rawTitle
-  const dateToShow = item.target_date ?? item.date ?? null
-  const ds = displayStatus(item)
-  return (
-    <Modal isOpen onClose={onClose} title={title} width={520}>
-      <div className="pds-item-modal-text">{renderText(item.text)}</div>
-      <div className="pds-item-modal-meta">
-        {item.created_at && (
-          <div className="pds-item-modal-row">
-            <span className="pds-item-modal-label">Criado em</span>
-            <span>{fmtDate(item.created_at.slice(0, 10))}</span>
-          </div>
-        )}
-        {dateToShow && (
-          <div className="pds-item-modal-row">
-            <span className="pds-item-modal-label">Data objectivo</span>
-            <span>{fmtDate(dateToShow)}</span>
-          </div>
-        )}
-        {ds && (
-          <div className="pds-item-modal-row">
-            <span className="pds-item-modal-label">Estado</span>
-            <Badge variant={statusVariant(ds)}>{ds}</Badge>
-          </div>
-        )}
-        {item.author && (
-          <div className="pds-item-modal-row">
-            <span className="pds-item-modal-label">Autor</span>
-            <span>{item.author}</span>
-          </div>
-        )}
-      </div>
-    </Modal>
   )
 }
 

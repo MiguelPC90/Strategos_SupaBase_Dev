@@ -3,6 +3,8 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import Modal from '../../components/Modal/Modal'
+import ItemDetailModal from '../../components/ItemDetailModal/ItemDetailModal'
+import { renderText } from '../../lib/pdsHelpers'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { supabase } from '../../lib/supabase'
 import { useFilters } from '../../context/FilterContext'
@@ -48,6 +50,7 @@ const SECTION_KEY_TO_PDS: Record<SectionKey, PdsSection> = {
 }
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+const TRUNCATE_LIMIT = 200
 
 // ── Helpers ────────────────────────────────────────────────────
 function newId(): string {
@@ -127,7 +130,13 @@ function PdsSection({
   const pdsSection = SECTION_KEY_TO_PDS[sectionKey]
   const cfg        = SECTION_CONFIG[pdsSection]
 
+  const [selectedItem, setSelectedItem] = useState<PdsItem | null>(null)
+  const openModal  = (item: PdsItem) => setSelectedItem(item)
+  const closeModal = () => setSelectedItem(null)
+  const modal = selectedItem ? <ItemDetailModal item={selectedItem} onClose={closeModal} /> : null
+
   return (
+    <>
     <div className="pds-section">
       <div className="pds-section-head">
         <span>{title}</span>
@@ -140,8 +149,10 @@ function PdsSection({
         )}
 
         {items.map((item) => {
-          const isHidden  = !!item.hidden_at
-          const isEditing = editingId === item.id
+          const isHidden    = !!item.hidden_at
+          const isEditing   = editingId === item.id
+          const isLong      = item.text.length > TRUNCATE_LIMIT
+          const displayText = isLong ? item.text.slice(0, TRUNCATE_LIMIT) + '…' : item.text
 
           return (
             <div
@@ -199,7 +210,14 @@ function PdsSection({
               ) : (
                 <div className="pds-item-row">
                   <div className="pds-item-body">
-                    <div className="pds-item-text-readonly">{item.text}</div>
+                    <div className="pds-item-text-readonly">
+                      {renderText(displayText)}
+                      {isLong && (
+                        <button type="button" className="pds-item-toggle" onClick={() => openModal(item)}>
+                          Ver mais
+                        </button>
+                      )}
+                    </div>
                     {(item.author || item.created_at) && (
                       <span className="pds-item-meta-created">
                         {item.author ? `${item.author} · ` : ''}
@@ -269,6 +287,8 @@ function PdsSection({
         </button>
       )}
     </div>
+    {modal}
+    </>
   )
 }
 
