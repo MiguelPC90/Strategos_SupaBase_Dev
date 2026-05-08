@@ -463,15 +463,13 @@ export default function GestaoRiscos({
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   const handleSort = useCallback((key: SortKey) => {
-    setSortBy(prev => {
-      if (prev === key) {
-        setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-        return prev
-      }
+    if (sortBy === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(key)
       setSortDir('asc')
-      return key
-    })
-  }, [])
+    }
+  }, [sortBy])
 
   const sortedRisks = useMemo(() => {
     if (!sortBy) return planRisks
@@ -604,22 +602,22 @@ export default function GestaoRiscos({
               <thead>
                 <tr>
                   <th className="t-label gr-th-sortable" onClick={() => handleSort('description')}>
-                    Descrição <SortIcon active={sortBy === 'description'} dir={sortDir} />
+                    <span className="gr-th-content">Descrição <SortIcon active={sortBy === 'description'} dir={sortDir} /></span>
                   </th>
                   <th className="gr-th-c t-label gr-th-sortable" onClick={() => handleSort('impact')}>
-                    Impacto <SortIcon active={sortBy === 'impact'} dir={sortDir} />
+                    <span className="gr-th-content">Impacto <SortIcon active={sortBy === 'impact'} dir={sortDir} /></span>
                   </th>
                   <th className="gr-th-c t-label gr-th-sortable" onClick={() => handleSort('probability')}>
-                    Probabilidade <SortIcon active={sortBy === 'probability'} dir={sortDir} />
+                    <span className="gr-th-content">Probabilidade <SortIcon active={sortBy === 'probability'} dir={sortDir} /></span>
                   </th>
                   <th className="gr-th-c t-label gr-th-sortable" onClick={() => handleSort('grade')}>
-                    Grau <SortIcon active={sortBy === 'grade'} dir={sortDir} />
+                    <span className="gr-th-content">Grau <SortIcon active={sortBy === 'grade'} dir={sortDir} /></span>
                   </th>
                   <th className="gr-th-c t-label gr-th-sortable" onClick={() => handleSort('status')}>
-                    Estado <SortIcon active={sortBy === 'status'} dir={sortDir} />
+                    <span className="gr-th-content">Estado <SortIcon active={sortBy === 'status'} dir={sortDir} /></span>
                   </th>
                   <th className="t-label gr-th-sortable" onClick={() => handleSort('mitigation')}>
-                    Mitigação <SortIcon active={sortBy === 'mitigation'} dir={sortDir} />
+                    <span className="gr-th-content">Mitigação <SortIcon active={sortBy === 'mitigation'} dir={sortDir} /></span>
                   </th>
                   <th className="gr-th-c t-label" />
                 </tr>

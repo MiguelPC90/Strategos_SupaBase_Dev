@@ -54,14 +54,17 @@
   .gr-th-sortable {
     cursor: pointer;
     user-select: none;
+  }
+
+  .gr-th-sortable:hover { color: var(--text); }
+
+  .gr-th-content {
     display: inline-flex;
     align-items: center;
     gap: 4px;
   }
 
-  .gr-th-sortable:hover { color: var(--text); }
-
-  .gr-th-c.gr-th-sortable { justify-content: center; }
+  .gr-th-c .gr-th-content { justify-content: center; }
 
   .gr-sort-icon-inactive { opacity: 0.3; }
 
