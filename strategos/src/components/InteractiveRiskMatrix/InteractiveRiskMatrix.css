@@ -93,7 +93,7 @@
   }
 
   .irm-cell.selected {
-    box-shadow: 0 0 0 2px var(--navy), 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 0 0 2px var(--stratgos-ink-700), 0 2px 8px rgba(0,0,0,0.2);
     transform: scale(1.08);
   }
 

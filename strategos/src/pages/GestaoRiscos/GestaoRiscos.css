@@ -51,6 +51,20 @@
     white-space: nowrap;
   }
 
+  .gr-th-sortable {
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .gr-th-sortable:hover { color: var(--text); }
+
+  .gr-th-c.gr-th-sortable { justify-content: center; }
+
+  .gr-sort-icon-inactive { opacity: 0.3; }
+
   .gr-table td {
     padding: 7px 10px;
     border-bottom: 1px solid var(--border);

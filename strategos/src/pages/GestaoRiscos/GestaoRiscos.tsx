@@ -1,6 +1,6 @@
 import './GestaoRiscos.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import { createPortal } from 'react-dom'
@@ -217,6 +217,14 @@ function RowMenu({ riskId, openId, onOpen, onEdit, onDuplicate, onDelete }: RowM
       {open && pos !== null && createPortal(menu, document.body)}
     </div>
   )
+}
+
+// ── Sort icon ──────────────────────────────────────────────────
+function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
+  if (!active) return <ArrowUpDown size={12} strokeWidth={1.5} className="gr-sort-icon-inactive" />
+  return dir === 'asc'
+    ? <ArrowUp size={12} strokeWidth={1.5} />
+    : <ArrowDown size={12} strokeWidth={1.5} />
 }
 
 // ── Main component ─────────────────────────────────────────────
@@ -449,6 +457,38 @@ export default function GestaoRiscos({
   const noProgram = mode === 'embedded' ? false : !programId
   const noPlans   = mode === 'embedded' ? false : (!noProgram && !planosLoading && planOptions.length === 0)
 
+  // ── Sort state ────────────────────────────────────────────────
+  type SortKey = 'description' | 'impact' | 'probability' | 'grade' | 'status' | 'mitigation'
+  const [sortBy,  setSortBy]  = useState<SortKey | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = useCallback((key: SortKey) => {
+    setSortBy(prev => {
+      if (prev === key) {
+        setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+        return prev
+      }
+      setSortDir('asc')
+      return key
+    })
+  }, [])
+
+  const sortedRisks = useMemo(() => {
+    if (!sortBy) return planRisks
+    return [...planRisks].sort((a, b) => {
+      let cmp = 0
+      switch (sortBy) {
+        case 'description':  cmp = a.description.localeCompare(b.description); break
+        case 'impact':       cmp = a.impact - b.impact; break
+        case 'probability':  cmp = a.probability - b.probability; break
+        case 'grade':        cmp = (a.impact * a.probability) - (b.impact * b.probability); break
+        case 'status':       cmp = a.status.localeCompare(b.status); break
+        case 'mitigation':   cmp = (a.mitigation || '').localeCompare(b.mitigation || ''); break
+      }
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+  }, [planRisks, sortBy, sortDir])
+
   return (
     <div className="gr-page">
       {/* Controls bar — standalone only */}
@@ -563,17 +603,29 @@ export default function GestaoRiscos({
               </colgroup>
               <thead>
                 <tr>
-                  <th className="t-label">Descrição</th>
-                  <th className="gr-th-c t-label">Impacto</th>
-                  <th className="gr-th-c t-label">Probabilidade</th>
-                  <th className="gr-th-c t-label">Grau</th>
-                  <th className="gr-th-c t-label">Estado</th>
-                  <th className="t-label">Mitigação</th>
+                  <th className="t-label gr-th-sortable" onClick={() => handleSort('description')}>
+                    Descrição <SortIcon active={sortBy === 'description'} dir={sortDir} />
+                  </th>
+                  <th className="gr-th-c t-label gr-th-sortable" onClick={() => handleSort('impact')}>
+                    Impacto <SortIcon active={sortBy === 'impact'} dir={sortDir} />
+                  </th>
+                  <th className="gr-th-c t-label gr-th-sortable" onClick={() => handleSort('probability')}>
+                    Probabilidade <SortIcon active={sortBy === 'probability'} dir={sortDir} />
+                  </th>
+                  <th className="gr-th-c t-label gr-th-sortable" onClick={() => handleSort('grade')}>
+                    Grau <SortIcon active={sortBy === 'grade'} dir={sortDir} />
+                  </th>
+                  <th className="gr-th-c t-label gr-th-sortable" onClick={() => handleSort('status')}>
+                    Estado <SortIcon active={sortBy === 'status'} dir={sortDir} />
+                  </th>
+                  <th className="t-label gr-th-sortable" onClick={() => handleSort('mitigation')}>
+                    Mitigação <SortIcon active={sortBy === 'mitigation'} dir={sortDir} />
+                  </th>
                   <th className="gr-th-c t-label" />
                 </tr>
               </thead>
               <tbody>
-                {planRisks.map(r => {
+                {sortedRisks.map(r => {
                   const g  = calcGrau(r.impact, r.probability)
                   const gs = gradeStyle(g, matrixSize, thresholds)
                   return (
