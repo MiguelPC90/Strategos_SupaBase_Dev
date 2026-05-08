@@ -16,7 +16,7 @@ import { supabase } from '../../lib/supabase'
 import type { Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
-import RiskMatrix from '../../components/RiskMatrix/RiskMatrix'
+import InteractiveRiskMatrix from '../../components/InteractiveRiskMatrix/InteractiveRiskMatrix'
 
 // ── Types ──────────────────────────────────────────────────────
 type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
@@ -325,6 +325,16 @@ export default function GestaoRiscos({
     return risks.filter(r => r.plano_id === key)
   }, [risks, selectedPlan, mode, propPlanoId])
 
+  // ── Selection state ──────────────────────────────────────────
+  const [selectedRiskIds, setSelectedRiskIds] = useState<string[]>([])
+
+  const handleSelectRisk = useCallback((ids: string[]) => {
+    setSelectedRiskIds(prev => {
+      const sameSet = prev.length === ids.length && ids.every(id => prev.includes(id))
+      return sameSet ? [] : ids
+    })
+  }, [])
+
   // ── Menu state ───────────────────────────────────────────────
   const [menuId, setMenuId] = useState<string | null>(null)
 
@@ -527,13 +537,17 @@ export default function GestaoRiscos({
             {...(!readOnly && { actionLabel: '+ Novo Risco', onAction: openNew })}
           />
         ) : (
-          <div className="gr-risks-split">
+          <div
+            className="gr-risks-split"
+            onClick={e => { if (e.target === e.currentTarget) setSelectedRiskIds([]) }}
+          >
             <div className="gr-risks-matrix-wrap">
-              <RiskMatrix
+              <InteractiveRiskMatrix
                 risks={planRisks}
                 size={matrixSize}
                 thresholds={thresholds}
-                compact
+                selectedIds={selectedRiskIds}
+                onSelect={handleSelectRisk}
               />
             </div>
             <div className="gr-risks-table-wrap">
@@ -565,7 +579,8 @@ export default function GestaoRiscos({
                   return (
                     <tr
                       key={r.id}
-                      className="gr-row"
+                      className={`gr-row${selectedRiskIds.includes(r.id) ? ' is-selected' : ''}`}
+                      onClick={() => handleSelectRisk([r.id])}
                       onDoubleClick={readOnly ? undefined : () => openEdit(r)}
                     >
                       <td className="gr-td-wrap" title={r.description}>

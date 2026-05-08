@@ -1,12 +1,12 @@
 import './PontoSituacao.css'
-import { useState, useMemo, useEffect, useCallback, type ReactNode } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Card from '../../components/Card/Card'
 import SmartKpi from '../../components/Kpi/SmartKpi'
 import ContagemKpi from '../../components/Kpi/ContagemKpi'
-import RiskMatrix from '../../components/RiskMatrix/RiskMatrix'
+import InteractiveRiskMatrix from '../../components/InteractiveRiskMatrix/InteractiveRiskMatrix'
 import Badge from '../../components/Badge/Badge'
 import ItemDetailModal from '../../components/ItemDetailModal/ItemDetailModal'
 import { fmtDate, statusVariant, displayStatus, renderText, TODAY } from '../../lib/pdsHelpers'
@@ -155,83 +155,6 @@ function estadoVariant(status: string): RiskBadge {
   if (s === 'mitigado')     return 'grey'
   if (s === 'fechado')      return 'green'
   return 'grey'
-}
-
-// ── Risk matrix component ─────────────────────────────────────
-interface InteractiveRiskMatrixProps {
-  risks: Risk[]
-  size: number
-  thresholds: RiskThresholds
-  selectedIds: string[]
-  onSelect: (ids: string[]) => void
-}
-
-function InteractiveRiskMatrix({ risks, size, thresholds, selectedIds, onSelect }: InteractiveRiskMatrixProps) {
-  const cellMap = useMemo(() => {
-    const map = new Map<string, Risk[]>()
-    for (const r of risks) {
-      const k = `${r.impact},${r.probability}`
-      map.set(k, [...(map.get(k) ?? []), r])
-    }
-    return map
-  }, [risks])
-
-  const cells: ReactNode[] = []
-  const yNums: ReactNode[] = []
-
-  for (let prob = size; prob >= 1; prob--) {
-    yNums.push(<span key={`y${prob}`} className="pds-risk-axis-num">{prob}</span>)
-    for (let impact = 1; impact <= size; impact++) {
-      const grade = impact * prob
-      const gs    = gradeStyle(grade, size, thresholds)
-      const k     = `${impact},${prob}`
-      const cellRisks = cellMap.get(k) ?? []
-      const sel   = cellRisks.some(r => selectedIds.includes(r.id))
-      cells.push(
-        <div
-          key={`c${impact}${prob}`}
-          className={`pds-risk-cell${cellRisks.length ? ' has-risks' : ''}${sel ? ' selected' : ''}`}
-          style={{ background: gs.bg, border: `1px solid ${gs.border}` }}
-          onClick={() => onSelect(cellRisks.length ? cellRisks.map(r => r.id) : [])}
-          title={cellRisks.map(r => r.description).join('\n')}
-        >
-          {cellRisks.length > 0 && (
-            <span className={`pds-risk-dot${sel ? ' selected' : ''}`}>
-              {cellRisks.length > 1 ? String(cellRisks.length) : ''}
-            </span>
-          )}
-        </div>
-      )
-    }
-  }
-
-  const gridCols = `repeat(${size}, 1fr)`
-
-  return (
-    <div className="pds-risk-matrix-wrap">
-      <div className="pds-risk-matrix-label">Matriz de Risco</div>
-      <div className="pds-risk-matrix-body">
-        <span className="pds-risk-axis-label pds-risk-axis-y">PROBABILIDADE</span>
-        <div className="pds-risk-matrix-right">
-          <div className="pds-risk-matrix-row">
-            <div className="pds-risk-y-col">{yNums}</div>
-            <div className="pds-risk-matrix" style={{ gridTemplateColumns: gridCols, gridTemplateRows: gridCols }}>
-              {cells}
-            </div>
-          </div>
-          <div className="pds-risk-x-row">
-            <div className="pds-risk-x-spacer" />
-            <div className="pds-risk-x-nums" style={{ gridTemplateColumns: gridCols }}>
-              {Array.from({ length: size }, (_, i) => (
-                <span key={i} className="pds-risk-axis-num pds-risk-axis-x">{i + 1}</span>
-              ))}
-            </div>
-          </div>
-          <span className="pds-risk-axis-label pds-risk-axis-bottom">IMPACTO</span>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 // ── Risk table component ──────────────────────────────────────

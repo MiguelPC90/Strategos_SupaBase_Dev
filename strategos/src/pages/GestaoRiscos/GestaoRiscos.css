@@ -68,9 +68,11 @@
     white-space: nowrap;
   }
 
-  .gr-row { cursor: default; }
+  .gr-row { cursor: pointer; }
   .gr-row:hover td { background: var(--bg2); }
   .gr-row:last-child td { border-bottom: none; }
+  .gr-row.is-selected td { background: rgba(30, 42, 68, 0.08); }
+  .gr-row.is-selected:hover td { background: rgba(30, 42, 68, 0.12); }
 
   /* ── Grau badges ────────────────────────────────────────────── */
   .gr-grau-badge {
