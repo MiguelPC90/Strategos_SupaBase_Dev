@@ -170,37 +170,44 @@ function PdsSection({
                     autoFocus
                   />
                   {cfg.hasStatus && (
-                    <select
-                      className="pds-item-edit-select"
-                      value={editDraft.status ?? 'Em curso'}
-                      onChange={e => onEditChange({ status: e.target.value as PdsItem['status'] })}
-                    >
-                      <option value="Pendente">Pendente</option>
-                      <option value="Em curso">Em curso</option>
-                      <option value="Concluído">Concluído</option>
-                    </select>
-                  )}
-                  {cfg.hasTargetDate && (
                     <label className="pds-item-edit-label">
-                      Data Alvo
-                      <input
-                        type="date"
-                        className="pds-item-edit-date"
-                        value={editDraft.target_date ?? ''}
-                        onChange={e => onEditChange({ target_date: e.target.value || null })}
-                      />
+                      Estado
+                      <select
+                        className="pds-item-edit-select"
+                        value={editDraft.status ?? 'Em curso'}
+                        onChange={e => onEditChange({ status: e.target.value as PdsItem['status'] })}
+                      >
+                        <option value="Pendente">Pendente</option>
+                        <option value="Em curso">Em curso</option>
+                        <option value="Concluído">Concluído</option>
+                      </select>
                     </label>
                   )}
-                  {cfg.hasCompletedAt && (
-                    <label className="pds-item-edit-label">
-                      Data Conclusão
-                      <input
-                        type="date"
-                        className="pds-item-edit-date"
-                        value={editDraft.completed_at ?? ''}
-                        onChange={e => onEditChange({ completed_at: e.target.value || null })}
-                      />
-                    </label>
+                  {(cfg.hasTargetDate || cfg.hasCompletedAt) && (
+                    <div className="pds-item-edit-row">
+                      {cfg.hasTargetDate && (
+                        <label className="pds-item-edit-label">
+                          Data Alvo
+                          <input
+                            type="date"
+                            className="pds-item-edit-date"
+                            value={editDraft.target_date ?? ''}
+                            onChange={e => onEditChange({ target_date: e.target.value || null })}
+                          />
+                        </label>
+                      )}
+                      {cfg.hasCompletedAt && (
+                        <label className="pds-item-edit-label">
+                          Data Conclusão
+                          <input
+                            type="date"
+                            className="pds-item-edit-date"
+                            value={editDraft.completed_at ?? ''}
+                            onChange={e => onEditChange({ completed_at: e.target.value || null })}
+                          />
+                        </label>
+                      )}
+                    </div>
                   )}
                   <div className="pds-item-edit-actions">
                     <button className="btn-primary" onClick={onEditSave}>Guardar</button>
