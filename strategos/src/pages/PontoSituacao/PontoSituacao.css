@@ -396,6 +396,21 @@
     border-bottom: 1px solid var(--border2);
   }
 
+  .pds-th-sortable {
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .pds-th-sortable:hover { color: var(--text); }
+
+  .pds-th-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .pds-tc.pds-th-sortable .pds-th-content { justify-content: center; }
+
   .pds-risk-table-row {
     padding: 8px 12px;
     font-size: var(--text-base);

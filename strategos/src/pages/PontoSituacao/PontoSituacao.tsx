@@ -8,6 +8,7 @@ import SmartKpi from '../../components/Kpi/SmartKpi'
 import ContagemKpi from '../../components/Kpi/ContagemKpi'
 import RiskMatrix from '../../components/RiskMatrix/RiskMatrix'
 import InteractiveRiskMatrix from '../../components/InteractiveRiskMatrix/InteractiveRiskMatrix'
+import SortIcon from '../../components/SortIcon/SortIcon'
 import Badge from '../../components/Badge/Badge'
 import ItemDetailModal from '../../components/ItemDetailModal/ItemDetailModal'
 import { fmtDate, statusVariant, displayStatus, renderText, TODAY } from '../../lib/pdsHelpers'
@@ -159,6 +160,8 @@ function estadoVariant(status: string): RiskBadge {
 }
 
 // ── Risk table component ──────────────────────────────────────
+type RiskSortKey = 'description' | 'impact' | 'probability' | 'grade' | 'status' | 'mitigation'
+
 interface RiskTableProps {
   risks: Risk[]
   size: number
@@ -168,17 +171,57 @@ interface RiskTableProps {
 }
 
 function RiskTable({ risks, size, thresholds, selectedIds, onSelect }: RiskTableProps) {
+  const [sortBy,  setSortBy]  = useState<RiskSortKey | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = useCallback((key: RiskSortKey) => {
+    if (sortBy === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(key)
+      setSortDir('asc')
+    }
+  }, [sortBy])
+
+  const sortedRisks = useMemo(() => {
+    if (!sortBy) return risks
+    return [...risks].sort((a, b) => {
+      let cmp = 0
+      switch (sortBy) {
+        case 'description':  cmp = a.description.localeCompare(b.description); break
+        case 'impact':       cmp = a.impact - b.impact; break
+        case 'probability':  cmp = a.probability - b.probability; break
+        case 'grade':        cmp = (a.impact * a.probability) - (b.impact * b.probability); break
+        case 'status':       cmp = a.status.localeCompare(b.status); break
+        case 'mitigation':   cmp = (a.mitigation || '').localeCompare(b.mitigation || ''); break
+      }
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+  }, [risks, sortBy, sortDir])
+
   return (
     <div className="pds-risk-table-wrap">
       <div className="pds-risk-table-header">
-        <span>Descrição</span>
-        <span className="pds-tc">Impacto</span>
-        <span className="pds-tc">Prob.</span>
-        <span className="pds-tc">Grau</span>
-        <span className="pds-tc">Estado</span>
-        <span>Mitigação</span>
+        <span className="pds-th-sortable" onClick={() => handleSort('description')}>
+          <span className="pds-th-content">Descrição <SortIcon active={sortBy === 'description'} dir={sortDir} /></span>
+        </span>
+        <span className="pds-tc pds-th-sortable" onClick={() => handleSort('impact')}>
+          <span className="pds-th-content">Impacto <SortIcon active={sortBy === 'impact'} dir={sortDir} /></span>
+        </span>
+        <span className="pds-tc pds-th-sortable" onClick={() => handleSort('probability')}>
+          <span className="pds-th-content">Prob. <SortIcon active={sortBy === 'probability'} dir={sortDir} /></span>
+        </span>
+        <span className="pds-tc pds-th-sortable" onClick={() => handleSort('grade')}>
+          <span className="pds-th-content">Grau <SortIcon active={sortBy === 'grade'} dir={sortDir} /></span>
+        </span>
+        <span className="pds-tc pds-th-sortable" onClick={() => handleSort('status')}>
+          <span className="pds-th-content">Estado <SortIcon active={sortBy === 'status'} dir={sortDir} /></span>
+        </span>
+        <span className="pds-th-sortable" onClick={() => handleSort('mitigation')}>
+          <span className="pds-th-content">Mitigação <SortIcon active={sortBy === 'mitigation'} dir={sortDir} /></span>
+        </span>
       </div>
-      {risks.map(r => {
+      {sortedRisks.map(r => {
         const grade = r.impact * r.probability
         const gs    = gradeStyle(grade, size, thresholds)
         const sel   = selectedIds.includes(r.id)

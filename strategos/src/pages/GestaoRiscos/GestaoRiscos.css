@@ -66,8 +66,6 @@
 
   .gr-th-c .gr-th-content { justify-content: center; }
 
-  .gr-sort-icon-inactive { opacity: 0.3; }
-
   .gr-table td {
     padding: 7px 10px;
     border-bottom: 1px solid var(--border);

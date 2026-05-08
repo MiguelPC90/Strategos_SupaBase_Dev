@@ -1,6 +1,6 @@
 import './GestaoRiscos.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { MoreHorizontal, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
+import { MoreHorizontal } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import { createPortal } from 'react-dom'
@@ -17,6 +17,7 @@ import type { Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 import InteractiveRiskMatrix from '../../components/InteractiveRiskMatrix/InteractiveRiskMatrix'
+import SortIcon from '../../components/SortIcon/SortIcon'
 
 // ── Types ──────────────────────────────────────────────────────
 type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
@@ -217,14 +218,6 @@ function RowMenu({ riskId, openId, onOpen, onEdit, onDuplicate, onDelete }: RowM
       {open && pos !== null && createPortal(menu, document.body)}
     </div>
   )
-}
-
-// ── Sort icon ──────────────────────────────────────────────────
-function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
-  if (!active) return <ArrowUpDown size={12} strokeWidth={1.5} className="gr-sort-icon-inactive" />
-  return dir === 'asc'
-    ? <ArrowUp size={12} strokeWidth={1.5} />
-    : <ArrowDown size={12} strokeWidth={1.5} />
 }
 
 // ── Main component ─────────────────────────────────────────────
