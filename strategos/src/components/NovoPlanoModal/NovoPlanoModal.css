@@ -1,0 +1,299 @@
+@layer components {
+  /* Form fields */
+  .gi-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .gi-field-label {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text2);
+  }
+
+  .gi-field-input,
+  .gi-field-textarea {
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 6px 10px;
+    font-size: var(--text-md);
+    color: var(--text);
+    background: var(--bg);
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .gi-field-input:focus,
+  .gi-field-textarea:focus { outline: none; border-color: var(--navy); }
+
+  .gi-field-textarea {
+    resize: vertical;
+    min-height: 60px;
+  }
+
+  .gi-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .gi-section-title {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text3);
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-top: 2px;
+  }
+
+  .gi-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .gi-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding-top: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .gi-section:first-child { padding-top: 0; }
+  .gi-section:last-child  { border-bottom: none; padding-bottom: 0; }
+
+  /* Validation */
+  .gi-error {
+    font-size: var(--text-sm);
+    color: var(--red);
+    margin-top: 2px;
+  }
+
+  .gi-input-error {
+    border-color: var(--red) !important;
+  }
+
+  .gi-label-error {
+    color: var(--red);
+  }
+
+  /* Stepper */
+  .gi-stepper {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+    padding-bottom: 0;
+  }
+
+  .gi-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 2px solid transparent;
+    color: var(--text3);
+    font-size: var(--text-base);
+    font-weight: 600;
+    margin-bottom: -1px;
+  }
+
+  .gi-step.active {
+    color: var(--navy);
+    border-bottom-color: var(--navy);
+  }
+
+  .gi-step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--bg3);
+    font-size: var(--text-xs);
+  }
+
+  .gi-step.active .gi-step-num {
+    background: var(--navy);
+    color: white;
+  }
+
+  .gi-step-connector {
+    flex-shrink: 0;
+    width: 20px;
+    height: 2px;
+    background: var(--border);
+    margin: 0 -8px;
+  }
+
+  /* Step 2 */
+  .gi-step2-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .gi-step2-help {
+    flex: 1;
+    font-size: var(--text-base);
+    color: var(--text2);
+    line-height: 1.5;
+  }
+
+  .gi-btn-link {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--navy);
+    padding: 6px 12px;
+    border-radius: var(--r);
+    font-size: var(--text-base);
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+
+  .gi-btn-link:hover { background: var(--bg2); }
+
+  /* Upload area */
+  .gi-upload-area {
+    border: 2px dashed var(--border2);
+    border-radius: var(--rl);
+    padding: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 100ms ease, background 100ms ease;
+    margin-bottom: 16px;
+  }
+
+  .gi-upload-area:hover {
+    border-color: var(--navy);
+    background: var(--bg2);
+  }
+
+  .gi-upload-area.has-file {
+    border-style: solid;
+    border-color: var(--navy);
+    background: var(--bg2);
+    cursor: default;
+  }
+
+  .gi-upload-icon { font-size: var(--text-2xl); margin-bottom: 8px; }
+  .gi-upload-text { font-size: var(--text-md); color: var(--text); margin-bottom: 4px; }
+  .gi-upload-hint { font-size: var(--text-sm); color: var(--text3); }
+
+  .gi-upload-selected {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-size: var(--text-md);
+    color: var(--text);
+  }
+
+  .gi-upload-clear {
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    font-size: var(--text-xl);
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    font-family: inherit;
+  }
+
+  .gi-upload-clear:hover { color: var(--red); }
+
+  /* Preview */
+  .gi-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--text2);
+    margin-bottom: 8px;
+  }
+
+  .gi-preview-errors-badge {
+    color: var(--red);
+    font-size: var(--text-sm);
+    padding: 2px 8px;
+    background: #fff0f0;
+    border-radius: 10px;
+  }
+
+  .gi-error-list {
+    max-height: 100px;
+    overflow-y: auto;
+    background: #fff0f0;
+    border: 1px solid var(--red);
+    border-radius: var(--r);
+    padding: 8px 12px;
+    margin-bottom: 12px;
+  }
+
+  .gi-error-item {
+    font-size: var(--text-sm);
+    color: var(--red);
+    padding: 2px 0;
+  }
+
+  .gi-preview-table-wrap {
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+  }
+
+  .gi-preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-base);
+  }
+
+  .gi-preview-table thead {
+    position: sticky;
+    top: 0;
+    background: var(--bg2);
+    z-index: 1;
+  }
+
+  .gi-preview-table th {
+    padding: 6px 8px;
+    text-align: left;
+    font-weight: 700;
+    color: var(--text3);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .gi-preview-table td {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .gi-level-badge {
+    display: inline-block;
+    padding: 1px 5px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--text2);
+  }
+}

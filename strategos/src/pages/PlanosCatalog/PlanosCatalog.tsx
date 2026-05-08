@@ -1,16 +1,18 @@
 import './PlanosCatalog.css'
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Star, LayoutList, LayoutGrid } from 'lucide-react'
+import { Star, LayoutList, LayoutGrid, Plus } from 'lucide-react'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFavorites } from '../../hooks/useFavorites'
 import { useToast } from '../../context/ToastContext'
+import { useRole } from '../../hooks/useRole'
 import { supabase } from '../../lib/supabase'
 import { rollupStatus, rollupPct } from '../../lib/rollup'
 import MultiSelect from '../../components/MultiSelect/MultiSelect'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Spinner from '../../components/Spinner/Spinner'
+import NovoPlanoModal from '../../components/NovoPlanoModal/NovoPlanoModal'
 import type { Activity } from '../../types/index'
 
 const STATUS_ORDER = ['Em atraso', 'Em risco', 'Em dia', 'Concluída']
@@ -55,11 +57,13 @@ function MiniProgressBar({ pct }: { pct: number }) {
 }
 
 export default function PlanosCatalog() {
-  const { planos, loading } = usePlanos()
+  const { planos, loading, refetch } = usePlanos()
   const { programs } = usePrograms()
   const { isFavorite, toggle, canAddMore } = useFavorites()
   const { showToast } = useToast()
+  const { isAdmin, isProgramManager } = useRole()
   const [searchParams] = useSearchParams()
+  const [newPlanoOpen, setNewPlanoOpen] = useState(false)
   const today = useMemo(() => new Date().toISOString().slice(0, 10), [])
 
   // ── Fetch level=4 leaves for status computation ───────────────
@@ -253,6 +257,16 @@ export default function PlanosCatalog() {
           </span>
         </div>
         <div className="pc-header-right">
+          {(isAdmin || isProgramManager) && (
+            <button
+              className="btn-secondary"
+              onClick={() => setNewPlanoOpen(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <Plus size={14} />
+              Novo Plano
+            </button>
+          )}
           <div className="pc-view-toggle">
             <button
               className={`pc-view-btn${viewMode === 'table' ? ' pc-view-btn-active' : ''}`}
@@ -411,6 +425,13 @@ export default function PlanosCatalog() {
           ))}
         </div>
       )}
+
+      <NovoPlanoModal
+        isOpen={newPlanoOpen}
+        onClose={() => setNewPlanoOpen(false)}
+        onSaved={() => refetch()}
+        programId={programs.find(p => progFilter.includes(p.name))?.id ?? null}
+      />
     </div>
   )
 }
