@@ -16,6 +16,7 @@ import { supabase } from '../../lib/supabase'
 import type { Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
+import RiskMatrix from '../../components/RiskMatrix/RiskMatrix'
 
 // ── Types ──────────────────────────────────────────────────────
 type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
@@ -526,7 +527,16 @@ export default function GestaoRiscos({
             {...(!readOnly && { actionLabel: '+ Novo Risco', onAction: openNew })}
           />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="gr-risks-split">
+            <div className="gr-risks-matrix-wrap">
+              <RiskMatrix
+                risks={planRisks}
+                size={matrixSize}
+                thresholds={thresholds}
+                compact
+              />
+            </div>
+            <div className="gr-risks-table-wrap">
             <table className="gr-table tbl-default">
               <colgroup>
                 <col />
@@ -595,6 +605,7 @@ export default function GestaoRiscos({
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </Card>

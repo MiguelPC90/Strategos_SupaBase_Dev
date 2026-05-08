@@ -176,6 +176,29 @@
     gap: 10px;
   }
 
+  /* ── Matrix + table split ───────────────────────────────────── */
+  .gr-risks-split {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .gr-risks-matrix-wrap {
+    flex-shrink: 0;
+  }
+
+  .gr-risks-table-wrap {
+    overflow-x: auto;
+    min-width: 0;
+  }
+
+  @media (max-width: 1024px) {
+    .gr-risks-split {
+      grid-template-columns: 1fr;
+    }
+  }
+
   /* Read-only grau display in panel */
   .gr-grau-display {
     padding: 6px 0 2px;
