@@ -82,6 +82,8 @@ function renderText(text: string) {
 }
 
 // ── PDS item list ──────────────────────────────────────────────
+const TRUNCATE_LIMIT = 200
+
 type ItemListVariant = 'default' | 'attention' | 'progress'
 
 interface ItemListProps {
@@ -92,6 +94,17 @@ interface ItemListProps {
 }
 
 function ItemList({ items, variant = 'default', emptyMessage = 'Sem itens.', showMeta }: ItemListProps) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   if (items.length === 0) {
     return <p className="pds-empty">{emptyMessage}</p>
   }
@@ -100,16 +113,28 @@ function ItemList({ items, variant = 'default', emptyMessage = 'Sem itens.', sho
   if ((variant === 'progress' || variant === 'attention') && items.every(item => !item.date && !item.status)) {
     return (
       <div className="pds-progress-wrap">
-        {items.map((item, i) => (
-          <p key={i} className="pds-progress-para">
-            {renderText(item.text)}
-            {showMeta && item.created_at && (
-              <span className="pds-item-created">
-                {item.author ? `${item.author} · ` : ''}{fmtDate(item.created_at.slice(0, 10))}
-              </span>
-            )}
-          </p>
-        ))}
+        {items.map((item) => {
+          const isLong = item.text.length > TRUNCATE_LIMIT
+          const isExpanded = expandedIds.has(item.id)
+          const displayText = isLong && !isExpanded
+            ? item.text.slice(0, TRUNCATE_LIMIT) + '…'
+            : item.text
+          return (
+            <p key={item.id} className="pds-progress-para">
+              {renderText(displayText)}
+              {isLong && (
+                <button type="button" className="pds-item-toggle" onClick={() => toggleExpand(item.id)}>
+                  {isExpanded ? 'Ver menos' : 'Ver mais'}
+                </button>
+              )}
+              {showMeta && item.created_at && (
+                <span className="pds-item-created">
+                  {item.author ? `${item.author} · ` : ''}{fmtDate(item.created_at.slice(0, 10))}
+                </span>
+              )}
+            </p>
+          )
+        })}
       </div>
     )
   }
@@ -121,15 +146,25 @@ function ItemList({ items, variant = 'default', emptyMessage = 'Sem itens.', sho
         <span className="pds-item-header-label col-date">Data</span>
         <span className="pds-item-header-label col-status">Estado</span>
       </div>
-      {items.map((item, i) => {
+      {items.map((item) => {
         const ds = displayStatus(item)
+        const isLong = item.text.length > TRUNCATE_LIMIT
+        const isExpanded = expandedIds.has(item.id)
+        const displayText = isLong && !isExpanded
+          ? item.text.slice(0, TRUNCATE_LIMIT) + '…'
+          : item.text
         return (
           <div
-            key={i}
+            key={item.id}
             className={`pds-item-row${variant === 'attention' ? ' pds-attention-row' : ''}`}
           >
             <span className="pds-item-text">
-              {renderText(item.text)}
+              {renderText(displayText)}
+              {isLong && (
+                <button type="button" className="pds-item-toggle" onClick={() => toggleExpand(item.id)}>
+                  {isExpanded ? 'Ver menos' : 'Ver mais'}
+                </button>
+              )}
               {showMeta && item.created_at && (
                 <span className="pds-item-created">
                   {item.author ? `${item.author} · ` : ''}{fmtDate(item.created_at.slice(0, 10))}
