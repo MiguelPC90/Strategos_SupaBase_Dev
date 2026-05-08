@@ -173,7 +173,7 @@ function PdsSection({
                     <label className="pds-item-edit-label">
                       Estado
                       <select
-                        className="pds-item-edit-select"
+                        className="styled-select"
                         value={editDraft.status ?? 'Em curso'}
                         onChange={e => onEditChange({ status: e.target.value as PdsItem['status'] })}
                       >
