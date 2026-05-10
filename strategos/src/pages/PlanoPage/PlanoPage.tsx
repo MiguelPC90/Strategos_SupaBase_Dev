@@ -15,7 +15,7 @@ import GestaoRiscos from '../GestaoRiscos/GestaoRiscos'
 import GestaoRecursos from '../GestaoRecursos/GestaoRecursos'
 import GestaoFinanceira from '../GestaoFinanceira/GestaoFinanceira'
 import GestaoIniciativas from '../GestaoIniciativas/GestaoIniciativas'
-import { rollupStatus, rollupPct, rollupPctPrev, leafStatus } from '../../lib/rollup'
+import { rollupStatus, rollupPct, rollupPctPrev, leafStatus, rollupDateRange } from '../../lib/rollup'
 import { statusColor } from '../../lib/tokens'
 import { generateStatusNarrative } from '../../lib/statusNarrative'
 
@@ -76,6 +76,8 @@ export default function PlanoPage() {
     return generateStatusNarrative({ status: planoStatus, execMedia, execTarget, delayedCount })
   }, [planoStatus, execMedia, execTarget, delayedCount, planLeaves.length])
 
+  const planDateRange = useMemo(() => rollupDateRange(planLeaves), [planLeaves])
+
   const loading = planosLoading || programsLoading
 
   const rawTab = searchParams.get('tab')
@@ -105,7 +107,7 @@ export default function PlanoPage() {
   }
 
   const eixoName = plano.eixo?.name ?? null
-  const dateLine = [fmtDateMY(plano.start_date), fmtDateMY(plano.end_date)].filter(Boolean).join(' → ')
+  const dateLine = [fmtDateMY(planDateRange.bs), fmtDateMY(planDateRange.bf)].filter(Boolean).join(' → ')
 
   const isFav        = planoId ? isFavorite(planoId) : false
   const canEditPlano = canEdit('gestao-iniciativas', plano.program_id ?? undefined)

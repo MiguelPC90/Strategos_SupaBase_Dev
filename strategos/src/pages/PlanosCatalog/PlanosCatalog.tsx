@@ -431,6 +431,11 @@ export default function PlanosCatalog() {
         onClose={() => setNewPlanoOpen(false)}
         onSaved={() => refetch()}
         programId={programs.find(p => progFilter.includes(p.name))?.id ?? null}
+        defaultEixoId={
+          eixoFilter.length > 0
+            ? enriched.find(p => eixoFilter.includes(p.eixo?.name ?? ''))?.eixo_id ?? undefined
+            : undefined
+        }
       />
     </div>
   )

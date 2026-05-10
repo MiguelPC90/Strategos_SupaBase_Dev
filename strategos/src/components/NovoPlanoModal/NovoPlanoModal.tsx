@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, AlertTriangle, X } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import Modal from '../Modal/Modal'
-import DateRangePicker from '../DateRangePicker/DateRangePicker'
+import SearchableSelect from '../SearchableSelect/SearchableSelect'
 import { useEixos } from '../../hooks/useEixos'
 import { usePeople } from '../../hooks/usePeople'
 import { usePrograms } from '../../hooks/usePrograms'
@@ -14,7 +14,6 @@ import type { Plano } from '../../types/index'
 // ── Types ──────────────────────────────────────────────────────
 interface PlanoForm {
   name: string; code: string; eixo_id: string
-  start_date: string | null; end_date: string | null
   owner: string; sponsor: string; objective: string
   threshold_leaves: number | null
   threshold_aggregates: number | null
@@ -22,7 +21,6 @@ interface PlanoForm {
 
 const BLANK_PLANO: PlanoForm = {
   name: '', code: '', eixo_id: '',
-  start_date: null, end_date: null,
   owner: '', sponsor: '', objective: '',
   threshold_leaves: null, threshold_aggregates: null,
 }
@@ -158,6 +156,8 @@ export interface NovoPlanoModalProps {
   planoToEdit?: Plano | null
   /** Pre-select / filter eixos by program */
   programId?: string | null
+  /** Pre-select eixo in create mode */
+  defaultEixoId?: string
 }
 
 export default function NovoPlanoModal({
@@ -166,18 +166,22 @@ export default function NovoPlanoModal({
   onSaved,
   planoToEdit,
   programId,
+  defaultEixoId,
 }: NovoPlanoModalProps) {
   const { showToast } = useToast()
   const { eixos: dbEixos } = useEixos(programId ?? undefined)
   const { people } = usePeople()
   const { programs } = usePrograms()
 
-  const internalPeople = useMemo(
-    () => people.filter(p => p.active !== false && (p.type ?? '').toLowerCase() === 'interno'),
+  const activePeople = useMemo(
+    () => people.filter(p => p.active !== false),
     [people]
   )
 
-  const [planoForm,        setPlanoForm]        = useState<PlanoForm>(BLANK_PLANO)
+  const [planoForm,        setPlanoForm]        = useState<PlanoForm>(() => ({
+    ...BLANK_PLANO,
+    eixo_id: planoToEdit ? '' : (defaultEixoId ?? ''),
+  }))
   const [planoErrors,      setPlanoErrors]      = useState<Record<string, string>>({})
   const [planoSaving,      setPlanoSaving]      = useState(false)
   const [planoStep,        setPlanoStep]        = useState<1 | 2>(1)
@@ -214,8 +218,6 @@ export default function NovoPlanoModal({
         name:                planoToEdit.name,
         code:                planoToEdit.code,
         eixo_id:             planoToEdit.eixo_id,
-        start_date:          planoToEdit.start_date,
-        end_date:            planoToEdit.end_date,
         owner:               planoToEdit.owner ?? '',
         sponsor:             planoToEdit.sponsor ?? '',
         objective:           planoToEdit.objective ?? '',
@@ -224,11 +226,18 @@ export default function NovoPlanoModal({
       })
       setPlanoStep(1)
     } else {
-      setPlanoForm(BLANK_PLANO)
+      setPlanoForm({ ...BLANK_PLANO, eixo_id: defaultEixoId ?? '' })
       setPlanoStep(1)
     }
     setPlanoErrors({})
-  }, [isOpen, planoToEdit])
+  }, [isOpen, planoToEdit]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync defaultEixoId into create-mode form (handles filter changes while modal is open)
+  useEffect(() => {
+    if (!planoToEdit && defaultEixoId) {
+      setPlanoForm(f => ({ ...f, eixo_id: defaultEixoId }))
+    }
+  }, [defaultEixoId, planoToEdit])
 
   const clearFile = useCallback(() => {
     setUploadedFile(null); setParsedActivities([]); setParseErrors([])
@@ -240,7 +249,6 @@ export default function NovoPlanoModal({
     if (!planoForm.name.trim())   errs.name    = 'Nome obrigatório.'
     if (!planoForm.code.trim())   errs.code    = 'Código obrigatório.'
     if (!planoForm.eixo_id)       errs.eixo_id = 'Eixo obrigatório.'
-    if (!planoForm.start_date || !planoForm.end_date) errs.dates = 'Período previsto obrigatório.'
     if (Object.keys(errs).length) { setPlanoErrors(errs); return }
     setPlanoStep(2)
   }, [planoForm])
@@ -267,9 +275,8 @@ export default function NovoPlanoModal({
   const handleSavePlanoEdit = useCallback(async () => {
     if (!planoToEdit) return
     const errs: Record<string, string> = {}
-    if (!planoForm.name.trim())                       errs.name  = 'Nome obrigatório.'
-    if (!planoForm.code.trim())                       errs.code  = 'Código obrigatório.'
-    if (!planoForm.start_date || !planoForm.end_date) errs.dates = 'Período previsto obrigatório.'
+    if (!planoForm.name.trim()) errs.name = 'Nome obrigatório.'
+    if (!planoForm.code.trim()) errs.code = 'Código obrigatório.'
     if (Object.keys(errs).length) { setPlanoErrors(errs); return }
     setPlanoSaving(true); setPlanoErrors({})
     const { error } = await supabase
@@ -279,8 +286,6 @@ export default function NovoPlanoModal({
         code:                 planoForm.code.trim().toUpperCase(),
         owner:                planoForm.owner    || null,
         sponsor:              planoForm.sponsor  || null,
-        start_date:           planoForm.start_date,
-        end_date:             planoForm.end_date,
         objective:            planoForm.objective || null,
         threshold_leaves:     planoForm.threshold_leaves,
         threshold_aggregates: planoForm.threshold_aggregates,
@@ -309,8 +314,6 @@ export default function NovoPlanoModal({
       code:                 planoForm.code.trim().toUpperCase(),
       eixo_id:              planoForm.eixo_id,
       program_id:           effectiveProgramId ?? null,
-      start_date:           planoForm.start_date,
-      end_date:             planoForm.end_date,
       owner:                planoForm.owner    || null,
       sponsor:              planoForm.sponsor  || null,
       objective:            planoForm.objective || null,
@@ -439,31 +442,16 @@ export default function NovoPlanoModal({
               </div>
               <div className="gi-field">
                 <span className={`gi-field-label${planoErrors.eixo_id ? ' gi-label-error' : ''}`}>Eixo *</span>
-                <select
-                  className={`gi-field-input${planoErrors.eixo_id ? ' gi-input-error' : ''}`}
-                  value={planoForm.eixo_id}
-                  onChange={e => setPlanoForm(f => ({ ...f, eixo_id: e.target.value }))}
+                <SearchableSelect
+                  options={dbEixos.map(e => ({ value: e.id, label: e.name }))}
+                  value={planoForm.eixo_id || null}
+                  onChange={v => setPlanoForm(f => ({ ...f, eixo_id: v ?? '' }))}
+                  placeholder="Seleccionar eixo..."
                   disabled={!!planoToEdit}
-                >
-                  <option value="">— seleccionar —</option>
-                  {dbEixos.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                </select>
+                  required
+                />
                 {planoErrors.eixo_id && <span className="gi-error">{planoErrors.eixo_id}</span>}
               </div>
-            </div>
-          </div>
-
-          <div className="gi-section">
-            <div className="gi-section-title">Datas</div>
-            <div style={{ marginTop: 10 }}>
-              <DateRangePicker
-                label="Período Previsto"
-                required
-                startDate={planoForm.start_date}
-                endDate={planoForm.end_date}
-                onChange={(s, e) => setPlanoForm(f => ({ ...f, start_date: s, end_date: e }))}
-                error={planoErrors.dates}
-              />
             </div>
           </div>
 
@@ -472,19 +460,21 @@ export default function NovoPlanoModal({
             <div className="gi-two-col" style={{ marginTop: 10 }}>
               <div className="gi-field">
                 <span className="gi-field-label">Owner</span>
-                <select className="gi-field-input" value={planoForm.owner}
-                  onChange={e => setPlanoForm(f => ({ ...f, owner: e.target.value }))}>
-                  <option value="">— seleccionar —</option>
-                  {internalPeople.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                </select>
+                <SearchableSelect
+                  options={activePeople.map(p => ({ value: p.name, label: p.name }))}
+                  value={planoForm.owner || null}
+                  onChange={v => setPlanoForm(f => ({ ...f, owner: v ?? '' }))}
+                  placeholder="Seleccionar owner (opcional)..."
+                />
               </div>
               <div className="gi-field">
                 <span className="gi-field-label">Sponsor</span>
-                <select className="gi-field-input" value={planoForm.sponsor}
-                  onChange={e => setPlanoForm(f => ({ ...f, sponsor: e.target.value }))}>
-                  <option value="">— seleccionar —</option>
-                  {internalPeople.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                </select>
+                <SearchableSelect
+                  options={activePeople.map(p => ({ value: p.name, label: p.name }))}
+                  value={planoForm.sponsor || null}
+                  onChange={v => setPlanoForm(f => ({ ...f, sponsor: v ?? '' }))}
+                  placeholder="Seleccionar sponsor (opcional)..."
+                />
               </div>
             </div>
           </div>

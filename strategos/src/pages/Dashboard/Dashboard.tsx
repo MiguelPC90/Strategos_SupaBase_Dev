@@ -26,7 +26,7 @@ import { supabase } from '../../lib/supabase'
 import { generateAlerts } from '../../lib/alerts'
 import type { Alert, AlertRule } from '../../lib/alerts'
 import type { Activity, Program, Eixo, Plano } from '../../types/index'
-import { leafPctPrev, leafStatus, computeRowState, type RowState } from '../../lib/rollup'
+import { leafPctPrev, leafStatus, computeRowState, rollupDateRange, type RowState } from '../../lib/rollup'
 import { buildThresholdsMap, type PlanoThresholds } from '../../hooks/useThresholdsMap'
 import { colors, statusColor } from '../../lib/tokens'
 
@@ -880,9 +880,25 @@ export default function Dashboard() {
     })
   }, [])
 
+  const leavesByPlano = useMemo(() => {
+    const m = new Map<string, typeof leaves>()
+    for (const a of leaves) {
+      if (!a.plano_id) continue
+      const arr = m.get(a.plano_id) ?? []
+      arr.push(a)
+      m.set(a.plano_id, arr)
+    }
+    return m
+  }, [leaves])
+
   const planoRefs = useMemo(
-    () => allPlanos.map(p => ({ id: p.id, name: p.name, program_id: p.program_id, start_date: p.start_date })),
-    [allPlanos],
+    () => allPlanos.map(p => ({
+      id: p.id,
+      name: p.name,
+      program_id: p.program_id,
+      start_date: rollupDateRange(leavesByPlano.get(p.id) ?? []).bs,
+    })),
+    [allPlanos, leavesByPlano],
   )
 
   // Plano IDs the current user is permitted to see (null = unrestricted).
