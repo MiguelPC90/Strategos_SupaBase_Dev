@@ -186,12 +186,6 @@
     color: var(--text3);
   }
 
-  .pp-meta-dates {
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
-    color: var(--text3);
-  }
-
   .pp-narrative {
     flex-basis: 100%;
     font-size: var(--text-base);

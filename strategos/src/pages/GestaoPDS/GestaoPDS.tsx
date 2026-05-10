@@ -5,9 +5,7 @@ import Spinner from '../../components/Spinner/Spinner'
 import Modal from '../../components/Modal/Modal'
 import ItemDetailModal from '../../components/ItemDetailModal/ItemDetailModal'
 import { renderText } from '../../lib/pdsHelpers'
-import EmptyState from '../../components/EmptyState/EmptyState'
 import { supabase } from '../../lib/supabase'
-import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { usePdsEntries, usePdsConsolidated } from '../../hooks/usePdsEntries'
@@ -301,32 +299,19 @@ function PdsSection({
 
 // ── Main component ─────────────────────────────────────────────
 interface GestaoPDSProps {
-  mode?: 'standalone' | 'embedded'
-  /** UUID of the plano — required when mode='embedded' */
   planoId?: string
-  /** program_id of the plano — passed to avoid an extra lookup */
   programId?: string
 }
 
 export default function GestaoPDS({
-  mode = 'standalone',
   planoId: propPlanoId,
   programId: propProgramId,
 }: GestaoPDSProps = {}) {
   const { showToast } = useToast()
-  const { filters }  = useFilters()
   const programs = useAccessiblePrograms('gestao-pds')
   const readOnly = !useCanEditCurrent('gestao-pds')
-  const [selProgId, setSelProgId] = useState<string>('')
 
-  useEffect(() => {
-    if (mode === 'embedded') return
-    if (selProgId) return
-    const init = filters.programIds[0] ?? programs[0]?.id
-    if (init) setSelProgId(init)
-  }, [programs]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const programId = mode === 'embedded' ? propProgramId : (selProgId || undefined)
+  const programId = propProgramId
   const { planos, loading: planosLoading } = usePlanos(programId)
   const {
     entries,
@@ -354,23 +339,11 @@ export default function GestaoPDS({
     [planos, programs]
   )
 
-  const [selectedKey, setSelectedKey] = useState<string>('')
+  const [selectedKey, setSelectedKey] = useState<string>(propPlanoId ?? '')
 
   useEffect(() => {
-    if (mode === 'embedded') return
-    setSelectedKey('')
-  }, [programId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (mode === 'embedded') {
-      setSelectedKey(propPlanoId ?? '')
-      return
-    }
-    if (planOptions.length === 0) return
-    if (planOptions.some(p => p.key === selectedKey)) return
-    setSelectedKey(planOptions[0].key)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planOptions, propPlanoId, mode])
+    setSelectedKey(propPlanoId ?? '')
+  }, [propPlanoId])
 
   const selectedPlan = useMemo(
     () => planOptions.find(p => p.key === selectedKey) ?? null,
@@ -654,64 +627,14 @@ export default function GestaoPDS({
     onEditCancel: cancelEdit,
   }
 
-  const noProgram      = mode === 'embedded' ? false : !programId
-  const noPlans        = mode === 'embedded' ? false : (!noProgram && !planosLoading && planOptions.length === 0)
   const contentLoading = entriesLoading || planosLoading || (!!selectedKey && consolidatedLoading)
 
   return (
     <div className="pds-page">
-      {/* Controls bar — standalone only */}
-      {mode === 'standalone' && (
-        <div className="pds-controls-bar">
-          {programs.length > 1 && (
-            <>
-              <label className="pds-label">Programa:</label>
-              <select
-                className="styled-select"
-                value={selProgId}
-                onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
-              >
-                {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </>
-          )}
-          <label className="pds-label">Plano de Acção:</label>
-          <select
-            className="styled-select"
-            value={selectedKey}
-            onChange={e => setSelectedKey(e.target.value)}
-            disabled={noProgram || noPlans}
-          >
-            {noProgram ? (
-              <option value="">— selecciona um programa —</option>
-            ) : noPlans ? (
-              <option value="">— sem planos disponíveis —</option>
-            ) : (
-              planOptions.map(p => (
-                <option key={p.key} value={p.key}>{p.label}</option>
-              ))
-            )}
-          </select>
-
-          <div className="pds-spacer" />
-        </div>
-      )}
-
-      {/* Content area */}
       {contentLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
           <Spinner />
         </div>
-      ) : noProgram ? (
-        <div className="pds-status">Selecciona um programa para visualizar os PDS.</div>
-      ) : noPlans ? (
-        <EmptyState
-          icon="inbox"
-          title="Sem planos de acção"
-          description="Não existem planos de acção disponíveis para este programa."
-        />
-      ) : (!selectedPlan && mode === 'standalone') ? (
-        <div className="pds-status">Selecciona um plano de acção.</div>
       ) : (
         <div className="pds-grid">
           <PdsSection
