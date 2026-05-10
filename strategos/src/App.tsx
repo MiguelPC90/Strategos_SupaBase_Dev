@@ -12,7 +12,6 @@ import ExecucaoFinanceira from './pages/ExecucaoFinanceira/ExecucaoFinanceira'
 import Recursos from './pages/Recursos/Recursos'
 import GestaoIniciativas from './pages/GestaoIniciativas/GestaoIniciativas'
 import BudgetPage from './pages/BudgetPage/BudgetPage'
-import GestaoRecursos from './pages/GestaoRecursos/GestaoRecursos'
 import Admin from './pages/Admin/Admin'
 import PlanosCatalog from './pages/PlanosCatalog/PlanosCatalog'
 import PlanoPage from './pages/PlanoPage/PlanoPage'
@@ -151,7 +150,6 @@ export default function App() {
           <Route path="gestao-iniciativas" element={<PageGuard page="gestao-iniciativas"><GestaoIniciativas /> </PageGuard>} />
           <Route path="gestao-financeira"  element={<Navigate to="/budget" replace />} />
           <Route path="budget"             element={<PageGuard page="gestao-financeira"> <BudgetPage />        </PageGuard>} />
-          <Route path="gestao-recursos"    element={<PageGuard page="gestao-recursos">   <GestaoRecursos />    </PageGuard>} />
           <Route path="admin"              element={<AdminGuard><Admin /></AdminGuard>} />
           <Route path="planos"            element={<PlanosCatalog />} />
           <Route path="planos/:planoId"   element={<PlanoPage />} />

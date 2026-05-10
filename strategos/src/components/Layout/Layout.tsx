@@ -140,18 +140,6 @@ const NAV_MANAGE: NavItemConfig[] = [
       </svg>
     ),
   },
-  {
-    to: '/gestao-recursos',
-    label: 'Gestão de Recursos',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="9" cy="7" r="4" />
-        <path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" />
-        <line x1="19" y1="8" x2="19" y2="14" />
-        <line x1="16" y1="11" x2="22" y2="11" />
-      </svg>
-    ),
-  },
 ]
 
 function NavItem({ to, label, icon, isManage = false }: NavItemProps) {

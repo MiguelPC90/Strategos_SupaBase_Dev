@@ -5,9 +5,7 @@ import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { supabase } from '../../lib/supabase'
-import { useFilters } from '../../context/FilterContext'
 import { usePlanos } from '../../hooks/usePlanos'
-import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useResources } from '../../hooks/useResources'
 import { usePeople } from '../../hooks/usePeople'
 import { useFinancials } from '../../hooks/useFinancials'
@@ -622,33 +620,19 @@ function ImportPanel({ planOptions, currentPlanKey, allResources, onImport, onCl
 
 // ── Main component ─────────────────────────────────────────────────
 interface GestaoRecursosProps {
-  mode?: 'standalone' | 'embedded'
   planoId?: string
   programId?: string
 }
 
 export default function GestaoRecursos({
-  mode = 'standalone',
   planoId: propPlanoId,
   programId: propProgramId,
 }: GestaoRecursosProps = {}) {
   const { showToast } = useToast()
-  const { filters }  = useFilters()
-  const programs = useAccessiblePrograms('gestao-recursos')
-  const [selProgId, setSelProgId] = useState<string>('')
   const readOnly = !useCanEditCurrent('gestao-recursos')
   const { canViewCosts } = usePermissions()
 
-  // Initialise from global filter or first available program (once)
-
-  useEffect(() => {
-    if (mode === 'embedded') return
-    if (selProgId) return
-    const init = filters.programIds[0] ?? programs[0]?.id
-    if (init) setSelProgId(init)
-  }, [programs]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const programId = mode === 'embedded' ? propProgramId : (selProgId || undefined)
+  const programId = propProgramId
   const showCosts = canViewCosts('gestao-recursos', programId)
 
   const { planos, loading: planosLoading } = usePlanos(programId)
@@ -670,21 +654,10 @@ export default function GestaoRecursos({
     [planos]
   )
 
-  const [selectedKey, setSelectedKey] = useState('')
+  const [selectedKey, setSelectedKey] = useState(propPlanoId ?? '')
   useEffect(() => {
-    if (mode === 'embedded') return
-    setSelectedKey('')
-  }, [programId]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (mode === 'embedded') {
-      if (propPlanoId) setSelectedKey(propPlanoId)
-      return
-    }
-    if (planOptions.length === 0) return
-    if (planOptions.some(p => p.key === selectedKey)) return
-    setSelectedKey(planOptions[0].key)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planOptions, propPlanoId])
+    if (propPlanoId) setSelectedKey(propPlanoId)
+  }, [propPlanoId])
 
   const selectedPlan = useMemo(
     () => planOptions.find(p => p.key === selectedKey) ?? null,
@@ -951,134 +924,50 @@ export default function GestaoRecursos({
   }, [saving, selectedPlan, isDirty, draft, deleted, dbResources, refetch])
 
   // ── Render ───────────────────────────────────────────────────
-  const noProgram = mode === 'embedded' ? false : !programId
-  const noPlans   = mode === 'embedded' ? false : (!noProgram && !planosLoading && planOptions.length === 0)
-
   return (
     <div className="gres-page">
       {/* Controls bar */}
-      {mode === 'standalone' ? (
-        <div className="gres-controls-bar">
-          {programs.length > 1 && (
-            <>
-              <label className="gres-label">Programa:</label>
-              <select
-                className="styled-select"
-                value={selProgId}
-                onChange={e => { setSelProgId(e.target.value); setSelectedKey('') }}
-              >
-                {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </>
-          )}
-          <label className="gres-label">Plano:</label>
-          <select
-            className="styled-select"
-            value={selectedKey}
-            onChange={e => setSelectedKey(e.target.value)}
-            disabled={noProgram || noPlans}
-          >
-            {noProgram  ? <option value="">— selecciona um programa —</option>
-             : noPlans  ? <option value="">— sem planos disponíveis —</option>
-             : planOptions.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
-          </select>
-          <span className="gres-label" style={{ marginLeft: 8 }}>Dias úteis/mês:</span>
-          <input
-            className="gres-days-input"
-            type="number"
-            min={1}
-            max={31}
-            value={workDays}
-            onChange={e => setWorkDays(parseInt(e.target.value) || 22)}
-          />
-          <div className="gres-spacer" />
-          {saveErr    && <span className="gres-save-err">{saveErr}</span>}
-          {conflicts.length > 0 && (
-            <span className="gres-warn"><AlertTriangle size={14} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Sobrealocação: {conflicts.join(', ')}</span>
-          )}
-          {!readOnly && (
-            <>
-              <button
-                className="btn"
-                onClick={() => setShowImport(true)}
-                disabled={!selectedPlan}
-              >
-                Importar de outro plano
-              </button>
-              <button
-                className="btn-primary"
-                onClick={handleSave}
-                disabled={!selectedPlan || !isDirty || saving}
-              >
-                {saving ? 'A guardar…' : isDirty ? 'Guardar alterações' : 'Guardar'}
-              </button>
-            </>
-          )}
-        </div>
-      ) : (
-        <div className="gres-controls-bar">
-          <span className="gres-label">Dias úteis/mês:</span>
-          <input
-            className="gres-days-input"
-            type="number"
-            min={1}
-            max={31}
-            value={workDays}
-            onChange={e => setWorkDays(parseInt(e.target.value) || 22)}
-          />
-          <div className="gres-spacer" />
-          {saveErr    && <span className="gres-save-err">{saveErr}</span>}
-          {conflicts.length > 0 && (
-            <span className="gres-warn"><AlertTriangle size={14} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Sobrealocação: {conflicts.join(', ')}</span>
-          )}
-          {!readOnly && (
-            <>
-              <button
-                className="btn"
-                onClick={() => setShowImport(true)}
-                disabled={!selectedPlan}
-              >
-                Importar de outro plano
-              </button>
-              <button
-                className="btn-primary"
-                onClick={handleSave}
-                disabled={!selectedPlan || !isDirty || saving}
-              >
-                {saving ? 'A guardar…' : isDirty ? 'Guardar alterações' : 'Guardar'}
-              </button>
-            </>
-          )}
-        </div>
-      )}
+      <div className="gres-controls-bar">
+        <span className="gres-label">Dias úteis/mês:</span>
+        <input
+          className="gres-days-input"
+          type="number"
+          min={1}
+          max={31}
+          value={workDays}
+          onChange={e => setWorkDays(parseInt(e.target.value) || 22)}
+        />
+        <div className="gres-spacer" />
+        {saveErr    && <span className="gres-save-err">{saveErr}</span>}
+        {conflicts.length > 0 && (
+          <span className="gres-warn"><AlertTriangle size={14} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Sobrealocação: {conflicts.join(', ')}</span>
+        )}
+        {!readOnly && (
+          <>
+            <button
+              className="btn"
+              onClick={() => setShowImport(true)}
+              disabled={!selectedPlan}
+            >
+              Importar de outro plano
+            </button>
+            <button
+              className="btn-primary"
+              onClick={handleSave}
+              disabled={!selectedPlan || !isDirty || saving}
+            >
+              {saving ? 'A guardar…' : isDirty ? 'Guardar alterações' : 'Guardar'}
+            </button>
+          </>
+        )}
+      </div>
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
           <Spinner />
         </div>
-      ) : noProgram ? (
-        <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
-          Selecciona um programa para gerir recursos.
-        </div>
-      ) : noPlans ? (
-        <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
-          Nenhum plano disponível para este programa.
-        </div>
-      ) : (!selectedPlan && mode === 'standalone') ? (
-        <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
-          Selecciona um plano para gerir recursos.
-        </div>
       ) : (
         <>
-          {/* Plan header bar */}
-          {mode === 'standalone' && (
-            <div className="gres-header-bar">
-              <span>{selectedPlan.n1}</span>
-              {selectedPlan.n1 && <span className="sep">›</span>}
-              <span>{selectedPlan.n2}</span>
-            </div>
-          )}
-
           {/* KPI row */}
           <div className="gres-kpi-row">
             <KpiCard label="Recursos Activos"   value={kpis.active}              color="navy" />
