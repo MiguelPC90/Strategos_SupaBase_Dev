@@ -753,14 +753,6 @@ body.sidebar-collapsed .nav-item:hover::after{content:attr(data-tooltip);positio
       <button class="ms-btn" onclick="toggleMs('ms-status')"><span id="ms-status-lbl">Todos</span><span>&#9660;</span></button>
       <div class="ms-dropdown" id="ms-status"></div>
     </div>
-    <div class="ms-wrap gantt-date-filter" style="display:none">
-      <div class="ms-label">Data início ≥</div>
-      <input type="date" id="f-date-start" onchange="dApplyFilters()" style="padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit;width:100%">
-    </div>
-    <div class="ms-wrap gantt-date-filter" style="display:none">
-      <div class="ms-label">Data fim ≤</div>
-      <input type="date" id="f-date-end" onchange="dApplyFilters()" style="padding:6px 8px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);font-family:inherit;width:100%">
-    </div>
     <button class="btn" style="align-self:flex-end;font-size:11px;padding:6px 10px" onclick="resetFilters()">&#10005; Limpar</button>
   <div class="ms-wrap" style="max-width:160px">
     <div class="ms-label">Data de corte</div>
@@ -1934,6 +1926,7 @@ async function doLogin(){
       document.getElementById('app-shell').style.display='';
       const nameEl=document.getElementById('topbar-user-name');
       if(nameEl) nameEl.textContent=meta.display_name||uval;
+      loadCfg(); // recarregar CFG do Supabase agora que estamos autenticados
       _initProfileDesk();
       applyProfile(currentProfile);
       return;
@@ -2055,6 +2048,16 @@ function applyFilters(){
   const n0s=MS_STATE['n0']||new Set();
   const n1s=MS_STATE['n1']||new Set();
   const n2s=MS_STATE['n2']||new Set();
+  // Rebuild owner/sponsor options filtered by current N0/N1/N2 selection
+  const hierSrc=ALL_ACT.filter(function(d){
+    return (!profileN0s||profileN0s.has(d.n0||''))&&
+           (!n0s.size||n0s.has(d.n0||''))&&
+           (!n1s.size||n1s.has(d.n1))&&
+           (!n2s.size||n2s.has(d.n2));
+  });
+  buildMs('owner',[...new Set(hierSrc.map(function(d){return d.owner;}).filter(Boolean))].sort());
+  buildMs('sponsor',[...new Set(hierSrc.map(function(d){return d.sponsor;}).filter(Boolean))].sort());
+
   const owns=MS_STATE['owner']||new Set();
   const spns=MS_STATE['sponsor']||new Set();
   const stts=MS_STATE['status']||new Set();
@@ -2736,10 +2739,104 @@ function buildGanttHeaders(){
     <th rowspan="2" class="g-sticky-3" style="text-align:center;width:72px">Início</th>
     <th rowspan="2" class="g-sticky-4" style="text-align:center;width:72px">Fim</th>
     <th rowspan="2" class="g-sticky-5" style="text-align:center;width:76px">Estado</th>
-    <th colspan="${m.validPeriods.length}" style="text-align:center">Timeline</th></tr><tr>`;
-  m.validPeriods.forEach((p,i)=>{h+=`<th class="gantt-month-hdr" style="width:${m.validPw[i].toFixed(1)}%">${p.label}</th>`;});
-  h+=`</tr></thead>`;
-  return h;
+    <th colspan="${validPeriods.length}" style="text-align:center">Timeline</th></tr><tr>`;
+  validPeriods.forEach((p,i)=>{html+=`<th class="gantt-month-hdr" style="width:${validPw[i].toFixed(1)}%">${p.label}</th>`;});
+  html+=`</tr></thead><tbody>`;
+
+  const barColor=(r)=>{
+    if(r.nivel<=2)return navy;
+    if(r.status==='Concluído')return green;
+    if(r.status==='Em dia')return navy;
+    return redBar;
+  };
+
+  // Compute first visible index for today label
+  let firstVisibleIdx=-1;
+  data.forEach((row,idx)=>{if(firstVisibleIdx<0&&gIsVisible(data,idx)&&row.nivel<=ganttMaxLevel)firstVisibleIdx=idx;});
+
+  data.forEach((row,idx)=>{
+    if(!gIsVisible(data,idx))return;
+    if(row.nivel>ganttMaxLevel)return;
+    const n=row.nivel,indent=(n-1)*14;
+    const cls=`gantt-row-n${n}`;
+    const canT=hasGChildren(idx)&&row.nivel<ganttMaxLevel;
+    const col=GCOL[idx];
+    const toggle=canT?`<button class="g-toggle" onclick="gToggle(${idx})">${col?'▶':'▼'}</button> `:'  ';
+
+    const rowSt=row.status||'';
+    const s=SC[rowSt];
+    const statCell=rowSt?`<span class="badge" style="background:${s.bg};color:${s.tc};font-size:10px">${rowSt}</span>`:'—';
+    const startD=row.rs||row.bs,endD=row.rf||row.bf;
+    // Formato MM/AA (mês/ano abreviado)
+    const dd=d=>{if(!d)return'—';const p=d.split('-');return p[1]+'/'+p[0].slice(2);};
+
+    // Base dates (planning) and Real dates (actual) - use real when available
+    const bl=ganttPct(row.bs,row.bf,rStart,rMs);          // baseline
+    const rl=ganttPct(row.rs||row.bs,row.rf||row.bf,rStart,rMs);  // real/revised
+    const bc=barColor(row);
+
+    let bars='';
+    if(bl.w>0)bars+=`<div class="g-bar g-baseline" style="left:${bl.l}%;width:${bl.w}%;background:${navy}"></div>`;
+    if(rl.w>0)bars+=`<div class="g-bar g-real" style="left:${rl.l}%;width:${rl.w}%;background:${bc}"></div>`;
+    const todayLbl=idx===firstVisibleIdx?'<span class="g-today-lbl">Hoje</span>':'';
+    bars+=`<div class="g-today" style="left:${todayPct}%">${todayLbl}</div>`;
+
+    const fmtFull=d=>{if(!d)return'';const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
+    html+=`<tr class="${cls}">
+      <td class="g-sticky"><div class="g-name" style="padding-left:${indent}px">${toggle}${esc(row.nome)}</div></td>
+      <td class="g-sticky-2" style="text-align:center;font-size:11px">${row.pct}%</td>
+      <td class="g-sticky-3" style="text-align:center;font-size:11px;color:var(--text2)">${dd(startD)}</td>
+      <td class="g-sticky-4" style="text-align:center;font-size:11px;color:var(--text2)">${dd(endD)}</td>
+      <td class="g-sticky-5" style="text-align:center">${statCell}</td>
+      <td class="g-chart-cell" colspan="${validPeriods.length}"
+          data-nome="${esc(row.nome)}" data-start="${startD||''}" data-end="${endD||''}"
+          data-pct="${row.pct}" data-status="${rowSt}"><div class="g-bar-wrap">${bars}</div></td>
+    </tr>`;
+  });
+  html+=`</tbody>`;
+  tbl.innerHTML=html;
+  // Fix sticky left offsets — deferred to avoid blocking initial render
+  requestAnimationFrame(function(){
+    const trs=tbl.querySelectorAll('thead tr');
+    const hrow=trs[0];
+    if(!hrow) return;
+    // Read all positions first (single reflow), then batch all writes
+    const lefts=[];
+    for(let ci=0;ci<5&&ci<hrow.children.length;ci++) lefts.push(hrow.children[ci].offsetLeft+'px');
+    const h=trs[1]?hrow.getBoundingClientRect().height+'px':null;
+    for(let ci=0;ci<lefts.length;ci++){
+      hrow.children[ci].style.left=lefts[ci];
+      tbl.querySelectorAll('tbody tr').forEach(function(tr){
+        if(tr.children[ci]) tr.children[ci].style.left=lefts[ci];
+      });
+    }
+    // Month-label row must stick below the first header row
+    if(trs[1]){
+      const h=hrow.getBoundingClientRect().height+'px';
+      Array.from(trs[1].children).forEach(function(th){th.style.top=h;});
+    }
+  })();
+  // Tooltip binding
+  (function(){
+    const tip=document.getElementById('gantt-tooltip');
+    const wrap=document.querySelector('.gantt-wrap');
+    if(!tip||!tbl) return;
+    tbl.addEventListener('mousemove',function(e){
+      const td=e.target.closest('.g-chart-cell');
+      if(!td){tip.style.display='none';return;}
+      const s=td.dataset.start,en=td.dataset.end;
+      const fmt=d=>{if(!d)return'—';const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];};
+      const sc={'Concluído':'#3B6D11','Em dia':'#185FA5','Em atraso':'#E53935'}[td.dataset.status]||'#aaa';
+      tip.innerHTML='<strong style="display:block;margin-bottom:4px">'+td.dataset.nome+'</strong>'+
+        'Início: '+fmt(s)+'<br>Fim: '+fmt(en)+'<br>'+
+        'Execução: <strong>'+td.dataset.pct+'%</strong><br>'+
+        '<span style="color:'+sc+'">'+(td.dataset.status||'—')+'</span>';
+      tip.style.display='block';
+      tip.style.left=Math.min(e.clientX+16,window.innerWidth-270)+'px';
+      tip.style.top=(e.clientY-10)+'px';
+    });
+    tbl.addEventListener('mouseleave',function(){tip.style.display='none';});
+  })();
 }
 
 function buildGanttRow(row,dataIdx,isFirst){
@@ -2977,7 +3074,7 @@ function renderPDS(){
 
   if(hdrWrap) hdrWrap.innerHTML='<div style="background:var(--navy);border-radius:var(--rl);padding:12px 16px;margin-bottom:12px"><div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:2px">'+esc(p.n1)+'</div><div style="font-size:15px;font-weight:700;color:#fff">'+esc(p.plano)+'</div></div>';
 
-  const pAct=ALL_ACT.filter(d=>d.id2===p.id2);
+  const pAct=ALL_ACT.filter(d=>d.id2===p.id2&&(d.id0||'1')===(p.id0||'1'));
   const k=kpi(pAct);
   kpiWrap.innerHTML='<div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px;margin-bottom:1rem">'
     +'<div class="card" style="margin-bottom:0;padding:1rem"><div class="card-title" style="margin-bottom:.75rem">Dados gerais</div>'
@@ -3106,7 +3203,6 @@ function switchTab(id,btn){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById(id).classList.add('active');btn.classList.add('active');
-  document.querySelectorAll('.gantt-date-filter').forEach(el=>el.style.display=id==='gantt'?'flex':'none');
   adjustSpacer();
   if(id==='resumo')setTimeout(()=>{renderCharts(fAct);renderKPIs(kpi(fAct));renderEixoTable(fAct);},50);
   if(id==='gantt')renderGantt(fGantt);
@@ -4293,7 +4389,10 @@ function renderPMTable(){
   const _pmN0s = MS_STATE['n0']||new Set();
   const _pmN1s = MS_STATE['n1']||new Set();
   const _pmN2s = MS_STATE['n2']||new Set();
+  const _profileN0s = getProfileN0s();
   let rows = PM_DATA.filter(r => !r._deleted);
+  // Aplicar restrição de N0 do perfil
+  if(_profileN0s) rows = rows.filter(r => _profileN0s.has(r.n0||''));
   // Apply header filters
   if(_pmN0s.size) rows = rows.filter(r => !r.n0||_pmN0s.has(r.n0));
   if(_pmN1s.size) rows = rows.filter(r => !r.n1||_pmN1s.has(r.n1));
@@ -6709,6 +6808,7 @@ function ensureFinance(p){
 
 function initGFin(){
   const sel=document.getElementById('gfin-selector');
+  const _gfinN0s=getProfileN0s();
   sel.innerHTML='<option value="">— seleccionar plano —</option>'+
     fPDS.map(function(p){
       const key=(p.id0||'')+'_'+p.id2;
