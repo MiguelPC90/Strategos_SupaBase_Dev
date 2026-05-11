@@ -1,5 +1,5 @@
 import './PlanoPage.css'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { Star, ChevronLeft } from 'lucide-react'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -15,6 +15,7 @@ import GestaoRiscos from '../GestaoRiscos/GestaoRiscos'
 import GestaoRecursos from '../GestaoRecursos/GestaoRecursos'
 import GestaoFinanceira from '../GestaoFinanceira/GestaoFinanceira'
 import GestaoIniciativas from '../GestaoIniciativas/GestaoIniciativas'
+import NovoPlanoModal from '../../components/NovoPlanoModal/NovoPlanoModal'
 import { rollupStatus, rollupPct, rollupPctPrev, leafStatus, rollupDateRange } from '../../lib/rollup'
 import { statusColor } from '../../lib/tokens'
 import { generateStatusNarrative } from '../../lib/statusNarrative'
@@ -55,7 +56,7 @@ export default function PlanoPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
 
-  const { planos, loading: planosLoading } = usePlanos()
+  const { planos, loading: planosLoading, refetch: refetchPlano } = usePlanos()
   const { programs, loading: programsLoading } = usePrograms()
   const { isFavorite, toggle: toggleFav, canAddMore } = useFavorites()
   const { canEdit } = usePermissions()
@@ -108,6 +109,8 @@ export default function PlanoPage() {
 
   const eixoName = plano.eixo?.name ?? null
   const dateLine = [fmtDateMY(planDateRange.bs), fmtDateMY(planDateRange.bf)].filter(Boolean).join(' → ')
+
+  const [planoEditOpen, setPlanoEditOpen] = useState(false)
 
   const isFav        = planoId ? isFavorite(planoId) : false
   const canEditPlano = canEdit('gestao-iniciativas', plano.program_id ?? undefined)
@@ -166,7 +169,7 @@ export default function PlanoPage() {
             {canEditPlano && (
               <button
                 className="pp-btn-edit"
-                onClick={() => navigate('/gestao-iniciativas')}
+                onClick={() => setPlanoEditOpen(true)}
                 type="button"
               >
                 Editar plano
@@ -221,14 +224,12 @@ export default function PlanoPage() {
         )}
         {activeTab === 'actividades' && planoId && (
           <GestaoIniciativas
-            mode="embedded"
             planoId={planoId}
             programId={plano.program_id ?? undefined}
           />
         )}
         {activeTab === 'pds' && planoId && (
           <GestaoPDS
-            mode="embedded"
             planoId={planoId}
             programId={plano.program_id ?? undefined}
           />
@@ -247,12 +248,19 @@ export default function PlanoPage() {
         )}
         {activeTab === 'recursos' && planoId && (
           <GestaoRecursos
-            mode="embedded"
             planoId={planoId}
             programId={plano.program_id ?? undefined}
           />
         )}
       </div>
+
+      <NovoPlanoModal
+        isOpen={planoEditOpen}
+        onClose={() => setPlanoEditOpen(false)}
+        onSaved={() => { setPlanoEditOpen(false); refetchPlano() }}
+        planoToEdit={plano}
+        programId={plano.program_id ?? null}
+      />
     </div>
   )
 }

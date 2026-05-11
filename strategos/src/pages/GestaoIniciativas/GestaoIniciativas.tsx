@@ -9,18 +9,16 @@ import Card from '../../components/Card/Card'
 import Modal from '../../components/Modal/Modal'
 import Badge from '../../components/Badge/Badge'
 import { useActivities } from '../../hooks/useActivities'
-import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
+import { usePrograms } from '../../hooks/usePrograms'
 import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
-import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange, leafPctPrev, leafStatus } from '../../lib/rollup'
-import type { Activity, ActivityDependency, DependencyType, Plano } from '../../types/index'
+import type { Activity, ActivityDependency, DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 import { validateNewDependency, propagateDateChanges, computeDepGap, DEP_GAP_WARNING_THRESHOLD } from '../../lib/activityDependencies'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 import { useRole } from '../../hooks/useRole'
-import NovoPlanoModal from '../../components/NovoPlanoModal/NovoPlanoModal'
 
 // ── Types ──────────────────────────────────────────────────────
 type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey'
@@ -692,45 +690,32 @@ function DependenciesEditor({
 
 // ── Main component ─────────────────────────────────────────────
 interface GestaoIniciativasProps {
-  mode?: 'standalone' | 'embedded'
   planoId?: string
   programId?: string
 }
 
 export default function GestaoIniciativas({
-  mode = 'standalone',
   planoId: propPlanoId,
   programId: propProgramId,
 }: GestaoIniciativasProps = {}) {
   const { showToast } = useToast()
-  const { filters } = useFilters()
   const [selProgId, setSelProgId] = useState<string | null>(null)
   const readOnly = !useCanEditCurrent('gestao-iniciativas')
   const { isAdmin, isProgramManager } = useRole()
 
-  const programs = useAccessiblePrograms('gestao-iniciativas')
-  const { activities: rawActivities, loading, refetch } = useActivities(
-    mode === 'embedded' ? { plano_id: propPlanoId } : {}
-  )
+  const { programs } = usePrograms()
+  const { activities: rawActivities, loading, refetch } = useActivities({ plano_id: propPlanoId })
   const { eixos: dbEixos } = useEixos(selProgId ?? undefined)
   const { planos: dbPlanos, refetch: refetchPlanos } = usePlanos(selProgId ?? undefined)
 
   const program = useMemo(() => programs.find(p => p.id === selProgId), [programs, selProgId])
 
-  // Filter client-side: match by program_id (new data) or by n0 name (legacy data with null program_id)
-  const activities = useMemo(() => {
-    if (mode === 'embedded') return rawActivities
-    if (!selProgId || !program) return rawActivities
-    return rawActivities.filter(a =>
-      a.program_id === selProgId ||
-      (!a.program_id && a.n0 === program.name)
-    )
-  }, [mode, rawActivities, selProgId, program])
+  const activities = rawActivities
 
-  // Current plano metadata (for pre-filling n1/n2 when opening new activity in embedded mode)
+  // Current plano metadata (for pre-filling n1/n2 when opening new activity)
   const currentPlano = useMemo(
-    () => mode === 'embedded' ? dbPlanos.find(p => p.id === propPlanoId) : undefined,
-    [mode, dbPlanos, propPlanoId]
+    () => dbPlanos.find(p => p.id === propPlanoId),
+    [dbPlanos, propPlanoId]
   )
 
   // Eixo and plano names from DB tables (Panel dropdowns)
@@ -748,9 +733,7 @@ export default function GestaoIniciativas({
   const [panelSaving, setPanelSaving] = useState(false)
   const [panelErrors, setPanelErrors] = useState<Record<string, string>>({})
 
-  const [planoModalOpen, setPlanoModalOpen] = useState(false)
-  const [planoToEdit, setPlanoToEdit]       = useState<Plano | null>(null)
-  const tableRef                            = useRef<HTMLDivElement>(null)
+  const tableRef = useRef<HTMLDivElement>(null)
 
   const [batchSaving, setBatchSaving] = useState(false)
   const [delayThreshold, setDelayThreshold] = useState(20)
@@ -832,15 +815,9 @@ export default function GestaoIniciativas({
     return () => document.removeEventListener('click', handler)
   }, [menuId])
 
-  // Sync selProgId: from prop when embedded, from filter/first-program when standalone
   useEffect(() => {
-    if (mode === 'embedded') { if (propProgramId) setSelProgId(propProgramId); return }
-    if (programs.length === 0) return
-    setSelProgId(prev => {
-      if (prev && programs.some(p => p.id === prev)) return prev
-      return filters.programIds[0] ?? programs[0].id
-    })
-  }, [programs, filters.programIds, mode, propProgramId]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (propProgramId) setSelProgId(propProgramId)
+  }, [propProgramId])
 
   // ── Collapse ─────────────────────────────────────────────────
   const toggle = useCallback((key: string) => {
@@ -921,16 +898,14 @@ export default function GestaoIniciativas({
         n5: sel.level >= 5 ? sel.n5 : '',
         owner: sel.owner, sponsor: sel.sponsor,
       }))
-    } else if (mode === 'embedded') {
+    } else {
       const firstAct = activities[0]
       const n1 = firstAct?.n1 ?? currentPlano?.eixo?.name ?? ''
       const n2 = firstAct?.n2 ?? currentPlano?.name ?? ''
       setPanelForm(blankForm(program?.name ?? '', { n1, n2 }))
-    } else {
-      setPanelForm(blankForm(program?.name ?? ''))
     }
     setPanelErrors({})
-  }, [selectedId, activities, program, mode, currentPlano])
+  }, [selectedId, activities, program, currentPlano])
 
   const closePanel = useCallback(() => { setPanelForm(null); setPanelErrors({}) }, [])
 
@@ -1070,42 +1045,6 @@ export default function GestaoIniciativas({
     handleAddDependency, handleRemoveDependency, handleUpdateDependency,
   ])
 
-  // ── Plano modal handlers ──────────────────────────────────────
-  const handleOpenPlano = useCallback(() => {
-    setPlanoToEdit(null)
-    setPlanoModalOpen(true)
-  }, [])
-
-  const handleEditPlano = useCallback((plano: Plano) => {
-    setPlanoToEdit(plano)
-    setPlanoModalOpen(true)
-  }, [])
-
-  const handleDuplicatePlano = useCallback(async (plano: Plano) => {
-    const { data, error } = await supabase
-      .from('planos')
-      .insert({
-        eixo_id:              plano.eixo_id,
-        program_id:           plano.program_id,
-        code:                 plano.code + '-C',
-        name:                 plano.name + ' (cópia)',
-        owner:                plano.owner,
-        sponsor:              plano.sponsor,
-        start_date:           plano.start_date,
-        end_date:             plano.end_date,
-        objective:            plano.objective,
-        threshold_leaves:     plano.threshold_leaves,
-        threshold_aggregates: plano.threshold_aggregates,
-        sort_order:           plano.sort_order + 1,
-      })
-      .select('*, eixo:eixos(name, code)')
-      .single()
-    if (error) { showToast('Erro ao duplicar: ' + error.message, 'error'); return }
-    showToast('Plano duplicado.', 'success')
-    refetchPlanos()
-    handleEditPlano(data as unknown as Plano)
-  }, [showToast, refetchPlanos, handleEditPlano])
-
   // ── Row delete ────────────────────────────────────────────────
   const handleRowDelete = useCallback(async (a: Activity) => {
     if (!confirm(`Eliminar "${a.name}"? Esta acção não pode ser desfeita.`)) return
@@ -1192,60 +1131,10 @@ export default function GestaoIniciativas({
 
   // ── Build table rows ─────────────────────────────────────────
   const rows: React.ReactNode[] = []
-  const iE = mode === 'embedded'
 
   for (const n1g of tree) {
-    const n1col = !iE && collapsed.has(n1g.key)
-    const n1leaves = n1g.all.filter(a => a.level === 4)
-    const n1pct = rollupPct(n1leaves); const n1prev = rollupPctPrev(n1leaves, TODAY)
-    const n1st  = rollupStatus(n1leaves, TODAY, delayThreshold); const n1dr = rollupDateRange(n1leaves)
-    if (!iE) rows.push(
-      <tr key={n1g.key} className="gi-row-n1">
-        <td>
-          <div className="gi-name-cell" style={{ paddingLeft: 4 }}>
-            <button className="gi-toggle" onClick={() => toggle(n1g.key)}>{n1col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
-            <span className="gi-name-text">{n1g.n1}</span>
-          </div>
-        </td>
-        <td className="gi-td-c">{fmtDate(n1dr.bf)}</td>
-        <td className="gi-td-c"><div className="gi-pct-wrap"><span className="gi-pct-ghost">{Math.round(n1pct)}</span><span className="gi-pct-unit">%</span></div></td><td className="gi-td-r">{Math.round(n1prev)}%</td>
-        <td className="gi-td-c"><Badge variant={statusBadge(n1st)}>{n1st}</Badge></td><td />
-      </tr>
-    )
-    if (n1col) continue
-
     for (const n2g of n1g.n2s) {
-      const n2col = !iE && collapsed.has(n2g.key)
-      const n2leaves = n2g.all.filter(a => a.level === 4)
-      const n2pct = rollupPct(n2leaves); const n2prev = rollupPctPrev(n2leaves, TODAY)
-      const n2st  = rollupStatus(n2leaves, TODAY, delayThreshold); const n2dr = rollupDateRange(n2leaves)
-      const n2Plano = dbPlanos.find(p => p.name === n2g.n2)
-      if (!iE) rows.push(
-        <tr key={n2g.key} className="gi-row-n2">
-          <td>
-            <div className="gi-name-cell" style={{ paddingLeft: 20 }}>
-              <button className="gi-toggle" onClick={() => toggle(n2g.key)}>{n2col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
-              <span className="gi-name-text">{n2g.n2}</span>
-            </div>
-          </td>
-          <td className="gi-td-c">{fmtDate(n2dr.bf)}</td>
-          <td className="gi-td-c"><div className="gi-pct-wrap"><span className="gi-pct-ghost">{Math.round(n2pct)}</span><span className="gi-pct-unit">%</span></div></td><td className="gi-td-r">{Math.round(n2prev)}%</td>
-          <td className="gi-td-c"><Badge variant={statusBadge(n2st)}>{n2st}</Badge></td>
-          <td onClick={e => e.stopPropagation()}>
-            {!readOnly && n2Plano && (
-              <RowMenu
-                actId={n2Plano.id} openId={menuId}
-                onOpen={setMenuId}
-                onEdit={() => handleEditPlano(n2Plano)}
-                onDuplicate={() => handleDuplicatePlano(n2Plano)}
-              />
-            )}
-          </td>
-        </tr>
-      )
-      if (n2col) continue
-
-      rows.push(...leafRows(n2g.leafActs.filter(a => a.level !== 2), iE ? 4 : 36, 'n3'))
+      rows.push(...leafRows(n2g.leafActs.filter(a => a.level !== 2), 4, 'n3'))
 
       for (const n3g of n2g.n3s) {
         // True children = n4 groups + any leafActs that are NOT the level-3 representative itself
@@ -1253,7 +1142,7 @@ export default function GestaoIniciativas({
         const n3HasChildren = n3g.n4s.length > 0 || n3ChildLeaves.length > 0
         if (!n3HasChildren) {
           // Leaf-only: the Macroactividade has no children — render as single leaf row
-          rows.push(...leafRows(n3g.leafActs, iE ? 4 : 36, 'n3'))
+          rows.push(...leafRows(n3g.leafActs, 4, 'n3'))
           continue
         }
         const n3col = collapsed.has(n3g.key)
@@ -1274,7 +1163,7 @@ export default function GestaoIniciativas({
             onDoubleClick={n3Rep ? () => openPanel(n3Rep) : undefined}
           >
             <td>
-              <div className="gi-name-cell" style={{ paddingLeft: iE ? 4 : 36 }}>
+              <div className="gi-name-cell" style={{ paddingLeft: 4 }}>
                 <button
                   className="gi-toggle"
                   onClick={e => { e.stopPropagation(); toggle(n3g.key) }}
@@ -1303,13 +1192,13 @@ export default function GestaoIniciativas({
         )
         if (n3col) continue
 
-        rows.push(...leafRows(n3ChildLeaves, iE ? 20 : 52, 'n4'))
+        rows.push(...leafRows(n3ChildLeaves, 20, 'n4'))
 
         for (const n4g of n3g.n4s) {
           const n4ChildLeaves = n4g.leafActs.filter(a => a.level !== 4)
           const n4HasChildren = n4g.n5s.length > 0 || n4ChildLeaves.length > 0
           if (!n4HasChildren) {
-            rows.push(...leafRows(n4g.leafActs, iE ? 20 : 52, 'n4'))
+            rows.push(...leafRows(n4g.leafActs, 20, 'n4'))
             continue
           }
           const n4col = collapsed.has(n4g.key)
@@ -1329,7 +1218,7 @@ export default function GestaoIniciativas({
               onClick={n4Rep ? () => openPanel(n4Rep) : undefined}
             >
               <td>
-                <div className="gi-name-cell" style={{ paddingLeft: iE ? 20 : 52 }}>
+                <div className="gi-name-cell" style={{ paddingLeft: 20 }}>
                   <button
                     className="gi-toggle"
                     onClick={e => { e.stopPropagation(); toggle(n4g.key) }}
@@ -1358,13 +1247,13 @@ export default function GestaoIniciativas({
           )
           if (n4col) continue
 
-          rows.push(...leafRows(n4ChildLeaves, iE ? 36 : 68, 'n5'))
+          rows.push(...leafRows(n4ChildLeaves, 36, 'n5'))
 
           for (const n5g of n4g.n5s) {
             const n5Leaves = n5g.acts.filter(a => a.level !== 5)
             if (n5Leaves.length === 0) {
               // Tarefa with no sub-tasks: single leaf row
-              rows.push(...leafRows(n5g.acts, iE ? 36 : 68, 'n5'))
+              rows.push(...leafRows(n5g.acts, 36, 'n5'))
             } else {
               const n5Rep  = n5g.acts.find(a => a.level === 5)
               const n5Sibs = n5Rep
@@ -1379,7 +1268,7 @@ export default function GestaoIniciativas({
                   onClick={n5Rep ? () => openPanel(n5Rep) : undefined}
                 >
                   <td>
-                    <div className="gi-name-cell" style={{ paddingLeft: iE ? 36 : 68 }}>
+                    <div className="gi-name-cell" style={{ paddingLeft: 36 }}>
                       <span className="gi-name-text">{n5g.n5}</span>
                     </div>
                   </td>
@@ -1401,72 +1290,10 @@ export default function GestaoIniciativas({
                   </td>
                 </tr>
               )
-              rows.push(...leafRows(n5Leaves, iE ? 52 : 84, 'n5'))
+              rows.push(...leafRows(n5Leaves, 52, 'n5'))
             }
           }
         }
-      }
-    }
-  }
-
-  // ── Orphan planos (created without activities, not in tree) ───
-  if (!iE) {
-    const renderedN2s = new Set(
-      tree.flatMap(n1g => n1g.n2s.map(n2g => `${n1g.n1}|||${n2g.n2}`))
-    )
-    const renderedN1s = new Set(tree.map(n1g => n1g.n1))
-
-    for (const eixo of dbEixos) {
-      const eixoPlanos = dbPlanos.filter(p => p.eixo?.name === eixo.name)
-      const orphanPlanos = eixoPlanos.filter(p => !renderedN2s.has(`${eixo.name}|||${p.name}`))
-      if (orphanPlanos.length === 0) continue
-
-      const n1key = `n1:${eixo.name}`
-      const n1col = collapsed.has(n1key)
-
-      if (!renderedN1s.has(eixo.name)) {
-        rows.push(
-          <tr key={`orphan-eixo:${eixo.id}`} className="gi-row-n1">
-            <td>
-              <div className="gi-name-cell" style={{ paddingLeft: 4 }}>
-                <button className="gi-toggle" onClick={() => toggle(n1key)}>{n1col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
-                <span className="gi-name-text">{eixo.name}</span>
-              </div>
-            </td>
-            <td className="gi-td-c">—</td>
-            <td className="gi-td-r">—</td><td className="gi-td-r">—</td>
-            <td className="gi-td-c" /><td />
-          </tr>
-        )
-      }
-
-      if (n1col) continue
-
-      for (const plano of orphanPlanos) {
-        const n2key = `n2:${eixo.name}:${plano.name}`
-        rows.push(
-          <tr key={`orphan-plano:${plano.id}`} className="gi-row-n2">
-            <td>
-              <div className="gi-name-cell" style={{ paddingLeft: 20 }}>
-                <button className="gi-toggle" onClick={() => toggle(n2key)}><ChevronDown size={14} strokeWidth={1.5} /></button>
-                <span className="gi-name-text">{plano.name}</span>
-              </div>
-            </td>
-            <td className="gi-td-c">{fmtDate(plano.end_date)}</td>
-            <td className="gi-td-r">—</td><td className="gi-td-r">—</td>
-            <td className="gi-td-c" />
-            <td onClick={e => e.stopPropagation()}>
-              {!readOnly && (
-                <RowMenu
-                  actId={plano.id} openId={menuId}
-                  onOpen={setMenuId}
-                  onEdit={() => handleEditPlano(plano)}
-                  onDuplicate={() => handleDuplicatePlano(plano)}
-                />
-              )}
-            </td>
-          </tr>
-        )
       }
     }
   }
@@ -1475,19 +1302,6 @@ export default function GestaoIniciativas({
   return (
     <div className="gi-page">
       <div className="gi-controls-bar">
-        {mode === 'standalone' && programs.length > 1 && (
-          <>
-            <label className="gi-prog-label">Programa</label>
-            <select
-              className="styled-select"
-              value={selProgId ?? ''}
-              onChange={e => setSelProgId(e.target.value || null)}
-            >
-              {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <div className="gi-sep" />
-          </>
-        )}
         <div className="gi-search">
           <svg className="gi-search-icon" width="14" height="14" viewBox="0 0 24 24"
                fill="none" stroke="currentColor" strokeWidth="2"
@@ -1512,18 +1326,10 @@ export default function GestaoIniciativas({
           )}
         </div>
         {!readOnly && (
-          <>
-            {mode === 'standalone' && (
-              <button className="btn-secondary" onClick={handleOpenPlano} disabled={!selProgId}
-                title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
-                Novo Plano
-              </button>
-            )}
-            <button className="btn-primary" onClick={openNew} disabled={!selProgId}
-              title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
-              Nova Actividade
-            </button>
-          </>
+          <button className="btn-primary" onClick={openNew} disabled={!selProgId}
+            title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
+            Nova Actividade
+          </button>
         )}
         <div className="gi-sep" />
         <button
@@ -1550,21 +1356,12 @@ export default function GestaoIniciativas({
             <Spinner />
           </div>
         ) : !loading && activities.length === 0 ? (
-          mode === 'embedded' ? (
-            <EmptyState
-              icon="list"
-              title="Sem actividades"
-              description="Clica em + Nova Actividade para começar a gerir as actividades deste plano."
-              {...(!readOnly && { actionLabel: '+ Nova Actividade', onAction: openNew })}
-            />
-          ) : (
-            <EmptyState
-              icon="list"
-              title="Sem planos ou actividades"
-              description="Cria um plano de acção para começar a gerir as actividades do programa."
-              {...(!readOnly && { actionLabel: '+ Novo Plano', onAction: handleOpenPlano })}
-            />
-          )
+          <EmptyState
+            icon="list"
+            title="Sem actividades"
+            description="Clica em + Nova Actividade para começar a gerir as actividades deste plano."
+            {...(!readOnly && { actionLabel: '+ Nova Actividade', onAction: openNew })}
+          />
         ) : (
           <>
             {searchQuery && searchFilteredActs.length === 0 ? (
@@ -1606,14 +1403,6 @@ export default function GestaoIniciativas({
       </Card>
       </div>
 
-      <NovoPlanoModal
-        isOpen={planoModalOpen}
-        onClose={() => setPlanoModalOpen(false)}
-        onSaved={() => { refetchPlanos(); refetch() }}
-        planoToEdit={planoToEdit}
-        programId={selProgId}
-      />
-
       {panelForm && (
         <Modal
           isOpen={true}
@@ -1640,7 +1429,7 @@ export default function GestaoIniciativas({
             errors={panelErrors}
             onChange={setPanelForm}
             canEditBaseline={!panelForm.id || isAdmin || isProgramManager}
-            isEmbedded={mode === 'embedded'}
+            isEmbedded={true}
             depProps={panelDepProps}
           />
         </Modal>

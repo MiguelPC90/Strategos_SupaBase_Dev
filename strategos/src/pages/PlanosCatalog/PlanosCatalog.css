@@ -382,4 +382,68 @@
   }
 
   .pc-card-sponsor { color: var(--text2); }
+
+  /* ── Row actions (edit menu) ── */
+  .pc-row-actions {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+
+  .pc-tr:hover .pc-row-actions,
+  .pc-card:hover .pc-row-actions { opacity: 1; }
+
+  .pc-row-actions:has(.pc-row-menu-dropdown) { opacity: 1; }
+
+  .pc-row-menu-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    padding: 0;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .pc-row-menu-btn:hover {
+    color: var(--text);
+    background: var(--bg3);
+  }
+
+  .pc-row-menu-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    z-index: 400;
+    min-width: 120px;
+    overflow: hidden;
+  }
+
+  .pc-row-menu-item {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    text-align: left;
+    background: none;
+    border: none;
+    font: inherit;
+    font-size: var(--text-sm, 13px);
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .pc-row-menu-item:hover { background: var(--bg3); }
 }

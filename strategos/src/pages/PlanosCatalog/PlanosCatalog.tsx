@@ -1,19 +1,20 @@
 import './PlanosCatalog.css'
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Star, LayoutList, LayoutGrid, Plus } from 'lucide-react'
+import { Star, LayoutList, LayoutGrid, Plus, MoreHorizontal } from 'lucide-react'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFavorites } from '../../hooks/useFavorites'
 import { useToast } from '../../context/ToastContext'
 import { useRole } from '../../hooks/useRole'
+import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 import { supabase } from '../../lib/supabase'
 import { rollupStatus, rollupPct } from '../../lib/rollup'
 import MultiSelect from '../../components/MultiSelect/MultiSelect'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Spinner from '../../components/Spinner/Spinner'
 import NovoPlanoModal from '../../components/NovoPlanoModal/NovoPlanoModal'
-import type { Activity } from '../../types/index'
+import type { Activity, Plano } from '../../types/index'
 
 const STATUS_ORDER = ['Em atraso', 'Em risco', 'Em dia', 'Concluída']
 
@@ -56,14 +57,49 @@ function MiniProgressBar({ pct }: { pct: number }) {
   )
 }
 
+interface PlanoRowMenuProps {
+  planoId: string
+  openId: string | null
+  onOpen: (id: string | null) => void
+  onEdit: () => void
+}
+
+function PlanoRowMenu({ planoId, openId, onOpen, onEdit }: PlanoRowMenuProps) {
+  const isOpen = openId === planoId
+  return (
+    <div className="pc-row-actions">
+      <button
+        className="pc-row-menu-btn"
+        onClick={e => { e.preventDefault(); e.stopPropagation(); onOpen(isOpen ? null : planoId) }}
+        title="Acções"
+      >
+        <MoreHorizontal size={14} strokeWidth={1.5} />
+      </button>
+      {isOpen && (
+        <div className="pc-row-menu-dropdown" onClick={e => e.stopPropagation()}>
+          <button
+            className="pc-row-menu-item"
+            onClick={() => { onEdit(); onOpen(null) }}
+          >
+            Editar
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function PlanosCatalog() {
   const { planos, loading, refetch } = usePlanos()
   const { programs } = usePrograms()
   const { isFavorite, toggle, canAddMore } = useFavorites()
   const { showToast } = useToast()
   const { isAdmin, isProgramManager } = useRole()
+  const canEdit = useCanEditCurrent('gestao-iniciativas')
   const [searchParams] = useSearchParams()
   const [newPlanoOpen, setNewPlanoOpen] = useState(false)
+  const [menuId, setMenuId] = useState<string | null>(null)
+  const [editPlano, setEditPlano] = useState<Plano | null>(null)
   const today = useMemo(() => new Date().toISOString().slice(0, 10), [])
 
   // ── Fetch level=4 leaves for status computation ───────────────
@@ -227,6 +263,19 @@ export default function PlanosCatalog() {
     ownerFilter.length + sponsorFilter.length +
     (onlyFavorites ? 1 : 0) + (search.trim() ? 1 : 0)
 
+  useEffect(() => {
+    if (!menuId) return
+    const handler = () => setMenuId(null)
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [menuId])
+
+  const handleEditPlano = (planoId: string) => {
+    const p = planos.find(pl => pl.id === planoId) ?? null
+    setEditPlano(p)
+    setMenuId(null)
+  }
+
   const handleToggle = async (planoId: string) => {
     const result = await toggle(planoId)
     if (!result.ok) showToast(result.error ?? 'Erro ao atualizar favorito', 'error')
@@ -347,6 +396,7 @@ export default function PlanosCatalog() {
               <col style={{ width: 130 }} />
               <col style={{ width: 100 }} />
               <col style={{ width: 150 }} />
+              <col style={{ width: 40 }} />
             </colgroup>
             <thead>
               <tr>
@@ -357,6 +407,7 @@ export default function PlanosCatalog() {
                 <th className="pc-th">Owner</th>
                 <th className="pc-th">Status</th>
                 <th className="pc-th pc-th-prog">% Exec</th>
+                <th className="pc-th" />
               </tr>
             </thead>
             <tbody>
@@ -385,6 +436,16 @@ export default function PlanosCatalog() {
                   <td className="pc-td pc-td-bar">
                     <MiniProgressBar pct={p.pct} />
                   </td>
+                  <td className="pc-td" style={{ padding: '8px 4px' }}>
+                    {canEdit && (
+                      <PlanoRowMenu
+                        planoId={p.id}
+                        openId={menuId}
+                        onOpen={setMenuId}
+                        onEdit={() => handleEditPlano(p.id)}
+                      />
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -399,12 +460,22 @@ export default function PlanosCatalog() {
                   <span className="pc-card-name">{p.name}</span>
                   <span className="pc-card-code">{p.code}</span>
                 </Link>
-                <FavoriteToggle
-                  planoId={p.id}
-                  isFav={isFavorite(p.id)}
-                  canAdd={canAddMore}
-                  onToggle={() => handleToggle(p.id)}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                  {canEdit && (
+                    <PlanoRowMenu
+                      planoId={p.id}
+                      openId={menuId}
+                      onOpen={setMenuId}
+                      onEdit={() => handleEditPlano(p.id)}
+                    />
+                  )}
+                  <FavoriteToggle
+                    planoId={p.id}
+                    isFav={isFavorite(p.id)}
+                    canAdd={canAddMore}
+                    onToggle={() => handleToggle(p.id)}
+                  />
+                </div>
               </div>
               {(p.program?.name || p.eixo?.name) && (
                 <div className="pc-card-prog-line">
@@ -436,6 +507,13 @@ export default function PlanosCatalog() {
             ? enriched.find(p => eixoFilter.includes(p.eixo?.name ?? ''))?.eixo_id ?? undefined
             : undefined
         }
+      />
+      <NovoPlanoModal
+        isOpen={editPlano !== null}
+        onClose={() => setEditPlano(null)}
+        onSaved={() => { refetch(); setEditPlano(null) }}
+        planoToEdit={editPlano}
+        programId={editPlano?.program_id ?? null}
       />
     </div>
   )
