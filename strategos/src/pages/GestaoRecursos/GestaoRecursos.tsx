@@ -293,7 +293,7 @@ function PersonAutocomplete({ value, personId, people, onNameChange, onSelect, o
     try {
       const { data, error } = await supabase
         .from('people')
-        .insert({ name, active: true })
+        .insert({ name, active: true, is_external: false })
         .select('id, name')
         .single()
       if (error) throw error
@@ -370,12 +370,10 @@ function PersonAutocomplete({ value, personId, people, onNameChange, onSelect, o
                 onMouseEnter={() => setHighlighted(idx)}
               >
                 <div className="gr-person-sug-name">{p.name}</div>
-                {(meta || p.type) && (
+                {(meta || p.is_external !== undefined) && (
                   <div className="gr-person-sug-meta">
                     {meta && <span>{meta}</span>}
-                    {p.type && (
-                      <span className={`gr-person-badge ${p.type === 'Externo' ? 'ext' : 'int'}`}>{p.type}</span>
-                    )}
+                    <span className={`gr-person-badge ${p.is_external ? 'ext' : 'int'}`}>{p.is_external ? 'Externo' : 'Interno'}</span>
                   </div>
                 )}
               </div>
@@ -419,7 +417,7 @@ function ResourceModalBody({ form, setForm, people, contracts, profiles, orgUnit
             name: p.name, person_id: p.id,
             role: form.role || p.role || '',
             org_unit: form.org_unit || p.org_unit || '',
-            type: p.type || form.type || 'Interno',
+            type: p.is_external ? 'Externo' : 'Interno',
           })}
           onPersonCreated={(id, name) => set({ name, person_id: id })}
         />

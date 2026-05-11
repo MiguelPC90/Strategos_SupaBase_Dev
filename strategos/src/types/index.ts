@@ -277,7 +277,8 @@ export interface Person {
   email: string | null
   org_unit: string | null
   role: string | null
-  type: string | null
+  company: string | null
+  is_external: boolean
   notes: string | null
   active: boolean
   sort_order: number

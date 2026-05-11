@@ -1384,7 +1384,8 @@ interface DraftPerson {
   id:                     string | null
   name:                   string
   email:                  string
-  company:                string   // maps to people.type
+  company:                string
+  is_external:            boolean
   org_unit:               string
   role:                   string
   cost_role_id:           string   // '' = none
@@ -1673,7 +1674,7 @@ function PessoasTab() {
     setLoading(true)
     const { data } = await supabase
       .from('people')
-      .select('id, name, email, org_unit, role, type, notes, active, sort_order, cost_role_id, cost_per_hour_override, currency')
+      .select('id, name, email, org_unit, role, company, is_external, notes, active, sort_order, cost_role_id, cost_per_hour_override, currency')
       .order('name')
     setPeople((data ?? []) as Person[])
     setLoading(false)
@@ -1718,7 +1719,8 @@ function PessoasTab() {
     const payload = {
       name:                   draft.name.trim(),
       email:                  draft.email.trim() || null,
-      type:                   draft.company.trim() || null,
+      company:                draft.company.trim() || null,
+      is_external:            draft.is_external,
       org_unit:               draft.org_unit.trim() || null,
       role:                   draft.role.trim() || null,
       cost_role_id:           draft.cost_role_id || null,
@@ -1753,6 +1755,7 @@ function PessoasTab() {
                 <th>Nome</th>
                 <th>Email</th>
                 <th>Empresa</th>
+                <th>Tipo</th>
                 <th>Unidade</th>
                 <th>Perfil</th>
                 <th style={{ width: 140 }}>Cargo / Custo</th>
@@ -1783,7 +1786,16 @@ function PessoasTab() {
                         <input className="adm-row-input" value={draft!.company}
                           onChange={e => setDraft(d => d ? { ...d, company: e.target.value } : d)}
                           onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
-                      ) : (p.type || '—')}
+                      ) : (p.company || '—')}
+                    </td>
+                    <td>
+                      {editing ? (
+                        <select className="adm-select" style={{ width: '100%' }} value={draft!.is_external ? 'ext' : 'int'}
+                          onChange={e => setDraft(d => d ? { ...d, is_external: e.target.value === 'ext' } : d)}>
+                          <option value="int">Interno</option>
+                          <option value="ext">Externo</option>
+                        </select>
+                      ) : (p.is_external ? 'Externo' : 'Interno')}
                     </td>
                     <td>
                       {editing ? (
@@ -1854,7 +1866,7 @@ function PessoasTab() {
                       ) : (
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Editar"
-                            onClick={() => setDraft({ id: p.id, name: p.name, email: p.email ?? '', company: p.type ?? '', org_unit: p.org_unit ?? '', role: p.role ?? '', cost_role_id: p.cost_role_id ?? '', cost_per_hour_override: p.cost_per_hour_override != null ? String(p.cost_per_hour_override) : '' })}>✎</button>
+                            onClick={() => setDraft({ id: p.id, name: p.name, email: p.email ?? '', company: p.company ?? '', is_external: p.is_external ?? false, org_unit: p.org_unit ?? '', role: p.role ?? '', cost_role_id: p.cost_role_id ?? '', cost_per_hour_override: p.cost_per_hour_override != null ? String(p.cost_per_hour_override) : '' })}>✎</button>
                           <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
                             onClick={() => deletePerson(p.id)}>🗑</button>
                         </span>
@@ -1879,6 +1891,13 @@ function PessoasTab() {
                     value={draft.company}
                     onChange={e => setDraft(d => d ? { ...d, company: e.target.value } : d)}
                     onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                  </td>
+                  <td>
+                    <select className="adm-select" style={{ width: '100%' }} value={draft.is_external ? 'ext' : 'int'}
+                      onChange={e => setDraft(d => d ? { ...d, is_external: e.target.value === 'ext' } : d)}>
+                      <option value="int">Interno</option>
+                      <option value="ext">Externo</option>
+                    </select>
                   </td>
                   <td>
                     {unitOpts.length > 0 ? (
@@ -1937,7 +1956,7 @@ function PessoasTab() {
             <button
               className="adm-add-btn"
               disabled={draft !== null}
-              onClick={() => setDraft({ id: null, name: '', email: '', company: '', org_unit: '', role: '', cost_role_id: '', cost_per_hour_override: '' })}
+              onClick={() => setDraft({ id: null, name: '', email: '', company: '', is_external: false, org_unit: '', role: '', cost_role_id: '', cost_per_hour_override: '' })}
             >
               + Nova Pessoa
             </button>
