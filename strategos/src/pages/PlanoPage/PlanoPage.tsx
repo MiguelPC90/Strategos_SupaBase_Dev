@@ -87,6 +87,8 @@ export default function PlanoPage() {
   const plano = planos.find(p => p.id === planoId)
   const program = programs.find(p => p.id === plano?.program_id)
 
+  const [planoEditOpen, setPlanoEditOpen] = useState(false)
+
   function setTab(tabId: TabId) {
     setSearchParams({ tab: tabId }, { replace: false })
   }
@@ -109,8 +111,6 @@ export default function PlanoPage() {
 
   const eixoName = plano.eixo?.name ?? null
   const dateLine = [fmtDateMY(planDateRange.bs), fmtDateMY(planDateRange.bf)].filter(Boolean).join(' → ')
-
-  const [planoEditOpen, setPlanoEditOpen] = useState(false)
 
   const isFav        = planoId ? isFavorite(planoId) : false
   const canEditPlano = canEdit('gestao-iniciativas', plano.program_id ?? undefined)
