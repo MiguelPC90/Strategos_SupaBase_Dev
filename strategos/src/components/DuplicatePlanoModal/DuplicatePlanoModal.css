@@ -1,0 +1,91 @@
+@layer components {
+  .dpm-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 4px;
+  }
+
+  .dpm-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .dpm-label {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text2);
+  }
+
+  .dpm-input {
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    padding: 6px 10px;
+    font-size: var(--text-md);
+    color: var(--text);
+    background: var(--bg);
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .dpm-input:focus {
+    outline: none;
+    border-color: var(--navy);
+  }
+
+  .dpm-strategy {
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 10px 12px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dpm-legend {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text2);
+    padding: 0 4px;
+  }
+
+  .dpm-radio-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--text-md);
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .dpm-radio-label input[type='radio'] {
+    accent-color: var(--stratgos-ember);
+    cursor: pointer;
+  }
+
+  .dpm-info {
+    font-size: var(--text-sm);
+    color: var(--text3);
+    margin: 0;
+    padding: 8px 10px;
+    background: var(--bg3);
+    border-radius: var(--r);
+    border-left: 3px solid var(--border2);
+  }
+
+  .dpm-error {
+    font-size: var(--text-sm);
+    color: var(--red);
+    margin: 0;
+    padding: 6px 10px;
+    background: var(--red-bg, rgba(183, 74, 63, 0.08));
+    border-radius: var(--r);
+  }
+}

@@ -1,6 +1,6 @@
 import './PlanosCatalog.css'
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { Star, LayoutList, LayoutGrid, Plus, MoreHorizontal } from 'lucide-react'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
@@ -14,6 +14,7 @@ import MultiSelect from '../../components/MultiSelect/MultiSelect'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Spinner from '../../components/Spinner/Spinner'
 import NovoPlanoModal from '../../components/NovoPlanoModal/NovoPlanoModal'
+import DuplicatePlanoModal from '../../components/DuplicatePlanoModal/DuplicatePlanoModal'
 import type { Activity, Plano } from '../../types/index'
 
 const STATUS_ORDER = ['Em atraso', 'Em risco', 'Em dia', 'Concluída']
@@ -62,9 +63,10 @@ interface PlanoRowMenuProps {
   openId: string | null
   onOpen: (id: string | null) => void
   onEdit: () => void
+  onDuplicate: () => void
 }
 
-function PlanoRowMenu({ planoId, openId, onOpen, onEdit }: PlanoRowMenuProps) {
+function PlanoRowMenu({ planoId, openId, onOpen, onEdit, onDuplicate }: PlanoRowMenuProps) {
   const isOpen = openId === planoId
   return (
     <div className="pc-row-actions">
@@ -83,6 +85,12 @@ function PlanoRowMenu({ planoId, openId, onOpen, onEdit }: PlanoRowMenuProps) {
           >
             Editar
           </button>
+          <button
+            className="pc-row-menu-item"
+            onClick={() => { onDuplicate(); onOpen(null) }}
+          >
+            Duplicar
+          </button>
         </div>
       )}
     </div>
@@ -96,10 +104,13 @@ export default function PlanosCatalog() {
   const { showToast } = useToast()
   const { isAdmin, isProgramManager } = useRole()
   const canEdit = useCanEditCurrent('gestao-iniciativas')
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [newPlanoOpen, setNewPlanoOpen] = useState(false)
-  const [menuId, setMenuId] = useState<string | null>(null)
-  const [editPlano, setEditPlano] = useState<Plano | null>(null)
+  const [newPlanoOpen,     setNewPlanoOpen]     = useState(false)
+  const [menuId,           setMenuId]           = useState<string | null>(null)
+  const [editPlano,        setEditPlano]        = useState<Plano | null>(null)
+  const [duplicateSource,  setDuplicateSource]  = useState<Plano | null>(null)
+  const [duplicateOpen,    setDuplicateOpen]    = useState(false)
   const today = useMemo(() => new Date().toISOString().slice(0, 10), [])
 
   // ── Fetch level=4 leaves for status computation ───────────────
@@ -276,6 +287,19 @@ export default function PlanosCatalog() {
     setMenuId(null)
   }
 
+  const handleOpenDuplicate = (planoId: string) => {
+    const p = planos.find(pl => pl.id === planoId) ?? null
+    if (!p) return
+    setDuplicateSource(p)
+    setDuplicateOpen(true)
+  }
+
+  const handleDuplicated = (newPlanoId: string) => {
+    setDuplicateOpen(false)
+    setDuplicateSource(null)
+    navigate(`/planos/${newPlanoId}`)
+  }
+
   const handleToggle = async (planoId: string) => {
     const result = await toggle(planoId)
     if (!result.ok) showToast(result.error ?? 'Erro ao atualizar favorito', 'error')
@@ -443,6 +467,7 @@ export default function PlanosCatalog() {
                         openId={menuId}
                         onOpen={setMenuId}
                         onEdit={() => handleEditPlano(p.id)}
+                        onDuplicate={() => handleOpenDuplicate(p.id)}
                       />
                     )}
                   </td>
@@ -467,6 +492,7 @@ export default function PlanosCatalog() {
                       openId={menuId}
                       onOpen={setMenuId}
                       onEdit={() => handleEditPlano(p.id)}
+                      onDuplicate={() => handleOpenDuplicate(p.id)}
                     />
                   )}
                   <FavoriteToggle
@@ -514,6 +540,12 @@ export default function PlanosCatalog() {
         onSaved={() => { refetch(); setEditPlano(null) }}
         planoToEdit={editPlano}
         programId={editPlano?.program_id ?? null}
+      />
+      <DuplicatePlanoModal
+        isOpen={duplicateOpen}
+        onClose={() => { setDuplicateOpen(false); setDuplicateSource(null) }}
+        onDuplicated={handleDuplicated}
+        source={duplicateSource}
       />
     </div>
   )
