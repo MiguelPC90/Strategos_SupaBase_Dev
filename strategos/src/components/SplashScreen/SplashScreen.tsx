@@ -1,39 +1,26 @@
 import { useEffect, useState } from 'react'
+import StratgosWordmark from '../Brand/StratgosWordmark'
 import './SplashScreen.css'
 
 interface SplashScreenProps {
-  logoUrl?: string | null
-  visible: boolean
+  fadeOut?: boolean
 }
 
-export default function SplashScreen({ logoUrl, visible }: SplashScreenProps) {
-  const [mounted, setMounted] = useState(visible)
-  const [fadingOut, setFadingOut] = useState(false)
+export default function SplashScreen({ fadeOut = false }: SplashScreenProps) {
+  const [gone, setGone] = useState(false)
 
   useEffect(() => {
-    if (!visible && mounted) {
-      setFadingOut(true)
-      const timer = setTimeout(() => setMounted(false), 300)
-      return () => clearTimeout(timer)
-    } else if (visible && !mounted) {
-      setMounted(true)
-      setFadingOut(false)
+    if (fadeOut) {
+      const t = setTimeout(() => setGone(true), 300)
+      return () => clearTimeout(t)
     }
-  }, [visible, mounted])
+  }, [fadeOut])
 
-  if (!mounted) return null
+  if (gone) return null
 
   return (
-    <div className={`splash-screen${fadingOut ? ' fading-out' : ''}`}>
-      <div className="splash-logo-container">
-        {logoUrl ? (
-          <img src={logoUrl} alt="Stratgos" className="splash-logo" />
-        ) : (
-          <div className="splash-logo-fallback">
-            <span className="splash-logo-text">Stratgos</span>
-          </div>
-        )}
-      </div>
+    <div className={`splash-screen${fadeOut ? ' splash-fade-out' : ''}`}>
+      <StratgosWordmark size={32} onDark={false} />
     </div>
   )
 }

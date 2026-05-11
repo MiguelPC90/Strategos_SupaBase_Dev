@@ -2,64 +2,17 @@
   .splash-screen {
     position: fixed;
     inset: 0;
-    background: var(--bg);
     display: flex;
     align-items: center;
     justify-content: center;
+    background: var(--bg);
     z-index: 9999;
-    animation: splash-fade-in 200ms ease;
+    opacity: 1;
+    transition: opacity 300ms ease-out;
   }
 
-  .splash-screen.fading-out {
-    animation: splash-fade-out 300ms ease forwards;
-  }
-
-  .splash-logo-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-    animation: splash-pulse 1.8s ease-in-out infinite;
-  }
-
-  .splash-logo {
-    width: 120px;
-    height: auto;
-    max-height: 120px;
-    object-fit: contain;
-  }
-
-  .splash-logo-fallback {
-    padding: 24px 32px;
-    background: var(--navy);
-    border-radius: var(--rl);
-  }
-
-  .splash-logo-text {
-    font-size: var(--text-2xl);
-    font-weight: 700;
-    color: white;
-    letter-spacing: 0.02em;
-  }
-
-  @keyframes splash-fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-
-  @keyframes splash-fade-out {
-    from { opacity: 1; }
-    to { opacity: 0; }
-  }
-
-  @keyframes splash-pulse {
-    0%, 100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 0.75;
-      transform: scale(0.98);
-    }
+  .splash-screen.splash-fade-out {
+    opacity: 0;
+    pointer-events: none;
   }
 }

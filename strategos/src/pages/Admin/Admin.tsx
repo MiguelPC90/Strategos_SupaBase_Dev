@@ -2,6 +2,7 @@ import './Admin.css'
 import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import { Check } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
+import { useBranding } from '../../context/BrandingContext'
 import * as XLSX from 'xlsx'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
@@ -47,10 +48,12 @@ const SECTIONS: Section[] = [
 ]
 
 // ── Section 1: Geral ───────────────────────────────────────────
-const CONFIG_KEYS = ['client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date', 'status_delay_threshold', 'status_delay_threshold_aggregates', 'status_delay_threshold_leaves', 'pds_hide_completed_days', 'health_rules'] as const
+const CONFIG_KEYS = ['branding_mode', 'client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date', 'status_delay_threshold', 'status_delay_threshold_aggregates', 'status_delay_threshold_leaves', 'pds_hide_completed_days', 'health_rules'] as const
 
 function AdminGeral() {
   const { showToast } = useToast()
+  const { refresh: refreshBranding } = useBranding()
+  const [brandingMode,   setBrandingMode]   = useState<'stratgos' | 'cobrand'>('stratgos')
   const [title,          setTitle]          = useState('')
   const [subtitle,       setSubtitle]       = useState('')
   const [cutoffDate,     setCutoffDate]     = useState('')
@@ -76,6 +79,8 @@ function AdminGeral() {
         if (error || !data) return
         const map: Record<string, string> = {}
         for (const row of data) map[row.config_key] = row.data
+        const rawMode = map['branding_mode'] ?? 'stratgos'
+        setBrandingMode(rawMode === 'cobrand' ? 'cobrand' : 'stratgos')
         setTitle(map['client_title']       ?? '')
         setSubtitle(map['client_subtitle'] ?? '')
         setLogoUrl(map['client_logo_url']  ?? '')
@@ -98,6 +103,7 @@ function AdminGeral() {
     setSaving(true)
     try {
       const pairs = [
+        { config_key: 'branding_mode',           data: brandingMode },
         { config_key: 'client_title',            data: title },
         { config_key: 'client_subtitle',         data: subtitle },
         { config_key: 'cutoff_date',             data: cutoffDate },
@@ -109,7 +115,7 @@ function AdminGeral() {
       await Promise.all(
         pairs.map(p => supabase.from('app_config').upsert(p, { onConflict: 'config_key' }))
       )
-
+      await refreshBranding()
       showToast('Guardado!')
     } finally {
       setSaving(false)
@@ -135,6 +141,7 @@ function AdminGeral() {
         { onConflict: 'config_key' },
       )
       setLogoUrl(publicUrl)
+      await refreshBranding()
       if (fileRef.current) fileRef.current.value = ''
     } finally {
       setUploading(false)
@@ -147,6 +154,7 @@ function AdminGeral() {
       { onConflict: 'config_key' },
     )
     setLogoUrl('')
+    await refreshBranding()
   }
 
   if (loading) {
@@ -164,6 +172,37 @@ function AdminGeral() {
 
           {/* ── Left: text config ── */}
           <div>
+            <div className="adm-field">
+              <label className="adm-label">Modo de identidade</label>
+              <div className="adm-radio-group">
+                <label>
+                  <input
+                    type="radio"
+                    className="adm-radio"
+                    name="branding-mode"
+                    value="stratgos"
+                    checked={brandingMode === 'stratgos'}
+                    onChange={() => setBrandingMode('stratgos')}
+                  />
+                  Apenas Stratgos
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    className="adm-radio"
+                    name="branding-mode"
+                    value="cobrand"
+                    checked={brandingMode === 'cobrand'}
+                    onChange={() => setBrandingMode('cobrand')}
+                  />
+                  Stratgos + Cliente
+                </label>
+              </div>
+              <span className="adm-help">
+                "Apenas Stratgos": wordmark Stratgos no topbar. "Stratgos + Cliente": g-mark Stratgos + logo e nome do cliente.
+              </span>
+            </div>
+
             <div className="adm-field">
               <label className="adm-label">Título da plataforma</label>
               <input

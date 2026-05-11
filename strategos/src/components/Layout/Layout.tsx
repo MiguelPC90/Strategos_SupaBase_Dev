@@ -16,6 +16,9 @@ import { setThresholds } from '../../lib/rollup'
 import type { PageKey } from '../../types/index'
 import Breadcrumb from '../Breadcrumb/Breadcrumb'
 import { CommandPalette } from '../CommandPalette/CommandPalette'
+import { useBranding } from '../../context/BrandingContext'
+import StratgosWordmark from '../Brand/StratgosWordmark'
+import StratgosGMark from '../Brand/StratgosGMark'
 
 interface NavItemConfig {
   to: string
@@ -181,21 +184,13 @@ export default function Layout() {
   const programMap = useMemo(() => new Map(programs.map(p => [p.id, p])), [programs])
   const planoMap   = useMemo(() => new Map(planos.map(p => [p.id, p])),   [planos])
 
+  const { mode, clientTitle, clientSubtitle, clientLogoUrl, loading: brandingLoading } = useBranding()
+
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
 
-  const [clientTitle,    setClientTitle]    = useState('')
-  const [clientLogoUrl,  setClientLogoUrl]  = useState('')
-  const [clientSubtitle, setClientSubtitle] = useState('')
-
-  const [configLoaded,          setConfigLoaded]          = useState(false)
-  const [splashMinTimeElapsed,  setSplashMinTimeElapsed]  = useState(false)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setSplashMinTimeElapsed(true), 500)
-    return () => clearTimeout(timer)
-  }, [])
+  const [configLoaded, setConfigLoaded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -203,7 +198,6 @@ export default function Layout() {
       .from('app_config')
       .select('config_key,data')
       .in('config_key', [
-        'client_title', 'client_logo_url', 'client_subtitle',
         'status_delay_threshold_aggregates', 'status_delay_threshold', 'status_delay_threshold_leaves',
       ])
       .then(({ data }) => {
@@ -213,11 +207,7 @@ export default function Layout() {
           const map: Record<string, string> = {}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           for (const row of data as any[]) map[row.config_key] = row.data ?? ''
-          setClientTitle(map['client_title']     ?? '')
-          setClientLogoUrl(map['client_logo_url']  ?? '')
-          setClientSubtitle(map['client_subtitle'] ?? '')
-          // New keys take priority; fall back to legacy key for existing installations
-          const aggThreshold   = parseInt(map['status_delay_threshold_aggregates'] ?? map['status_delay_threshold'] ?? '20') || 20
+          const aggThreshold    = parseInt(map['status_delay_threshold_aggregates'] ?? map['status_delay_threshold'] ?? '20') || 20
           const leavesThreshold = parseInt(map['status_delay_threshold_leaves'] ?? '0') || 0
           setThresholds(aggThreshold, leavesThreshold)
         }
@@ -254,13 +244,13 @@ export default function Layout() {
 
   const essentialLoaded =
     !authLoading &&
-    (!user || (configLoaded && !programsLoading))
+    (!user || (configLoaded && !programsLoading && !brandingLoading))
 
-  const showSplash = !essentialLoaded || !splashMinTimeElapsed
+  const showSplash = !essentialLoaded
 
   return (
     <>
-      <SplashScreen visible={showSplash} logoUrl={clientLogoUrl || null} />
+      <SplashScreen fadeOut={!showSplash} />
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
       {/* ── Sidebar (always collapsed, expands on hover) ── */}
@@ -329,19 +319,38 @@ export default function Layout() {
       {/* ── Topbar ── */}
       <header className="topbar">
         <div className="topbar-brand">
-          {clientLogoUrl ? (
-            <img src={clientLogoUrl} alt="logo" style={{ height: 32 }} />
+          {mode === 'cobrand' ? (
+            <>
+              <StratgosGMark size={28} />
+              <span className="topbar-divider" aria-hidden="true" />
+              {clientLogoUrl && (
+                <img
+                  src={clientLogoUrl}
+                  alt={clientTitle || 'Cliente'}
+                  className="topbar-client-logo"
+                />
+              )}
+              {clientTitle && (
+                <span className="topbar-client-name">{clientTitle}</span>
+              )}
+              {clientSubtitle && (
+                <>
+                  <span className="topbar-divider" aria-hidden="true" />
+                  <span className="topbar-subtitle">{clientSubtitle}</span>
+                </>
+              )}
+            </>
           ) : (
-            <span className="topbar-brand-icon">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-              </svg>
-            </span>
+            <>
+              <StratgosWordmark size={20} onDark={true} />
+              {clientSubtitle && (
+                <>
+                  <span className="topbar-divider" aria-hidden="true" />
+                  <span className="topbar-subtitle">{clientSubtitle}</span>
+                </>
+              )}
+            </>
           )}
-          <div className="topbar-brand-text">
-            <span className="topbar-title">{clientTitle || 'Stratgos'}</span>
-            {clientSubtitle && <span className="topbar-subtitle">{clientSubtitle}</span>}
-          </div>
         </div>
 
         <div className="topbar-spacer" />
@@ -396,7 +405,9 @@ export default function Layout() {
         <div className="page-body">
           <Outlet />
         </div>
-        <footer className="app-footer">Powered by Stratgos</footer>
+        <footer className="app-footer">
+          Powered by <StratgosWordmark size={14} onDark={false} />
+        </footer>
         <ToastList />
       </main>
     </>

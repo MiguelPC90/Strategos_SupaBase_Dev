@@ -164,38 +164,41 @@
   .topbar-brand {
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: var(--space-3);
     flex-shrink: 0;
   }
-  .topbar-brand-icon {
-    width: 24px;
+
+  .topbar-divider {
+    width: 1px;
     height: 24px;
-    border-radius: 5px;
-    background: var(--green);
-    color: var(--topbar-text);
-    font-size: var(--text-base);
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: var(--topbar-border-light);
+    display: inline-block;
     flex-shrink: 0;
   }
-  .topbar-brand-text {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
+
+  .topbar-client-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: contain;
+    background: var(--stratgos-parchment);
+    flex-shrink: 0;
   }
-  .topbar-title {
-    font-size: 15px; /* TODO: outlier — review token candidate */
-    font-weight: 700;
+
+  .topbar-client-name {
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 600;
     color: var(--topbar-text);
-    letter-spacing: 0.01em;
     white-space: nowrap;
-    line-height: 1.2;
+    line-height: 1;
   }
+
   .topbar-subtitle {
-    font-size: var(--text-xs);
-    color: rgba(255,255,255,0.55); /* TODO: outlier — between text-faint(0.35) and text-muted(0.65) */
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--topbar-text-muted);
     white-space: nowrap;
     line-height: 1;
   }
@@ -424,8 +427,11 @@
   }
 
   .app-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     padding: 12px 24px;
-    text-align: center;
     font-size: var(--text-sm);
     color: var(--text3);
     border-top: 1px solid var(--border);

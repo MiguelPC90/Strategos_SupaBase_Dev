@@ -92,6 +92,19 @@
     margin-top: 2px;
   }
 
+  .adm-radio-group {
+    display: flex;
+    gap: var(--space-4);
+    margin-top: var(--space-1);
+  }
+  .adm-radio-group label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    cursor: pointer;
+    font-size: var(--text-sm);
+  }
+
   .adm-logo-wrap {
     display: flex;
     align-items: center;
