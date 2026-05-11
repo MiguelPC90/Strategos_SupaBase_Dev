@@ -1,11 +1,14 @@
 import './Login.css'
 import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useBranding } from '../../context/BrandingContext'
+import StratgosWordmark from '../../components/Brand/StratgosWordmark'
 
 type Tab = 'password' | 'magic'
 
 export default function Login() {
   const { signIn, signInWithMagicLink } = useAuth()
+  const { mode, clientLogoUrl, clientTitle } = useBranding()
 
   const [tab, setTab] = useState<Tab>('password')
 
@@ -52,18 +55,23 @@ export default function Login() {
 
   return (
     <div className="login-page">
-      {/* ── Nav bar ── */}
-      <header className="login-topbar">
-        <span className="login-brand-icon">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-          </svg>
-        </span>
-        <span className="login-brand-text">Stratgos</span>
-      </header>
+      <div className="login-content">
+        {/* ── Brand area ── */}
+        <div className="login-brand-area">
+          <StratgosWordmark size={48} onDark={false} />
+          {mode === 'cobrand' && clientLogoUrl && (
+            <>
+              <span className="login-brand-x" aria-hidden="true">x</span>
+              <img
+                src={clientLogoUrl}
+                alt={clientTitle || 'Cliente'}
+                className="login-brand-client-logo"
+              />
+            </>
+          )}
+        </div>
 
-      {/* ── Centered card ── */}
-      <div className="login-center">
+        {/* ── Login card ── */}
         <div className="login-card">
           <h1 className="login-heading t-title">Iniciar sessão</h1>
 

@@ -4,52 +4,52 @@
     min-height: 100vh;
     background: var(--bg3);
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-6) var(--space-4);
   }
 
-  /* ── Topbar (mirrors app topbar) ───────────────────────────── */
-  .login-topbar {
-    height: var(--topbar-h);
-    background: var(--navy);
+  .login-content {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 9px;
-    padding: 0 20px;
-    flex-shrink: 0;
+    width: 100%;
+    max-width: 400px;
   }
-  .login-brand-icon {
-    width: 24px;
-    height: 24px;
-    border-radius: 5px;
-    background: var(--green);
+
+  /* ── Brand area ────────────────────────────────────────────── */
+  .login-brand-area {
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
   }
-  .login-brand-text {
-    font-size: 15px; /* TODO: outlier — review token candidate */
-    font-weight: 700;
-    color: var(--topbar-text);
-    letter-spacing: 0.01em;
+
+  .login-brand-x {
+    font-family: var(--font-sans);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 20px;
+    color: var(--text2);
+    user-select: none;
+    line-height: 1;
+  }
+
+  .login-brand-client-logo {
+    height: 48px;
+    width: auto;
+    max-width: 200px;
+    object-fit: contain;
   }
 
   /* ── Centered card area ────────────────────────────────────── */
-  .login-center {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 32px 16px;
-  }
-
   .login-card {
     background: var(--bg);
     border: 1px solid var(--border2);
     border-radius: var(--rl);
     padding: 32px;
     width: 100%;
-    max-width: 400px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.07); /* TODO: outlier — review token candidate */
   }
 
