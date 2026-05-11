@@ -20,7 +20,7 @@ export default function SplashScreen({ fadeOut = false }: SplashScreenProps) {
 
   return (
     <div className={`splash-screen${fadeOut ? ' splash-fade-out' : ''}`}>
-      <StratgosWordmark size={32} onDark={false} />
+      <StratgosWordmark size={64} onDark={false} />
     </div>
   )
 }

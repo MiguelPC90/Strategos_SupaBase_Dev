@@ -321,7 +321,7 @@ export default function Layout() {
         <div className="topbar-brand">
           {mode === 'cobrand' ? (
             <>
-              <StratgosGMark size={28} />
+              <StratgosGMark size={32} />
               <span className="topbar-divider" aria-hidden="true" />
               {clientLogoUrl && (
                 <img
@@ -342,7 +342,7 @@ export default function Layout() {
             </>
           ) : (
             <>
-              <StratgosWordmark size={20} onDark={true} />
+              <StratgosWordmark size={30} onDark={true} />
               {clientSubtitle && (
                 <>
                   <span className="topbar-divider" aria-hidden="true" />
@@ -406,7 +406,7 @@ export default function Layout() {
           <Outlet />
         </div>
         <footer className="app-footer">
-          Powered by <StratgosWordmark size={14} onDark={false} />
+          Powered by <StratgosWordmark size={18} onDark={false} />
         </footer>
         <ToastList />
       </main>

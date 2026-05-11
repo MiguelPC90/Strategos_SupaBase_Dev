@@ -177,11 +177,10 @@
   }
 
   .topbar-client-logo {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
+    height: 32px;
+    width: auto;
+    max-width: 120px;
     object-fit: contain;
-    background: var(--stratgos-parchment);
     flex-shrink: 0;
   }
 
