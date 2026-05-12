@@ -2778,13 +2778,14 @@ type HistoricoTab = 'snapshots' | 'registo'
 
 interface ChangeLogRow {
   id: string
-  user_id: string | null
+  changed_by: string | null
   table_name: string
   operation: string
   record_id: string | null
   old_values: Record<string, unknown> | null
   new_values: Record<string, unknown> | null
-  created_at: string
+  changed_at: string
+  summary: string | null
 }
 
 function fmtDate(iso: string) {
@@ -2921,11 +2922,11 @@ function RegistoTab() {
     setLogError(false)
     let q = supabase
       .from('change_log')
-      .select('id, user_id, table_name, operation, record_id, old_values, new_values, created_at')
-      .order('created_at', { ascending: false })
+      .select('id, changed_by, table_name, operation, record_id, old_values, new_values, changed_at, summary')
+      .order('changed_at', { ascending: false })
       .limit(100)
     if (tableFilter) q = q.eq('table_name', tableFilter)
-    if (userFilter)  q = q.eq('user_id', userFilter)
+    if (userFilter)  q = q.eq('changed_by', userFilter)
     q.then(({ data, error }) => {
       if (cancelled) return
       if (error) { setLogError(true); setLoading(false); return }
@@ -2994,11 +2995,14 @@ function RegistoTab() {
               {rows.map(r => (
                 <Fragment key={r.id}>
                   <tr>
-                    <td style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{fmtDateTime(r.created_at)}</td>
+                    <td style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{fmtDateTime(r.changed_at)}</td>
                     <td style={{ fontSize: 12, color: 'var(--text2)' }}>
-                      {r.user_id ? (profileMap[r.user_id] ?? r.user_id.slice(0, 8)) : '—'}
+                      {r.changed_by ? (profileMap[r.changed_by] ?? r.changed_by.slice(0, 8)) : '—'}
                     </td>
-                    <td style={{ fontSize: 12 }}>{r.table_name}</td>
+                    <td style={{ fontSize: 12 }}>
+                      {r.table_name}
+                      {r.summary && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{r.summary}</div>}
+                    </td>
                     <td>{actionBadge(r.operation)}</td>
                     <td style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'monospace' }}>
                       {shortId(r.record_id)}
@@ -3373,7 +3377,9 @@ function AdminPlano() {
   const [hideCompletedDays,    setHideCompletedDays]    = useState(90)
   const [healthConfig,         setHealthConfig]         = useState<HealthConfig>(DEFAULT_HEALTH_CONFIG)
   const [loading,    setLoading]    = useState(true)
-  const [saving,     setSaving]     = useState(false)
+  const [savingKey,  setSavingKey]  = useState<string | null>(null)
+  const [savedKey,   setSavedKey]   = useState<string | null>(null)
+  const [errorKey,   setErrorKey]   = useState<string | null>(null)
 
   // Alert rules — row-by-row save
   const [alertRules,   setAlertRules]   = useState<AlertRule[]>([])
@@ -3414,21 +3420,18 @@ function AdminPlano() {
     })
   }, [])
 
-  async function handleSave() {
-    setSaving(true)
-    try {
-      const pairs = [
-        { config_key: 'status_delay_threshold_aggregates', data: String(delayThreshold) },
-        { config_key: 'status_delay_threshold_leaves',     data: String(delayThresholdLeaves) },
-        { config_key: 'pds_hide_completed_days',           data: String(hideCompletedDays) },
-        { config_key: 'health_rules',                      data: JSON.stringify(healthConfig) },
-      ]
-      await Promise.all(
-        pairs.map(p => supabase.from('app_config').upsert(p, { onConflict: 'config_key' }))
-      )
-      showToast('Guardado!')
-    } finally {
-      setSaving(false)
+  async function saveConfigKey(key: string, value: string) {
+    setSavingKey(key)
+    setErrorKey(null)
+    const { error } = await supabase
+      .from('app_config')
+      .upsert({ config_key: key, data: value }, { onConflict: 'config_key' })
+    setSavingKey(null)
+    if (error) {
+      setErrorKey(key)
+    } else {
+      setSavedKey(key)
+      setTimeout(() => setSavedKey(prev => prev === key ? null : prev), 2300)
     }
   }
 
@@ -3453,7 +3456,7 @@ function AdminPlano() {
   }
 
   return (
-    <>
+    <div className="adm-plano-stack">
       <Card title="Limiares de atraso">
         <p className="adm-section-desc">Desvio tolerado (em pontos percentuais) entre execução prevista e real antes de marcar actividades como atrasadas.</p>
         <div className="adm-thresholds-row">
@@ -3467,8 +3470,11 @@ function AdminPlano() {
               step={1}
               value={delayThreshold}
               onChange={e => setDelayThreshold(parseInt(e.target.value) || 0)}
+              onBlur={() => saveConfigKey('status_delay_threshold_aggregates', String(delayThreshold))}
             />
             <span className="adm-help">Desvio tolerado antes de marcar planos, eixos e programas como atrasados.</span>
+            {savedKey === 'status_delay_threshold_aggregates' && <span className="adm-saved-indicator">Guardado</span>}
+            {errorKey === 'status_delay_threshold_aggregates' && <span className="adm-error-indicator">Erro ao guardar</span>}
           </div>
           <div className="adm-field">
             <label className="adm-label">Folhas (%)</label>
@@ -3480,8 +3486,11 @@ function AdminPlano() {
               step={1}
               value={delayThresholdLeaves}
               onChange={e => setDelayThresholdLeaves(parseInt(e.target.value) || 0)}
+              onBlur={() => saveConfigKey('status_delay_threshold_leaves', String(delayThresholdLeaves))}
             />
             <span className="adm-help">Desvio tolerado antes de marcar actividades individuais como atrasadas. 0 = qualquer desvio é atraso.</span>
+            {savedKey === 'status_delay_threshold_leaves' && <span className="adm-saved-indicator">Guardado</span>}
+            {errorKey === 'status_delay_threshold_leaves' && <span className="adm-error-indicator">Erro ao guardar</span>}
           </div>
         </div>
         <div className="adm-field" style={{ marginTop: 'var(--space-3)' }}>
@@ -3493,17 +3502,13 @@ function AdminPlano() {
             step={1}
             value={hideCompletedDays}
             onChange={e => setHideCompletedDays(parseInt(e.target.value) || 0)}
+            onBlur={() => saveConfigKey('pds_hide_completed_days', String(hideCompletedDays))}
           />
           <span className="adm-help">Compromissos anteriores concluídos há mais de X dias são ocultados no Ponto de Situação. Compromissos em aberto aparecem sempre.</span>
+          {savedKey === 'pds_hide_completed_days' && <span className="adm-saved-indicator">Guardado</span>}
+          {errorKey === 'pds_hide_completed_days' && <span className="adm-error-indicator">Erro ao guardar</span>}
         </div>
-        <button
-          className="btn-primary btn-lg"
-          style={{ marginTop: 'var(--space-4)' }}
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? 'A guardar…' : 'Guardar'}
-        </button>
+        {savingKey && savingKey !== 'health_rules' && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text3)' }}>A guardar…</span>}
       </Card>
 
       <Card title="Limiares de Saúde do Plano">
@@ -3515,15 +3520,25 @@ function AdminPlano() {
             color="red"
             label="Crítico"
             block={healthConfig.red}
-            onChange={b => setHealthConfig(c => ({ ...c, red: b }))}
+            onChange={b => {
+              const next = { ...healthConfig, red: b }
+              setHealthConfig(next)
+              saveConfigKey('health_rules', JSON.stringify(next))
+            }}
           />
           <HealthBlockEditor
             color="amber"
             label="Aviso"
             block={healthConfig.amber}
-            onChange={b => setHealthConfig(c => ({ ...c, amber: b }))}
+            onChange={b => {
+              const next = { ...healthConfig, amber: b }
+              setHealthConfig(next)
+              saveConfigKey('health_rules', JSON.stringify(next))
+            }}
           />
         </div>
+        {savedKey === 'health_rules' && <span className="adm-saved-indicator" style={{ marginTop: 'var(--space-2)', display: 'block' }}>Guardado</span>}
+        {errorKey === 'health_rules' && <span className="adm-error-indicator" style={{ marginTop: 'var(--space-2)', display: 'block' }}>Erro ao guardar</span>}
       </Card>
 
       <Card title="Alertas">
@@ -3562,7 +3577,7 @@ function AdminPlano() {
                         e.target.value === '' ? null : Number(e.target.value))} />
                   </td>
                   <td>
-                    <select className="adm-row-input"
+                    <select className="styled-select-sm"
                       value={rule.severity}
                       onChange={e => handleAlertUpdate(rule, 'severity', e.target.value as AlertSeverity)}>
                       {SEVERITY_OPTS.map(s => (
@@ -3576,7 +3591,7 @@ function AdminPlano() {
           </table>
         )}
       </Card>
-    </>
+    </div>
   )
 }
 

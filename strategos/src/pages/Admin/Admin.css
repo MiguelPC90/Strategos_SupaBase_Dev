@@ -706,6 +706,32 @@
     font-size: var(--text-base);
   }
 
+  /* ── Plano tab stack ─────────────────────────────────────────── */
+  .adm-plano-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  /* ── Save feedback indicators ────────────────────────────────── */
+  .adm-saved-indicator {
+    font-size: var(--text-xs);
+    color: var(--green);
+    font-style: italic;
+    animation: adm-fade-in-out 2300ms ease-out forwards;
+  }
+  .adm-error-indicator {
+    font-size: var(--text-xs);
+    color: var(--red);
+    font-style: italic;
+  }
+  @keyframes adm-fade-in-out {
+    0%   { opacity: 0; }
+    10%  { opacity: 1; }
+    85%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
   /* ── Thresholds row ──────────────────────────────────────────── */
   .adm-thresholds-row {
     display: flex;
