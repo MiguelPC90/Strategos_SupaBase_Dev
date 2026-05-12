@@ -1,4 +1,4 @@
-import './Perfil.css'
+import './Profile.css'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
@@ -31,7 +31,7 @@ function getInitials(fullName: string, email: string): string {
   return email.split('@')[0].slice(0, 2).toUpperCase()
 }
 
-export default function Perfil() {
+export default function Profile() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { profile, role } = useRole()
@@ -126,17 +126,17 @@ export default function Perfil() {
   }
 
   return (
-    <div className="perfil-page">
+    <div className="profile-page">
       {/* Identity card */}
-      <div className="perfil-card">
-        <div className="perfil-card-title">Perfil</div>
+      <div className="profile-card">
+        <div className="profile-card-title">Perfil</div>
 
-        <div className="perfil-avatar">{initials}</div>
+        <div className="profile-avatar">{initials}</div>
 
-        <div className="perfil-field">
-          <label className="perfil-label">Nome completo</label>
+        <div className="profile-field">
+          <label className="profile-label">Nome completo</label>
           <input
-            className="perfil-input"
+            className="profile-input"
             type="text"
             value={fullName}
             onChange={e => setFullName(e.target.value)}
@@ -144,10 +144,10 @@ export default function Perfil() {
           />
         </div>
 
-        <div className="perfil-field">
-          <label className="perfil-label">Email</label>
+        <div className="profile-field">
+          <label className="profile-label">Email</label>
           <input
-            className="perfil-input"
+            className="profile-input"
             type="email"
             value={email}
             readOnly
@@ -155,24 +155,24 @@ export default function Perfil() {
         </div>
 
         {roleLabel && (
-          <div className="perfil-field">
-            <label className="perfil-label">Função</label>
-            <div className="perfil-role-row">
+          <div className="profile-field">
+            <label className="profile-label">Função</label>
+            <div className="profile-role-row">
               <Badge variant={roleBadgeVariant(role)}>{roleLabel}</Badge>
             </div>
           </div>
         )}
 
-        <div className="perfil-actions">
+        <div className="profile-actions">
           <button
-            className="perfil-btn-primary"
+            className="profile-btn-primary"
             onClick={handleIdentitySave}
             disabled={identityUnchanged || identitySaving}
           >
             {identitySaving ? 'A guardar…' : 'Guardar'}
           </button>
           {identityFeedback && (
-            <span className={`perfil-feedback perfil-feedback--${identityFeedback.type}`}>
+            <span className={`profile-feedback profile-feedback--${identityFeedback.type}`}>
               {identityFeedback.msg}
             </span>
           )}
@@ -180,34 +180,34 @@ export default function Perfil() {
       </div>
 
       {/* Password card */}
-      <div className="perfil-card">
-        <div className="perfil-card-title">Alterar palavra-passe</div>
+      <div className="profile-card">
+        <div className="profile-card-title">Alterar palavra-passe</div>
 
-        <div className="perfil-pwd-grid">
-          <div className="perfil-field">
-            <label className="perfil-label">Palavra-passe atual</label>
+        <div className="profile-pwd-grid">
+          <div className="profile-field">
+            <label className="profile-label">Palavra-passe atual</label>
             <input
-              className="perfil-input"
+              className="profile-input"
               type="password"
               value={currentPassword}
               onChange={e => setCurrentPassword(e.target.value)}
               autoComplete="current-password"
             />
           </div>
-          <div className="perfil-field">
-            <label className="perfil-label">Nova palavra-passe</label>
+          <div className="profile-field">
+            <label className="profile-label">Nova palavra-passe</label>
             <input
-              className="perfil-input"
+              className="profile-input"
               type="password"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
               autoComplete="new-password"
             />
           </div>
-          <div className="perfil-field">
-            <label className="perfil-label">Confirmar nova palavra-passe</label>
+          <div className="profile-field">
+            <label className="profile-label">Confirmar nova palavra-passe</label>
             <input
-              className="perfil-input"
+              className="profile-input"
               type="password"
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
@@ -216,16 +216,16 @@ export default function Perfil() {
           </div>
         </div>
 
-        <div className="perfil-actions">
+        <div className="profile-actions">
           <button
-            className="perfil-btn-primary"
+            className="profile-btn-primary"
             onClick={handlePasswordChange}
             disabled={pwdSaving || !currentPassword || !newPassword || !confirmPassword}
           >
             {pwdSaving ? 'A alterar…' : 'Alterar palavra-passe'}
           </button>
           {pwdFeedback && (
-            <span className={`perfil-feedback perfil-feedback--${pwdFeedback.type}`}>
+            <span className={`profile-feedback profile-feedback--${pwdFeedback.type}`}>
               {pwdFeedback.msg}
             </span>
           )}

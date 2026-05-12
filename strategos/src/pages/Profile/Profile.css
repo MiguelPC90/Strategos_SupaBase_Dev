@@ -1,5 +1,5 @@
 @layer components {
-  .perfil-page {
+  .profile-page {
     max-width: 600px;
     margin: 0 auto;
     padding: var(--space-6, 1.5rem) var(--space-4, 1rem);
@@ -8,7 +8,7 @@
     gap: var(--space-6, 1.5rem);
   }
 
-  .perfil-card {
+  .profile-card {
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: var(--rl);
@@ -18,7 +18,7 @@
     gap: var(--space-5, 1.25rem);
   }
 
-  .perfil-card-title {
+  .profile-card-title {
     font-size: var(--text-sm, 13px);
     font-weight: 600;
     color: var(--text);
@@ -29,7 +29,7 @@
     border-bottom: 1px solid var(--border);
   }
 
-  .perfil-avatar {
+  .profile-avatar {
     width: 80px;
     height: 80px;
     border-radius: 50%;
@@ -45,20 +45,20 @@
     flex-shrink: 0;
   }
 
-  .perfil-field {
+  .profile-field {
     display: flex;
     flex-direction: column;
     gap: var(--space-1, 0.25rem);
   }
 
-  .perfil-label {
+  .profile-label {
     font-size: 12px;
     font-weight: 500;
     color: var(--text2);
     letter-spacing: 0.04em;
   }
 
-  .perfil-input {
+  .profile-input {
     width: 100%;
     padding: 0.45rem 0.65rem;
     font-size: 14px;
@@ -71,32 +71,32 @@
     transition: border-color 0.15s;
   }
 
-  .perfil-input:focus {
+  .profile-input:focus {
     border-color: var(--stratgos-ember);
   }
 
-  .perfil-input:disabled,
-  .perfil-input[readonly] {
+  .profile-input:disabled,
+  .profile-input[readonly] {
     background: var(--bg3);
     color: var(--text3);
     cursor: not-allowed;
     border-color: var(--border);
   }
 
-  .perfil-role-row {
+  .profile-role-row {
     display: flex;
     align-items: center;
     gap: var(--space-2, 0.5rem);
   }
 
-  .perfil-actions {
+  .profile-actions {
     display: flex;
     align-items: center;
     gap: var(--space-3, 0.75rem);
     padding-top: var(--space-2, 0.5rem);
   }
 
-  .perfil-btn-primary {
+  .profile-btn-primary {
     padding: 0.45rem 1.1rem;
     font-size: 13px;
     font-weight: 600;
@@ -109,29 +109,29 @@
     transition: background 0.15s, opacity 0.15s;
   }
 
-  .perfil-btn-primary:hover:not(:disabled) {
+  .profile-btn-primary:hover:not(:disabled) {
     background: var(--stratgos-ember-dark, #b34b36);
   }
 
-  .perfil-btn-primary:disabled {
+  .profile-btn-primary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  .perfil-feedback {
+  .profile-feedback {
     font-size: 12px;
     font-style: italic;
   }
 
-  .perfil-feedback--success {
+  .profile-feedback--success {
     color: var(--green);
   }
 
-  .perfil-feedback--error {
+  .profile-feedback--error {
     color: var(--red);
   }
 
-  .perfil-pwd-grid {
+  .profile-pwd-grid {
     display: grid;
     grid-template-columns: 1fr;
     gap: var(--space-4, 1rem);

@@ -386,7 +386,7 @@ export default function Layout() {
                   </div>
                 )}
               </div>
-              <button className="dropdown-item" onClick={() => { setProfileOpen(false); navigate('/perfil') }}>
+              <button className="dropdown-item" onClick={() => { setProfileOpen(false); navigate('/profile') }}>
                 <svg viewBox="0 0 24 24">
                   <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
                   <circle cx="12" cy="7" r="4" />

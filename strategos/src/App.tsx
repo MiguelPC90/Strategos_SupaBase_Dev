@@ -13,7 +13,7 @@ import ExecucaoFinanceira from './pages/ExecucaoFinanceira/ExecucaoFinanceira'
 import Recursos from './pages/Recursos/Recursos'
 import BudgetPage from './pages/BudgetPage/BudgetPage'
 import Admin from './pages/Admin/Admin'
-import Perfil from './pages/Perfil/Perfil'
+import Profile from './pages/Profile/Profile'
 import PlanosCatalog from './pages/PlanosCatalog/PlanosCatalog'
 import PlanoPage from './pages/PlanoPage/PlanoPage'
 import { useAuth } from './hooks/useAuth'
@@ -152,7 +152,7 @@ export default function App() {
           <Route path="gestao-financeira"  element={<Navigate to="/budget" replace />} />
           <Route path="budget"             element={<PageGuard page="gestao-financeira"> <BudgetPage />        </PageGuard>} />
           <Route path="admin"              element={<AdminGuard><Admin /></AdminGuard>} />
-          <Route path="perfil"            element={<Perfil />} />
+          <Route path="profile"           element={<Profile />} />
           <Route path="planos"            element={<PlanosCatalog />} />
           <Route path="planos/:planoId"   element={<PlanoPage />} />
         </Route>
