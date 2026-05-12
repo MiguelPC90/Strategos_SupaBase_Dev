@@ -705,4 +705,72 @@
     padding: 4px 8px;
     font-size: var(--text-base);
   }
+
+  /* ── Thresholds row ──────────────────────────────────────────── */
+  .adm-thresholds-row {
+    display: flex;
+    gap: var(--space-3);
+  }
+  .adm-thresholds-row .adm-field {
+    flex: 1;
+  }
+
+  /* ── Input modifiers ─────────────────────────────────────────── */
+  .adm-input-uppercase {
+    text-transform: uppercase;
+  }
+
+  /* ── Form actions ────────────────────────────────────────────── */
+  .adm-form-actions {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    margin-top: var(--space-1);
+  }
+
+  /* ── Empty state ─────────────────────────────────────────────── */
+  .adm-empty-state {
+    text-align: center;
+    padding: var(--space-6);
+    color: var(--text3);
+    font-style: italic;
+  }
+
+  /* ── Change diff (Registo de Alterações) ─────────────────────── */
+  .adm-change-diff-row td {
+    padding: 0 var(--space-2) var(--space-2);
+    background: var(--bg);
+  }
+  .adm-change-diff-summary {
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--text3);
+    padding: var(--space-1) 0;
+  }
+  .adm-change-diff {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+  .adm-change-diff pre {
+    background: var(--bg2);
+    padding: var(--space-2);
+    border-radius: var(--r);
+    max-height: 200px;
+    overflow: auto;
+    white-space: pre-wrap;
+    margin: 0;
+  }
+  .adm-change-diff strong {
+    color: var(--text2);
+    display: block;
+    margin-bottom: var(--space-1);
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
 }

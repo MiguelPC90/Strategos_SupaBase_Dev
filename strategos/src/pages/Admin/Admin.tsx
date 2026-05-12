@@ -1,6 +1,6 @@
 import './Admin.css'
-import { useState, useEffect, useRef, type ChangeEvent } from 'react'
-import { Check } from 'lucide-react'
+import { useState, useEffect, useRef, Fragment, type ChangeEvent } from 'react'
+import { Check, X, Pencil, Trash2, AlertCircle } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import { useBranding } from '../../context/BrandingContext'
 import * as XLSX from 'xlsx'
@@ -236,8 +236,8 @@ function AdminGeral() {
               <span className="adm-help">Dados anteriores a esta data não são mostrados</span>
             </div>
 
-            <div style={{ display: 'flex', gap: 12 }}>
-              <div className="adm-field" style={{ flex: 1 }}>
+            <div className="adm-thresholds-row">
+              <div className="adm-field">
                 <label className="adm-label">Threshold de atraso — Agregados (%)</label>
                 <input
                   className="adm-input"
@@ -252,7 +252,7 @@ function AdminGeral() {
                   Desvio tolerado antes de marcar planos, eixos e programas como atrasados.
                 </span>
               </div>
-              <div className="adm-field" style={{ flex: 1 }}>
+              <div className="adm-field">
                 <label className="adm-label">Threshold de atraso — Folhas (%)</label>
                 <input
                   className="adm-input"
@@ -357,8 +357,6 @@ interface HealthBlockEditorProps {
 }
 
 function HealthBlockEditor({ color, label, block, onChange }: HealthBlockEditorProps) {
-  const dot = color === 'red' ? '🔴' : '🟡'
-
   function setOperator(op: 'OR' | 'AND') {
     onChange({ ...block, operator: op })
   }
@@ -373,7 +371,7 @@ function HealthBlockEditor({ color, label, block, onChange }: HealthBlockEditorP
   return (
     <div className="adm-health-block">
       <div className="adm-health-block-header">
-        <span className="adm-health-block-title">{dot} {label}</span>
+        <span className="adm-health-block-title"><AlertCircle size={14} style={{ color: color === 'red' ? 'var(--red)' : 'var(--amber)' }} /> {label}</span>
         <div className="adm-health-op-toggle">
           <button
             className={`adm-health-op-btn${block.operator === 'OR' ? ' active' : ''}`}
@@ -573,6 +571,7 @@ function AdminProgramas() {
 
         {/* ── Panel 1: Programas ── */}
         <Card title="Programas">
+          {/* negative margin bleeds table to Card edges, compensating for Card's 16px padding */}
           <div style={{ margin: '-16px' }}>
             {progLoad ? (
               <p className="adm-empty-panel">A carregar…</p>
@@ -645,14 +644,14 @@ function AdminProgramas() {
                           {editing ? (
                             <span style={{ whiteSpace: 'nowrap' }}>
                               <button className="adm-icon-btn" title="Guardar"  onClick={e => { e.stopPropagation(); saveProg() }}><Check size={14} strokeWidth={1.5} /></button>
-                              <button className="adm-icon-btn" title="Cancelar" onClick={e => { e.stopPropagation(); setDraft(null) }}>✕</button>
+                              <button className="adm-icon-btn" title="Cancelar" onClick={e => { e.stopPropagation(); setDraft(null) }}><X size={16} /></button>
                             </span>
                           ) : (
                             <span style={{ whiteSpace: 'nowrap' }}>
                               <button className="adm-icon-btn" title="Editar"
-                                onClick={e => { e.stopPropagation(); setDraft({ id: p.id, code: p.code, name: p.name, threshold_leaves: p.threshold_leaves ?? 0, threshold_aggregates: p.threshold_aggregates ?? 20 }) }}>✎</button>
+                                onClick={e => { e.stopPropagation(); setDraft({ id: p.id, code: p.code, name: p.name, threshold_leaves: p.threshold_leaves ?? 0, threshold_aggregates: p.threshold_aggregates ?? 20 }) }}><Pencil size={16} /></button>
                               <button className="adm-icon-btn" title="Apagar" style={{ color: 'var(--red)' }}
-                                onClick={e => { e.stopPropagation(); deleteProg(p.id) }}>🗑</button>
+                                onClick={e => { e.stopPropagation(); deleteProg(p.id) }}><Trash2 size={16} /></button>
                             </span>
                           )}
                         </td>
@@ -696,7 +695,7 @@ function AdminProgramas() {
                       <td>
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Guardar"  onClick={saveProg}><Check size={14} strokeWidth={1.5} /></button>
-                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}><X size={16} /></button>
                         </span>
                       </td>
                     </tr>
@@ -768,14 +767,14 @@ function AdminProgramas() {
                             {editing ? (
                               <span style={{ whiteSpace: 'nowrap' }}>
                                 <button className="adm-icon-btn" title="Guardar"  onClick={ev => { ev.stopPropagation(); saveEixo() }}><Check size={14} strokeWidth={1.5} /></button>
-                                <button className="adm-icon-btn" title="Cancelar" onClick={ev => { ev.stopPropagation(); setEixoDraft(null) }}>✕</button>
+                                <button className="adm-icon-btn" title="Cancelar" onClick={ev => { ev.stopPropagation(); setEixoDraft(null) }}><X size={16} /></button>
                               </span>
                             ) : (
                               <span style={{ whiteSpace: 'nowrap' }}>
                                 <button className="adm-icon-btn" title="Editar"
-                                  onClick={ev => { ev.stopPropagation(); setEixoDraft({ id: e.id, code: e.code, name: e.name }) }}>✎</button>
+                                  onClick={ev => { ev.stopPropagation(); setEixoDraft({ id: e.id, code: e.code, name: e.name }) }}><Pencil size={16} /></button>
                                 <button className="adm-icon-btn" title="Apagar" style={{ color: 'var(--red)' }}
-                                  onClick={ev => { ev.stopPropagation(); deleteEixo(e.id) }}>🗑</button>
+                                  onClick={ev => { ev.stopPropagation(); deleteEixo(e.id) }}><Trash2 size={16} /></button>
                               </span>
                             )}
                           </td>
@@ -801,7 +800,7 @@ function AdminProgramas() {
                         <td>
                           <span style={{ whiteSpace: 'nowrap' }}>
                             <button className="adm-icon-btn" title="Guardar"  onClick={saveEixo}><Check size={14} strokeWidth={1.5} /></button>
-                            <button className="adm-icon-btn" title="Cancelar" onClick={() => setEixoDraft(null)}>✕</button>
+                            <button className="adm-icon-btn" title="Cancelar" onClick={() => setEixoDraft(null)}><X size={16} /></button>
                           </span>
                         </td>
                       </tr>
@@ -891,14 +890,14 @@ function AdminProgramas() {
                             {editing ? (
                               <span style={{ whiteSpace: 'nowrap' }}>
                                 <button className="adm-icon-btn" title="Guardar"  onClick={savePlano}><Check size={14} strokeWidth={1.5} /></button>
-                                <button className="adm-icon-btn" title="Cancelar" onClick={() => setPlanoDraft(null)}>✕</button>
+                                <button className="adm-icon-btn" title="Cancelar" onClick={() => setPlanoDraft(null)}><X size={16} /></button>
                               </span>
                             ) : (
                               <span style={{ whiteSpace: 'nowrap' }}>
                                 <button className="adm-icon-btn" title="Editar"
-                                  onClick={() => setPlanoDraft({ id: p.id, code: p.code, name: p.name, owner: p.owner ?? '', sponsor: p.sponsor ?? '' })}>✎</button>
+                                  onClick={() => setPlanoDraft({ id: p.id, code: p.code, name: p.name, owner: p.owner ?? '', sponsor: p.sponsor ?? '' })}><Pencil size={16} /></button>
                                 <button className="adm-icon-btn" title="Apagar" style={{ color: 'var(--red)' }}
-                                  onClick={() => deletePlano(p.id)}>🗑</button>
+                                  onClick={() => deletePlano(p.id)}><Trash2 size={16} /></button>
                               </span>
                             )}
                           </td>
@@ -938,7 +937,7 @@ function AdminProgramas() {
                         <td>
                           <span style={{ whiteSpace: 'nowrap' }}>
                             <button className="adm-icon-btn" title="Guardar"  onClick={savePlano}><Check size={14} strokeWidth={1.5} /></button>
-                            <button className="adm-icon-btn" title="Cancelar" onClick={() => setPlanoDraft(null)}>✕</button>
+                            <button className="adm-icon-btn" title="Cancelar" onClick={() => setPlanoDraft(null)}><X size={16} /></button>
                           </span>
                         </td>
                       </tr>
@@ -1355,7 +1354,7 @@ function AdminUtilizadores() {
                           {editing ? (
                             <span style={{ whiteSpace: 'nowrap' }}>
                               <button className="adm-icon-btn" title="Guardar" onClick={saveRole} disabled={saving}><Check size={14} strokeWidth={1.5} /></button>
-                              <button className="adm-icon-btn" title="Cancelar" onClick={cancelEdit}>✕</button>
+                              <button className="adm-icon-btn" title="Cancelar" onClick={cancelEdit}><X size={16} /></button>
                             </span>
                           ) : (
                             <span style={{ whiteSpace: 'nowrap' }}>
@@ -1364,14 +1363,14 @@ function AdminUtilizadores() {
                                 title={isAdmin ? 'Não editável' : isCurrentUser ? 'Não editável' : 'Editar role'}
                                 disabled={isAdmin || isCurrentUser}
                                 onClick={() => startEdit(p)}
-                              >✎</button>
+                              ><Pencil size={16} /></button>
                               <button
                                 className="adm-icon-btn"
                                 title={isAdmin ? 'Não editável' : isCurrentUser ? 'Não pode remover a própria conta' : 'Remover'}
                                 disabled={isAdmin || isCurrentUser}
                                 style={{ color: isAdmin || isCurrentUser ? undefined : 'var(--red)' }}
                                 onClick={() => deleteProfile(p.id, p.full_name)}
-                              >🗑</button>
+                              ><Trash2 size={16} /></button>
                             </span>
                           )}
                         </td>
@@ -1558,14 +1557,14 @@ function CostRolesTab() {
                       {editing ? (
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Guardar"  onClick={saveCostRole}><Check size={14} strokeWidth={1.5} /></button>
-                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}><X size={16} /></button>
                         </span>
                       ) : (
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Editar"
-                            onClick={() => setDraft({ id: cr.id, name: cr.name, cost_per_hour: String(cr.cost_per_hour), currency: cr.currency, is_active: cr.is_active })}>✎</button>
+                            onClick={() => setDraft({ id: cr.id, name: cr.name, cost_per_hour: String(cr.cost_per_hour), currency: cr.currency, is_active: cr.is_active })}><Pencil size={16} /></button>
                           <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
-                            onClick={() => deleteCostRole(cr.id)}>🗑</button>
+                            onClick={() => deleteCostRole(cr.id)}><Trash2 size={16} /></button>
                         </span>
                       )}
                     </td>
@@ -1595,7 +1594,7 @@ function CostRolesTab() {
                   <td>
                     <span style={{ whiteSpace: 'nowrap' }}>
                       <button className="adm-icon-btn" title="Guardar"  onClick={saveCostRole}><Check size={14} strokeWidth={1.5} /></button>
-                      <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                      <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}><X size={16} /></button>
                     </span>
                   </td>
                 </tr>
@@ -1676,7 +1675,7 @@ function StringListEditor({ configKey, label, defaults = [] }: { configKey: stri
             onKeyDown={e => { if (e.key === 'Enter') save() }}
           />
           <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
-            onClick={() => remove(idx)}>🗑</button>
+            onClick={() => remove(idx)}><Trash2 size={16} /></button>
         </div>
       ))}
       <div style={{ display: 'flex', gap: 10, marginTop: 8, alignItems: 'center' }}>
@@ -1900,14 +1899,14 @@ function PessoasTab() {
                       {editing ? (
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Guardar"  onClick={savePerson}><Check size={14} strokeWidth={1.5} /></button>
-                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}><X size={16} /></button>
                         </span>
                       ) : (
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Editar"
-                            onClick={() => setDraft({ id: p.id, name: p.name, email: p.email ?? '', company: p.company ?? '', is_external: p.is_external ?? false, org_unit: p.org_unit ?? '', role: p.role ?? '', cost_role_id: p.cost_role_id ?? '', cost_per_hour_override: p.cost_per_hour_override != null ? String(p.cost_per_hour_override) : '' })}>✎</button>
+                            onClick={() => setDraft({ id: p.id, name: p.name, email: p.email ?? '', company: p.company ?? '', is_external: p.is_external ?? false, org_unit: p.org_unit ?? '', role: p.role ?? '', cost_role_id: p.cost_role_id ?? '', cost_per_hour_override: p.cost_per_hour_override != null ? String(p.cost_per_hour_override) : '' })}><Pencil size={16} /></button>
                           <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
-                            onClick={() => deletePerson(p.id)}>🗑</button>
+                            onClick={() => deletePerson(p.id)}><Trash2 size={16} /></button>
                         </span>
                       )}
                     </td>
@@ -1984,7 +1983,7 @@ function PessoasTab() {
                   <td>
                     <span style={{ whiteSpace: 'nowrap' }}>
                       <button className="adm-icon-btn" title="Guardar"  onClick={savePerson}><Check size={14} strokeWidth={1.5} /></button>
-                      <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                      <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}><X size={16} /></button>
                     </span>
                   </td>
                 </tr>
@@ -2128,8 +2127,7 @@ function MoedasTab() {
                   <tr key={c.id} className={editing ? 'editing' : undefined}>
                     <td>
                       {editing ? (
-                        <input className="adm-row-input" autoFocus maxLength={3}
-                          style={{ textTransform: 'uppercase' }}
+                        <input className="adm-row-input adm-input-uppercase" autoFocus maxLength={3}
                           value={draft!.code}
                           onChange={ev => setDraft(d => d ? { ...d, code: ev.target.value } : d)}
                           onKeyDown={ev => { if (ev.key === 'Enter') saveCurrency(); if (ev.key === 'Escape') setDraft(null) }} />
@@ -2158,14 +2156,14 @@ function MoedasTab() {
                       {editing ? (
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Guardar"  onClick={saveCurrency}><Check size={14} strokeWidth={1.5} /></button>
-                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}><X size={16} /></button>
                         </span>
                       ) : (
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Editar"
-                            onClick={() => setDraft({ id: c.id, code: c.code, name: c.name, symbol: c.symbol || '' })}>✎</button>
+                            onClick={() => setDraft({ id: c.id, code: c.code, name: c.name, symbol: c.symbol || '' })}><Pencil size={16} /></button>
                           <button className="adm-icon-btn" title="Apagar" style={{ color: 'var(--red)' }}
-                            onClick={() => deleteCurrency(c)}>🗑</button>
+                            onClick={() => deleteCurrency(c)}><Trash2 size={16} /></button>
                         </span>
                       )}
                     </td>
@@ -2197,7 +2195,7 @@ function MoedasTab() {
                   <td>
                     <span style={{ whiteSpace: 'nowrap' }}>
                       <button className="adm-icon-btn" title="Guardar"  onClick={saveCurrency}><Check size={14} strokeWidth={1.5} /></button>
-                      <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                      <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}><X size={16} /></button>
                     </span>
                   </td>
                 </tr>
@@ -2345,7 +2343,7 @@ function CategoriasTab({ programs }: ProgTabProps) {
                           ? setDraft(d => d ? { ...d, is_capex: !d.is_capex } : d)
                           : toggleCapex(cat)}
                         style={{
-                          background: (editing ? draft!.is_capex : cat.is_capex) ? '#EBF0FA' : '#FDF3E7',
+                          background: (editing ? draft!.is_capex : cat.is_capex) ? 'var(--blue-bg)' : 'var(--amber-bg)',
                           color:      (editing ? draft!.is_capex : cat.is_capex) ? 'var(--blue)' : 'var(--amber)',
                         }}
                       >
@@ -2367,14 +2365,14 @@ function CategoriasTab({ programs }: ProgTabProps) {
                       {editing ? (
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Guardar"  onClick={saveCategory}><Check size={14} strokeWidth={1.5} /></button>
-                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                          <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}><X size={16} /></button>
                         </span>
                       ) : (
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Editar"
-                            onClick={() => setDraft({ id: cat.id, name: cat.name, is_capex: cat.is_capex, programIds: catProgIds })}>✎</button>
+                            onClick={() => setDraft({ id: cat.id, name: cat.name, is_capex: cat.is_capex, programIds: catProgIds })}><Pencil size={16} /></button>
                           <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
-                            onClick={() => deleteCategory(cat.id)}>🗑</button>
+                            onClick={() => deleteCategory(cat.id)}><Trash2 size={16} /></button>
                         </span>
                       )}
                     </td>
@@ -2393,7 +2391,7 @@ function CategoriasTab({ programs }: ProgTabProps) {
                     <span className="adm-toggle-badge"
                       onClick={() => setDraft(d => d ? { ...d, is_capex: !d.is_capex } : d)}
                       style={{
-                        background: draft.is_capex ? '#EBF0FA' : '#FDF3E7',
+                        background: draft.is_capex ? 'var(--blue-bg)' : 'var(--amber-bg)',
                         color:      draft.is_capex ? 'var(--blue)' : 'var(--amber)',
                       }}
                     >
@@ -2406,7 +2404,7 @@ function CategoriasTab({ programs }: ProgTabProps) {
                   <td>
                     <span style={{ whiteSpace: 'nowrap' }}>
                       <button className="adm-icon-btn" title="Guardar"  onClick={saveCategory}><Check size={14} strokeWidth={1.5} /></button>
-                      <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}>✕</button>
+                      <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}><X size={16} /></button>
                     </span>
                   </td>
                 </tr>
@@ -2506,7 +2504,7 @@ function AnosTab({ programs, progsLoading }: ProgTabProps) {
                   <td style={{ fontWeight: 500 }}>{y.year}</td>
                   <td>
                     <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
-                      onClick={() => deleteYear(y.id)}>🗑</button>
+                      onClick={() => deleteYear(y.id)}><Trash2 size={16} /></button>
                   </td>
                 </tr>
               ))}
@@ -2870,8 +2868,10 @@ interface ChangeLogRow {
   id: string
   user_id: string | null
   table_name: string
-  action: string
+  operation: string
   record_id: string | null
+  old_values: Record<string, unknown> | null
+  new_values: Record<string, unknown> | null
   created_at: string
 }
 
@@ -2965,7 +2965,7 @@ function SnapshotsTab() {
                         disabled={isMostRecent}
                         style={{ color: isMostRecent ? undefined : 'var(--red)' }}
                         onClick={() => deleteSnapshot(s.id)}
-                      >🗑</button>
+                      ><Trash2 size={16} /></button>
                     </td>
                   </tr>
                 )
@@ -3009,7 +3009,7 @@ function RegistoTab() {
     setLogError(false)
     let q = supabase
       .from('change_log')
-      .select('id, user_id, table_name, action, record_id, created_at')
+      .select('id, user_id, table_name, operation, record_id, old_values, new_values, created_at')
       .order('created_at', { ascending: false })
       .limit(100)
     if (tableFilter) q = q.eq('table_name', tableFilter)
@@ -3027,9 +3027,9 @@ function RegistoTab() {
 
   const profileMap = Object.fromEntries(profiles.map(p => [p.id, p.full_name || p.email]))
 
-  function actionBadge(action: string) {
-    if (action === 'INSERT') return <Badge variant="green">INSERT</Badge>
-    if (action === 'DELETE') return <Badge variant="red">DELETE</Badge>
+  function actionBadge(operation: string) {
+    if (operation === 'INSERT') return <Badge variant="green">INSERT</Badge>
+    if (operation === 'DELETE') return <Badge variant="red">DELETE</Badge>
     return <Badge variant="blue">UPDATE</Badge>
   }
 
@@ -3040,7 +3040,7 @@ function RegistoTab() {
   }
 
   if (logError) {
-    return <p className="adm-help">O registo de alterações ainda não está configurado.</p>
+    return <div className="adm-empty-state">Erro ao carregar o registo de alterações.</div>
   }
 
   return (
@@ -3065,7 +3065,7 @@ function RegistoTab() {
       {loading ? (
         <p className="adm-help">A carregar…</p>
       ) : rows.length === 0 ? (
-        <p className="adm-empty-panel" style={{ padding: '24px 0' }}>Sem registos encontrados.</p>
+        <div className="adm-empty-state">Sem alterações registadas ainda.</div>
       ) : (
         <div style={{ margin: '0 -16px -16px' }}>
           <table className="adm-panel-table">
@@ -3080,17 +3080,42 @@ function RegistoTab() {
             </thead>
             <tbody>
               {rows.map(r => (
-                <tr key={r.id}>
-                  <td style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{fmtDateTime(r.created_at)}</td>
-                  <td style={{ fontSize: 12, color: 'var(--text2)' }}>
-                    {r.user_id ? (profileMap[r.user_id] ?? r.user_id.slice(0, 8)) : '—'}
-                  </td>
-                  <td style={{ fontSize: 12 }}>{r.table_name}</td>
-                  <td>{actionBadge(r.action)}</td>
-                  <td style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'monospace' }}>
-                    {shortId(r.record_id)}
-                  </td>
-                </tr>
+                <Fragment key={r.id}>
+                  <tr>
+                    <td style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{fmtDateTime(r.created_at)}</td>
+                    <td style={{ fontSize: 12, color: 'var(--text2)' }}>
+                      {r.user_id ? (profileMap[r.user_id] ?? r.user_id.slice(0, 8)) : '—'}
+                    </td>
+                    <td style={{ fontSize: 12 }}>{r.table_name}</td>
+                    <td>{actionBadge(r.operation)}</td>
+                    <td style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'monospace' }}>
+                      {shortId(r.record_id)}
+                    </td>
+                  </tr>
+                  {(r.old_values || r.new_values) && (
+                    <tr className="adm-change-diff-row">
+                      <td colSpan={5}>
+                        <details>
+                          <summary className="adm-change-diff-summary">Ver alterações</summary>
+                          <div className="adm-change-diff">
+                            {r.old_values && (
+                              <div>
+                                <strong>Antes:</strong>
+                                <pre>{JSON.stringify(r.old_values, null, 2)}</pre>
+                              </div>
+                            )}
+                            {r.new_values && (
+                              <div>
+                                <strong>Depois:</strong>
+                                <pre>{JSON.stringify(r.new_values, null, 2)}</pre>
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -3386,7 +3411,7 @@ function RotulosTab() {
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 4 }}>
+      <div className="adm-form-actions">
         <button className="btn-primary btn-lg" onClick={handleSave} disabled={saving || !selProgId}>
           {saving ? 'A guardar…' : 'Guardar'}
         </button>
@@ -3473,7 +3498,7 @@ function AdminAlertas() {
             {rules.map(rule => (
               <tr key={rule.id} style={{ opacity: saving === rule.id ? 0.5 : 1 }}>
                 <td>
-                  <code style={{ fontSize: 11, background: 'var(--bg3)', padding: '1px 4px', borderRadius: 3 }}>{rule.rule_key}</code>
+                  <code style={{ fontSize: 11, background: 'var(--bg3)', padding: '1px 4px', borderRadius: 'var(--r)' }}>{rule.rule_key}</code>
                   <div style={{ fontSize: 12, fontWeight: 600, marginTop: 3 }}>{rule.label}</div>
                 </td>
                 <td style={{ fontSize: 12, color: 'var(--text2)' }}>{rule.description ?? '—'}</td>
