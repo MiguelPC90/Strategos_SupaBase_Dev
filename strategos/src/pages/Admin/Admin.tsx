@@ -20,14 +20,14 @@ import type { Program, Eixo, Plano, Profile, Person, CostRole, Snapshot, UserRol
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
   | 'geral'
-  | 'programas'
   | 'utilizadores'
+  | 'programas'
+  | 'plano'
   | 'recursos'
   | 'financeiro'
   | 'risco'
-  | 'historico'
   | 'dados'
-  | 'alertas'
+  | 'historico'
 
 interface Section {
   key: SectionKey
@@ -36,19 +36,19 @@ interface Section {
 }
 
 const SECTIONS: Section[] = [
-  { key: 'geral',        label: 'Geral',                     desc: 'Título, subtítulo, logótipo do cliente e data de corte' },
-  { key: 'programas',    label: 'Programas e Eixos',         desc: 'Gestão da hierarquia N0 → N1 → N2' },
+  { key: 'geral',        label: 'Geral',                     desc: 'Identidade do cliente — modo de identidade, título, logótipo e data de corte' },
   { key: 'utilizadores', label: 'Utilizadores e Permissões', desc: 'Utilizadores, roles e matrix de acessos' },
+  { key: 'programas',    label: 'Programas e Eixos',         desc: 'Gestão da hierarquia N0 → N1 → N2' },
+  { key: 'plano',        label: 'Plano',                     desc: 'Limiares de atraso, saúde do plano, compromissos e alertas' },
   { key: 'recursos',     label: 'Recursos',                  desc: 'Perfis, unidades organizacionais e catálogo de pessoas' },
   { key: 'financeiro',   label: 'Financeiro',                desc: 'Moedas, categorias de custo e anos de gestão' },
   { key: 'risco',        label: 'Risco',                     desc: 'Dimensão da matriz, limiares e estados' },
-  { key: 'historico',    label: 'Histórico',                 desc: 'Snapshots automáticos e registo de alterações' },
   { key: 'dados',        label: 'Dados e Importação',        desc: 'Importar/exportar Excel e rótulos de filtros' },
-  { key: 'alertas',     label: 'Alertas',                   desc: 'Regras de alerta exibidas no Dashboard Executivo' },
+  { key: 'historico',    label: 'Histórico',                 desc: 'Snapshots automáticos e registo de alterações' },
 ]
 
 // ── Section 1: Geral ───────────────────────────────────────────
-const CONFIG_KEYS = ['branding_mode', 'client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date', 'status_delay_threshold', 'status_delay_threshold_aggregates', 'status_delay_threshold_leaves', 'pds_hide_completed_days', 'health_rules'] as const
+const GERAL_CONFIG_KEYS = ['branding_mode', 'client_title', 'client_subtitle', 'client_logo_url', 'cutoff_date'] as const
 
 function AdminGeral() {
   const { showToast } = useToast()
@@ -58,10 +58,6 @@ function AdminGeral() {
   const [subtitle,       setSubtitle]       = useState('')
   const [cutoffDate,     setCutoffDate]     = useState('')
   const [logoUrl,        setLogoUrl]        = useState('')
-  const [delayThreshold,       setDelayThreshold]       = useState(20)
-  const [delayThresholdLeaves, setDelayThresholdLeaves] = useState(0)
-  const [hideCompletedDays,    setHideCompletedDays]    = useState(90)
-  const [healthConfig,         setHealthConfig]         = useState<HealthConfig>(DEFAULT_HEALTH_CONFIG)
   const [loading,    setLoading]    = useState(true)
   const [saving,     setSaving]     = useState(false)
   const [uploading,  setUploading]  = useState(false)
@@ -72,7 +68,7 @@ function AdminGeral() {
     supabase
       .from('app_config')
       .select('config_key, data')
-      .in('config_key', [...CONFIG_KEYS])
+      .in('config_key', [...GERAL_CONFIG_KEYS])
       .then(({ data, error }) => {
         if (cancelled) return
         setLoading(false)
@@ -85,15 +81,6 @@ function AdminGeral() {
         setSubtitle(map['client_subtitle'] ?? '')
         setLogoUrl(map['client_logo_url']  ?? '')
         setCutoffDate(map['cutoff_date']   ?? '')
-        // New key takes priority; fall back to legacy key for existing installations
-        setDelayThreshold(parseInt(map['status_delay_threshold_aggregates'] ?? map['status_delay_threshold'] ?? '20') || 20)
-        setDelayThresholdLeaves(parseInt(map['status_delay_threshold_leaves'] ?? '0') || 0)
-        const hcd = parseInt(map['pds_hide_completed_days'] ?? '')
-        if (!isNaN(hcd)) setHideCompletedDays(hcd)
-        if (map['health_rules']) {
-          try { setHealthConfig({ ...DEFAULT_HEALTH_CONFIG, ...JSON.parse(map['health_rules']) }) }
-          catch { /* keep defaults */ }
-        }
       })
       .catch(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -103,14 +90,10 @@ function AdminGeral() {
     setSaving(true)
     try {
       const pairs = [
-        { config_key: 'branding_mode',           data: brandingMode },
-        { config_key: 'client_title',            data: title },
-        { config_key: 'client_subtitle',         data: subtitle },
-        { config_key: 'cutoff_date',             data: cutoffDate },
-        { config_key: 'status_delay_threshold_aggregates', data: String(delayThreshold) },
-        { config_key: 'status_delay_threshold_leaves',     data: String(delayThresholdLeaves) },
-        { config_key: 'pds_hide_completed_days',           data: String(hideCompletedDays) },
-        { config_key: 'health_rules',                      data: JSON.stringify(healthConfig) },
+        { config_key: 'branding_mode',   data: brandingMode },
+        { config_key: 'client_title',    data: title },
+        { config_key: 'client_subtitle', data: subtitle },
+        { config_key: 'cutoff_date',     data: cutoffDate },
       ]
       await Promise.all(
         pairs.map(p => supabase.from('app_config').upsert(p, { onConflict: 'config_key' }))
@@ -166,185 +149,114 @@ function AdminGeral() {
   }
 
   return (
-    <>
-      <Card title="Configuração Geral">
-        <div className="adm-section-grid">
+    <Card title="Configuração Geral">
+      <div className="adm-section-grid">
 
-          {/* ── Left: text config ── */}
-          <div>
-            <div className="adm-field">
-              <label className="adm-label">Modo de identidade</label>
-              <div className="adm-radio-group">
-                <label>
-                  <input
-                    type="radio"
-                    className="adm-radio"
-                    name="branding-mode"
-                    value="stratgos"
-                    checked={brandingMode === 'stratgos'}
-                    onChange={() => setBrandingMode('stratgos')}
-                  />
-                  Apenas Stratgos
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    className="adm-radio"
-                    name="branding-mode"
-                    value="cobrand"
-                    checked={brandingMode === 'cobrand'}
-                    onChange={() => setBrandingMode('cobrand')}
-                  />
-                  Stratgos + Cliente
-                </label>
-              </div>
-              <span className="adm-help">
-                "Apenas Stratgos": wordmark Stratgos no topbar. "Stratgos + Cliente": g-mark Stratgos + logo e nome do cliente.
-              </span>
-            </div>
-
-            <div className="adm-field">
-              <label className="adm-label">Título da plataforma</label>
-              <input
-                className="adm-input"
-                type="text"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="ex: Plano Estratégico 2025"
-              />
-            </div>
-
-            <div className="adm-field">
-              <label className="adm-label">Subtítulo</label>
-              <input
-                className="adm-input"
-                type="text"
-                value={subtitle}
-                onChange={e => setSubtitle(e.target.value)}
-                placeholder="Opcional"
-              />
-            </div>
-
-            <div className="adm-field">
-              <label className="adm-label">Data de corte</label>
-              <input
-                className="adm-input"
-                type="date"
-                value={cutoffDate}
-                onChange={e => setCutoffDate(e.target.value)}
-              />
-              <span className="adm-help">Dados anteriores a esta data não são mostrados</span>
-            </div>
-
-            <div className="adm-thresholds-row">
-              <div className="adm-field">
-                <label className="adm-label">Threshold de atraso — Agregados (%)</label>
+        {/* ── Left: text config ── */}
+        <div>
+          <div className="adm-field">
+            <label className="adm-label">Modo de identidade</label>
+            <div className="adm-radio-group">
+              <label>
                 <input
-                  className="adm-input"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={delayThreshold}
-                  onChange={e => setDelayThreshold(parseInt(e.target.value) || 0)}
+                  type="radio"
+                  className="adm-radio"
+                  name="branding-mode"
+                  value="stratgos"
+                  checked={brandingMode === 'stratgos'}
+                  onChange={() => setBrandingMode('stratgos')}
                 />
-                <span className="adm-help">
-                  Desvio tolerado antes de marcar planos, eixos e programas como atrasados.
-                </span>
-              </div>
-              <div className="adm-field">
-                <label className="adm-label">Threshold de atraso — Folhas (%)</label>
+                Apenas Stratgos
+              </label>
+              <label>
                 <input
-                  className="adm-input"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={delayThresholdLeaves}
-                  onChange={e => setDelayThresholdLeaves(parseInt(e.target.value) || 0)}
+                  type="radio"
+                  className="adm-radio"
+                  name="branding-mode"
+                  value="cobrand"
+                  checked={brandingMode === 'cobrand'}
+                  onChange={() => setBrandingMode('cobrand')}
                 />
-                <span className="adm-help">
-                  Desvio tolerado antes de marcar actividades individuais como atrasadas. 0 = qualquer desvio é atraso.
-                </span>
+                Stratgos + Cliente
+              </label>
+            </div>
+            <span className="adm-help">
+              "Apenas Stratgos": wordmark Stratgos no topbar. "Stratgos + Cliente": g-mark Stratgos + logo e nome do cliente.
+            </span>
+          </div>
+
+          <div className="adm-field">
+            <label className="adm-label">Título da plataforma</label>
+            <input
+              className="adm-input"
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="ex: Plano Estratégico 2025"
+            />
+          </div>
+
+          <div className="adm-field">
+            <label className="adm-label">Subtítulo</label>
+            <input
+              className="adm-input"
+              type="text"
+              value={subtitle}
+              onChange={e => setSubtitle(e.target.value)}
+              placeholder="Opcional"
+            />
+          </div>
+
+          <div className="adm-field">
+            <label className="adm-label">Data de corte</label>
+            <input
+              className="adm-input"
+              type="date"
+              value={cutoffDate}
+              onChange={e => setCutoffDate(e.target.value)}
+            />
+            <span className="adm-help">Dados anteriores a esta data não são mostrados</span>
+          </div>
+
+          <button
+            className="btn-primary btn-lg"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? 'A guardar…' : 'Guardar'}
+          </button>
+        </div>
+
+        {/* ── Right: logo ── */}
+        <div>
+          <div className="adm-field">
+            <label className="adm-label">Logótipo do cliente</label>
+            {logoUrl && (
+              <div className="adm-logo-wrap">
+                <img className="adm-logo-preview" src={logoUrl} alt="Logótipo" />
+                <button className="adm-btn-ghost" onClick={handleLogoRemove}>Remover</button>
               </div>
-            </div>
-
-            <div className="adm-field">
-              <label className="adm-label">Ocultar compromissos concluídos após (dias)</label>
-              <input
-                className="adm-input"
-                type="number"
-                min={0}
-                step={1}
-                value={hideCompletedDays}
-                onChange={e => setHideCompletedDays(parseInt(e.target.value) || 0)}
-              />
-              <span className="adm-help">
-                Compromissos anteriores concluídos há mais de X dias são ocultados no Ponto de Situação. Compromissos em aberto aparecem sempre.
-              </span>
-            </div>
-
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="adm-file-hidden"
+              onChange={handleLogoUpload}
+            />
             <button
-              className="btn-primary btn-lg"
-              onClick={handleSave}
-              disabled={saving}
+              className="adm-btn-secondary"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
             >
-              {saving ? 'A guardar…' : 'Guardar'}
+              {uploading ? 'A carregar…' : 'Carregar imagem'}
             </button>
+            <span className="adm-help">Recomendado: PNG transparente, máx. 400×120px</span>
           </div>
-
-          {/* ── Right: logo ── */}
-          <div>
-            <div className="adm-field">
-              <label className="adm-label">Logótipo do cliente</label>
-              {logoUrl && (
-                <div className="adm-logo-wrap">
-                  <img className="adm-logo-preview" src={logoUrl} alt="Logótipo" />
-                  <button className="adm-btn-ghost" onClick={handleLogoRemove}>Remover</button>
-                </div>
-              )}
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="adm-file-hidden"
-                onChange={handleLogoUpload}
-              />
-              <button
-                className="adm-btn-secondary"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-              >
-                {uploading ? 'A carregar…' : 'Carregar imagem'}
-              </button>
-              <span className="adm-help">Recomendado: PNG transparente, máx. 400×120px</span>
-            </div>
-          </div>
-
         </div>
-      </Card>
 
-      <Card title="Limiares de Saúde do Plano">
-        <p className="adm-section-desc">
-          Regras usadas para calcular o semáforo de saúde no cabeçalho do Ponto de Situação.
-        </p>
-        <div className="adm-health-blocks">
-          <HealthBlockEditor
-            color="red"
-            label="Crítico"
-            block={healthConfig.red}
-            onChange={b => setHealthConfig(c => ({ ...c, red: b }))}
-          />
-          <HealthBlockEditor
-            color="amber"
-            label="Aviso"
-            block={healthConfig.amber}
-            onChange={b => setHealthConfig(c => ({ ...c, amber: b }))}
-          />
-        </div>
-      </Card>
-
-    </>
+      </div>
+    </Card>
   )
 }
 
@@ -3446,89 +3358,225 @@ function AdminDados() {
   )
 }
 
-// ── Section 9: Alertas ─────────────────────────────────────────
+// ── Section 9: Plano ──────────────────────────────────────────
+const PLANO_CONFIG_KEYS = ['status_delay_threshold', 'status_delay_threshold_aggregates', 'status_delay_threshold_leaves', 'pds_hide_completed_days', 'health_rules'] as const
+
 const SEVERITY_OPTS: AlertSeverity[] = ['critical', 'high', 'medium', 'low']
 const SEVERITY_LABELS: Record<AlertSeverity, string> = {
   critical: 'Crítico', high: 'Alto', medium: 'Médio', low: 'Baixo',
 }
 
-function AdminAlertas() {
-  const [rules, setRules]   = useState<AlertRule[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving]   = useState<string | null>(null)
-  const { showToast }         = useToast()
+function AdminPlano() {
+  const { showToast } = useToast()
+  const [delayThreshold,       setDelayThreshold]       = useState(20)
+  const [delayThresholdLeaves, setDelayThresholdLeaves] = useState(0)
+  const [hideCompletedDays,    setHideCompletedDays]    = useState(90)
+  const [healthConfig,         setHealthConfig]         = useState<HealthConfig>(DEFAULT_HEALTH_CONFIG)
+  const [loading,    setLoading]    = useState(true)
+  const [saving,     setSaving]     = useState(false)
+
+  // Alert rules — row-by-row save
+  const [alertRules,   setAlertRules]   = useState<AlertRule[]>([])
+  const [alertLoading, setAlertLoading] = useState(true)
+  const [alertSaving,  setAlertSaving]  = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .from('app_config')
+      .select('config_key, data')
+      .in('config_key', [...PLANO_CONFIG_KEYS])
+      .then(({ data, error }) => {
+        if (cancelled) return
+        setLoading(false)
+        if (error || !data) return
+        const map: Record<string, string> = {}
+        for (const row of data) map[row.config_key] = row.data
+        // New key takes priority; fall back to legacy key for existing installations
+        setDelayThreshold(parseInt(map['status_delay_threshold_aggregates'] ?? map['status_delay_threshold'] ?? '20') || 20)
+        setDelayThresholdLeaves(parseInt(map['status_delay_threshold_leaves'] ?? '0') || 0)
+        const hcd = parseInt(map['pds_hide_completed_days'] ?? '')
+        if (!isNaN(hcd)) setHideCompletedDays(hcd)
+        if (map['health_rules']) {
+          try { setHealthConfig({ ...DEFAULT_HEALTH_CONFIG, ...JSON.parse(map['health_rules']) }) }
+          catch { /* keep defaults */ }
+        }
+      })
+      .catch(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     supabase.from('alert_rules').select('*').order('severity').then(({ data, error }) => {
-      if (data) setRules(data as AlertRule[])
+      if (data) setAlertRules(data as AlertRule[])
       if (error) console.error(error)
-      setLoading(false)
+      setAlertLoading(false)
     })
   }, [])
 
-  async function handleUpdate(rule: AlertRule, field: keyof AlertRule, value: unknown) {
-    setSaving(rule.id)
+  async function handleSave() {
+    setSaving(true)
+    try {
+      const pairs = [
+        { config_key: 'status_delay_threshold_aggregates', data: String(delayThreshold) },
+        { config_key: 'status_delay_threshold_leaves',     data: String(delayThresholdLeaves) },
+        { config_key: 'pds_hide_completed_days',           data: String(hideCompletedDays) },
+        { config_key: 'health_rules',                      data: JSON.stringify(healthConfig) },
+      ]
+      await Promise.all(
+        pairs.map(p => supabase.from('app_config').upsert(p, { onConflict: 'config_key' }))
+      )
+      showToast('Guardado!')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleAlertUpdate(rule: AlertRule, field: keyof AlertRule, value: unknown) {
+    setAlertSaving(rule.id)
     const patch = { [field]: value }
     const { error } = await supabase.from('alert_rules').update(patch).eq('id', rule.id)
     if (error) {
       showToast(error.message, 'error')
     } else {
-      setRules(prev => prev.map(r => r.id === rule.id ? { ...r, ...patch } as AlertRule : r))
+      setAlertRules(prev => prev.map(r => r.id === rule.id ? { ...r, ...patch } as AlertRule : r))
     }
-    setSaving(null)
+    setAlertSaving(null)
+  }
+
+  if (loading) {
+    return (
+      <Card title="Plano">
+        <p className="adm-help">A carregar…</p>
+      </Card>
+    )
   }
 
   return (
-    <Card title="Alertas">
-      <p className="adm-section-desc">Regras de alerta exibidas no briefing executivo do Dashboard. Edite directamente na tabela — as alterações são guardadas imediatamente.</p>
-      {loading ? (
-        <div className="page-placeholder"><p>A carregar...</p></div>
-      ) : (
-        <table className="adm-panel-table">
-          <thead>
-            <tr>
-              <th>Regra</th>
-              <th>Descrição</th>
-              <th style={{ width: 76, textAlign: 'center' }}>Activo</th>
-              <th style={{ width: 96 }}>Threshold</th>
-              <th style={{ width: 110 }}>Severidade</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rules.map(rule => (
-              <tr key={rule.id} style={{ opacity: saving === rule.id ? 0.5 : 1 }}>
-                <td>
-                  <code style={{ fontSize: 11, background: 'var(--bg3)', padding: '1px 4px', borderRadius: 'var(--r)' }}>{rule.rule_key}</code>
-                  <div style={{ fontSize: 12, fontWeight: 600, marginTop: 3 }}>{rule.label}</div>
-                </td>
-                <td style={{ fontSize: 12, color: 'var(--text2)' }}>{rule.description ?? '—'}</td>
-                <td style={{ textAlign: 'center' }}>
-                  <input type="checkbox" checked={rule.enabled}
-                    onChange={e => handleUpdate(rule, 'enabled', e.target.checked)} />
-                </td>
-                <td>
-                  <input type="number" className="adm-row-input"
-                    style={{ width: 72 }}
-                    value={rule.threshold ?? ''}
-                    min={0}
-                    onChange={e => handleUpdate(rule, 'threshold',
-                      e.target.value === '' ? null : Number(e.target.value))} />
-                </td>
-                <td>
-                  <select className="adm-row-input"
-                    value={rule.severity}
-                    onChange={e => handleUpdate(rule, 'severity', e.target.value as AlertSeverity)}>
-                    {SEVERITY_OPTS.map(s => (
-                      <option key={s} value={s}>{SEVERITY_LABELS[s]}</option>
-                    ))}
-                  </select>
-                </td>
+    <>
+      <Card title="Limiares de atraso">
+        <p className="adm-section-desc">Desvio tolerado (em pontos percentuais) entre execução prevista e real antes de marcar actividades como atrasadas.</p>
+        <div className="adm-thresholds-row">
+          <div className="adm-field">
+            <label className="adm-label">Agregados (%)</label>
+            <input
+              className="adm-input"
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={delayThreshold}
+              onChange={e => setDelayThreshold(parseInt(e.target.value) || 0)}
+            />
+            <span className="adm-help">Desvio tolerado antes de marcar planos, eixos e programas como atrasados.</span>
+          </div>
+          <div className="adm-field">
+            <label className="adm-label">Folhas (%)</label>
+            <input
+              className="adm-input"
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={delayThresholdLeaves}
+              onChange={e => setDelayThresholdLeaves(parseInt(e.target.value) || 0)}
+            />
+            <span className="adm-help">Desvio tolerado antes de marcar actividades individuais como atrasadas. 0 = qualquer desvio é atraso.</span>
+          </div>
+        </div>
+        <div className="adm-field" style={{ marginTop: 'var(--space-3)' }}>
+          <label className="adm-label">Ocultar compromissos concluídos após (dias)</label>
+          <input
+            className="adm-input"
+            type="number"
+            min={0}
+            step={1}
+            value={hideCompletedDays}
+            onChange={e => setHideCompletedDays(parseInt(e.target.value) || 0)}
+          />
+          <span className="adm-help">Compromissos anteriores concluídos há mais de X dias são ocultados no Ponto de Situação. Compromissos em aberto aparecem sempre.</span>
+        </div>
+        <button
+          className="btn-primary btn-lg"
+          style={{ marginTop: 'var(--space-4)' }}
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? 'A guardar…' : 'Guardar'}
+        </button>
+      </Card>
+
+      <Card title="Limiares de Saúde do Plano">
+        <p className="adm-section-desc">
+          Regras usadas para calcular o semáforo de saúde no cabeçalho do Ponto de Situação.
+        </p>
+        <div className="adm-health-blocks">
+          <HealthBlockEditor
+            color="red"
+            label="Crítico"
+            block={healthConfig.red}
+            onChange={b => setHealthConfig(c => ({ ...c, red: b }))}
+          />
+          <HealthBlockEditor
+            color="amber"
+            label="Aviso"
+            block={healthConfig.amber}
+            onChange={b => setHealthConfig(c => ({ ...c, amber: b }))}
+          />
+        </div>
+      </Card>
+
+      <Card title="Alertas">
+        <p className="adm-section-desc">Regras de alerta exibidas no briefing executivo do Dashboard. Edite directamente na tabela — as alterações são guardadas imediatamente.</p>
+        {alertLoading ? (
+          <div className="page-placeholder"><p>A carregar...</p></div>
+        ) : (
+          <table className="adm-panel-table">
+            <thead>
+              <tr>
+                <th>Regra</th>
+                <th>Descrição</th>
+                <th style={{ width: 76, textAlign: 'center' }}>Activo</th>
+                <th style={{ width: 96 }}>Threshold</th>
+                <th style={{ width: 110 }}>Severidade</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </Card>
+            </thead>
+            <tbody>
+              {alertRules.map(rule => (
+                <tr key={rule.id} style={{ opacity: alertSaving === rule.id ? 0.5 : 1 }}>
+                  <td>
+                    <code style={{ fontSize: 11, background: 'var(--bg3)', padding: '1px 4px', borderRadius: 'var(--r)' }}>{rule.rule_key}</code>
+                    <div style={{ fontSize: 12, fontWeight: 600, marginTop: 3 }}>{rule.label}</div>
+                  </td>
+                  <td style={{ fontSize: 12, color: 'var(--text2)' }}>{rule.description ?? '—'}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    <input type="checkbox" checked={rule.enabled}
+                      onChange={e => handleAlertUpdate(rule, 'enabled', e.target.checked)} />
+                  </td>
+                  <td>
+                    <input type="number" className="adm-row-input"
+                      style={{ width: 72 }}
+                      value={rule.threshold ?? ''}
+                      min={0}
+                      onChange={e => handleAlertUpdate(rule, 'threshold',
+                        e.target.value === '' ? null : Number(e.target.value))} />
+                  </td>
+                  <td>
+                    <select className="adm-row-input"
+                      value={rule.severity}
+                      onChange={e => handleAlertUpdate(rule, 'severity', e.target.value as AlertSeverity)}>
+                      {SEVERITY_OPTS.map(s => (
+                        <option key={s} value={s}>{SEVERITY_LABELS[s]}</option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
+    </>
   )
 }
 
@@ -3557,14 +3605,14 @@ export default function Admin() {
       {/* ── Right content ── */}
       <div className="adm-content">
         {active === 'geral'          ? <AdminGeral />          :
-         active === 'programas'     ? <AdminProgramas />     :
          active === 'utilizadores'  ? <AdminUtilizadores />  :
+         active === 'programas'     ? <AdminProgramas />     :
+         active === 'plano'         ? <AdminPlano />         :
          active === 'recursos'      ? <AdminRecursos />      :
          active === 'financeiro'    ? <AdminFinanceiro />    :
          active === 'risco'         ? <AdminRisco />         :
-         active === 'historico'     ? <AdminHistorico />     :
          active === 'dados'         ? <AdminDados />         :
-         active === 'alertas'       ? <AdminAlertas />       : (
+         active === 'historico'     ? <AdminHistorico />     : (
           <Card title={section.label}>
             <p className="adm-section-desc">{section.desc}</p>
             <div className="page-placeholder adm-placeholder">
