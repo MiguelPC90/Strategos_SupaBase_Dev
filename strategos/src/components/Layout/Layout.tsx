@@ -1,7 +1,7 @@
 import './Layout.css'
 import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react'
 import SplashScreen from '../SplashScreen/SplashScreen'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Star, Search } from 'lucide-react'
 import Badge from '../Badge/Badge'
 import { useAuth } from '../../hooks/useAuth'
@@ -173,6 +173,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default function Layout() {
   const location = useLocation()
+  const navigate = useNavigate()
   const { signOut, user, loading: authLoading } = useAuth()
   const { profile, role, isAdmin } = useRole()
   const { hasAccess } = usePermissions()
@@ -385,6 +386,13 @@ export default function Layout() {
                   </div>
                 )}
               </div>
+              <button className="dropdown-item" onClick={() => { setProfileOpen(false); navigate('/perfil') }}>
+                <svg viewBox="0 0 24 24">
+                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                Perfil
+              </button>
               <button className="dropdown-item" onClick={() => signOut()}>
                 <svg viewBox="0 0 24 24">
                   <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
