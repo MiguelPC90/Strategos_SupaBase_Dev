@@ -8,6 +8,7 @@ import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 import { useToast } from '../../context/ToastContext'
+import { useProgramLabels } from '../../hooks/useProgramLabels'
 import type { PageKey } from '../../types/index'
 
 const GESTAO_PAGES: PageKey[] = [
@@ -24,6 +25,7 @@ function SecondaryFiltersMenu() {
   const { filters, setFilter, ownerOptions, sponsorOptions } = useFilters()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const labels = useProgramLabels(filters.programIds[0])
 
   useEffect(() => {
     if (!open) return
@@ -71,7 +73,7 @@ function SecondaryFiltersMenu() {
           </div>
           {ownerOptions.length > 0 && (
             <div className="bfp-group">
-              <div className="bfp-group-title">Responsável</div>
+              <div className="bfp-group-title">{labels.owner}</div>
               {ownerOptions.map(o => (
                 <label key={o} className="bfp-option">
                   <input
@@ -86,7 +88,7 @@ function SecondaryFiltersMenu() {
           )}
           {sponsorOptions.length > 0 && (
             <div className="bfp-group">
-              <div className="bfp-group-title">Sponsor</div>
+              <div className="bfp-group-title">{labels.sponsor}</div>
               {sponsorOptions.map(s => (
                 <label key={s} className="bfp-option">
                   <input
@@ -210,6 +212,8 @@ export default function Breadcrumb() {
   const n1Name    = filters.n1Values[0]   ?? null
   const n2Name    = filters.n2Values[0]   ?? null
 
+  const labels = useProgramLabels(programId)
+
   // All eixos + planos — filtered in dropdowns based on current selections
   const { eixos: allEixos } = useEixos()
   const { planos: allPlanos } = usePlanos()
@@ -292,9 +296,9 @@ export default function Breadcrumb() {
 
         {/* Eixo — always visible, restricted to selected program */}
         <BreadcrumbSegment
-          label={n1Name ?? 'Todos os eixos'}
+          label={n1Name ?? labels.n1}
           options={[
-            { value: null, label: 'Todos os eixos' },
+            { value: null, label: 'Todos' },
             ...eixoOptions.map(e => ({ value: e.name, label: e.name })),
           ]}
           current={n1Name}
@@ -305,9 +309,9 @@ export default function Breadcrumb() {
 
         {/* Plano — always visible, restricted to selected eixo or program */}
         <BreadcrumbSegment
-          label={n2Name ?? 'Todos os planos'}
+          label={n2Name ?? labels.n2}
           options={[
-            { value: null, label: 'Todos os planos' },
+            { value: null, label: 'Todos' },
             ...planoOptions.map(p => ({ value: p.name, label: p.name })),
           ]}
           current={n2Name}
@@ -331,14 +335,14 @@ export default function Breadcrumb() {
         {filters.owners.map(o => (
           <FilterChip
             key={`owner:${o}`}
-            label={`Responsável: ${o}`}
+            label={`${labels.owner}: ${o}`}
             onRemove={() => setFilter('owners', filters.owners.filter(x => x !== o))}
           />
         ))}
         {filters.sponsors.map(s => (
           <FilterChip
             key={`sponsor:${s}`}
-            label={`Sponsor: ${s}`}
+            label={`${labels.sponsor}: ${s}`}
             onRemove={() => setFilter('sponsors', filters.sponsors.filter(x => x !== s))}
           />
         ))}

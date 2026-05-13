@@ -5,6 +5,7 @@ import MultiSelect from '../MultiSelect/MultiSelect'
 import { useFilters } from '../../context/FilterContext'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useActivities } from '../../hooks/useActivities'
+import { useProgramLabels } from '../../hooks/useProgramLabels'
 
 const STATUS_OPTIONS = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
 
@@ -12,6 +13,9 @@ export default function FilterBar() {
   const { filters, setFilter, resetFilters, ownerOptions, sponsorOptions } = useFilters()
   const { programs } = usePrograms()
   const { activities } = useActivities()
+
+  const activeProgramId = filters.programIds.length === 1 ? filters.programIds[0] : undefined
+  const labels = useProgramLabels(activeProgramId)
 
   // Program name ↔ id helpers
   const programNameToId = useMemo(
@@ -72,25 +76,25 @@ export default function FilterBar() {
         onChange={handleProgramChange}
       />
       <MultiSelect
-        label="Eixo"
+        label={labels.n1}
         options={n1Options}
         value={filters.n1Values}
         onChange={v => setFilter('n1Values', v)}
       />
       <MultiSelect
-        label="Plano de Acção"
+        label={labels.n2}
         options={n2Options}
         value={filters.n2Values}
         onChange={v => setFilter('n2Values', v)}
       />
       <MultiSelect
-        label="Responsável"
+        label={labels.owner}
         options={ownerOptions}
         value={filters.owners}
         onChange={v => setFilter('owners', v)}
       />
       <MultiSelect
-        label="Sponsor"
+        label={labels.sponsor}
         options={sponsorOptions}
         value={filters.sponsors}
         onChange={v => setFilter('sponsors', v)}
