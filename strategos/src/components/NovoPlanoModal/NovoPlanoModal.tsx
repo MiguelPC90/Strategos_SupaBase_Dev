@@ -569,7 +569,7 @@ export default function NovoPlanoModal({
               </>
             ) : (
               <div className="gi-upload-selected">
-                <span><FileText size={14} strokeWidth={1.5} /> {uploadedFile.name}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FileText size={14} strokeWidth={1.5} /> {uploadedFile.name}</span>
                 <button type="button" className="gi-upload-clear"
                   onClick={e => { e.stopPropagation(); clearFile() }}><X size={14} strokeWidth={1.5} /></button>
               </div>

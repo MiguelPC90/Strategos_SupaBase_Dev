@@ -152,6 +152,9 @@
 
   .gi-btn-link {
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     background: transparent;
     border: 1px solid var(--border2);
     color: var(--navy);
@@ -188,7 +191,7 @@
     cursor: default;
   }
 
-  .gi-upload-icon { font-size: var(--text-2xl); margin-bottom: 8px; }
+  .gi-upload-icon { display: flex; justify-content: center; margin-bottom: 8px; color: var(--text3); }
   .gi-upload-text { font-size: var(--text-md); color: var(--text); margin-bottom: 4px; }
   .gi-upload-hint { font-size: var(--text-sm); color: var(--text3); }
 
