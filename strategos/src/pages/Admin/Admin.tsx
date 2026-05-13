@@ -914,9 +914,11 @@ function UserPermissionsModal({ userId, userName, userRole, isOpen, onClose }: {
   onClose: () => void
 }) {
   const { programs } = usePrograms()
+  const { showToast } = useToast()
   const [permissions,     setPermissions]     = useState<UserPermRow[]>([])
   const [planosByProg,    setPlanosByProg]     = useState<Record<string, Plano[]>>({})
   const [loading,         setLoading]          = useState(false)
+  const [saving,          setSaving]           = useState(false)
   const [expandedProgs,   setExpandedProgs]    = useState<Set<string>>(new Set())
   const [showRestrPicker, setShowRestrPicker]  = useState<Record<string, boolean>>({})
   const loadingProgs = useRef<Set<string>>(new Set())
@@ -977,25 +979,15 @@ function UserPermissionsModal({ userId, userName, userRole, isOpen, onClose }: {
     return (row?.access_level ?? '') as CellValue
   }
 
-  async function handlePageLevel(programId: string, page: string, value: CellValue) {
+  function handlePageLevel(programId: string, page: string, value: CellValue) {
     setPermissions(perms => {
       const rest = perms.filter(p => !(p.program_id === programId && p.plan_id === null && p.page === page))
       if (value === '') return rest
       return [...rest, { user_id: userId, program_id: programId, plan_id: null, page, access_level: value }]
     })
-    await supabase.from('user_permissions')
-      .delete()
-      .eq('user_id', userId)
-      .eq('program_id', programId)
-      .is('plan_id', null)
-      .eq('page', page)
-    if (value !== '') {
-      await supabase.from('user_permissions')
-        .insert({ user_id: userId, program_id: programId, plan_id: null, page, access_level: value })
-    }
   }
 
-  async function handlePlanLevel(programId: string, planId: string, value: CellValue) {
+  function handlePlanLevel(programId: string, planId: string, value: CellValue) {
     setPermissions(perms => {
       const rest = perms.filter(p => !(p.program_id === programId && p.plan_id === planId))
       if (value === '') return rest
@@ -1004,36 +996,41 @@ function UserPermissionsModal({ userId, userName, userRole, isOpen, onClose }: {
         page: pg.key, access_level: value,
       }))]
     })
-    await supabase.from('user_permissions')
-      .delete()
-      .eq('user_id', userId)
-      .eq('program_id', programId)
-      .eq('plan_id', planId)
-    if (value !== '') {
-      await supabase.from('user_permissions').insert(
-        PERM_PAGES.map(pg => ({
-          user_id: userId, program_id: programId, plan_id: planId,
-          page: pg.key, access_level: value,
-        }))
-      )
-    }
   }
 
-  async function addProgram(programId: string) {
-    for (const pg of PERM_PAGES) {
-      await handlePageLevel(programId, pg.key, 'view')
-    }
+  function addProgram(programId: string) {
+    PERM_PAGES.forEach(pg => handlePageLevel(programId, pg.key, 'view'))
     setExpandedProgs(s => { const n = new Set(s); n.add(programId); return n })
     loadPlanosForProg(programId)
   }
 
-  async function removeProgram(programId: string) {
+  function removeProgram(programId: string) {
     if (!window.confirm('Remover todas as permissões para este programa?')) return
     setPermissions(perms => perms.filter(p => p.program_id !== programId))
-    await supabase.from('user_permissions')
-      .delete()
-      .eq('user_id', userId)
-      .eq('program_id', programId)
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      const { error: delErr } = await supabase
+        .from('user_permissions')
+        .delete()
+        .eq('user_id', userId)
+      if (delErr) throw delErr
+      if (permissions.length > 0) {
+        const { error: insErr } = await supabase
+          .from('user_permissions')
+          .insert(permissions)
+        if (insErr) throw insErr
+      }
+      showToast('Permissões guardadas.', 'success')
+      onClose()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      showToast('Erro ao guardar: ' + msg, 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function toggleProg(programId: string) {
@@ -1049,8 +1046,19 @@ function UserPermissionsModal({ userId, userName, userRole, isOpen, onClose }: {
   const programsWithPerms    = programs.filter(prog => permissions.some(p => p.program_id === prog.id))
   const programsWithoutPerms = programs.filter(prog => !permissions.some(p => p.program_id === prog.id))
 
+  const modalFooter = (
+    <>
+      <button className="adm-btn-secondary" onClick={onClose} disabled={saving}>
+        Cancelar
+      </button>
+      <button className="btn-primary" onClick={handleSave} disabled={saving}>
+        {saving ? 'A guardar…' : 'Guardar'}
+      </button>
+    </>
+  )
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Permissões: ${userName}`} width={600}>
+    <Modal isOpen={isOpen} onClose={onClose} title={`Permissões: ${userName}`} width={600} footer={modalFooter}>
       {loading ? (
         <p className="adm-help">A carregar…</p>
       ) : (
