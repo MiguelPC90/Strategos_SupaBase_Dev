@@ -853,7 +853,7 @@ export default function Dashboard() {
     const daysAvailable = Math.floor((today.getTime() - oldest.getTime()) / (1000 * 60 * 60 * 24))
     if (daysAvailable < 3) return { kpi7dAgo: null, delta7dLabel: null }
     const N = Math.min(daysAvailable, 7)
-    const label = N >= 7 ? 'vs 7d' : `vs ${N}d`
+    const label = N >= 7 ? 'últimos 7 dias' : `últimos ${N} dias`
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - N)
     const cutoffStr = cutoff.toISOString().slice(0, 10)
