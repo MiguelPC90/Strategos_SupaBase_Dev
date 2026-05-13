@@ -115,7 +115,7 @@ export default function PlanoPage() {
   const dateLine = [fmtDateMY(planDateRange.bs), fmtDateMY(planDateRange.bf)].filter(Boolean).join(' → ')
 
   const isFav        = planoId ? isFavorite(planoId) : false
-  const canEditPlano = canEdit('gestao-iniciativas', plano.program_id ?? undefined)
+  const canEditPlano = canEdit('gestao-iniciativas', plano.program_id ?? undefined, plano.id)
 
   return (
     <div className="pp-wrap">

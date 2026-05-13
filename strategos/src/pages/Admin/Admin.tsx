@@ -1,6 +1,6 @@
 import './Admin.css'
 import { useState, useEffect, useRef, Fragment, type ChangeEvent } from 'react'
-import { Check, X, Pencil, Trash2, AlertCircle, FileText } from 'lucide-react'
+import { Check, X, Pencil, Trash2, AlertCircle, FileText, Lock } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import { useBranding } from '../../context/BrandingContext'
 import * as XLSX from 'xlsx'
@@ -880,162 +880,259 @@ function AdminProgramas() {
   )
 }
 
-// ── Section 3b: Permissões matrix ─────────────────────────────
-const MATRIX_PAGES: { key: string; label: string }[] = [
-  { key: 'dashboard',           label: 'Dashboard'     },
-  { key: 'actividades',         label: 'Actividades'   },
-  { key: 'gantt',               label: 'Gantt'         },
-  { key: 'ponto-situacao',      label: 'PDS'           },
-  { key: 'exec-financeira',     label: 'Financeiro'    },
-  { key: 'recursos',            label: 'Recursos'      },
-  { key: 'evolucao',            label: 'Evolução'      },
-  { key: 'gestao-iniciativas',  label: 'G.Iniciativas' },
-  { key: 'gestao-pds',          label: 'G.PDS'         },
-  { key: 'gestao-riscos',       label: 'G.Riscos'      },
-  { key: 'gestao-financeira',   label: 'G.Financeira'  },
-  { key: 'gestao-recursos',     label: 'G.Recursos'    },
+// ── Section 3b: Permissões por utilizador ─────────────────────
+const PERM_PAGES: { key: string; label: string }[] = [
+  { key: 'dashboard',           label: 'Dashboard'    },
+  { key: 'actividades',         label: 'Actividades'  },
+  { key: 'gantt',               label: 'Gantt'        },
+  { key: 'ponto-situacao',      label: 'PDS'          },
+  { key: 'exec-financeira',     label: 'Exec.Fin.'    },
+  { key: 'recursos',            label: 'Recursos'     },
+  { key: 'evolucao',            label: 'Evolução'     },
+  { key: 'gestao-iniciativas',  label: 'G.Iniciativas'},
+  { key: 'gestao-pds',          label: 'G.PDS'        },
+  { key: 'gestao-riscos',       label: 'G.Riscos'     },
+  { key: 'gestao-financeira',   label: 'G.Financeira' },
+  { key: 'gestao-recursos',     label: 'G.Recursos'   },
 ]
 
 type CellValue = '' | 'full' | 'ops' | 'view' | 'view_ops' | 'denied'
-type PermMap   = Record<string, Record<string, CellValue>>
 
-function AdminPermissoes({ profiles }: { profiles: Profile[] }) {
+interface UserPermRow {
+  user_id: string
+  program_id: string | null
+  plan_id: string | null
+  page: string
+  access_level: CellValue
+}
+
+function UserPermissionsModal({ userId, userName, userRole, isOpen, onClose }: {
+  userId: string
+  userName: string
+  userRole: UserRole
+  isOpen: boolean
+  onClose: () => void
+}) {
   const { programs } = usePrograms()
-  const [selProgId,    setSelProgId]    = useState<string | null>(null)
-  const [permMap,      setPermMap]      = useState<PermMap>({})
-  const [loadingPerms, setLoadingPerms] = useState(false)
-  const [flashCells,   setFlashCells]   = useState<Set<string>>(new Set())
+  const [permissions,    setPermissions]    = useState<UserPermRow[]>([])
+  const [planosByProg,   setPlanosByProg]   = useState<Record<string, Plano[]>>({})
+  const [loading,        setLoading]        = useState(false)
+  const [expandedProgs,  setExpandedProgs]  = useState<Set<string>>(new Set())
 
-  // Set first program as default once programs load
   useEffect(() => {
-    if (programs.length > 0 && !selProgId) {
-      setSelProgId(programs[0].id)
-    }
-  }, [programs, selProgId])
-
-  // Load permissions whenever selected program changes
-  useEffect(() => {
-    if (!selProgId) return
-    let cancelled = false
-    setLoadingPerms(true)
+    if (!isOpen) { setPermissions([]); setExpandedProgs(new Set()); return }
+    setLoading(true)
     supabase
       .from('user_permissions')
-      .select('user_id, page, access_level')
-      .eq('program_id', selProgId)
+      .select('user_id, program_id, plan_id, page, access_level')
+      .eq('user_id', userId)
       .then(({ data }) => {
-        if (cancelled) return
-        const map: PermMap = {}
-        for (const row of (data ?? [])) {
-          if (!map[row.user_id]) map[row.user_id] = {}
-          map[row.user_id][row.page] = row.access_level as CellValue
-        }
-        setPermMap(map)
-        setLoadingPerms(false)
+        setPermissions((data ?? []) as UserPermRow[])
+        setLoading(false)
       })
-    return () => { cancelled = true }
-  }, [selProgId])
+  }, [isOpen, userId])
 
-  async function handleCellChange(userId: string, page: string, value: CellValue) {
-    if (!selProgId) return
-    // Optimistic update
-    setPermMap(m => ({ ...m, [userId]: { ...(m[userId] ?? {}), [page]: value } }))
-    if (value === '') {
-      await supabase.from('user_permissions')
-        .delete()
-        .eq('user_id', userId)
-        .eq('program_id', selProgId)
-        .eq('page', page)
-    } else {
-      await supabase.from('user_permissions')
-        .upsert(
-          { user_id: userId, program_id: selProgId, page, access_level: value },
-          { onConflict: 'user_id, program_id, page' },
-        )
-    }
-    // Flash green border for 300ms
-    const cellKey = `${userId}-${page}`
-    setFlashCells(s => { const n = new Set(s); n.add(cellKey); return n })
-    setTimeout(() => {
-      setFlashCells(s => { const n = new Set(s); n.delete(cellKey); return n })
-    }, 300)
+  async function loadPlanosForProg(programId: string) {
+    if (planosByProg[programId]) return
+    const { data } = await supabase
+      .from('planos')
+      .select('id, name, program_id, eixo_id, code, sort_order')
+      .eq('program_id', programId)
+      .order('sort_order')
+    setPlanosByProg(p => ({ ...p, [programId]: (data ?? []) as Plano[] }))
   }
 
-  const nonAdminProfiles = profiles.filter(p => p.role !== 'admin')
+  function getPageLevel(programId: string, page: string): CellValue {
+    return (permissions.find(
+      p => p.program_id === programId && p.plan_id === null && p.page === page
+    )?.access_level ?? '') as CellValue
+  }
+
+  function getPlanLevel(programId: string, planId: string): CellValue {
+    const row = permissions.find(p => p.program_id === programId && p.plan_id === planId)
+    return (row?.access_level ?? '') as CellValue
+  }
+
+  async function handlePageLevel(programId: string, page: string, value: CellValue) {
+    setPermissions(perms => {
+      const rest = perms.filter(p => !(p.program_id === programId && p.plan_id === null && p.page === page))
+      if (value === '') return rest
+      return [...rest, { user_id: userId, program_id: programId, plan_id: null, page, access_level: value }]
+    })
+    await supabase.from('user_permissions')
+      .delete()
+      .eq('user_id', userId)
+      .eq('program_id', programId)
+      .is('plan_id', null)
+      .eq('page', page)
+    if (value !== '') {
+      await supabase.from('user_permissions')
+        .insert({ user_id: userId, program_id: programId, plan_id: null, page, access_level: value })
+    }
+  }
+
+  async function handlePlanLevel(programId: string, planId: string, value: CellValue) {
+    setPermissions(perms => {
+      const rest = perms.filter(p => !(p.program_id === programId && p.plan_id === planId))
+      if (value === '') return rest
+      return [...rest, ...PERM_PAGES.map(pg => ({
+        user_id: userId, program_id: programId, plan_id: planId,
+        page: pg.key, access_level: value,
+      }))]
+    })
+    await supabase.from('user_permissions')
+      .delete()
+      .eq('user_id', userId)
+      .eq('program_id', programId)
+      .eq('plan_id', planId)
+    if (value !== '') {
+      await supabase.from('user_permissions').insert(
+        PERM_PAGES.map(pg => ({
+          user_id: userId, program_id: programId, plan_id: planId,
+          page: pg.key, access_level: value,
+        }))
+      )
+    }
+  }
+
+  async function addProgram(programId: string) {
+    for (const pg of PERM_PAGES) {
+      await handlePageLevel(programId, pg.key, 'view')
+    }
+    setExpandedProgs(s => { const n = new Set(s); n.add(programId); return n })
+    loadPlanosForProg(programId)
+  }
+
+  async function removeProgram(programId: string) {
+    if (!window.confirm('Remover todas as permissões para este programa?')) return
+    setPermissions(perms => perms.filter(p => p.program_id !== programId))
+    await supabase.from('user_permissions')
+      .delete()
+      .eq('user_id', userId)
+      .eq('program_id', programId)
+  }
+
+  function toggleProg(programId: string) {
+    setExpandedProgs(s => {
+      const n = new Set(s)
+      if (n.has(programId)) { n.delete(programId) }
+      else { n.add(programId); loadPlanosForProg(programId) }
+      return n
+    })
+  }
+
+  const isEditableRole = ['admin', 'program_manager', 'editor'].includes(userRole)
+  const programsWithPerms    = programs.filter(prog => permissions.some(p => p.program_id === prog.id))
+  const programsWithoutPerms = programs.filter(prog => !permissions.some(p => p.program_id === prog.id))
 
   return (
-    <Card title="Permissões">
-      <div className="adm-program-bar">
-        <span>Programa:</span>
-        <select
-          className="adm-select"
-          value={selProgId ?? ''}
-          onChange={e => setSelProgId(e.target.value || null)}
-        >
-          {programs.map(p => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-          {programs.length === 0 && <option value="">Sem programas</option>}
-        </select>
-      </div>
-
-      {loadingPerms ? (
-        <p className="adm-help">A carregar…</p>
+    <Modal isOpen={isOpen} onClose={onClose} title={`Permissões: ${userName}`} width={680}>
+      {loading ? (
+        <p style={{ color: 'var(--text3)', fontSize: 13 }}>A carregar…</p>
       ) : (
-        <div className="adm-matrix-wrap adm-perm-matrix">
-          <table className="adm-matrix">
-            <thead>
-              <tr>
-                <th className="adm-matrix-name">Utilizador</th>
-                {MATRIX_PAGES.map(pg => (
-                  <th key={pg.key}>{pg.label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {nonAdminProfiles.map(p => (
-                <tr key={p.id}>
-                  <td className="adm-matrix-name">{p.full_name || p.email}</td>
-                  {MATRIX_PAGES.map(pg => {
-                    const val: CellValue = (permMap[p.id]?.[pg.key] as CellValue) ?? ''
-                    const cellKey = `${p.id}-${pg.key}`
-                    return (
-                      <td key={pg.key}>
-                        <select
-                          className={`styled-select-sm adm-matrix-select${flashCells.has(cellKey) ? ' saved' : ''}`}
-                          value={val}
-                          onChange={e => handleCellChange(p.id, pg.key, e.target.value as CellValue)}
-                        >
-                          <option value="">–</option>
-                          {['admin', 'program_manager', 'editor'].includes(p.role) && (
-                            <>
-                              <option value="full">Editar Total</option>
-                              <option value="ops">Editar Ops</option>
-                            </>
-                          )}
-                          <option value="view">Ver</option>
-                          <option value="view_ops">Ver (Ops)</option>
-                          <option value="denied">Bloqueado</option>
-                        </select>
-                      </td>
-                    )
-                  })}
-                </tr>
-              ))}
-              {nonAdminProfiles.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={MATRIX_PAGES.length + 1}
-                    style={{ textAlign: 'center', color: 'var(--text3)', fontStyle: 'italic', padding: '20px 0' }}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {programsWithoutPerms.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--text2)', whiteSpace: 'nowrap' }}>+ Programa:</span>
+              <select
+                className="styled-select-sm"
+                defaultValue=""
+                onChange={e => { if (e.target.value) { addProgram(e.target.value); e.target.value = '' } }}
+              >
+                <option value="">— seleccionar —</option>
+                {programsWithoutPerms.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          {programsWithPerms.length === 0 && (
+            <p style={{ color: 'var(--text3)', fontSize: 13, fontStyle: 'italic' }}>
+              Sem programas atribuídos. Usa o selector acima para adicionar.
+            </p>
+          )}
+
+          {programsWithPerms.map(prog => {
+            const expanded = expandedProgs.has(prog.id)
+            const planos   = planosByProg[prog.id] ?? []
+            return (
+              <div key={prog.id} style={{ border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden' }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg2)', cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => toggleProg(prog.id)}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{prog.name}</span>
+                  <button
+                    className="adm-icon-btn"
+                    title="Remover programa"
+                    style={{ color: 'var(--red)' }}
+                    onClick={e => { e.stopPropagation(); removeProgram(prog.id) }}
                   >
-                    Sem utilizadores não-admin
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    <Trash2 size={14} />
+                  </button>
+                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>{expanded ? '▲' : '▼'}</span>
+                </div>
+
+                {expanded && (
+                  <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div>
+                      <p style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Acesso por página</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                        {PERM_PAGES.map(pg => (
+                          <div key={pg.key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 11, color: 'var(--text2)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pg.label}</span>
+                            <select
+                              className="styled-select-sm"
+                              value={getPageLevel(prog.id, pg.key)}
+                              onChange={e => handlePageLevel(prog.id, pg.key, e.target.value as CellValue)}
+                            >
+                              <option value="">–</option>
+                              {isEditableRole && (
+                                <>
+                                  <option value="full">Total</option>
+                                  <option value="ops">Ops</option>
+                                </>
+                              )}
+                              <option value="view">Ver</option>
+                              <option value="view_ops">Ver Ops</option>
+                              <option value="denied">Bloqueado</option>
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {planos.length > 0 && (
+                      <div>
+                        <p style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Restrições por plano</p>
+                        <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8, fontStyle: 'italic' }}>
+                          Sobrepõe o acesso por página para o plano seleccionado. Usa apenas para restringir (nunca para ampliar).
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {planos.map(plan => (
+                            <div key={plan.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 12, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={plan.name}>{plan.name}</span>
+                              <select
+                                className="styled-select-sm"
+                                value={getPlanLevel(prog.id, plan.id)}
+                                onChange={e => handlePlanLevel(prog.id, plan.id, e.target.value as CellValue)}
+                              >
+                                <option value="">– Sem restrição –</option>
+                                <option value="view">Forçar visualização</option>
+                                <option value="denied">Bloqueado</option>
+                              </select>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
-    </Card>
+    </Modal>
   )
 }
 
@@ -1064,15 +1161,18 @@ function AdminUtilizadores() {
   const [invite,           setInvite]           = useState<InviteForm>({ email: '', role: 'stakeholder' })
   const [inviting,         setInviting]         = useState(false)
   const [downgradeConfirm, setDowngradeConfirm] = useState<{ userId: string; editCount: number } | null>(null)
+  const [permModal,        setPermModal]        = useState<{ userId: string; userName: string; userRole: UserRole } | null>(null)
 
-  async function loadProfiles() {
+  async function loadProfiles(): Promise<Profile[]> {
     setLoadingP(true)
     const { data } = await supabase
       .from('profiles')
       .select('id, email, full_name, role, avatar_url, created_at, updated_at')
       .order('full_name')
-    setProfiles((data ?? []) as Profile[])
+    const loaded = (data ?? []) as Profile[]
+    setProfiles(loaded)
     setLoadingP(false)
+    return loaded
   }
 
   useEffect(() => { loadProfiles() }, [])
@@ -1165,10 +1265,15 @@ function AdminUtilizadores() {
           .update({ role: invite.role })
           .eq('email', invite.email.trim())
       }
+      const invitedEmail = invite.email.trim()
       setShowInvite(false)
       setInvite({ email: '', role: 'stakeholder' })
       showToast('Convite enviado!', 'success')
-      await loadProfiles()
+      const freshProfiles = await loadProfiles()
+      const newProfile = freshProfiles.find(p => p.email === invitedEmail)
+      if (newProfile && newProfile.role !== 'admin') {
+        setPermModal({ userId: newProfile.id, userName: newProfile.full_name || newProfile.email || invitedEmail, userRole: newProfile.role })
+      }
     } finally {
       setInviting(false)
     }
@@ -1280,6 +1385,12 @@ function AdminUtilizadores() {
                               ><Pencil size={16} /></button>
                               <button
                                 className="adm-icon-btn"
+                                title={isAdmin ? 'Admin tem acesso total' : 'Editar permissões'}
+                                disabled={isAdmin}
+                                onClick={() => setPermModal({ userId: p.id, userName: p.full_name || p.email || p.id, userRole: p.role })}
+                              ><Lock size={15} /></button>
+                              <button
+                                className="adm-icon-btn"
                                 title={isAdmin ? 'Utilizadores Admin não podem ser eliminados a partir desta interface' : isCurrentUser ? 'Não pode remover a própria conta' : 'Remover'}
                                 disabled={isAdmin || isCurrentUser}
                                 style={{ color: isAdmin || isCurrentUser ? undefined : 'var(--red)' }}
@@ -1299,9 +1410,6 @@ function AdminUtilizadores() {
             </div>
           )}
         </Card>
-
-        {/* ── Card 2: Permissões ── */}
-        <AdminPermissoes profiles={profiles} />
 
       </div>
 
@@ -1325,6 +1433,17 @@ function AdminUtilizadores() {
           Ao mudar de role, estas permissões serão convertidas para apenas visualização.
         </p>
       </Modal>
+
+      {/* ── User permissions modal ── */}
+      {permModal && (
+        <UserPermissionsModal
+          userId={permModal.userId}
+          userName={permModal.userName}
+          userRole={permModal.userRole}
+          isOpen={!!permModal}
+          onClose={() => setPermModal(null)}
+        />
+      )}
     </>
   )
 }

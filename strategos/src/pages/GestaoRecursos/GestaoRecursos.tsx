@@ -631,7 +631,7 @@ export default function GestaoRecursos({
   const { canViewCosts } = usePermissions()
 
   const programId = propProgramId
-  const showCosts = canViewCosts('gestao-recursos', programId)
+  const showCosts = canViewCosts('gestao-recursos', programId, propPlanoId)
 
   const { planos, loading: planosLoading } = usePlanos(programId)
   const { resources: dbResources, loading: resLoading, refetch } = useResources(programId)
