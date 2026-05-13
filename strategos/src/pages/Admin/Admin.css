@@ -217,6 +217,12 @@
     border-color: var(--navy);
   }
 
+  .adm-row-input--linked {
+    background: var(--bg3);
+    color: var(--text2);
+    cursor: not-allowed;
+  }
+
   .adm-icon-btn {
     background: none;
     border: none;

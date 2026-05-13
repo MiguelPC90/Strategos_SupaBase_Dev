@@ -1710,8 +1710,8 @@ function PessoasTab() {
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>Email</th>
                 <th style={{ minWidth: 160 }}>Utilizador</th>
+                <th>Email</th>
                 <th>Empresa</th>
                 <th>Tipo</th>
                 <th>Unidade</th>
@@ -1732,13 +1732,6 @@ function PessoasTab() {
                           onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
                       ) : (p.name || '—')}
                     </td>
-                    <td style={{ fontSize: 12, color: 'var(--text2)' }}>
-                      {editing ? (
-                        <input className="adm-row-input" value={draft!.email}
-                          onChange={e => setDraft(d => d ? { ...d, email: e.target.value } : d)}
-                          onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
-                      ) : (p.email || '—')}
-                    </td>
                     <td style={{ minWidth: 160 }}>
                       {editing ? (
                         <SearchableSelect
@@ -1747,14 +1740,33 @@ function PessoasTab() {
                             label: ap.full_name ? `${ap.full_name} (${ap.email})` : ap.email,
                           }))}
                           value={draft!.profile_id}
-                          onChange={v => setDraft(d => d ? { ...d, profile_id: v } : d)}
+                          onChange={v => {
+                            if (v) {
+                              const linked = authProfiles.find(ap => ap.id === v)
+                              setDraft(d => d ? { ...d, profile_id: v, email: linked?.email ?? d.email } : d)
+                            } else {
+                              setDraft(d => d ? { ...d, profile_id: null } : d)
+                            }
+                          }}
                           placeholder="— sem utilizador —"
                         />
-                      ) : (
-                        p.profile_id
-                          ? (authProfiles.find(ap => ap.id === p.profile_id)?.full_name ?? '(eliminado)')
-                          : '—'
-                      )}
+                      ) : (() => {
+                        if (!p.profile_id) return '—'
+                        const linked = authProfiles.find(ap => ap.id === p.profile_id)
+                        if (!linked) return '(eliminado)'
+                        return linked.full_name || linked.email
+                      })()}
+                    </td>
+                    <td style={{ fontSize: 12, color: 'var(--text2)' }}>
+                      {editing ? (
+                        <input
+                          className={draft!.profile_id ? 'adm-row-input adm-row-input--linked' : 'adm-row-input'}
+                          disabled={!!draft!.profile_id}
+                          value={draft!.email}
+                          onChange={e => setDraft(d => d ? { ...d, email: e.target.value } : d)}
+                          onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }}
+                        />
+                      ) : (p.email || '—')}
                     </td>
                     <td>
                       {editing ? (
@@ -1857,21 +1869,31 @@ function PessoasTab() {
                     onChange={e => setDraft(d => d ? { ...d, name: e.target.value } : d)}
                     onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
                   </td>
-                  <td><input className="adm-row-input" placeholder="Email"
-                    value={draft.email}
-                    onChange={e => setDraft(d => d ? { ...d, email: e.target.value } : d)}
-                    onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
-                  </td>
                   <td style={{ minWidth: 160 }}>
                     <SearchableSelect
                       options={authProfiles.map((ap): SelectOption => ({
                         value: ap.id,
-                        label: `${ap.full_name ?? '?'} (${ap.email})`,
+                        label: ap.full_name ? `${ap.full_name} (${ap.email})` : ap.email,
                       }))}
                       value={draft.profile_id}
-                      onChange={v => setDraft(d => d ? { ...d, profile_id: v } : d)}
+                      onChange={v => {
+                        if (v) {
+                          const linked = authProfiles.find(ap => ap.id === v)
+                          setDraft(d => d ? { ...d, profile_id: v, email: linked?.email ?? d.email } : d)
+                        } else {
+                          setDraft(d => d ? { ...d, profile_id: null } : d)
+                        }
+                      }}
                       placeholder="— sem utilizador —"
                     />
+                  </td>
+                  <td><input
+                    className={draft.profile_id ? 'adm-row-input adm-row-input--linked' : 'adm-row-input'}
+                    disabled={!!draft.profile_id}
+                    placeholder={draft.profile_id ? 'Email do utilizador' : 'Email'}
+                    value={draft.email}
+                    onChange={e => setDraft(d => d ? { ...d, email: e.target.value } : d)}
+                    onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
                   </td>
                   <td><input className="adm-row-input" placeholder="Empresa"
                     value={draft.company}
