@@ -1,6 +1,6 @@
 import './Actividades.css'
 import { useState, useMemo, useCallback, useRef, useEffect, type ReactNode } from 'react'
-import { Link2, ChevronDown, ChevronRight, X, Check } from 'lucide-react'
+import { Link2, ChevronDown, ChevronRight, X, Check, CheckCircle2, CircleDot, AlertCircle, XCircle } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
@@ -197,11 +197,11 @@ function highlightMatch(text: string, query: string): ReactNode {
 }
 
 // ── Status filter dropdown ─────────────────────────────────────
-const STATUS_FILTER_ITEMS: { key: RowState; label: string; icon: string; color: string }[] = [
-  { key: 'Concluída', label: 'Concluídas', icon: '✓', color: 'var(--status-done)' },
-  { key: 'Em dia',    label: 'Em dia',     icon: '◐', color: 'var(--status-ontrack)' },
-  { key: 'Em risco',  label: 'Em risco',   icon: '⦿', color: 'var(--status-risk)' },
-  { key: 'Em atraso', label: 'Em atraso',  icon: '✕', color: 'var(--status-late)' },
+const STATUS_FILTER_ITEMS: { key: RowState; label: string; icon: ReactNode; color: string }[] = [
+  { key: 'Concluída', label: 'Concluídas', icon: <CheckCircle2 size={12} strokeWidth={1.5} />, color: 'var(--status-done)' },
+  { key: 'Em dia',    label: 'Em dia',     icon: <CircleDot size={12} strokeWidth={1.5} />,    color: 'var(--status-ontrack)' },
+  { key: 'Em risco',  label: 'Em risco',   icon: <AlertCircle size={12} strokeWidth={1.5} />,  color: 'var(--status-risk)' },
+  { key: 'Em atraso', label: 'Em atraso',  icon: <XCircle size={12} strokeWidth={1.5} />,      color: 'var(--status-late)' },
 ]
 
 interface StatusFilterDropdownProps {
@@ -303,15 +303,15 @@ function CdaCell({ concluidas, em_dia, em_risco, em_atraso }: { concluidas: numb
           <span>{concluidas}</span>
         </span>
         <span className="act-cda-item" style={{ color: 'var(--status-ontrack)' }} title={`Em dia: ${em_dia}`}>
-          <span className="act-cda-icon">◐</span>
+          <span className="act-cda-icon"><CircleDot size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} /></span>
           <span>{em_dia}</span>
         </span>
         <span className="act-cda-item" style={{ color: 'var(--status-risk)' }} title={`Em risco: ${em_risco}`}>
-          <span className="act-cda-icon">⦿</span>
+          <span className="act-cda-icon"><AlertCircle size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} /></span>
           <span>{em_risco}</span>
         </span>
         <span className="act-cda-item" style={{ color: 'var(--status-late)' }} title={`Em atraso: ${em_atraso}`}>
-          <span className="act-cda-icon">✕</span>
+          <span className="act-cda-icon"><XCircle size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} /></span>
           <span>{em_atraso}</span>
         </span>
       </div>

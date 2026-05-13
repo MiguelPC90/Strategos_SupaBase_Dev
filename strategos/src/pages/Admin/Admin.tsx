@@ -1,6 +1,6 @@
 import './Admin.css'
 import { useState, useEffect, useRef, Fragment, type ChangeEvent } from 'react'
-import { Check, X, Pencil, Trash2, AlertCircle } from 'lucide-react'
+import { Check, X, Pencil, Trash2, AlertCircle, ArrowUp, ArrowRight, FileText } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import { useBranding } from '../../context/BrandingContext'
 import * as XLSX from 'xlsx'
@@ -2778,7 +2778,7 @@ function MatrizTab() {
           height: (N + 1) * 38, width: 14,
         }}>
           <span className="adm-axis-label" style={{ transform: 'rotate(-90deg)', whiteSpace: 'nowrap' }}>
-            Probabilidade ↑
+            Probabilidade <ArrowUp size={12} strokeWidth={1.5} />
           </span>
         </div>
         <div>
@@ -2802,7 +2802,7 @@ function MatrizTab() {
             ])}
           </div>
           <div style={{ textAlign: 'center', marginLeft: 38 }}>
-            <span className="adm-axis-label">Impacto →</span>
+            <span className="adm-axis-label">Impacto <ArrowRight size={12} strokeWidth={1.5} /></span>
           </div>
         </div>
       </div>
@@ -3203,7 +3203,7 @@ function ImportarTab() {
         className={`adm-upload-zone${file ? ' has-file' : ''}`}
         onClick={() => fileRef.current?.click()}
       >
-        <span style={{ fontSize: 24 }}>📄</span>
+        <FileText size={24} strokeWidth={1.5} />
         <br />
         {file ? file.name : 'Arrasta o ficheiro Excel aqui ou clica para seleccionar'}
       </div>

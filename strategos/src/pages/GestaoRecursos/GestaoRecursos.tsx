@@ -1,6 +1,6 @@
 import './GestaoRecursos.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { Link2, AlertTriangle } from 'lucide-react'
+import { Link2, AlertTriangle, Pencil, Copy, Trash2, X } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
@@ -194,9 +194,9 @@ function ResourceCard({ res, contracts, workDays, onEdit, onDelete, onDuplicate,
           </div>
           {!readOnly && (
             <div className="gres-card-actions">
-              <button className="btn-icon" onClick={onEdit} title="Editar" style={{ fontSize: 14 }}>✎</button>
-              <button className="btn-icon" onClick={onDuplicate} title="Duplicar">⧉</button>
-              <button className="btn-icon danger" onClick={onDelete} title="Eliminar">✕</button>
+              <button className="btn-icon" onClick={onEdit} title="Editar"><Pencil size={14} strokeWidth={1.5} /></button>
+              <button className="btn-icon" onClick={onDuplicate} title="Duplicar"><Copy size={14} strokeWidth={1.5} /></button>
+              <button className="btn-icon danger" onClick={onDelete} title="Eliminar"><Trash2 size={14} strokeWidth={1.5} /></button>
             </div>
           )}
         </div>
@@ -554,7 +554,7 @@ function ImportPanel({ planOptions, currentPlanKey, allResources, onImport, onCl
       <div className="gres-panel">
         <div className="gres-panel-header">
           <span className="gres-panel-title">Importar de outro Plano</span>
-          <button className="btn" onClick={onClose}>✕</button>
+          <button className="btn" onClick={onClose}><X size={16} strokeWidth={1.5} /></button>
         </div>
         <div className="gres-panel-body">
           <div>

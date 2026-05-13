@@ -1,5 +1,6 @@
 import './GestaoPDS.css'
 import { useState, useMemo, useCallback, useEffect } from 'react'
+import { ArrowDown, ArrowUp, RotateCcw } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import Modal from '../../components/Modal/Modal'
@@ -95,7 +96,7 @@ function sortItems(items: PdsItem[], dir: SortDir): PdsItem[] {
 function SortBtn({ dir, onClick }: { dir: SortDir; onClick(): void }) {
   return (
     <button className="pds-sort-btn" onClick={onClick} title="Inverter ordenação">
-      {dir === 'asc' ? '↓ Mais recentes' : '↑ Mais antigos'}
+      {dir === 'asc' ? <><ArrowDown size={12} strokeWidth={1.5} /> Mais recentes</> : <><ArrowUp size={12} strokeWidth={1.5} /> Mais antigos</>}
     </button>
   )
 }
@@ -269,7 +270,7 @@ function PdsSection({
                           className="pds-restore-btn"
                           onClick={() => { if (item.id) onRestore(item.id) }}
                           title="Restaurar"
-                        >↩</button>
+                        ><RotateCcw size={12} strokeWidth={1.5} /></button>
                       ) : (
                         <button
                           className="pds-hide-btn"

@@ -2,6 +2,7 @@ import './Modal.css'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
+import { X } from 'lucide-react'
 
 interface ModalProps {
   isOpen: boolean
@@ -34,7 +35,7 @@ export default function Modal({ isOpen, onClose, title, children, width = 560, f
       <div className="modal-box" style={{ '--modal-w': `${width}px` } as React.CSSProperties}>
         <div className="modal-header">
           <span className="modal-title">{title}</span>
-          <button className="btn-icon" onClick={onClose} aria-label="Fechar">✕</button>
+          <button className="btn-icon" onClick={onClose} aria-label="Fechar"><X size={16} strokeWidth={1.5} /></button>
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}

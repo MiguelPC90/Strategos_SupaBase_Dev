@@ -1,10 +1,11 @@
 import './EmptyState.css'
+import { type ReactNode } from 'react'
 
 export interface EmptyStateProps {
   icon?: 'data' | 'list' | 'target' | 'inbox' | 'chart' | 'calendar' | 'folder'
   title: string
   description?: string
-  actionLabel?: string
+  actionLabel?: ReactNode
   onAction?: () => void
   actionHref?: string
   size?: 'sm' | 'md' | 'lg'

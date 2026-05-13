@@ -1,6 +1,6 @@
 import './NovoPlanoModal.css'
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, AlertTriangle, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, AlertTriangle, X, Download, Paperclip, FileText } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import Modal from '../Modal/Modal'
 import SearchableSelect from '../SearchableSelect/SearchableSelect'
@@ -545,7 +545,7 @@ export default function NovoPlanoModal({
               A hierarquia é inferida pela ordem das linhas: uma N4 é filha da última N3 acima; etc.
             </div>
             <button className="gi-btn-link" type="button" onClick={downloadTemplate}>
-              📥 Template
+              <Download size={14} strokeWidth={1.5} /> Template
             </button>
           </div>
 
@@ -563,13 +563,13 @@ export default function NovoPlanoModal({
             />
             {!uploadedFile ? (
               <>
-                <div className="gi-upload-icon">📎</div>
+                <div className="gi-upload-icon"><Paperclip size={32} strokeWidth={1.5} /></div>
                 <div className="gi-upload-text">Arrastar Excel ou clicar para seleccionar</div>
                 <div className="gi-upload-hint">Formatos aceites: .xlsx, .xls</div>
               </>
             ) : (
               <div className="gi-upload-selected">
-                <span>📄 {uploadedFile.name}</span>
+                <span><FileText size={14} strokeWidth={1.5} /> {uploadedFile.name}</span>
                 <button type="button" className="gi-upload-clear"
                   onClick={e => { e.stopPropagation(); clearFile() }}><X size={14} strokeWidth={1.5} /></button>
               </div>

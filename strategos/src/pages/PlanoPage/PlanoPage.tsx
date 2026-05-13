@@ -102,7 +102,7 @@ export default function PlanoPage() {
           icon="folder"
           title="Plano não encontrado"
           description="Este plano não existe ou não tens acesso."
-          actionLabel="← Ver todos os planos"
+          actionLabel={<><ChevronLeft size={14} strokeWidth={1.5} /> Ver todos os planos</>}
           onAction={() => navigate('/planos')}
         />
       </div>

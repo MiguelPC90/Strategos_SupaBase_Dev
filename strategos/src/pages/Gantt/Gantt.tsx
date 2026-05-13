@@ -1,6 +1,6 @@
 import './Gantt.css'
 import { useState, useMemo, useCallback, useRef, useLayoutEffect, useEffect, type ReactNode } from 'react'
-import { ChevronDown, ChevronRight, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, X, CheckCircle2, CircleDot, AlertCircle, XCircle } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import EmptyState from '../../components/EmptyState/EmptyState'
@@ -61,11 +61,11 @@ function highlightMatch(text: string, query: string): ReactNode {
   )
 }
 
-const ALL_FILTER_STATES: { key: RowState; icon: string; color: string }[] = [
-  { key: 'Concluída', icon: '✓', color: 'var(--status-done)' },
-  { key: 'Em dia',    icon: '◐', color: 'var(--status-ontrack)' },
-  { key: 'Em risco',  icon: '⦿', color: 'var(--status-risk)' },
-  { key: 'Em atraso', icon: '✕', color: 'var(--status-late)' },
+const ALL_FILTER_STATES: { key: RowState; icon: ReactNode; color: string }[] = [
+  { key: 'Concluída', icon: <CheckCircle2 size={12} strokeWidth={1.5} />, color: 'var(--status-done)' },
+  { key: 'Em dia',    icon: <CircleDot size={12} strokeWidth={1.5} />,    color: 'var(--status-ontrack)' },
+  { key: 'Em risco',  icon: <AlertCircle size={12} strokeWidth={1.5} />,  color: 'var(--status-risk)' },
+  { key: 'Em atraso', icon: <XCircle size={12} strokeWidth={1.5} />,      color: 'var(--status-late)' },
 ]
 
 function StatusFilterDropdown({

@@ -1,5 +1,6 @@
 import './FilterBar.css'
 import { useMemo } from 'react'
+import { X } from 'lucide-react'
 import MultiSelect from '../MultiSelect/MultiSelect'
 import { useFilters } from '../../context/FilterContext'
 import { usePrograms } from '../../hooks/usePrograms'
@@ -103,7 +104,7 @@ export default function FilterBar() {
 
       {activeCount > 0 && (
         <button className="filter-clear" onClick={resetFilters}>
-          ✕ Limpar ({activeCount})
+          <X size={14} strokeWidth={1.5} /> Limpar ({activeCount})
         </button>
       )}
     </div>

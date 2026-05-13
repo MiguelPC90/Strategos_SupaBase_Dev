@@ -1,6 +1,6 @@
 import './GestaoFinanceira.css'
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, Trash2 } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
@@ -173,9 +173,9 @@ function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, readOnly,
                     <button
                       className="gf-icon-btn"
                       onClick={() => removeYear(y)}
-                      style={{ display: 'inline-flex', fontSize: 10, width: 14, height: 14, marginLeft: 3, verticalAlign: 'middle' }}
+                      style={{ display: 'inline-flex', width: 14, height: 14, marginLeft: 3, verticalAlign: 'middle' }}
                       title={`Remover coluna ${y}`}
-                    >✕</button>
+                    ><Trash2 size={10} strokeWidth={1.5} /></button>
                   )}
                 </th>
               ))}
@@ -187,7 +187,7 @@ function BudgetTab({ lines, setLines, onDelete, onSaveLine, savedRows, readOnly,
             {lines.map(b => (
               <tr key={b.id} style={savedRows.has(b.id) ? { boxShadow: 'inset 0 0 0 2px #95BB42' } : undefined}>
                 <td>
-                  {!readOnly && <button className="gf-icon-btn" onClick={() => onDelete(b.id)} title="Remover">✕</button>}
+                  {!readOnly && <button className="gf-icon-btn" onClick={() => onDelete(b.id)} title="Remover"><Trash2 size={12} strokeWidth={1.5} /></button>}
                 </td>
                 <td>
                   <select className="styled-select-sm gf-cell-select" value={b.category_id ?? ''}

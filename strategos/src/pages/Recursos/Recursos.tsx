@@ -1,6 +1,6 @@
 import './Recursos.css'
 import { useState, useMemo, useEffect } from 'react'
-import { ChevronDown, ChevronRight, AlertTriangle, ArrowUp, ArrowDown } from 'lucide-react'
+import { ChevronDown, ChevronRight, AlertTriangle, ArrowUp, ArrowDown, X } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Card from '../../components/Card/Card'
@@ -427,7 +427,7 @@ function ResourcePanel({ name, resources, planoNames, person, onClose, sym, show
       <div className="res-panel">
         <div className="res-panel-header">
           <span className="res-panel-title">{name}</span>
-          <button className="res-panel-close" onClick={onClose} title="Fechar">✕</button>
+          <button className="res-panel-close" onClick={onClose} title="Fechar"><X size={16} strokeWidth={1.5} /></button>
         </div>
 
         <div className="res-panel-info">
