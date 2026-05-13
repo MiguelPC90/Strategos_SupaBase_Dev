@@ -285,6 +285,7 @@ export interface Person {
   cost_role_id: string | null
   cost_per_hour_override: number | null
   currency: string | null
+  profile_id: string | null
 }
 
 // ── Snapshots ─────────────────────────────────────────────────

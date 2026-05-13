@@ -231,6 +231,16 @@
     background: var(--bg3);
   }
 
+  .adm-icon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: auto;
+  }
+
+  .adm-icon-btn:disabled:hover {
+    background: transparent;
+  }
+
   .adm-panel-footer {
     padding: 10px;
     border-top: 1px solid var(--border);

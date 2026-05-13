@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx'
 import Card from '../../components/Card/Card'
 import Badge from '../../components/Badge/Badge'
 import Modal from '../../components/Modal/Modal'
+import SearchableSelect, { type SelectOption } from '../../components/SearchableSelect/SearchableSelect'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { usePrograms } from '../../hooks/usePrograms'
@@ -1048,7 +1049,7 @@ function roleBadge(role: UserRole) {
   return <Badge variant="grey">Viewer</Badge>
 }
 
-interface InviteForm { email: string; role: 'program_manager' | 'editor' | 'sponsor' | 'stakeholder' }
+interface InviteForm { email: string; role: 'program_manager' | 'editor' | 'sponsor' | 'stakeholder' | 'viewer' }
 
 function AdminUtilizadores() {
   const { user: currentUser } = useAuth()
@@ -1177,7 +1178,7 @@ function AdminUtilizadores() {
     <button
       className="adm-btn-secondary"
       style={{ padding: '4px 12px', fontSize: 12 }}
-      onClick={() => { setShowInvite(v => !v); setInvite({ email: '', role: 'viewer' }) }}
+      onClick={() => { setShowInvite(v => !v); setInvite({ email: '', role: 'stakeholder' }) }}
     >
       + Convidar Utilizador
     </button>
@@ -1213,6 +1214,7 @@ function AdminUtilizadores() {
                   <option value="editor">Gestor — edita conforme permissões</option>
                   <option value="sponsor">Sponsor — apenas visualização</option>
                   <option value="stakeholder">Stakeholder — apenas visualização</option>
+                  <option value="viewer">Visualizador — apenas visualização</option>
                 </select>
               </div>
               <div style={{ display: 'flex', gap: 8, paddingBottom: 1 }}>
@@ -1272,13 +1274,13 @@ function AdminUtilizadores() {
                             <span style={{ whiteSpace: 'nowrap' }}>
                               <button
                                 className="adm-icon-btn"
-                                title={isAdmin ? 'Não editável' : isCurrentUser ? 'Não editável' : 'Editar role'}
+                                title={isAdmin ? 'Utilizadores Admin não podem ser editados a partir desta interface' : isCurrentUser ? 'Não editável' : 'Editar role'}
                                 disabled={isAdmin || isCurrentUser}
                                 onClick={() => startEdit(p)}
                               ><Pencil size={16} /></button>
                               <button
                                 className="adm-icon-btn"
-                                title={isAdmin ? 'Não editável' : isCurrentUser ? 'Não pode remover a própria conta' : 'Remover'}
+                                title={isAdmin ? 'Utilizadores Admin não podem ser eliminados a partir desta interface' : isCurrentUser ? 'Não pode remover a própria conta' : 'Remover'}
                                 disabled={isAdmin || isCurrentUser}
                                 style={{ color: isAdmin || isCurrentUser ? undefined : 'var(--red)' }}
                                 onClick={() => deleteProfile(p.id, p.full_name)}
@@ -1340,6 +1342,7 @@ interface DraftPerson {
   role:                   string
   cost_role_id:           string   // '' = none
   cost_per_hour_override: string   // '' = none, parsed to number on save
+  profile_id:             string | null
 }
 
 interface DraftCostRole {
@@ -1614,6 +1617,7 @@ function PessoasTab() {
   const [defaultCurrency,       setDefaultCurrency]       = useState('EUR')
   const [defaultCurrencySymbol, setDefaultCurrencySymbol] = useState('€')
   const [currSymbolMap,         setCurrSymbolMap]         = useState<Map<string, string>>(new Map())
+  const [authProfiles,    setAuthProfiles]    = useState<{ id: string; full_name: string | null; email: string }[]>([])
 
   function showErr(msg: string) {
     setErrMsg(msg)
@@ -1624,7 +1628,7 @@ function PessoasTab() {
     setLoading(true)
     const { data } = await supabase
       .from('people')
-      .select('id, name, email, org_unit, role, company, is_external, notes, active, sort_order, cost_role_id, cost_per_hour_override, currency')
+      .select('id, name, email, org_unit, role, company, is_external, notes, active, sort_order, cost_role_id, cost_per_hour_override, currency, profile_id')
       .order('name')
     setPeople((data ?? []) as Person[])
     setLoading(false)
@@ -1641,6 +1645,8 @@ function PessoasTab() {
         const def = rows.find(r => r.is_default)
         if (def) { setDefaultCurrency(def.code); setDefaultCurrencySymbol(def.symbol) }
       })
+    supabase.from('profiles').select('id, full_name, email').order('full_name')
+      .then(({ data }) => setAuthProfiles((data ?? []) as { id: string; full_name: string | null; email: string }[]))
   }, [])
 
   useEffect(() => { loadPeople() }, [])
@@ -1675,6 +1681,7 @@ function PessoasTab() {
       role:                   draft.role.trim() || null,
       cost_role_id:           draft.cost_role_id || null,
       cost_per_hour_override: draft.cost_per_hour_override !== '' ? parseFloat(draft.cost_per_hour_override) : null,
+      profile_id:             draft.profile_id || null,
     }
     if (draft.id) {
       const { error } = await supabase.from('people').update(payload).eq('id', draft.id)
@@ -1704,6 +1711,7 @@ function PessoasTab() {
               <tr>
                 <th>Nome</th>
                 <th>Email</th>
+                <th style={{ minWidth: 160 }}>Utilizador</th>
                 <th>Empresa</th>
                 <th>Tipo</th>
                 <th>Unidade</th>
@@ -1730,6 +1738,23 @@ function PessoasTab() {
                           onChange={e => setDraft(d => d ? { ...d, email: e.target.value } : d)}
                           onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
                       ) : (p.email || '—')}
+                    </td>
+                    <td style={{ minWidth: 160 }}>
+                      {editing ? (
+                        <SearchableSelect
+                          options={authProfiles.map((ap): SelectOption => ({
+                            value: ap.id,
+                            label: `${ap.full_name ?? '?'} (${ap.email})`,
+                          }))}
+                          value={draft!.profile_id}
+                          onChange={v => setDraft(d => d ? { ...d, profile_id: v } : d)}
+                          placeholder="— sem utilizador —"
+                        />
+                      ) : (
+                        p.profile_id
+                          ? (authProfiles.find(ap => ap.id === p.profile_id)?.full_name ?? '(eliminado)')
+                          : '—'
+                      )}
                     </td>
                     <td>
                       {editing ? (
@@ -1816,7 +1841,7 @@ function PessoasTab() {
                       ) : (
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Editar"
-                            onClick={() => setDraft({ id: p.id, name: p.name, email: p.email ?? '', company: p.company ?? '', is_external: p.is_external ?? false, org_unit: p.org_unit ?? '', role: p.role ?? '', cost_role_id: p.cost_role_id ?? '', cost_per_hour_override: p.cost_per_hour_override != null ? String(p.cost_per_hour_override) : '' })}><Pencil size={16} /></button>
+                            onClick={() => setDraft({ id: p.id, name: p.name, email: p.email ?? '', company: p.company ?? '', is_external: p.is_external ?? false, org_unit: p.org_unit ?? '', role: p.role ?? '', cost_role_id: p.cost_role_id ?? '', cost_per_hour_override: p.cost_per_hour_override != null ? String(p.cost_per_hour_override) : '', profile_id: p.profile_id ?? null })}><Pencil size={16} /></button>
                           <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
                             onClick={() => deletePerson(p.id)}><Trash2 size={16} /></button>
                         </span>
@@ -1836,6 +1861,17 @@ function PessoasTab() {
                     value={draft.email}
                     onChange={e => setDraft(d => d ? { ...d, email: e.target.value } : d)}
                     onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
+                  </td>
+                  <td style={{ minWidth: 160 }}>
+                    <SearchableSelect
+                      options={authProfiles.map((ap): SelectOption => ({
+                        value: ap.id,
+                        label: `${ap.full_name ?? '?'} (${ap.email})`,
+                      }))}
+                      value={draft.profile_id}
+                      onChange={v => setDraft(d => d ? { ...d, profile_id: v } : d)}
+                      placeholder="— sem utilizador —"
+                    />
                   </td>
                   <td><input className="adm-row-input" placeholder="Empresa"
                     value={draft.company}
@@ -1906,7 +1942,7 @@ function PessoasTab() {
             <button
               className="adm-add-btn"
               disabled={draft !== null}
-              onClick={() => setDraft({ id: null, name: '', email: '', company: '', is_external: false, org_unit: '', role: '', cost_role_id: '', cost_per_hour_override: '' })}
+              onClick={() => setDraft({ id: null, name: '', email: '', company: '', is_external: false, org_unit: '', role: '', cost_role_id: '', cost_per_hour_override: '', profile_id: null })}
             >
               + Nova Pessoa
             </button>
