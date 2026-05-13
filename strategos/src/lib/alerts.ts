@@ -259,10 +259,10 @@ export async function generateAlerts(opts: {
     if (rule.rule_key === 'risk_new_critical') {
       const { data: cfg } = await supabase
         .from('app_config')
-        .select('value')
-        .eq('key', 'risk_thresholds')
+        .select('data')
+        .eq('config_key', 'risk_thresholds')
         .maybeSingle()
-      const thresholds = cfg?.value as { high?: number } | null
+      const thresholds = (cfg?.data ? JSON.parse(cfg.data) : null) as { high?: number } | null
       const criticalGrade = thresholds?.high ?? 15
       const cutoff = new Date()
       cutoff.setDate(cutoff.getDate() - threshold)
