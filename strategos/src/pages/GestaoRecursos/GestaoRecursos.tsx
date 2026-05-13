@@ -627,7 +627,7 @@ export default function GestaoRecursos({
   programId: propProgramId,
 }: GestaoRecursosProps = {}) {
   const { showToast } = useToast()
-  const readOnly = !useCanEditCurrent('gestao-recursos')
+  const readOnly = !useCanEditCurrent('gestao-recursos', propPlanoId)
   const { canViewCosts } = usePermissions()
 
   const programId = propProgramId

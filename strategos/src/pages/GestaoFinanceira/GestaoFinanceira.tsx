@@ -546,7 +546,7 @@ export default function GestaoFinanceira({
   programId: propProgramId,
 }: GestaoFinanceiraProps = {}) {
   const { showToast } = useToast()
-  const readOnly  = !useCanEditCurrent('gestao-financeira')
+  const readOnly  = !useCanEditCurrent('gestao-financeira', propPlanoId)
   const programId = propProgramId
 
   // ── Admin config: categories, currencies, management years ───

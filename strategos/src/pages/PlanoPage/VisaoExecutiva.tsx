@@ -148,7 +148,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
   }, [leaves, today])
 
   // ── Finance ──────────────────────────────────────────────────
-  const showCosts = canViewCosts('gestao-financeira', programId ?? undefined)
+  const showCosts = canViewCosts('gestao-financeira', programId ?? undefined, planoId)
 
   const { totalBudget, totalExecuted, totalCommitted } = useMemo(() => {
     const lines  = budgetLines.filter(bl => bl.plano_id === planoId)

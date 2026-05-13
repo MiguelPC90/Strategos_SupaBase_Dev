@@ -702,7 +702,7 @@ export default function GestaoIniciativas({
 }: GestaoIniciativasProps = {}) {
   const { showToast } = useToast()
   const [selProgId, setSelProgId] = useState<string | null>(null)
-  const readOnly = !useCanEditCurrent('gestao-iniciativas')
+  const readOnly = !useCanEditCurrent('gestao-iniciativas', propPlanoId)
   const { isAdmin, isProgramManager } = useRole()
 
   const { programs } = usePrograms()

@@ -310,7 +310,7 @@ export default function GestaoPDS({
 }: GestaoPDSProps = {}) {
   const { showToast } = useToast()
   const programs = useAccessiblePrograms('gestao-pds')
-  const readOnly = !useCanEditCurrent('gestao-pds')
+  const readOnly = !useCanEditCurrent('gestao-pds', propPlanoId)
 
   const programId = propProgramId
   const { planos, loading: planosLoading } = usePlanos(programId)

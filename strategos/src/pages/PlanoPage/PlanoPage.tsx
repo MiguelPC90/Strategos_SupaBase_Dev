@@ -60,7 +60,7 @@ export default function PlanoPage() {
   const { planos, loading: planosLoading, refetch: refetchPlano } = usePlanos()
   const { programs, loading: programsLoading } = usePrograms()
   const { isFavorite, toggle: toggleFav, canAddMore } = useFavorites()
-  const { canEdit } = usePermissions()
+  const { canEdit, hasAccess } = usePermissions()
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], [])
   const { activities: planActivities } = useActivities(planoId ? { plano_id: planoId } : {})
@@ -104,6 +104,20 @@ export default function PlanoPage() {
           icon="folder"
           title="Plano não encontrado"
           description="Este plano não existe ou não tens acesso."
+          actionLabel={<><ChevronLeft size={14} strokeWidth={1.5} /> Ver todos os planos</>}
+          onAction={() => navigate('/planos')}
+        />
+      </div>
+    )
+  }
+
+  if (!hasAccess('gestao-iniciativas', plano.program_id ?? undefined, plano.id)) {
+    return (
+      <div className="pp-wrap">
+        <EmptyState
+          icon="folder"
+          title="Sem acesso a este plano"
+          description="Não tens permissão para visualizar este plano."
           actionLabel={<><ChevronLeft size={14} strokeWidth={1.5} /> Ver todos os planos</>}
           onAction={() => navigate('/planos')}
         />

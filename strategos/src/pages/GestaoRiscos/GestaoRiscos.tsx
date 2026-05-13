@@ -202,7 +202,7 @@ interface GestaoRiscosProps {
 
 export default function GestaoRiscos({ planoId, programId }: GestaoRiscosProps = {}) {
   const { showToast } = useToast()
-  const readOnly = !useCanEditCurrent('gestao-riscos')
+  const readOnly = !useCanEditCurrent('gestao-riscos', planoId)
   const [matrixSize,  setMatrixSize]  = useState(5)
   const [thresholds,  setThresholds]  = useState<RiskThresholds>(DEFAULT_THRESHOLDS)
 

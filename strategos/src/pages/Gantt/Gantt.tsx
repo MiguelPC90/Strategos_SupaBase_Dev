@@ -13,6 +13,8 @@ import { rollupPct, leafPctPrev, rollupPctPrev, leafStatus, rollupStatus, comput
 import type { Activity, Program } from '../../types/index'
 import type { DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
+import { usePlanos } from '../../hooks/usePlanos'
+import { usePermissions } from '../../hooks/usePermissions'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -488,9 +490,20 @@ export default function Gantt() {
   const { programs } = usePrograms()
   const { dependencies } = useActivityDependencies()
   const thresholdsMap = useThresholdsMap()
+  const { planos } = usePlanos(filters.programIds[0])
+  const { hasAccess } = usePermissions()
   const multiProg = programs.length > 1
 
-  const filtered = useMemo(() => getFilteredActivities(activities), [activities, getFilteredActivities])
+  const accessiblePlanIds = useMemo(
+    () => new Set(planos.filter(p => hasAccess('gantt', p.program_id ?? undefined, p.id)).map(p => p.id)),
+    [planos, hasAccess],
+  )
+
+  const filtered = useMemo(() => {
+    const fc = getFilteredActivities(activities)
+    if (planos.length === 0) return fc
+    return fc.filter(a => !a.plano_id || accessiblePlanIds.has(a.plano_id))
+  }, [activities, getFilteredActivities, accessiblePlanIds, planos.length])
 
   const [searchQuery, setSearchQuery]   = useState('')
   const [statusFilter, setStatusFilter] = useState<Set<RowState>>(
