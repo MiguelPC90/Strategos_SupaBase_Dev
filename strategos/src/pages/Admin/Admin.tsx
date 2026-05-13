@@ -1251,7 +1251,7 @@ function AdminUtilizadores() {
                         <td>
                           {editing ? (
                             <select
-                              className="adm-select"
+                              className="styled-select-sm"
                               value={editRole}
                               onChange={e => setEditRole(e.target.value as UserRole)}
                               autoFocus
@@ -1777,7 +1777,7 @@ function PessoasTab() {
                     </td>
                     <td>
                       {editing ? (
-                        <select className="adm-select" style={{ width: '100%' }} value={draft!.is_external ? 'ext' : 'int'}
+                        <select className="styled-select-sm" value={draft!.is_external ? 'ext' : 'int'}
                           onChange={e => setDraft(d => d ? { ...d, is_external: e.target.value === 'ext' } : d)}>
                           <option value="int">Interno</option>
                           <option value="ext">Externo</option>
@@ -1787,7 +1787,7 @@ function PessoasTab() {
                     <td>
                       {editing ? (
                         unitOpts.length > 0 ? (
-                          <select className="adm-select" style={{ width: '100%' }} value={draft!.org_unit}
+                          <select className="styled-select-sm" value={draft!.org_unit}
                             onChange={e => setDraft(d => d ? { ...d, org_unit: e.target.value } : d)}>
                             <option value="">— seleccionar —</option>
                             {unitOpts.map(u => <option key={u} value={u}>{u}</option>)}
@@ -1802,7 +1802,7 @@ function PessoasTab() {
                     <td>
                       {editing ? (
                         profOpts.length > 0 ? (
-                          <select className="adm-select" style={{ width: '100%' }} value={draft!.role}
+                          <select className="styled-select-sm" value={draft!.role}
                             onChange={e => setDraft(d => d ? { ...d, role: e.target.value } : d)}>
                             <option value="">— seleccionar —</option>
                             {profOpts.map(pr => <option key={pr} value={pr}>{pr}</option>)}
@@ -1817,7 +1817,7 @@ function PessoasTab() {
                     <td style={{ width: 140 }}>
                       {editing ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                          <select className="adm-select" style={{ width: '100%' }} value={draft!.cost_role_id}
+                          <select className="styled-select-sm" value={draft!.cost_role_id}
                             onChange={e => setDraft(d => d ? { ...d, cost_role_id: e.target.value } : d)}>
                             <option value="">— sem cargo —</option>
                             {costRoles.filter(cr => cr.is_active).map(cr => (
@@ -1901,7 +1901,7 @@ function PessoasTab() {
                     onKeyDown={e => { if (e.key === 'Enter') savePerson(); if (e.key === 'Escape') setDraft(null) }} />
                   </td>
                   <td>
-                    <select className="adm-select" style={{ width: '100%' }} value={draft.is_external ? 'ext' : 'int'}
+                    <select className="styled-select-sm" value={draft.is_external ? 'ext' : 'int'}
                       onChange={e => setDraft(d => d ? { ...d, is_external: e.target.value === 'ext' } : d)}>
                       <option value="int">Interno</option>
                       <option value="ext">Externo</option>
@@ -1909,7 +1909,7 @@ function PessoasTab() {
                   </td>
                   <td>
                     {unitOpts.length > 0 ? (
-                      <select className="adm-select" style={{ width: '100%' }} value={draft.org_unit}
+                      <select className="styled-select-sm" value={draft.org_unit}
                         onChange={e => setDraft(d => d ? { ...d, org_unit: e.target.value } : d)}>
                         <option value="">— seleccionar —</option>
                         {unitOpts.map(u => <option key={u} value={u}>{u}</option>)}
@@ -1923,7 +1923,7 @@ function PessoasTab() {
                   </td>
                   <td>
                     {profOpts.length > 0 ? (
-                      <select className="adm-select" style={{ width: '100%' }} value={draft.role}
+                      <select className="styled-select-sm" value={draft.role}
                         onChange={e => setDraft(d => d ? { ...d, role: e.target.value } : d)}>
                         <option value="">— seleccionar —</option>
                         {profOpts.map(pr => <option key={pr} value={pr}>{pr}</option>)}
@@ -1937,7 +1937,7 @@ function PessoasTab() {
                   </td>
                   <td style={{ width: 140 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <select className="adm-select" style={{ width: '100%' }} value={draft.cost_role_id}
+                      <select className="styled-select-sm" value={draft.cost_role_id}
                         onChange={e => setDraft(d => d ? { ...d, cost_role_id: e.target.value } : d)}>
                         <option value="">— sem cargo —</option>
                         {costRoles.filter(cr => cr.is_active).map(cr => (
@@ -3018,13 +3018,13 @@ function RegistoTab() {
     <>
       <div className="adm-filter-row">
         <span>Tabela:</span>
-        <select className="adm-select" value={tableFilter}
+        <select className="styled-select-sm" style={{ width: 'auto' }} value={tableFilter}
           onChange={e => setTableFilter(e.target.value)}>
           <option value="">Todas</option>
           {LOG_TABLES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
         <span>Utilizador:</span>
-        <select className="adm-select" value={userFilter}
+        <select className="styled-select-sm" style={{ width: 'auto' }} value={userFilter}
           onChange={e => setUserFilter(e.target.value)}>
           <option value="">Todos</option>
           {profiles.map(p => (
@@ -3222,7 +3222,7 @@ function ImportarTab() {
       {sheets.length > 1 && (
         <div className="adm-program-bar" style={{ marginTop: 10 }}>
           <span>Folha:</span>
-          <select className="adm-select" value={selSheet}
+          <select className="styled-select-sm" style={{ width: 'auto' }} value={selSheet}
             onChange={e => handleSheetChange(e.target.value)}>
             {sheets.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -3443,6 +3443,7 @@ function AdminPlano() {
   const [alertRules,   setAlertRules]   = useState<AlertRule[]>([])
   const [alertLoading, setAlertLoading] = useState(true)
   const [alertSaving,  setAlertSaving]  = useState<string | null>(null)
+  const [alertSaved,   setAlertSaved]   = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -3501,6 +3502,8 @@ function AdminPlano() {
       showToast(error.message, 'error')
     } else {
       setAlertRules(prev => prev.map(r => r.id === rule.id ? { ...r, ...patch } as AlertRule : r))
+      setAlertSaved(true)
+      setTimeout(() => setAlertSaved(false), 2300)
     }
     setAlertSaving(null)
   }
@@ -3515,7 +3518,11 @@ function AdminPlano() {
 
   return (
     <div className="adm-plano-stack">
-      <Card title="Limiares de atraso">
+      <Card title="Limiares de atraso" actions={
+        savedKey && ['status_delay_threshold_aggregates', 'status_delay_threshold_leaves', 'pds_hide_completed_days'].includes(savedKey)
+          ? <span className="adm-saved-indicator">Guardado</span>
+          : undefined
+      }>
         <p className="adm-section-desc">Desvio tolerado (em pontos percentuais) entre execução prevista e real antes de marcar actividades como atrasadas.</p>
         <div className="adm-thresholds-row">
           <div className="adm-field">
@@ -3531,7 +3538,6 @@ function AdminPlano() {
               onBlur={() => saveConfigKey('status_delay_threshold_aggregates', String(delayThreshold))}
             />
             <span className="adm-help">Desvio tolerado antes de marcar planos, eixos e programas como atrasados.</span>
-            {savedKey === 'status_delay_threshold_aggregates' && <span className="adm-saved-indicator">Guardado</span>}
             {errorKey === 'status_delay_threshold_aggregates' && <span className="adm-error-indicator">Erro ao guardar</span>}
           </div>
           <div className="adm-field">
@@ -3547,7 +3553,6 @@ function AdminPlano() {
               onBlur={() => saveConfigKey('status_delay_threshold_leaves', String(delayThresholdLeaves))}
             />
             <span className="adm-help">Desvio tolerado antes de marcar actividades individuais como atrasadas. 0 = qualquer desvio é atraso.</span>
-            {savedKey === 'status_delay_threshold_leaves' && <span className="adm-saved-indicator">Guardado</span>}
             {errorKey === 'status_delay_threshold_leaves' && <span className="adm-error-indicator">Erro ao guardar</span>}
           </div>
         </div>
@@ -3563,13 +3568,14 @@ function AdminPlano() {
             onBlur={() => saveConfigKey('pds_hide_completed_days', String(hideCompletedDays))}
           />
           <span className="adm-help">Compromissos anteriores concluídos há mais de X dias são ocultados no Ponto de Situação. Compromissos em aberto aparecem sempre.</span>
-          {savedKey === 'pds_hide_completed_days' && <span className="adm-saved-indicator">Guardado</span>}
           {errorKey === 'pds_hide_completed_days' && <span className="adm-error-indicator">Erro ao guardar</span>}
         </div>
         {savingKey && savingKey !== 'health_rules' && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text3)' }}>A guardar…</span>}
       </Card>
 
-      <Card title="Limiares de Saúde do Plano">
+      <Card title="Limiares de Saúde do Plano" actions={
+        savedKey === 'health_rules' ? <span className="adm-saved-indicator">Guardado</span> : undefined
+      }>
         <p className="adm-section-desc">
           Regras usadas para calcular o semáforo de saúde no cabeçalho do Ponto de Situação.
         </p>
@@ -3595,11 +3601,10 @@ function AdminPlano() {
             }}
           />
         </div>
-        {savedKey === 'health_rules' && <span className="adm-saved-indicator" style={{ marginTop: 'var(--space-2)', display: 'block' }}>Guardado</span>}
         {errorKey === 'health_rules' && <span className="adm-error-indicator" style={{ marginTop: 'var(--space-2)', display: 'block' }}>Erro ao guardar</span>}
       </Card>
 
-      <Card title="Alertas">
+      <Card title="Alertas" actions={alertSaved ? <span className="adm-saved-indicator">Guardado</span> : undefined}>
         <p className="adm-section-desc">Regras de alerta exibidas no briefing executivo do Dashboard. Edite directamente na tabela — as alterações são guardadas imediatamente.</p>
         {alertLoading ? (
           <div className="page-placeholder"><p>A carregar...</p></div>

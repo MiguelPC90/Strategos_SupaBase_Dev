@@ -196,7 +196,7 @@ export default function PlanoPage() {
               <span className="pp-meta-dates">{dateLine}</span>
             </span>
           )}
-          {narrative && <span className="pp-narrative">{narrative}</span>}
+          {narrative && <span className="pp-narrative t-body-l">{narrative}</span>}
         </div>
 
         {plano.objective && (

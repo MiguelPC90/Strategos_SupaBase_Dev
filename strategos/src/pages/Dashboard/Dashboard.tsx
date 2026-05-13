@@ -846,19 +846,28 @@ export default function Dashboard() {
     [snapshots],
   )
 
-  const kpi7dAgo = useMemo(() => {
-    if (snapshots.length === 0) return null
+  const { kpi7dAgo, delta7dLabel } = useMemo(() => {
+    if (snapshots.length === 0) return { kpi7dAgo: null, delta7dLabel: null }
+    const oldest = new Date(snapshots[0].snap_date)
+    const today = new Date()
+    const daysAvailable = Math.floor((today.getTime() - oldest.getTime()) / (1000 * 60 * 60 * 24))
+    if (daysAvailable < 3) return { kpi7dAgo: null, delta7dLabel: null }
+    const N = Math.min(daysAvailable, 7)
+    const label = N >= 7 ? 'vs 7d' : `vs ${N}d`
     const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() - 7)
+    cutoff.setDate(cutoff.getDate() - N)
     const cutoffStr = cutoff.toISOString().slice(0, 10)
     for (let i = snapshots.length - 1; i >= 0; i--) {
       if (snapshots[i].snap_date.slice(0, 10) <= cutoffStr) {
         const snap = snapshots[i]
         const pid = snapshotProgramId
-        return (pid !== undefined && pid in snap.by_n0) ? snap.by_n0[pid] : snap.kpi
+        return {
+          kpi7dAgo: (pid !== undefined && pid in snap.by_n0) ? snap.by_n0[pid] : snap.kpi,
+          delta7dLabel: label,
+        }
       }
     }
-    return null
+    return { kpi7dAgo: null, delta7dLabel: null }
   }, [snapshots, snapshotProgramId])
 
   const snap14dAgo = useMemo(() => {
@@ -1094,10 +1103,10 @@ export default function Dashboard() {
                 <SmartKpi label="Conc. à Data"        value={concDataVal}  delta={concDataDelta}  target={100} />
               </div>
               <div className="contagem-kpi-grid">
-                <ContagemKpi value={m.concluidas} total={m.total} label="concluídas" delta={delta7Conc}     deltaVariant="good" />
-                <ContagemKpi value={m.em_dia}     total={m.total} label="em dia"     delta={delta7EmDia}    deltaVariant="neutral" />
-                <ContagemKpi value={m.em_risco}   total={m.total} label="em risco"   delta={delta7EmRisco}  deltaVariant="bad" />
-                <ContagemKpi value={m.em_atraso}  total={m.total} label="em atraso"  delta={delta7EmAtraso} variant="late" deltaVariant="bad" />
+                <ContagemKpi value={m.concluidas} total={m.total} label="concluídas" delta={delta7Conc}     deltaVariant="good"    deltaLabel={delta7dLabel} />
+                <ContagemKpi value={m.em_dia}     total={m.total} label="em dia"     delta={delta7EmDia}    deltaVariant="neutral" deltaLabel={delta7dLabel} />
+                <ContagemKpi value={m.em_risco}   total={m.total} label="em risco"   delta={delta7EmRisco}  deltaVariant="bad"     deltaLabel={delta7dLabel} />
+                <ContagemKpi value={m.em_atraso}  total={m.total} label="em atraso"  delta={delta7EmAtraso} variant="late" deltaVariant="bad" deltaLabel={delta7dLabel} />
               </div>
             </div>
           </div>

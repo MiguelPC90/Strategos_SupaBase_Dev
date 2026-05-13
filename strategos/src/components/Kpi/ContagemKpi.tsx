@@ -6,6 +6,7 @@ export interface ContagemKpiProps {
   label: string
   delta?: number | null
   deltaVariant?: 'good' | 'neutral' | 'bad'
+  deltaLabel?: string | null
   variant?: 'default' | 'late'
   className?: string
 }
@@ -15,6 +16,7 @@ export default function ContagemKpi({
   delta = null,
   variant = 'default',
   deltaVariant = 'neutral',
+  deltaLabel = null,
 }: ContagemKpiProps) {
   const isLate = variant === 'late'
   return (
@@ -26,7 +28,7 @@ export default function ContagemKpi({
       <div className="contagem-kpi-label">{label}</div>
       {delta !== null && (
         <div className={`contagem-kpi-delta ${deltaVariant}`}>
-          {delta >= 0 ? '+' : ''}{delta} últimos 7 dias
+          {delta >= 0 ? '+' : ''}{delta} {deltaLabel ?? 'últimos 7 dias'}
         </div>
       )}
     </div>
