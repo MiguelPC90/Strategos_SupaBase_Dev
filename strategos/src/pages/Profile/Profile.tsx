@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useRole } from '../../hooks/useRole'
+import { useProfile } from '../../context/ProfileContext'
 import Badge from '../../components/Badge/Badge'
 
 const ROLE_LABEL: Record<string, string> = {
@@ -35,6 +36,7 @@ export default function Profile() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { profile, role } = useRole()
+  const { refresh: refreshProfile } = useProfile()
 
   // Identity state
   const [fullName, setFullName] = useState('')
@@ -81,6 +83,7 @@ export default function Profile() {
       setIdentityFeedback({ type: 'error', msg: 'Erro ao guardar: ' + error.message })
     } else {
       setOriginalFullName(fullName)
+      await refreshProfile()
       setIdentityFeedback({ type: 'success', msg: 'Guardado.' })
       setTimeout(() => setIdentityFeedback(null), 3000)
     }

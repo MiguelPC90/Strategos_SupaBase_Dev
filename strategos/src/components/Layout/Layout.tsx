@@ -17,6 +17,7 @@ import type { PageKey } from '../../types/index'
 import Breadcrumb from '../Breadcrumb/Breadcrumb'
 import { CommandPalette } from '../CommandPalette/CommandPalette'
 import { useBranding } from '../../context/BrandingContext'
+import { useProfile } from '../../context/ProfileContext'
 import StratgosWordmark from '../Brand/StratgosWordmark'
 import StratgosGMark from '../Brand/StratgosGMark'
 
@@ -175,7 +176,8 @@ export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const { signOut, user, loading: authLoading } = useAuth()
-  const { profile, role, isAdmin } = useRole()
+  const { role, isAdmin } = useRole()
+  const { profile: profileCtx, loading: profileLoading } = useProfile()
   const { hasAccess } = usePermissions()
 
   const { programs, loading: programsLoading } = usePrograms()
@@ -238,14 +240,14 @@ export default function Layout() {
     return () => document.removeEventListener('keydown', handle)
   }, [])
 
-  const initials = getInitials(profile?.full_name, user?.email)
-  const displayName = profile?.full_name || user?.email || 'Utilizador'
+  const initials = getInitials(profileCtx?.fullName ?? null, user?.email)
+  const displayName = profileCtx?.fullName || user?.email || 'Utilizador'
   const displayEmail = user?.email ?? ''
   const roleLabel = role ? (ROLE_LABEL[role] ?? role) : null
 
   const essentialLoaded =
     !authLoading &&
-    (!user || (configLoaded && !programsLoading && !brandingLoading))
+    (!user || (configLoaded && !programsLoading && !brandingLoading && !profileLoading))
 
   const showSplash = !essentialLoaded
 
