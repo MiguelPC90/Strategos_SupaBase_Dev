@@ -54,7 +54,7 @@
     top: calc(100% + 4px);
     left: 0;
     width: 100%;
-    min-width: 200px;
+    min-width: 280px;
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: var(--r);

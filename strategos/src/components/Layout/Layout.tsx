@@ -169,7 +169,6 @@ const ROLE_LABEL: Record<string, string> = {
   editor:          'Gestor',
   sponsor:         'Sponsor',
   stakeholder:     'Stakeholder',
-  viewer:          'Visualizador',
 }
 
 export default function Layout() {

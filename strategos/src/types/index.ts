@@ -5,7 +5,7 @@
 
 // ── Utility types ─────────────────────────────────────────────
 export type AccessLevel = 'full' | 'ops' | 'view' | 'view_ops' | 'denied'
-export type UserRole    = 'admin' | 'program_manager' | 'editor' | 'sponsor' | 'stakeholder' | 'viewer'
+export type UserRole    = 'admin' | 'program_manager' | 'editor' | 'sponsor' | 'stakeholder'
 export type PageKey =
   | 'dashboard'
   | 'actividades'

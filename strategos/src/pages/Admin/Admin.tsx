@@ -1049,7 +1049,7 @@ function roleBadge(role: UserRole) {
   return <Badge variant="grey">Viewer</Badge>
 }
 
-interface InviteForm { email: string; role: 'program_manager' | 'editor' | 'sponsor' | 'stakeholder' | 'viewer' }
+interface InviteForm { email: string; role: 'program_manager' | 'editor' | 'sponsor' | 'stakeholder' }
 
 function AdminUtilizadores() {
   const { user: currentUser } = useAuth()
@@ -1058,7 +1058,7 @@ function AdminUtilizadores() {
   const [profiles,         setProfiles]         = useState<Profile[]>([])
   const [loadingP,         setLoadingP]         = useState(true)
   const [editId,           setEditId]           = useState<string | null>(null)
-  const [editRole,         setEditRole]         = useState<UserRole>('viewer')
+  const [editRole,         setEditRole]         = useState<UserRole>('stakeholder')
   const [saving,           setSaving]           = useState(false)
   const [showInvite,       setShowInvite]       = useState(false)
   const [invite,           setInvite]           = useState<InviteForm>({ email: '', role: 'stakeholder' })
@@ -1108,7 +1108,7 @@ function AdminUtilizadores() {
   async function saveRole() {
     if (!editId) return
     // Downgrading from edit-capable to view-only role: check for stranded edit permissions
-    const viewOnlyRoles: UserRole[] = ['sponsor', 'stakeholder', 'viewer']
+    const viewOnlyRoles: UserRole[] = ['sponsor', 'stakeholder']
     const editCapableRoles: UserRole[] = ['program_manager', 'editor']
     if (viewOnlyRoles.includes(editRole)) {
       const originalRole = profiles.find(p => p.id === editId)?.role
@@ -1214,7 +1214,7 @@ function AdminUtilizadores() {
                   <option value="editor">Gestor — edita conforme permissões</option>
                   <option value="sponsor">Sponsor — apenas visualização</option>
                   <option value="stakeholder">Stakeholder — apenas visualização</option>
-                  <option value="viewer">Visualizador — apenas visualização</option>
+
                 </select>
               </div>
               <div style={{ display: 'flex', gap: 8, paddingBottom: 1 }}>
@@ -1744,7 +1744,7 @@ function PessoasTab() {
                         <SearchableSelect
                           options={authProfiles.map((ap): SelectOption => ({
                             value: ap.id,
-                            label: `${ap.full_name ?? '?'} (${ap.email})`,
+                            label: ap.full_name ? `${ap.full_name} (${ap.email})` : ap.email,
                           }))}
                           value={draft!.profile_id}
                           onChange={v => setDraft(d => d ? { ...d, profile_id: v } : d)}

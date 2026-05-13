@@ -1,5 +1,5 @@
 import './SearchableSelect.css'
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from 'react'
 import { ChevronUp, ChevronDown, X } from 'lucide-react'
 
 export interface SelectOption {
@@ -26,9 +26,10 @@ export default function SearchableSelect({
   disabled = false,
   required = false,
 }: SearchableSelectProps) {
-  const [open,      setOpen]      = useState(false)
-  const [query,     setQuery]     = useState('')
-  const [activeIdx, setActiveIdx] = useState(-1)
+  const [open,          setOpen]          = useState(false)
+  const [query,         setQuery]         = useState('')
+  const [activeIdx,     setActiveIdx]     = useState(-1)
+  const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({})
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef     = useRef<HTMLInputElement>(null)
 
@@ -42,6 +43,15 @@ export default function SearchableSelect({
 
   const openDropdown = () => {
     if (disabled) return
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (rect) {
+      setDropdownStyle({
+        position: 'fixed',
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: Math.max(rect.width, 280),
+      })
+    }
     setOpen(true)
     setQuery('')
     setActiveIdx(-1)
@@ -71,7 +81,13 @@ export default function SearchableSelect({
       if (!containerRef.current?.contains(e.target as Node)) closeDropdown()
     }
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    window.addEventListener('scroll', closeDropdown, { capture: true, passive: true })
+    window.addEventListener('resize', closeDropdown)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      window.removeEventListener('scroll', closeDropdown, { capture: true })
+      window.removeEventListener('resize', closeDropdown)
+    }
   }, [open, closeDropdown])
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -116,7 +132,7 @@ export default function SearchableSelect({
       </div>
 
       {open && (
-        <div className="ss-dropdown" role="listbox">
+        <div className="ss-dropdown" style={dropdownStyle} role="listbox">
           <div className="ss-search-wrap">
             <input
               ref={inputRef}

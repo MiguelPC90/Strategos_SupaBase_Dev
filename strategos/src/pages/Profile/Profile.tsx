@@ -13,7 +13,6 @@ const ROLE_LABEL: Record<string, string> = {
   editor:          'Gestor',
   sponsor:         'Sponsor',
   stakeholder:     'Stakeholder',
-  viewer:          'Visualizador',
 }
 
 function roleBadgeVariant(role: string | null): 'navy' | 'blue' | 'amber' | 'grey' {
