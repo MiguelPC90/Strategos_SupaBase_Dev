@@ -195,13 +195,14 @@
   .alertas-card {
     overflow: hidden;
     max-height: 280px;
+    min-height: 280px;
   }
 
   .alert-zone {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    height: 100%;
+    flex: 1;
     min-height: 0;
   }
 
