@@ -11,6 +11,7 @@ import Badge from '../../components/Badge/Badge'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useEixos } from '../../hooks/useEixos'
+import { useProgramLabels, type ProgramLabels } from '../../hooks/useProgramLabels'
 import { usePlanos } from '../../hooks/usePlanos'
 import { supabase } from '../../lib/supabase'
 import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange, leafPctPrev, leafStatus } from '../../lib/rollup'
@@ -169,9 +170,10 @@ interface PanelProps {
   canEditBaseline: boolean
   isEmbedded?: boolean
   depProps?: DependencyEditorProps
+  labels: ProgramLabels
 }
 
-function Panel({ form, eixos, planos, activities, errors, onChange, canEditBaseline, isEmbedded, depProps }: PanelProps) {
+function Panel({ form, eixos, planos, activities, errors, onChange, canEditBaseline, isEmbedded, depProps, labels }: PanelProps) {
   const set = (k: keyof PanelForm) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       onChange({ ...form, [k]: e.target.value })
@@ -234,14 +236,14 @@ function Panel({ form, eixos, planos, activities, errors, onChange, canEditBasel
           {!isEmbedded && (
             <div className="gi-field-row" style={{ marginTop: 10 }}>
               <div className="gi-field">
-                <span className="gi-field-label">Eixo</span>
+                <span className="gi-field-label">{labels.n1}</span>
                 <select className="styled-select-sm" value={form.n1} onChange={handleN1Change}>
                   <option value="">— seleccionar —</option>
                   {eixos.map(e => <option key={e} value={e}>{e}</option>)}
                 </select>
               </div>
               <div className="gi-field">
-                <span className="gi-field-label">Plano de Acção</span>
+                <span className="gi-field-label">{labels.n2}</span>
                 <select className="styled-select-sm" value={form.n2} onChange={handleN2Change}>
                   <option value="">— seleccionar —</option>
                   {planos.map(p => <option key={p} value={p}>{p}</option>)}
@@ -707,6 +709,7 @@ export default function GestaoIniciativas({
   const { activities: rawActivities, loading, refetch } = useActivities({ plano_id: propPlanoId })
   const { eixos: dbEixos } = useEixos(selProgId ?? undefined)
   const { planos: dbPlanos, refetch: refetchPlanos } = usePlanos(selProgId ?? undefined)
+  const labels = useProgramLabels(selProgId)
 
   const program = useMemo(() => programs.find(p => p.id === selProgId), [programs, selProgId])
 
@@ -1431,6 +1434,7 @@ export default function GestaoIniciativas({
             canEditBaseline={!panelForm.id || isAdmin || isProgramManager}
             isEmbedded={true}
             depProps={panelDepProps}
+            labels={labels}
           />
         </Modal>
       )}

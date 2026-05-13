@@ -9,6 +9,7 @@ import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import { useFilters } from '../../context/FilterContext'
+import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 import type { Activity, Program } from '../../types/index'
 import type { PlanoThresholds } from '../../hooks/useThresholdsMap'
@@ -322,6 +323,7 @@ function CdaCell({ concluidas, em_dia, em_risco, em_atraso }: { concluidas: numb
 // ── Main component ─────────────────────────────────────────────
 export default function Actividades() {
   const { filters, getFilteredActivities } = useFilters()
+  const labels = useProgramLabels(filters.programIds.length === 1 ? filters.programIds[0] : null)
   const { activities, loading } = useActivities({
     program_id: filters.programIds[0],
     cutoffDate: filters.cutoffDate,
@@ -662,8 +664,8 @@ export default function Actividades() {
               >
                 <option value="todos">Todos</option>
                 {multiProg && <option value="programa">Programa</option>}
-                <option value="eixo">Eixo</option>
-                <option value="plano">Plano</option>
+                <option value="eixo">{labels.n1}</option>
+                <option value="plano">{labels.n2}</option>
                 <option value="macro">Macroactividade</option>
                 <option value="actividade">Actividade</option>
               </select>

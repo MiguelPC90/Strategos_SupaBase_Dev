@@ -12,6 +12,7 @@ import KpiCard from '../../components/KpiCard/KpiCard'
 import { useSnapshots } from '../../hooks/useSnapshots'
 import { useEixos } from '../../hooks/useEixos'
 import { useFilters } from '../../context/FilterContext'
+import { useProgramLabels } from '../../hooks/useProgramLabels'
 import type { Snapshot, SnapshotKpi } from '../../types/index'
 import { colors, chartDefaults } from '../../lib/tokens'
 
@@ -115,6 +116,7 @@ const BLUE  = colors.status.done
 export default function Evolucao() {
   const { filters }                    = useFilters()
   const programId                      = filters.programIds[0] ?? ''
+  const labels                         = useProgramLabels(programId || null)
   const [periodOption, setPeriodOption] = useState<PeriodOption>('6m')
   const [dateFrom,     setDateFrom]     = useState(() => computePeriodDates('6m').from)
   const [dateTo,       setDateTo]       = useState(() => computePeriodDates('6m').to)
@@ -212,7 +214,7 @@ export default function Evolucao() {
       const firstSnap = filtered[0]
       const lastSnap  = filtered[filtered.length - 1]
       groups.push({
-        title: 'Por Eixo',
+        title: `Por ${labels.n1}`,
         rows: eixoKeys.map(k => ({
           label:       `${eixoNameById.get(k) ?? k} — Grau de execução (%)`,
           ref:         firstSnap.by_n1[k]?.exec_media ?? 0,

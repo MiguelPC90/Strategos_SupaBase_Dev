@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { Star, LayoutList, LayoutGrid, Plus, MoreHorizontal } from 'lucide-react'
 import { usePlanos } from '../../hooks/usePlanos'
+import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFavorites } from '../../hooks/useFavorites'
 import { useToast } from '../../context/ToastContext'
@@ -153,6 +154,15 @@ export default function PlanosCatalog() {
   const [search,        setSearch]        = useState('')
   const [onlyFavorites, setOnlyFavorites] = useState(false)
   const [viewMode,      setViewMode]      = useState<'table' | 'cards'>('table')
+
+  const activeProgramId = useMemo(
+    () => {
+      if (progFilter.length !== 1) return null
+      return programs.find(p => progFilter.includes(p.name))?.id ?? null
+    },
+    [progFilter, programs],
+  )
+  const labels = useProgramLabels(activeProgramId)
 
   // ── Enrich planos with computed status + pct ──────────────────
   const enriched = useMemo(() => planos.map(plano => {
@@ -372,16 +382,16 @@ export default function PlanosCatalog() {
           <MultiSelect label="Programa"  options={progOptions}    value={progFilter}    onChange={setProgFilter} />
         </div>
         <div className="pc-ms" style={{ width: 200 }}>
-          <MultiSelect label="Eixo"      options={eixoOptions}    value={eixoFilter}    onChange={setEixoFilter} />
+          <MultiSelect label={labels.n1}  options={eixoOptions}    value={eixoFilter}    onChange={setEixoFilter} />
         </div>
         <div className="pc-ms" style={{ width: 160 }}>
           <MultiSelect label="Status"    options={statusOptions}  value={statusFilter}  onChange={setStatusFilter} />
         </div>
         <div className="pc-ms" style={{ width: 200 }}>
-          <MultiSelect label="Owner"     options={ownerOptions}   value={ownerFilter}   onChange={setOwnerFilter} />
+          <MultiSelect label={labels.owner} options={ownerOptions} value={ownerFilter}   onChange={setOwnerFilter} />
         </div>
         <div className="pc-ms" style={{ width: 200 }}>
-          <MultiSelect label="Sponsor"   options={sponsorOptions} value={sponsorFilter} onChange={setSponsorFilter} />
+          <MultiSelect label={labels.sponsor} options={sponsorOptions} value={sponsorFilter} onChange={setSponsorFilter} />
         </div>
         <button
           className={`pc-fav-filter${onlyFavorites ? ' pc-fav-filter-active' : ''}`}
@@ -427,8 +437,8 @@ export default function PlanosCatalog() {
                 <th className="pc-th pc-th-star" />
                 <th className="pc-th">Nome</th>
                 <th className="pc-th">Programa</th>
-                <th className="pc-th">Eixo</th>
-                <th className="pc-th">Owner</th>
+                <th className="pc-th">{labels.n1}</th>
+                <th className="pc-th">{labels.owner}</th>
                 <th className="pc-th">Status</th>
                 <th className="pc-th pc-th-prog">% Exec</th>
                 <th className="pc-th" />

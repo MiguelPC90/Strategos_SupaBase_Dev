@@ -11,6 +11,7 @@ import { usePlanos } from '../../hooks/usePlanos'
 import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { usePeople } from '../../hooks/usePeople'
 import { useFilters } from '../../context/FilterContext'
+import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { usePermissions } from '../../hooks/usePermissions'
 import { supabase } from '../../lib/supabase'
 import type { FteResource, Person } from '../../types/index'
@@ -703,6 +704,7 @@ export default function Recursos() {
   const { canViewCosts } = usePermissions()
 
   const programId = filters.programIds[0] ?? programs[0]?.id
+  const labels = useProgramLabels(programId ?? null)
 
   const [selectedPlanoLabels, setSelectedPlanoLabels] = useState<string[]>([])
   const [selectedYears,       setSelectedYears]       = useState<string[]>([])
@@ -1062,7 +1064,7 @@ export default function Recursos() {
               <button
                 className={`rec-tab${activeTab === 'plano' ? ' active' : ''}`}
                 onClick={() => setActiveTab('plano')}
-              >Por Plano</button>
+              >Por {labels.n2}</button>
               <button
                 className={`rec-tab${activeTab === 'recurso' ? ' active' : ''}`}
                 onClick={() => setActiveTab('recurso')}

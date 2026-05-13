@@ -3119,7 +3119,7 @@ function AdminHistorico() {
 // ── Section 8: Dados e Importação ────────────────────────────
 type DadosTab = 'importar' | 'exportar' | 'rotulos'
 
-interface FilterLabels { n1: string; n2: string; owner: string; sponsor: string }
+interface FilterLabels { n0: string; n1: string; n2: string; owner: string; sponsor: string }
 
 const EXPORT_TABLES = [
   'programs', 'eixos', 'planos', 'activities', 'pds_entries',
@@ -3307,7 +3307,7 @@ function RotulosTab() {
   const { showToast } = useToast()
   const { programs } = usePrograms()
   const [selProgId, setSelProgId] = useState<string | null>(null)
-  const [labels,    setLabels]    = useState<FilterLabels>({ n1: '', n2: '', owner: '', sponsor: '' })
+  const [labels,    setLabels]    = useState<FilterLabels>({ n0: '', n1: '', n2: '', owner: '', sponsor: '' })
   const [saving,    setSaving]    = useState(false)
 
   useEffect(() => {
@@ -3327,10 +3327,10 @@ function RotulosTab() {
         if (data) {
           try {
             const parsed = JSON.parse(data.data) as Partial<FilterLabels>
-            setLabels({ n1: parsed.n1 ?? '', n2: parsed.n2 ?? '', owner: parsed.owner ?? '', sponsor: parsed.sponsor ?? '' })
-          } catch { setLabels({ n1: '', n2: '', owner: '', sponsor: '' }) }
+            setLabels({ n0: parsed.n0 ?? '', n1: parsed.n1 ?? '', n2: parsed.n2 ?? '', owner: parsed.owner ?? '', sponsor: parsed.sponsor ?? '' })
+          } catch { setLabels({ n0: '', n1: '', n2: '', owner: '', sponsor: '' }) }
         } else {
-          setLabels({ n1: '', n2: '', owner: '', sponsor: '' })
+          setLabels({ n0: '', n1: '', n2: '', owner: '', sponsor: '' })
         }
       })
     return () => { cancelled = true }
@@ -3368,10 +3368,11 @@ function RotulosTab() {
 
       <div className="adm-label-grid">
         {([
+          ['n0',      'N0 (Programa)',  'Programa'      ],
           ['n1',      'N1 (Eixo)',      'Eixo'          ],
           ['n2',      'N2 (Plano)',     'Plano'         ],
-          ['owner',   'Owner',          'Responsável'   ],
-          ['sponsor', 'Sponsor',        'Patrocinador'  ],
+          ['owner',   'Responsável',    'Responsável'   ],
+          ['sponsor', 'Patrocinador',   'Patrocinador'  ],
         ] as [keyof FilterLabels, string, string][]).map(([key, label, ph]) => (
           <div key={key} className="adm-field">
             <label className="adm-label">{label}</label>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
 export interface ProgramLabels {
+  n0:      string
   n1:      string
   n2:      string
   owner:   string
@@ -9,10 +10,11 @@ export interface ProgramLabels {
 }
 
 export const DEFAULT_LABELS: ProgramLabels = {
+  n0:      'Programa',
   n1:      'Eixo',
   n2:      'Plano de Acção',
   owner:   'Responsável',
-  sponsor: 'Sponsor',
+  sponsor: 'Patrocinador',
 }
 
 // Module-level cache: programId → merged labels (avoids repeated Supabase fetches)
@@ -44,6 +46,7 @@ export function useProgramLabels(programId: string | null | undefined): ProgramL
         if (data?.data) {
           try {
             const parsed = JSON.parse(data.data) as Partial<ProgramLabels>
+            if (parsed.n0)      merged.n0      = parsed.n0
             if (parsed.n1)      merged.n1      = parsed.n1
             if (parsed.n2)      merged.n2      = parsed.n2
             if (parsed.owner)   merged.owner   = parsed.owner

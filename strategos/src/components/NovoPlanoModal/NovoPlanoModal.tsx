@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx'
 import Modal from '../Modal/Modal'
 import SearchableSelect from '../SearchableSelect/SearchableSelect'
 import { useEixos } from '../../hooks/useEixos'
+import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { usePeople } from '../../hooks/usePeople'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useToast } from '../../context/ToastContext'
@@ -170,6 +171,7 @@ export default function NovoPlanoModal({
 }: NovoPlanoModalProps) {
   const { showToast } = useToast()
   const { eixos: dbEixos } = useEixos(programId ?? undefined)
+  const labels = useProgramLabels(programId)
   const { people } = usePeople()
   const { programs } = usePrograms()
 
@@ -248,7 +250,7 @@ export default function NovoPlanoModal({
     const errs: Record<string, string> = {}
     if (!planoForm.name.trim())   errs.name    = 'Nome obrigatório.'
     if (!planoForm.code.trim())   errs.code    = 'Código obrigatório.'
-    if (!planoForm.eixo_id)       errs.eixo_id = 'Eixo obrigatório.'
+    if (!planoForm.eixo_id)       errs.eixo_id = `${labels.n1} obrigatório.`
     if (Object.keys(errs).length) { setPlanoErrors(errs); return }
     setPlanoStep(2)
   }, [planoForm])
@@ -368,7 +370,7 @@ export default function NovoPlanoModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={planoToEdit ? 'Editar Plano de Acção' : 'Novo Plano de Acção'}
+      title={planoToEdit ? `Editar ${labels.n2}` : `Novo ${labels.n2}`}
       width={560}
       footer={
         <>
@@ -441,7 +443,7 @@ export default function NovoPlanoModal({
                 {planoErrors.code && <span className="gi-error">{planoErrors.code}</span>}
               </div>
               <div className="gi-field">
-                <span className={`gi-field-label${planoErrors.eixo_id ? ' gi-label-error' : ''}`}>Eixo *</span>
+                <span className={`gi-field-label${planoErrors.eixo_id ? ' gi-label-error' : ''}`}>{labels.n1} *</span>
                 <SearchableSelect
                   options={dbEixos.map(e => ({ value: e.id, label: e.name }))}
                   value={planoForm.eixo_id || null}
@@ -459,21 +461,21 @@ export default function NovoPlanoModal({
             <div className="gi-section-title">Responsáveis</div>
             <div className="gi-two-col" style={{ marginTop: 10 }}>
               <div className="gi-field">
-                <span className="gi-field-label">Owner</span>
+                <span className="gi-field-label">{labels.owner}</span>
                 <SearchableSelect
                   options={activePeople.map(p => ({ value: p.name, label: p.name }))}
                   value={planoForm.owner || null}
                   onChange={v => setPlanoForm(f => ({ ...f, owner: v ?? '' }))}
-                  placeholder="Seleccionar owner (opcional)..."
+                  placeholder="Seleccionar responsável (opcional)..."
                 />
               </div>
               <div className="gi-field">
-                <span className="gi-field-label">Sponsor</span>
+                <span className="gi-field-label">{labels.sponsor}</span>
                 <SearchableSelect
                   options={activePeople.map(p => ({ value: p.name, label: p.name }))}
                   value={planoForm.sponsor || null}
                   onChange={v => setPlanoForm(f => ({ ...f, sponsor: v ?? '' }))}
-                  placeholder="Seleccionar sponsor (opcional)..."
+                  placeholder="Seleccionar patrocinador (opcional)..."
                 />
               </div>
             </div>

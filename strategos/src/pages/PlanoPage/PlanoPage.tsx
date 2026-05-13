@@ -17,6 +17,7 @@ import GestaoFinanceira from '../GestaoFinanceira/GestaoFinanceira'
 import GestaoIniciativas from '../GestaoIniciativas/GestaoIniciativas'
 import NovoPlanoModal from '../../components/NovoPlanoModal/NovoPlanoModal'
 import { rollupStatus, rollupPct, rollupPctPrev, leafStatus, rollupDateRange } from '../../lib/rollup'
+import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { statusColor } from '../../lib/tokens'
 import { generateStatusNarrative } from '../../lib/statusNarrative'
 
@@ -86,6 +87,7 @@ export default function PlanoPage() {
 
   const plano = planos.find(p => p.id === planoId)
   const program = programs.find(p => p.id === plano?.program_id)
+  const labels = useProgramLabels(plano?.program_id)
 
   const [planoEditOpen, setPlanoEditOpen] = useState(false)
 
@@ -188,8 +190,8 @@ export default function PlanoPage() {
         </div>
 
         <div className="pp-meta">
-          {plano.owner   && <span className="pp-meta-item"><span className="pp-meta-lbl">Owner</span>{plano.owner}</span>}
-          {plano.sponsor && <span className="pp-meta-item"><span className="pp-meta-lbl">Sponsor</span>{plano.sponsor}</span>}
+          {plano.owner   && <span className="pp-meta-item"><span className="pp-meta-lbl">{labels.owner}</span>{plano.owner}</span>}
+          {plano.sponsor && <span className="pp-meta-item"><span className="pp-meta-lbl">{labels.sponsor}</span>{plano.sponsor}</span>}
           {dateLine      && (
             <span className="pp-meta-item">
               <span className="pp-meta-lbl">Datas</span>

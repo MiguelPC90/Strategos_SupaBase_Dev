@@ -20,6 +20,7 @@ import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useSnapshots } from '../../hooks/useSnapshots'
 import { useFilters } from '../../context/FilterContext'
+import { useProgramLabels, type ProgramLabels } from '../../hooks/useProgramLabels'
 import { useAuth } from '../../hooks/useAuth'
 import { useRole } from '../../hooks/useRole'
 import { supabase } from '../../lib/supabase'
@@ -469,9 +470,10 @@ interface BarChartCardProps {
   programs: Program[]
   allEixos: Eixo[]
   thresholdsMap: Map<string, PlanoThresholds>
+  labels: ProgramLabels
 }
 
-function BarChartCard({ leaves, programs, allEixos, thresholdsMap }: BarChartCardProps) {
+function BarChartCard({ leaves, programs, allEixos, thresholdsMap, labels }: BarChartCardProps) {
   const [chartChip, setChartChip] = useState<'eixo' | 'programa'>('eixo')
   const chartDataRef  = useRef<BarEntry[]>([])
   const xCoordsRef    = useRef<Record<number, number>>({})
@@ -594,11 +596,11 @@ function BarChartCard({ leaves, programs, allEixos, thresholdsMap }: BarChartCar
 
   return (
     <Card
-      title={chartChip === 'eixo' ? 'Actividades por Eixo — Estado' : 'Actividades por Programa — Estado'}
+      title={chartChip === 'eixo' ? `Actividades por ${labels.n1} — Estado` : `Actividades por ${labels.n0} — Estado`}
       actions={
         <div className="dash-chart-toggle">
-          <button className={`chip${chartChip === 'eixo' ? ' active' : ''}`} onClick={() => setChartChip('eixo')}>Eixo</button>
-          <button className={`chip${chartChip === 'programa' ? ' active' : ''}`} onClick={() => setChartChip('programa')}>Programa</button>
+          <button className={`chip${chartChip === 'eixo' ? ' active' : ''}`} onClick={() => setChartChip('eixo')}>{labels.n1}</button>
+          <button className={`chip${chartChip === 'programa' ? ' active' : ''}`} onClick={() => setChartChip('programa')}>{labels.n0}</button>
         </div>
       }
     >
@@ -671,9 +673,10 @@ interface DetailTableCardProps {
   totalsRow: Record<string, unknown>
   onRowClick: (row: Record<string, unknown>) => void
   thresholdsMap: Map<string, PlanoThresholds>
+  labels: ProgramLabels
 }
 
-function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onRowClick, thresholdsMap }: DetailTableCardProps) {
+function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onRowClick, thresholdsMap, labels }: DetailTableCardProps) {
   const [tableChip, setTableChip] = useState<'programa' | 'eixo' | 'plano'>('eixo')
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -762,9 +765,9 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
     [tableRows, sortKey, sortDir],
   )
 
-  const title = tableChip === 'programa' ? 'Detalhe por Programa'
-    : tableChip === 'eixo' ? 'Detalhe por Eixo'
-    : 'Detalhe por Plano de Acção'
+  const title = tableChip === 'programa' ? `Detalhe por ${labels.n0}`
+    : tableChip === 'eixo' ? `Detalhe por ${labels.n1}`
+    : `Detalhe por ${labels.n2}`
 
   return (
     <Card title={title}>
@@ -773,19 +776,19 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
           className={`chip${tableChip === 'programa' ? ' active' : ''}`}
           onClick={() => setTableChip('programa')}
         >
-          Programa
+          {labels.n0}
         </button>
         <button
           className={`chip${tableChip === 'eixo' ? ' active' : ''}`}
           onClick={() => setTableChip('eixo')}
         >
-          Eixo
+          {labels.n1}
         </button>
         <button
           className={`chip${tableChip === 'plano' ? ' active' : ''}`}
           onClick={() => setTableChip('plano')}
         >
-          Plano de Acção
+          {labels.n2}
         </button>
       </div>
       <div className="detail-table">
@@ -818,6 +821,7 @@ export default function Dashboard() {
 
   const navigate = useNavigate()
   const { filters, setFilter, getFilteredActivities } = useFilters()
+  const labels = useProgramLabels(filters.programIds.length === 1 ? filters.programIds[0] : null)
   const { permissions }                    = useAuth()
   const { isAdmin }                        = useRole()
   const { activities, loading }            = useActivities({ cutoffDate: filters.cutoffDate })
@@ -1127,7 +1131,7 @@ export default function Dashboard() {
       {/* ── Row 2: Charts ─────────────────────────────────────── */}
       <div className="dashboard-charts-grid">
 
-        <BarChartCard leaves={leaves} programs={programs} allEixos={allEixos} thresholdsMap={thresholdsMap} />
+        <BarChartCard leaves={leaves} programs={programs} allEixos={allEixos} thresholdsMap={thresholdsMap} labels={labels} />
 
         <Card title="Estado Global">
           {m.total === 0 ? (
@@ -1261,6 +1265,7 @@ export default function Dashboard() {
         totalsRow={totalsRow}
         onRowClick={handleRowClick}
         thresholdsMap={thresholdsMap}
+        labels={labels}
       />
     </>
   )
