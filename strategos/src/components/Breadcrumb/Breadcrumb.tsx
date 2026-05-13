@@ -7,6 +7,7 @@ import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
+import { usePermissions } from '../../hooks/usePermissions'
 import { useToast } from '../../context/ToastContext'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
 import type { PageKey } from '../../types/index'
@@ -222,22 +223,46 @@ export default function Breadcrumb() {
   const canEditPage = useCanEditCurrent(isGestaoCurrent ? pageKey : 'gestao-pds')
   const showReadOnly = isGestaoCurrent && !canEditPage
 
+  const { hasAccess } = usePermissions()
+
   const accessibleProgramIds = useMemo(
     () => new Set(accessiblePrograms.map(p => p.id)),
     [accessiblePrograms],
   )
 
-  // Cascade-restricted dropdown options, always bounded by accessible programs
+  // Plan-level access: hide plans the user cannot view at all
+  const accessiblePlanIds = useMemo(
+    () => new Set(allPlanos.filter(p => hasAccess('actividades', p.program_id ?? undefined, p.id)).map(p => p.id)),
+    [allPlanos, hasAccess],
+  )
+
+  // Eixo-level access: only show eixos that have at least one accessible plan
+  const accessibleEixoIds = useMemo(
+    () => new Set(
+      allPlanos
+        .filter(p => accessiblePlanIds.has(p.id))
+        .map(p => p.eixo_id)
+        .filter((id): id is string => !!id)
+    ),
+    [allPlanos, accessiblePlanIds],
+  )
+
+  // Cascade-restricted dropdown options, always bounded by accessible programs and plans
   const eixoOptions = useMemo(() => {
-    if (programId) return allEixos.filter(e => e.program_id === programId)
-    return allEixos.filter(e => e.program_id !== null && accessibleProgramIds.has(e.program_id))
-  }, [allEixos, programId, accessibleProgramIds])
+    const base = programId
+      ? allEixos.filter(e => e.program_id === programId)
+      : allEixos.filter(e => e.program_id !== null && accessibleProgramIds.has(e.program_id))
+    return base.filter(e => accessibleEixoIds.has(e.id))
+  }, [allEixos, programId, accessibleProgramIds, accessibleEixoIds])
 
   const planoOptions = useMemo(() => {
-    if (n1Name) return allPlanos.filter(p => p.eixo?.name === n1Name)
-    if (programId) return allPlanos.filter(p => p.program_id === programId)
-    return allPlanos.filter(p => p.program_id !== null && accessibleProgramIds.has(p.program_id))
-  }, [allPlanos, n1Name, programId, accessibleProgramIds])
+    const base = n1Name
+      ? allPlanos.filter(p => p.eixo?.name === n1Name)
+      : programId
+        ? allPlanos.filter(p => p.program_id === programId)
+        : allPlanos.filter(p => p.program_id !== null && accessibleProgramIds.has(p.program_id))
+    return base.filter(p => accessiblePlanIds.has(p.id))
+  }, [allPlanos, n1Name, programId, accessibleProgramIds, accessiblePlanIds])
 
   // Programmatic selection guard — blocks inaccessible programs and shows feedback
   function trySetProgram(id: string | null) {

@@ -15,6 +15,7 @@ import ItemDetailModal from '../../components/ItemDetailModal/ItemDetailModal'
 import { fmtDate, statusVariant, displayStatus, renderText, TODAY } from '../../lib/pdsHelpers'
 import { usePdsEntries, usePdsConsolidated } from '../../hooks/usePdsEntries'
 import { usePlanos } from '../../hooks/usePlanos'
+import { usePermissions } from '../../hooks/usePermissions'
 import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useRisks } from '../../hooks/useRisks'
 import { useActivities } from '../../hooks/useActivities'
@@ -259,6 +260,8 @@ export default function PontoSituacao() {
   const [nextSort,          setNextSort]          = useState<SortDir>('asc')
   const [attnSort,          setAttnSort]          = useState<SortDir>('asc')
 
+  const { hasAccess } = usePermissions()
+
   // ── Data hooks ─────────────────────────────────────────────
   const programId = filters.programIds[0] ?? programs[0]?.id
   const { entries, loading: entriesLoading } = usePdsEntries(programId)
@@ -266,10 +269,19 @@ export default function PontoSituacao() {
   const { risks }            = useRisks(programId)
   const { activities }       = useActivities({ program_id: programId })
 
+  const accessiblePlanIds = useMemo(
+    () => new Set(planos.filter(p => hasAccess('ponto-situacao', p.program_id ?? undefined, p.id)).map(p => p.id)),
+    [planos, hasAccess],
+  )
+
   // selectedKey derived from breadcrumb n2Name (plano name → plano id)
+  // Only resolve if the plan is accessible
   const selectedKey = useMemo(
-    () => planos.find(p => p.name === n2Name)?.id ?? '',
-    [planos, n2Name]
+    () => {
+      const found = planos.find(p => p.name === n2Name)
+      return (found && accessiblePlanIds.has(found.id)) ? found.id : ''
+    },
+    [planos, n2Name, accessiblePlanIds]
   )
   const { items: consolidated, loading: consLoading } = usePdsConsolidated(selectedKey || undefined)
   const loading = entriesLoading || consLoading
@@ -314,8 +326,8 @@ export default function PontoSituacao() {
   // ── Derived data ───────────────────────────────────────────
 
   const planOptions = useMemo(() =>
-    planos.map(p => ({ key: p.id, label: p.name })),
-    [planos]
+    planos.filter(p => accessiblePlanIds.has(p.id)).map(p => ({ key: p.id, label: p.name })),
+    [planos, accessiblePlanIds]
   )
 
   const selectedPlano = useMemo(

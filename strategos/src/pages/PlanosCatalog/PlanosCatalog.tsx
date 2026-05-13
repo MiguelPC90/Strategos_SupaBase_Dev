@@ -9,6 +9,7 @@ import { useFavorites } from '../../hooks/useFavorites'
 import { useToast } from '../../context/ToastContext'
 import { useRole } from '../../hooks/useRole'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
+import { usePermissions } from '../../hooks/usePermissions'
 import { supabase } from '../../lib/supabase'
 import { rollupStatus, rollupPct } from '../../lib/rollup'
 import MultiSelect from '../../components/MultiSelect/MultiSelect'
@@ -105,6 +106,7 @@ export default function PlanosCatalog() {
   const { showToast } = useToast()
   const { isAdmin, isProgramManager } = useRole()
   const canEdit = useCanEditCurrent('gestao-iniciativas')
+  const { hasAccess } = usePermissions()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [newPlanoOpen,     setNewPlanoOpen]     = useState(false)
@@ -173,36 +175,47 @@ export default function PlanosCatalog() {
     return { ...plano, status, pct, program }
   }), [planos, leavesByPlano, today, programMap])
 
+  // ── Plan-level access filter ──────────────────────────────────
+  const accessiblePlanIds = useMemo(
+    () => new Set(planos.filter(p => hasAccess('actividades', p.program_id ?? undefined, p.id)).map(p => p.id)),
+    [planos, hasAccess],
+  )
+
+  const visibleEnriched = useMemo(
+    () => enriched.filter(p => accessiblePlanIds.has(p.id)),
+    [enriched, accessiblePlanIds],
+  )
+
   // ── Cascading filter options ──────────────────────────────────
   // Program options: all programs that have at least one accessible plano
   const progOptions = useMemo(
-    () => [...new Set(enriched.map(p => p.program?.name).filter((n): n is string => !!n))].sort(),
-    [enriched],
+    () => [...new Set(visibleEnriched.map(p => p.program?.name).filter((n): n is string => !!n))].sort(),
+    [visibleEnriched],
   )
 
   // Eixo options: narrowed to selected programs
   const eixoOptions = useMemo(() => {
     const base = progFilter.length > 0
-      ? enriched.filter(p => progFilter.includes(p.program?.name ?? ''))
-      : enriched
+      ? visibleEnriched.filter(p => progFilter.includes(p.program?.name ?? ''))
+      : visibleEnriched
     return [...new Set(base.map(p => p.eixo?.name).filter((n): n is string => !!n))].sort()
-  }, [enriched, progFilter])
+  }, [visibleEnriched, progFilter])
 
   // Owner options: narrowed to selected programs + selected eixos
   const ownerOptions = useMemo(() => {
-    let base = enriched
+    let base = visibleEnriched
     if (progFilter.length  > 0) base = base.filter(p => progFilter.includes(p.program?.name ?? ''))
     if (eixoFilter.length  > 0) base = base.filter(p => eixoFilter.includes(p.eixo?.name ?? ''))
     return [...new Set(base.map(p => p.owner).filter((o): o is string => !!o))].sort()
-  }, [enriched, progFilter, eixoFilter])
+  }, [visibleEnriched, progFilter, eixoFilter])
 
   // Sponsor options: narrowed to selected programs + selected eixos
   const sponsorOptions = useMemo(() => {
-    let base = enriched
+    let base = visibleEnriched
     if (progFilter.length  > 0) base = base.filter(p => progFilter.includes(p.program?.name ?? ''))
     if (eixoFilter.length  > 0) base = base.filter(p => eixoFilter.includes(p.eixo?.name ?? ''))
     return [...new Set(base.map(p => p.sponsor).filter((s): s is string => !!s))].sort()
-  }, [enriched, progFilter, eixoFilter])
+  }, [visibleEnriched, progFilter, eixoFilter])
 
   const statusOptions = ['Em atraso', 'Em risco', 'Em dia', 'Concluída']
 
@@ -240,7 +253,7 @@ export default function PlanosCatalog() {
   // Apply query params (programa / eixo) once enriched data is ready
   const appliedQueryParamsRef = useRef(false)
   useEffect(() => {
-    if (enriched.length === 0) return
+    if (visibleEnriched.length === 0) return
     if (appliedQueryParamsRef.current) return
     appliedQueryParamsRef.current = true
     const progId = searchParams.get('programa')
@@ -250,14 +263,14 @@ export default function PlanosCatalog() {
       if (name) setProgFilter([name])
     }
     if (eixoId) {
-      const name = enriched.find(p => p.eixo_id === eixoId)?.eixo?.name
+      const name = visibleEnriched.find(p => p.eixo_id === eixoId)?.eixo?.name
       if (name) setEixoFilter([name])
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enriched])
+  }, [visibleEnriched])
 
   // ── Apply filters ─────────────────────────────────────────────
-  const filtered = useMemo(() => enriched.filter(p => {
+  const filtered = useMemo(() => visibleEnriched.filter(p => {
     if (onlyFavorites && !isFavorite(p.id)) return false
     if (progFilter.length    > 0 && !progFilter.includes(p.program?.name ?? ''))  return false
     if (eixoFilter.length    > 0 && !eixoFilter.includes(p.eixo?.name ?? ''))     return false
@@ -269,7 +282,7 @@ export default function PlanosCatalog() {
       if (!p.name.toLowerCase().includes(q) && !p.code.toLowerCase().includes(q)) return false
     }
     return true
-  }), [enriched, onlyFavorites, progFilter, eixoFilter, statusFilter, ownerFilter, sponsorFilter, search, isFavorite])
+  }), [visibleEnriched, onlyFavorites, progFilter, eixoFilter, statusFilter, ownerFilter, sponsorFilter, search, isFavorite])
 
   // ── Sort: by program then by status priority ──────────────────
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
