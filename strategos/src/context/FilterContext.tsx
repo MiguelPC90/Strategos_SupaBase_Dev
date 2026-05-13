@@ -79,13 +79,23 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   }, [filters])
 
   const ownerOptions = useMemo(
-    () => [...new Set(allPlanos.map(p => p.owner).filter((v): v is string => Boolean(v)))].sort(),
-    [allPlanos],
+    () => {
+      const base = filters.programIds.length > 0
+        ? allPlanos.filter(p => filters.programIds.includes(p.program_id ?? ''))
+        : allPlanos
+      return [...new Set(base.map(p => p.owner).filter((v): v is string => Boolean(v)))].sort()
+    },
+    [allPlanos, filters.programIds],
   )
 
   const sponsorOptions = useMemo(
-    () => [...new Set(allPlanos.map(p => p.sponsor).filter((v): v is string => Boolean(v)))].sort(),
-    [allPlanos],
+    () => {
+      const base = filters.programIds.length > 0
+        ? allPlanos.filter(p => filters.programIds.includes(p.program_id ?? ''))
+        : allPlanos
+      return [...new Set(base.map(p => p.sponsor).filter((v): v is string => Boolean(v)))].sort()
+    },
+    [allPlanos, filters.programIds],
   )
 
   const setFilter = useCallback(<K extends keyof FilterState>(
