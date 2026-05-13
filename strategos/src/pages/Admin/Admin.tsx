@@ -882,18 +882,18 @@ function AdminProgramas() {
 
 // ── Section 3b: Permissões por utilizador ─────────────────────
 const PERM_PAGES: { key: string; label: string }[] = [
-  { key: 'dashboard',           label: 'Dashboard'    },
-  { key: 'actividades',         label: 'Actividades'  },
-  { key: 'gantt',               label: 'Gantt'        },
-  { key: 'ponto-situacao',      label: 'PDS'          },
-  { key: 'exec-financeira',     label: 'Exec.Fin.'    },
-  { key: 'recursos',            label: 'Recursos'     },
-  { key: 'evolucao',            label: 'Evolução'     },
-  { key: 'gestao-iniciativas',  label: 'G.Iniciativas'},
-  { key: 'gestao-pds',          label: 'G.PDS'        },
-  { key: 'gestao-riscos',       label: 'G.Riscos'     },
-  { key: 'gestao-financeira',   label: 'G.Financeira' },
-  { key: 'gestao-recursos',     label: 'G.Recursos'   },
+  { key: 'dashboard',           label: 'Dashboard'         },
+  { key: 'actividades',         label: 'Actividades'       },
+  { key: 'gantt',               label: 'Gantt'             },
+  { key: 'ponto-situacao',      label: 'Ponto de Situação' },
+  { key: 'exec-financeira',     label: 'Exec. Financeira'  },
+  { key: 'recursos',            label: 'Recursos'          },
+  { key: 'evolucao',            label: 'Evolução'          },
+  { key: 'gestao-iniciativas',  label: 'Gestão Iniciativas'},
+  { key: 'gestao-pds',          label: 'Gestão PDS'        },
+  { key: 'gestao-riscos',       label: 'Gestão Riscos'     },
+  { key: 'gestao-financeira',   label: 'Gestão Financeira' },
+  { key: 'gestao-recursos',     label: 'Gestão Recursos'   },
 ]
 
 type CellValue = '' | 'full' | 'ops' | 'view' | 'view_ops' | 'denied'
@@ -914,32 +914,56 @@ function UserPermissionsModal({ userId, userName, userRole, isOpen, onClose }: {
   onClose: () => void
 }) {
   const { programs } = usePrograms()
-  const [permissions,    setPermissions]    = useState<UserPermRow[]>([])
-  const [planosByProg,   setPlanosByProg]   = useState<Record<string, Plano[]>>({})
-  const [loading,        setLoading]        = useState(false)
-  const [expandedProgs,  setExpandedProgs]  = useState<Set<string>>(new Set())
+  const [permissions,     setPermissions]     = useState<UserPermRow[]>([])
+  const [planosByProg,    setPlanosByProg]     = useState<Record<string, Plano[]>>({})
+  const [loading,         setLoading]          = useState(false)
+  const [expandedProgs,   setExpandedProgs]    = useState<Set<string>>(new Set())
+  const [showRestrPicker, setShowRestrPicker]  = useState<Record<string, boolean>>({})
+  const loadingProgs = useRef<Set<string>>(new Set())
 
   useEffect(() => {
-    if (!isOpen) { setPermissions([]); setExpandedProgs(new Set()); return }
+    if (!isOpen) {
+      setPermissions([])
+      setExpandedProgs(new Set())
+      setPlanosByProg({})
+      setShowRestrPicker({})
+      loadingProgs.current.clear()
+      return
+    }
     setLoading(true)
     supabase
       .from('user_permissions')
       .select('user_id, program_id, plan_id, page, access_level')
       .eq('user_id', userId)
       .then(({ data }) => {
-        setPermissions((data ?? []) as UserPermRow[])
+        const perms = (data ?? []) as UserPermRow[]
+        setPermissions(perms)
         setLoading(false)
+        // Auto-load planos for programs that already have plan-level restrictions
+        const progsWithRestr = [...new Set(
+          perms.filter(p => p.plan_id !== null && p.program_id !== null).map(p => p.program_id as string)
+        )]
+        progsWithRestr.forEach(progId => fetchPlanosForProg(progId))
       })
   }, [isOpen, userId])
 
-  async function loadPlanosForProg(programId: string) {
-    if (planosByProg[programId]) return
+  async function fetchPlanosForProg(programId: string) {
+    if (loadingProgs.current.has(programId)) return
+    loadingProgs.current.add(programId)
     const { data } = await supabase
       .from('planos')
-      .select('id, name, program_id, eixo_id, code, sort_order')
+      .select('id, name, program_id, sort_order')
       .eq('program_id', programId)
-      .order('sort_order')
-    setPlanosByProg(p => ({ ...p, [programId]: (data ?? []) as Plano[] }))
+      .order('name')
+    setPlanosByProg(p => {
+      loadingProgs.current.delete(programId)
+      return { ...p, [programId]: (data ?? []) as Plano[] }
+    })
+  }
+
+  function loadPlanosForProg(programId: string) {
+    if (planosByProg[programId] || loadingProgs.current.has(programId)) return
+    fetchPlanosForProg(programId)
   }
 
   function getPageLevel(programId: string, page: string): CellValue {
@@ -1026,14 +1050,15 @@ function UserPermissionsModal({ userId, userName, userRole, isOpen, onClose }: {
   const programsWithoutPerms = programs.filter(prog => !permissions.some(p => p.program_id === prog.id))
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Permissões: ${userName}`} width={680}>
+    <Modal isOpen={isOpen} onClose={onClose} title={`Permissões: ${userName}`} width={600}>
       {loading ? (
-        <p style={{ color: 'var(--text3)', fontSize: 13 }}>A carregar…</p>
+        <p className="adm-help">A carregar…</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="adm-perm-modal-body">
+          {/* ── Add program bar ── */}
           {programsWithoutPerms.length > 0 && (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: 'var(--text2)', whiteSpace: 'nowrap' }}>+ Programa:</span>
+            <div className="adm-perm-add-prog">
+              <span className="adm-perm-add-prog-label">Adicionar programa</span>
               <select
                 className="styled-select-sm"
                 defaultValue=""
@@ -1046,54 +1071,77 @@ function UserPermissionsModal({ userId, userName, userRole, isOpen, onClose }: {
           )}
 
           {programsWithPerms.length === 0 && (
-            <p style={{ color: 'var(--text3)', fontSize: 13, fontStyle: 'italic' }}>
-              Sem programas atribuídos. Usa o selector acima para adicionar.
+            <p className="adm-perm-empty">
+              Sem acesso atribuído. Selecciona um programa acima para começar.
             </p>
           )}
 
+          {/* ── Program sections ── */}
           {programsWithPerms.map(prog => {
             const expanded = expandedProgs.has(prog.id)
-            const planos   = planosByProg[prog.id] ?? []
+            const allPlanos = planosByProg[prog.id] ?? []
+            const planosLoaded = !!planosByProg[prog.id]
+
+            // Unique plan IDs that have restrictions for this program
+            const restrictedPlanIds = [...new Set(
+              permissions
+                .filter(p => p.program_id === prog.id && p.plan_id !== null)
+                .map(p => p.plan_id as string)
+            )]
+            const restrictedSet = new Set(restrictedPlanIds)
+            const planoMap = Object.fromEntries(allPlanos.map(pl => [pl.id, pl]))
+
+            // Plans without a restriction (for the "add restriction" picker)
+            const availablePlanos = allPlanos
+              .filter(pl => !restrictedSet.has(pl.id))
+              .sort((a, b) => a.name.localeCompare(b.name))
+
+            // Restricted plan IDs sorted by name (unknown names sort last)
+            const sortedRestrPlanIds = [...restrictedPlanIds].sort((a, b) => {
+              const na = planoMap[a]?.name ?? 'zzz'
+              const nb = planoMap[b]?.name ?? 'zzz'
+              return na.localeCompare(nb)
+            })
+
             return (
-              <div key={prog.id} style={{ border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden' }}>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg2)', cursor: 'pointer', userSelect: 'none' }}
-                  onClick={() => toggleProg(prog.id)}
-                >
-                  <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{prog.name}</span>
+              <div key={prog.id} className="adm-perm-prog-block">
+                {/* Program header (collapsible) */}
+                <div className="adm-perm-prog-header" onClick={() => toggleProg(prog.id)}>
+                  <span className="adm-perm-prog-name">{prog.name}</span>
                   <button
                     className="adm-icon-btn"
-                    title="Remover programa"
+                    title="Remover todas as permissões para este programa"
                     style={{ color: 'var(--red)' }}
                     onClick={e => { e.stopPropagation(); removeProgram(prog.id) }}
                   >
                     <Trash2 size={14} />
                   </button>
-                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>{expanded ? '▲' : '▼'}</span>
+                  <span className="adm-perm-chevron">{expanded ? '▲' : '▼'}</span>
                 </div>
 
                 {expanded && (
-                  <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div>
-                      <p style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Acesso por página</p>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                  <div className="adm-perm-prog-body">
+                    {/* ── Page access ── */}
+                    <div className="adm-perm-section">
+                      <p className="adm-perm-section-label">Acesso por página</p>
+                      <div className="adm-perm-page-list">
                         {PERM_PAGES.map(pg => (
-                          <div key={pg.key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 11, color: 'var(--text2)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pg.label}</span>
+                          <div key={pg.key} className="adm-perm-row">
+                            <span className="adm-perm-row-label">{pg.label}</span>
                             <select
-                              className="styled-select-sm"
+                              className="styled-select-sm adm-perm-select"
                               value={getPageLevel(prog.id, pg.key)}
                               onChange={e => handlePageLevel(prog.id, pg.key, e.target.value as CellValue)}
                             >
-                              <option value="">–</option>
+                              <option value="">– Sem acesso –</option>
                               {isEditableRole && (
                                 <>
-                                  <option value="full">Total</option>
-                                  <option value="ops">Ops</option>
+                                  <option value="full">Editar total</option>
+                                  <option value="ops">Editar (ops)</option>
                                 </>
                               )}
-                              <option value="view">Ver</option>
-                              <option value="view_ops">Ver Ops</option>
+                              <option value="view">Visualização</option>
+                              <option value="view_ops">Visualização (ops)</option>
                               <option value="denied">Bloqueado</option>
                             </select>
                           </div>
@@ -1101,30 +1149,82 @@ function UserPermissionsModal({ userId, userName, userRole, isOpen, onClose }: {
                       </div>
                     </div>
 
-                    {planos.length > 0 && (
-                      <div>
-                        <p style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Restrições por plano</p>
-                        <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8, fontStyle: 'italic' }}>
-                          Sobrepõe o acesso por página para o plano seleccionado. Usa apenas para restringir (nunca para ampliar).
-                        </p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {planos.map(plan => (
-                            <div key={plan.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: 12, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={plan.name}>{plan.name}</span>
+                    {/* ── Plan restrictions ── */}
+                    <div className="adm-perm-section">
+                      <p className="adm-perm-section-label">Restrições por plano específico</p>
+                      <p className="adm-perm-helper">
+                        Sobrepõe o acesso por página para o plano. Usa apenas para restringir (nunca para ampliar).
+                      </p>
+
+                      {sortedRestrPlanIds.length > 0 && (
+                        <div className="adm-perm-page-list">
+                          {sortedRestrPlanIds.map(planId => (
+                            <div key={planId} className="adm-perm-row adm-perm-row--restr">
+                              <span className="adm-perm-row-label">
+                                {planosLoaded
+                                  ? (planoMap[planId]?.name ?? '(plano eliminado)')
+                                  : 'A carregar…'}
+                              </span>
                               <select
-                                className="styled-select-sm"
-                                value={getPlanLevel(prog.id, plan.id)}
-                                onChange={e => handlePlanLevel(prog.id, plan.id, e.target.value as CellValue)}
+                                className="styled-select-sm adm-perm-select"
+                                value={getPlanLevel(prog.id, planId)}
+                                onChange={e => handlePlanLevel(prog.id, planId, e.target.value as CellValue)}
                               >
-                                <option value="">– Sem restrição –</option>
                                 <option value="view">Forçar visualização</option>
                                 <option value="denied">Bloqueado</option>
                               </select>
+                              <button
+                                className="adm-icon-btn"
+                                title="Remover restrição"
+                                onClick={() => handlePlanLevel(prog.id, planId, '')}
+                              >
+                                <X size={14} />
+                              </button>
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
+                      )}
+
+                      {/* Inline plan picker */}
+                      {showRestrPicker[prog.id] ? (
+                        <div className="adm-perm-row adm-perm-row--new">
+                          <select
+                            className="styled-select-sm adm-perm-picker-select"
+                            defaultValue=""
+                            onChange={e => {
+                              if (e.target.value) {
+                                handlePlanLevel(prog.id, e.target.value, 'view')
+                                setShowRestrPicker(s => ({ ...s, [prog.id]: false }))
+                              }
+                            }}
+                          >
+                            <option value="">— seleccionar plano —</option>
+                            {availablePlanos.map(pl => (
+                              <option key={pl.id} value={pl.id}>{pl.name}</option>
+                            ))}
+                          </select>
+                          <button
+                            className="adm-icon-btn"
+                            title="Cancelar"
+                            onClick={() => setShowRestrPicker(s => ({ ...s, [prog.id]: false }))}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        availablePlanos.length > 0 && (
+                          <button
+                            className="adm-btn-secondary adm-perm-add-restr-btn"
+                            onClick={() => {
+                              loadPlanosForProg(prog.id)
+                              setShowRestrPicker(s => ({ ...s, [prog.id]: true }))
+                            }}
+                          >
+                            + Adicionar restrição
+                          </button>
+                        )
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
