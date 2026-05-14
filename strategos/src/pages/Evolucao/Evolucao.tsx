@@ -130,12 +130,14 @@ export default function Evolucao() {
 
 
   const { snapshots, loading, error } = useSnapshots(programId || undefined)
-  const { eixos }                     = useEixos(programId || undefined)
+  const { eixos: allEixos }           = useEixos()
 
-  // UUID → name map: resolves eixo UUIDs used as by_n1 keys since migration 007
+  // UUID → name map: resolves eixo UUIDs used as by_n1 keys since migration 007.
+  // Loads all eixos (no program filter) so historical references from migrated
+  // eixos still resolve correctly; genuinely deleted eixos fall back to '(eixo eliminado)'.
   const eixoNameById = useMemo(
-    () => new Map(eixos.map(e => [e.id, e.name])),
-    [eixos],
+    () => new Map(allEixos.map(e => [e.id, e.name])),
+    [allEixos],
   )
 
   // ── filter by date range ──────────────────────────────────────
