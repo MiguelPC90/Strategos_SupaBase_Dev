@@ -1,5 +1,6 @@
 import './NovoPlanoModal.css'
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, AlertTriangle, X, Download, Paperclip, FileText } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import Modal from '../Modal/Modal'
@@ -184,6 +185,7 @@ export default function NovoPlanoModal({
   defaultEixoId,
 }: NovoPlanoModalProps) {
   const { showToast } = useToast()
+  const navigate = useNavigate()
   const { eixos: dbEixos } = useEixos(programId ?? undefined)
   const labels = useProgramLabels(programId)
   const { people } = usePeople()
@@ -388,7 +390,8 @@ export default function NovoPlanoModal({
     )
     onClose()
     onSaved()
-  }, [planoForm, effectiveProgramId, effectiveProgram, parsedActivities, parseErrors, dbEixos, showToast, onClose, onSaved])
+    navigate(`/planos/${(newPlano as { id: string }).id}`)
+  }, [planoForm, effectiveProgramId, effectiveProgram, parsedActivities, parseErrors, dbEixos, showToast, onClose, onSaved, navigate])
 
   return (
     <Modal
@@ -483,16 +486,7 @@ export default function NovoPlanoModal({
 
           <div className="gi-section">
             <div className="gi-section-title">Responsáveis</div>
-            <div className="gi-two-col" style={{ marginTop: 10 }}>
-              <div className="gi-field">
-                <span className="gi-field-label">{labels.owner}</span>
-                <MultiPersonSelect
-                  value={(planoForm.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)}
-                  onChange={arr => setPlanoForm(f => ({ ...f, owner: arr.join(' | ') }))}
-                  options={ownerSponsorOptions}
-                  placeholder="Seleccionar responsável(is) (opcional)..."
-                />
-              </div>
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div className="gi-field">
                 <span className="gi-field-label">{labels.sponsor}</span>
                 <MultiPersonSelect
@@ -500,6 +494,15 @@ export default function NovoPlanoModal({
                   onChange={arr => setPlanoForm(f => ({ ...f, sponsor: arr.join(' | ') }))}
                   options={ownerSponsorOptions}
                   placeholder="Seleccionar patrocinador(es) (opcional)..."
+                />
+              </div>
+              <div className="gi-field">
+                <span className="gi-field-label">{labels.owner}</span>
+                <MultiPersonSelect
+                  value={(planoForm.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)}
+                  onChange={arr => setPlanoForm(f => ({ ...f, owner: arr.join(' | ') }))}
+                  options={ownerSponsorOptions}
+                  placeholder="Seleccionar responsável(is) (opcional)..."
                 />
               </div>
             </div>

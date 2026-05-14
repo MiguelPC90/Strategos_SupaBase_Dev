@@ -30,8 +30,9 @@ export default function SearchableSelect({
   const [query,         setQuery]         = useState('')
   const [activeIdx,     setActiveIdx]     = useState(-1)
   const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({})
-  const containerRef = useRef<HTMLDivElement>(null)
-  const inputRef     = useRef<HTMLInputElement>(null)
+  const containerRef  = useRef<HTMLDivElement>(null)
+  const dropdownRef   = useRef<HTMLDivElement>(null)
+  const inputRef      = useRef<HTMLInputElement>(null)
 
   const selected = options.find(o => o.value === value) ?? null
 
@@ -80,12 +81,16 @@ export default function SearchableSelect({
     const handler = (e: MouseEvent) => {
       if (!containerRef.current?.contains(e.target as Node)) closeDropdown()
     }
+    const scrollHandler = (e: Event) => {
+      if (dropdownRef.current?.contains(e.target as Node)) return
+      closeDropdown()
+    }
     document.addEventListener('mousedown', handler)
-    window.addEventListener('scroll', closeDropdown, { capture: true, passive: true })
+    window.addEventListener('scroll', scrollHandler, { capture: true, passive: true })
     window.addEventListener('resize', closeDropdown)
     return () => {
       document.removeEventListener('mousedown', handler)
-      window.removeEventListener('scroll', closeDropdown, { capture: true })
+      window.removeEventListener('scroll', scrollHandler, { capture: true })
       window.removeEventListener('resize', closeDropdown)
     }
   }, [open, closeDropdown])
@@ -132,7 +137,7 @@ export default function SearchableSelect({
       </div>
 
       {open && (
-        <div className="ss-dropdown" style={dropdownStyle} role="listbox">
+        <div ref={dropdownRef} className="ss-dropdown" style={dropdownStyle} role="listbox">
           <div className="ss-search-wrap">
             <input
               ref={inputRef}

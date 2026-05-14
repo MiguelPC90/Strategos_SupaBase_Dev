@@ -27,8 +27,9 @@ export default function MultiPersonSelect({
   const [query,         setQuery]         = useState('')
   const [activeIdx,     setActiveIdx]     = useState(-1)
   const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({})
-  const containerRef = useRef<HTMLDivElement>(null)
-  const inputRef     = useRef<HTMLInputElement>(null)
+  const containerRef  = useRef<HTMLDivElement>(null)
+  const dropdownRef   = useRef<HTMLDivElement>(null)
+  const inputRef      = useRef<HTMLInputElement>(null)
 
   const filtered = useMemo(() =>
     query
@@ -77,12 +78,16 @@ export default function MultiPersonSelect({
     const handler = (e: MouseEvent) => {
       if (!containerRef.current?.contains(e.target as Node)) closeDropdown()
     }
+    const scrollHandler = (e: Event) => {
+      if (dropdownRef.current?.contains(e.target as Node)) return
+      closeDropdown()
+    }
     document.addEventListener('mousedown', handler)
-    window.addEventListener('scroll', closeDropdown, { capture: true, passive: true })
+    window.addEventListener('scroll', scrollHandler, { capture: true, passive: true })
     window.addEventListener('resize', closeDropdown)
     return () => {
       document.removeEventListener('mousedown', handler)
-      window.removeEventListener('scroll', closeDropdown, { capture: true })
+      window.removeEventListener('scroll', scrollHandler, { capture: true })
       window.removeEventListener('resize', closeDropdown)
     }
   }, [open, closeDropdown])
@@ -137,7 +142,7 @@ export default function MultiPersonSelect({
       </div>
 
       {open && (
-        <div className="mps-dropdown" style={dropdownStyle} role="listbox" aria-multiselectable="true">
+        <div ref={dropdownRef} className="mps-dropdown" style={dropdownStyle} role="listbox" aria-multiselectable="true">
           <div className="mps-search-wrap">
             <input
               ref={inputRef}
