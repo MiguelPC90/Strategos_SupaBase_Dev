@@ -164,12 +164,23 @@ export default function Evolucao() {
     [filtered, programId],
   )
 
-  // ── unique eixo keys (for comparison table Per Eixo group) ────
+  // ── unique eixo keys (for comparison table Por Eixo group) ────
+  // When a specific program is selected, filter by_n1 keys to that program's
+  // eixos only — snapshots are global so by_n1 spans all programs.
+  const programEixoIds = useMemo(
+    () => programId
+      ? new Set(allEixos.filter(e => e.program_id === programId).map(e => e.id))
+      : null,
+    [allEixos, programId],
+  )
+
   const eixoKeys = useMemo(() => {
     const keys = new Set<string>()
     filtered.forEach(s => Object.keys(s.by_n1).forEach(k => keys.add(k)))
-    return [...keys].sort()
-  }, [filtered])
+    const allKeys = [...keys].sort()
+    if (!programEixoIds) return allKeys
+    return allKeys.filter(k => programEixoIds.has(k))
+  }, [filtered, programEixoIds])
 
   // ── comparison table data ─────────────────────────────────────
   const compGroups = useMemo<CompGroup[]>(() => {
