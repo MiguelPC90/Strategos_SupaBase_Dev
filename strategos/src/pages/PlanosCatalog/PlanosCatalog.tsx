@@ -206,7 +206,7 @@ export default function PlanosCatalog() {
     let base = visibleEnriched
     if (progFilter.length  > 0) base = base.filter(p => progFilter.includes(p.program?.name ?? ''))
     if (eixoFilter.length  > 0) base = base.filter(p => eixoFilter.includes(p.eixo?.name ?? ''))
-    return [...new Set(base.map(p => p.owner).filter((o): o is string => !!o))].sort()
+    return [...new Set(base.flatMap(p => (p.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)))].sort()
   }, [visibleEnriched, progFilter, eixoFilter])
 
   // Sponsor options: narrowed to selected programs + selected eixos
@@ -214,7 +214,7 @@ export default function PlanosCatalog() {
     let base = visibleEnriched
     if (progFilter.length  > 0) base = base.filter(p => progFilter.includes(p.program?.name ?? ''))
     if (eixoFilter.length  > 0) base = base.filter(p => eixoFilter.includes(p.eixo?.name ?? ''))
-    return [...new Set(base.map(p => p.sponsor).filter((s): s is string => !!s))].sort()
+    return [...new Set(base.flatMap(p => (p.sponsor ?? '').split('|').map(s => s.trim()).filter(Boolean)))].sort()
   }, [visibleEnriched, progFilter, eixoFilter])
 
   const statusOptions = ['Em atraso', 'Em risco', 'Em dia', 'Concluída']
@@ -275,8 +275,14 @@ export default function PlanosCatalog() {
     if (progFilter.length    > 0 && !progFilter.includes(p.program?.name ?? ''))  return false
     if (eixoFilter.length    > 0 && !eixoFilter.includes(p.eixo?.name ?? ''))     return false
     if (statusFilter.length  > 0 && !statusFilter.includes(p.status))             return false
-    if (ownerFilter.length   > 0 && !ownerFilter.includes(p.owner ?? ''))         return false
-    if (sponsorFilter.length > 0 && !sponsorFilter.includes(p.sponsor ?? ''))     return false
+    if (ownerFilter.length   > 0) {
+      const vals = (p.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)
+      if (!ownerFilter.some(f => vals.includes(f))) return false
+    }
+    if (sponsorFilter.length > 0) {
+      const vals = (p.sponsor ?? '').split('|').map(s => s.trim()).filter(Boolean)
+      if (!sponsorFilter.some(f => vals.includes(f))) return false
+    }
     if (search.trim()) {
       const q = search.toLowerCase()
       if (!p.name.toLowerCase().includes(q) && !p.code.toLowerCase().includes(q)) return false
@@ -476,7 +482,7 @@ export default function PlanosCatalog() {
                   </td>
                   <td className="pc-td pc-td-meta">{p.program?.name ?? '—'}</td>
                   <td className="pc-td pc-td-meta">{p.eixo?.name ?? '—'}</td>
-                  <td className="pc-td pc-td-meta">{p.owner ?? '—'}</td>
+                  <td className="pc-td pc-td-meta">{p.owner ? p.owner.split('|').map(s => s.trim()).filter(Boolean).join(', ') : '—'}</td>
                   <td className="pc-td">
                     <span className={statusPillClass(p.status)}>{p.status}</span>
                   </td>
@@ -537,8 +543,8 @@ export default function PlanosCatalog() {
               <div className="pc-card-footer">
                 <span className={statusPillClass(p.status)}>{p.status}</span>
                 <div className="pc-card-people">
-                  {p.owner   && <span className="pc-card-person">{p.owner}</span>}
-                  {p.sponsor && <span className="pc-card-person pc-card-sponsor">{p.sponsor}</span>}
+                  {p.owner   && <span className="pc-card-person">{p.owner.split('|').map(s => s.trim()).filter(Boolean).join(', ')}</span>}
+                  {p.sponsor && <span className="pc-card-person pc-card-sponsor">{p.sponsor.split('|').map(s => s.trim()).filter(Boolean).join(', ')}</span>}
                 </div>
               </div>
             </div>

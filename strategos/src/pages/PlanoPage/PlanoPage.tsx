@@ -204,8 +204,8 @@ export default function PlanoPage() {
         </div>
 
         <div className="pp-meta">
-          {plano.owner   && <span className="pp-meta-item"><span className="pp-meta-lbl">{labels.owner}</span>{plano.owner}</span>}
-          {plano.sponsor && <span className="pp-meta-item"><span className="pp-meta-lbl">{labels.sponsor}</span>{plano.sponsor}</span>}
+          {plano.owner   && <span className="pp-meta-item"><span className="pp-meta-lbl">{labels.owner}</span>{plano.owner.split('|').map(s => s.trim()).filter(Boolean).join(', ')}</span>}
+          {plano.sponsor && <span className="pp-meta-item"><span className="pp-meta-lbl">{labels.sponsor}</span>{plano.sponsor.split('|').map(s => s.trim()).filter(Boolean).join(', ')}</span>}
           {dateLine      && (
             <span className="pp-meta-item">
               <span className="pp-meta-lbl">Datas</span>

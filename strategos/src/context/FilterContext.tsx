@@ -83,7 +83,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       const base = filters.programIds.length > 0
         ? allPlanos.filter(p => filters.programIds.includes(p.program_id ?? ''))
         : allPlanos
-      return [...new Set(base.map(p => p.owner).filter((v): v is string => Boolean(v)))].sort()
+      return [...new Set(base.flatMap(p => (p.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)))].sort()
     },
     [allPlanos, filters.programIds],
   )
@@ -93,7 +93,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       const base = filters.programIds.length > 0
         ? allPlanos.filter(p => filters.programIds.includes(p.program_id ?? ''))
         : allPlanos
-      return [...new Set(base.map(p => p.sponsor).filter((v): v is string => Boolean(v)))].sort()
+      return [...new Set(base.flatMap(p => (p.sponsor ?? '').split('|').map(s => s.trim()).filter(Boolean)))].sort()
     },
     [allPlanos, filters.programIds],
   )
@@ -154,10 +154,16 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     const today = new Date().toISOString().slice(0, 10)
 
     const ownerPlanoIds = owners.length
-      ? new Set(allPlanos.filter(p => p.owner && owners.includes(p.owner)).map(p => p.id))
+      ? new Set(allPlanos.filter(p => {
+          const vals = (p.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)
+          return vals.some(v => owners.includes(v))
+        }).map(p => p.id))
       : null
     const sponsorPlanoIds = sponsors.length
-      ? new Set(allPlanos.filter(p => p.sponsor && sponsors.includes(p.sponsor)).map(p => p.id))
+      ? new Set(allPlanos.filter(p => {
+          const vals = (p.sponsor ?? '').split('|').map(s => s.trim()).filter(Boolean)
+          return vals.some(v => sponsors.includes(v))
+        }).map(p => p.id))
       : null
 
     return activities.filter(a => {

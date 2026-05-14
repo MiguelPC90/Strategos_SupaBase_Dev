@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, AlertTriangle, X, Download, Paperclip, FileT
 import * as XLSX from 'xlsx'
 import Modal from '../Modal/Modal'
 import SearchableSelect from '../SearchableSelect/SearchableSelect'
+import MultiPersonSelect from '../MultiPersonSelect/MultiPersonSelect'
 import { useEixos } from '../../hooks/useEixos'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { usePeople } from '../../hooks/usePeople'
@@ -192,6 +193,16 @@ export default function NovoPlanoModal({
     () => people.filter(p => p.active !== false),
     [people]
   )
+
+  const ownerSponsorOptions = useMemo(() => {
+    const peopleOpts = activePeople.map(p => ({ value: p.name, label: p.name, subtitle: 'Pessoa' }))
+    const orgUnits = [...new Set(people.map(p => p.org_unit).filter((u): u is string => Boolean(u)))]
+    const unitOpts = orgUnits.map(u => ({ value: u, label: u, subtitle: 'Unidade' }))
+    const seen = new Set<string>()
+    return [...peopleOpts, ...unitOpts]
+      .filter(o => { if (seen.has(o.value)) return false; seen.add(o.value); return true })
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [people, activePeople])
 
   const [planoForm,        setPlanoForm]        = useState<PlanoForm>(() => ({
     ...BLANK_PLANO,
@@ -475,20 +486,20 @@ export default function NovoPlanoModal({
             <div className="gi-two-col" style={{ marginTop: 10 }}>
               <div className="gi-field">
                 <span className="gi-field-label">{labels.owner}</span>
-                <SearchableSelect
-                  options={activePeople.map(p => ({ value: p.name, label: p.name }))}
-                  value={planoForm.owner || null}
-                  onChange={v => setPlanoForm(f => ({ ...f, owner: v ?? '' }))}
-                  placeholder="Seleccionar responsável (opcional)..."
+                <MultiPersonSelect
+                  value={(planoForm.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)}
+                  onChange={arr => setPlanoForm(f => ({ ...f, owner: arr.join(' | ') }))}
+                  options={ownerSponsorOptions}
+                  placeholder="Seleccionar responsável(is) (opcional)..."
                 />
               </div>
               <div className="gi-field">
                 <span className="gi-field-label">{labels.sponsor}</span>
-                <SearchableSelect
-                  options={activePeople.map(p => ({ value: p.name, label: p.name }))}
-                  value={planoForm.sponsor || null}
-                  onChange={v => setPlanoForm(f => ({ ...f, sponsor: v ?? '' }))}
-                  placeholder="Seleccionar patrocinador (opcional)..."
+                <MultiPersonSelect
+                  value={(planoForm.sponsor ?? '').split('|').map(s => s.trim()).filter(Boolean)}
+                  onChange={arr => setPlanoForm(f => ({ ...f, sponsor: arr.join(' | ') }))}
+                  options={ownerSponsorOptions}
+                  placeholder="Seleccionar patrocinador(es) (opcional)..."
                 />
               </div>
             </div>
