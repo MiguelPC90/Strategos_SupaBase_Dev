@@ -48,19 +48,32 @@ function fmtDate(iso: string | null): string {
   return p.length === 3 ? `${p[2]}/${p[1]}/${p[0].slice(2)}` : iso
 }
 
-function parseDate(s: string): string | null {
-  if (!s) return null
-  const t = s.trim()
-  if (!t) return null
-  const m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
-  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
-  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t
+function parseDate(raw: unknown): string | null {
+  if (raw == null || raw === '') return null
+  if (raw instanceof Date) {
+    if (isNaN(raw.getTime())) return null
+    return raw.toISOString().slice(0, 10)
+  }
+  if (typeof raw === 'number') {
+    // Excel epoch: 1899-12-30 (accounts for the 1900 leap-year bug)
+    const date = new Date(Date.UTC(1899, 11, 30) + raw * 86400000)
+    return date.toISOString().slice(0, 10)
+  }
+  if (typeof raw === 'string') {
+    const t = raw.trim()
+    if (!t) return null
+    const m1 = t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+    if (m1) return `${m1[3]}-${m1[2].padStart(2, '0')}-${m1[1].padStart(2, '0')}`
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t
+    const m2 = t.match(/^(\d{4})\/(\d{2})\/(\d{2})$/)
+    if (m2) return `${m2[1]}-${m2[2]}-${m2[3]}`
+  }
   return null
 }
 
 async function parseExcelFile(file: File): Promise<{ activities: ParsedActivity[]; errors: ParseError[] }> {
   const buf = await file.arrayBuffer()
-  const wb  = XLSX.read(new Uint8Array(buf), { type: 'array' })
+  const wb  = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true })
   const ws  = wb.Sheets[wb.SheetNames[0]]
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as unknown[][]
 
@@ -94,15 +107,15 @@ async function parseExcelFile(file: File): Promise<{ activities: ParsedActivity[
     }
     if (!name) { errors.push({ row: rowNum, message: 'Nome em falta' }); continue }
 
-    const start_date = parseDate(String(row[iInicioP] ?? ''))
-    const end_date   = parseDate(String(row[iFimP] ?? ''))
+    const start_date = parseDate(row[iInicioP] ?? null)
+    const end_date   = parseDate(row[iFimP] ?? null)
 
-    if (!start_date) { errors.push({ row: rowNum, message: 'Inicio_Planeado inválido (use dd/mm/yyyy)' }); continue }
-    if (!end_date)   { errors.push({ row: rowNum, message: 'Fim_Planeado inválido (use dd/mm/yyyy)' });   continue }
+    if (!start_date) { errors.push({ row: rowNum, message: 'Inicio_Planeado inválido (aceite: dd/mm/aaaa, aaaa-mm-dd, ou célula de data Excel)' }); continue }
+    if (!end_date)   { errors.push({ row: rowNum, message: 'Fim_Planeado inválido (aceite: dd/mm/aaaa, aaaa-mm-dd, ou célula de data Excel)' });   continue }
     if (end_date < start_date) { errors.push({ row: rowNum, message: 'Fim_Planeado anterior ao Inicio_Planeado' }); continue }
 
-    const real_start = iInicioR >= 0 ? parseDate(String(row[iInicioR] ?? '')) : null
-    const real_end   = iFimR   >= 0 ? parseDate(String(row[iFimR]    ?? '')) : null
+    const real_start = iInicioR >= 0 ? parseDate(row[iInicioR] ?? null) : null
+    const real_end   = iFimR   >= 0 ? parseDate(row[iFimR]    ?? null) : null
     const pct        = Math.max(0, Math.min(100, parseInt(String(iPct >= 0 ? (row[iPct] ?? '0') : '0').trim(), 10) || 0))
     const notes      = iNotas  >= 0 ? String(row[iNotas] ?? '').trim() : ''
 
@@ -344,7 +357,7 @@ export default function NovoPlanoModal({
           rs: a.real_start || null, rf: a.real_end || null,
           pct: a.pct, pct_prev: 0,
           status: a.pct >= 100 ? 'Concluída' : 'Em dia',
-          owner: '', sponsor: '', notes: a.notes || null,
+          notes: a.notes || null,
           sort_order: i,
         }
       })
