@@ -216,7 +216,7 @@ export default function Evolucao() {
       groups.push({
         title: `Por ${labels.n1}`,
         rows: eixoKeys.map(k => ({
-          label:       `${eixoNameById.get(k) ?? k} — Grau de execução (%)`,
+          label:       `${eixoNameById.get(k) ?? '(eixo eliminado)'} — Grau de execução (%)`,
           ref:         firstSnap.by_n1[k]?.exec_media ?? 0,
           actual:      lastSnap.by_n1[k]?.exec_media  ?? 0,
           invertColor: false,
