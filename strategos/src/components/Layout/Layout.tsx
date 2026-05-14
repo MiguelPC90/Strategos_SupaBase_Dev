@@ -239,6 +239,15 @@ export default function Layout() {
     return () => document.removeEventListener('keydown', handle)
   }, [])
 
+  const visibleView = useMemo(
+    () => NAV_VIEW.filter(item => hasAccess(item.to.slice(1) as PageKey)),
+    [hasAccess],
+  )
+  const visibleManage = useMemo(
+    () => NAV_MANAGE.filter(item => hasAccess(item.to.slice(1) as PageKey)),
+    [hasAccess],
+  )
+
   const initials = getInitials(profileCtx?.fullName ?? null, user?.email)
   const displayName = profileCtx?.fullName || user?.email || 'Utilizador'
   const displayEmail = user?.email ?? ''
@@ -258,16 +267,22 @@ export default function Layout() {
       {/* ── Sidebar (always collapsed, expands on hover) ── */}
       <nav className="sidebar collapsed">
         <div className="sidebar-nav">
-          <span className="sidebar-group-lbl">Visualização</span>
-          {NAV_VIEW.filter(item => hasAccess(item.to.slice(1) as PageKey)).map(item => (
-            <NavItem key={item.to} {...item} />
-          ))}
+          {visibleView.length > 0 && (
+            <>
+              <span className="sidebar-group-lbl">Visualização</span>
+              {visibleView.map(item => (
+                <NavItem key={item.to} {...item} />
+              ))}
+            </>
+          )}
 
-          <div className="sidebar-sep" />
-          <span className="sidebar-group-lbl">Por Plano</span>
-          {NAV_PLANOS.map(item => (
-            <NavItem key={item.to} {...item} />
-          ))}
+          <>
+            {visibleView.length > 0 && <div className="sidebar-sep" />}
+            <span className="sidebar-group-lbl">Por Plano</span>
+            {NAV_PLANOS.map(item => (
+              <NavItem key={item.to} {...item} />
+            ))}
+          </>
 
           {favorites.length > 0 && (
             <>
@@ -295,11 +310,15 @@ export default function Layout() {
             </>
           )}
 
-          <div className="sidebar-sep" />
-          <span className="sidebar-group-lbl">Gestão</span>
-          {NAV_MANAGE.filter(item => hasAccess(item.to.slice(1) as PageKey)).map(item => (
-            <NavItem key={item.to} {...item} isManage />
-          ))}
+          {visibleManage.length > 0 && (
+            <>
+              <div className="sidebar-sep" />
+              <span className="sidebar-group-lbl">Gestão</span>
+              {visibleManage.map(item => (
+                <NavItem key={item.to} {...item} isManage />
+              ))}
+            </>
+          )}
         </div>
 
         {isAdmin && (
