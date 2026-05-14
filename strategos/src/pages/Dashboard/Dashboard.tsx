@@ -21,8 +21,7 @@ import { usePlanos } from '../../hooks/usePlanos'
 import { useSnapshots } from '../../hooks/useSnapshots'
 import { useFilters } from '../../context/FilterContext'
 import { useProgramLabels, type ProgramLabels } from '../../hooks/useProgramLabels'
-import { useAuth } from '../../hooks/useAuth'
-import { useRole } from '../../hooks/useRole'
+import { usePermissions } from '../../hooks/usePermissions'
 import { supabase } from '../../lib/supabase'
 import { generateAlerts } from '../../lib/alerts'
 import type { Alert, AlertRule } from '../../lib/alerts'
@@ -822,8 +821,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const { filters, setFilter, getFilteredActivities } = useFilters()
   const labels = useProgramLabels(filters.programIds.length === 1 ? filters.programIds[0] : null)
-  const { permissions }                    = useAuth()
-  const { isAdmin }                        = useRole()
+  const { hasAccess }                      = usePermissions()
   const { activities, loading }            = useActivities({ cutoffDate: filters.cutoffDate })
   const { programs }                       = usePrograms()
   const { eixos: allEixos }                = useEixos()
@@ -842,7 +840,21 @@ export default function Dashboard() {
     [activities, getFilteredActivities],
   )
   const leaves = useMemo(() => filtered.filter(a => a.level === 4), [filtered])
-  const m      = useMemo(() => calcMetrics(leaves, thresholdsMap), [leaves, thresholdsMap])
+
+  const accessiblePlanIds = useMemo(
+    () => new Set(allPlanos.filter(p => hasAccess('dashboard', p.program_id ?? undefined, p.id)).map(p => p.id)),
+    [allPlanos, hasAccess],
+  )
+  const accessibleLeaves = useMemo(
+    () => leaves.filter(a => !a.plano_id || accessiblePlanIds.has(a.plano_id)),
+    [leaves, accessiblePlanIds],
+  )
+  const visiblePlanos = useMemo(
+    () => allPlanos.filter(p => accessiblePlanIds.has(p.id)),
+    [allPlanos, accessiblePlanIds],
+  )
+
+  const m = useMemo(() => calcMetrics(accessibleLeaves, thresholdsMap), [accessibleLeaves, thresholdsMap])
 
   // ── Snapshot references ──────────────────────────────────────
   const currentSnapshot = useMemo(
@@ -894,8 +906,8 @@ export default function Dashboard() {
   }, [])
 
   const leavesByPlano = useMemo(() => {
-    const m = new Map<string, typeof leaves>()
-    for (const a of leaves) {
+    const m = new Map<string, typeof accessibleLeaves>()
+    for (const a of accessibleLeaves) {
       if (!a.plano_id) continue
       const arr = m.get(a.plano_id) ?? []
       arr.push(a)
@@ -914,22 +926,6 @@ export default function Dashboard() {
     [allPlanos, leavesByPlano],
   )
 
-  // Plano IDs the current user is permitted to see (null = unrestricted).
-  // Admins bypass; non-admins with no permissions see nothing (deny-by-default).
-  const permissionPlanoIds = useMemo((): Set<string> | null => {
-    if (isAdmin) return null
-    if (!permissions || permissions.length === 0) return new Set<string>()
-    const allowedPrograms = new Set(
-      permissions.filter(p => p.program_id).map(p => p.program_id!),
-    )
-    if (allowedPrograms.size === 0) return null
-    const ids = new Set<string>()
-    for (const plano of allPlanos) {
-      if (plano.program_id && allowedPrograms.has(plano.program_id)) ids.add(plano.id)
-    }
-    return ids
-  }, [isAdmin, permissions, allPlanos])
-
   // Breadcrumb filter: null = no breadcrumb active.
   const breadcrumbFilter = useMemo((): Set<string> | null => {
     const { programIds, n1Values, n2Values } = filters
@@ -945,18 +941,15 @@ export default function Dashboard() {
     return null
   }, [filters, allPlanos])
 
-  // Final alert filter = intersection of breadcrumb and permissions.
-  // null means "unrestricted"; a Set means "only these plano IDs".
+  // Final alert filter = intersection of breadcrumb and plan-level permissions.
   const alertPlanoFilter = useMemo((): Set<string> | null => {
-    if (!breadcrumbFilter && !permissionPlanoIds) return null
-    if (!breadcrumbFilter) return permissionPlanoIds
-    if (!permissionPlanoIds) return breadcrumbFilter
+    if (!breadcrumbFilter) return accessiblePlanIds
     const intersection = new Set<string>()
     for (const id of breadcrumbFilter) {
-      if (permissionPlanoIds.has(id)) intersection.add(id)
+      if (accessiblePlanIds.has(id)) intersection.add(id)
     }
     return intersection
-  }, [breadcrumbFilter, permissionPlanoIds])
+  }, [breadcrumbFilter, accessiblePlanIds])
 
   const [alerts, setAlerts] = useState<Alert[]>([])
   useEffect(() => {
@@ -1131,7 +1124,7 @@ export default function Dashboard() {
       {/* ── Row 2: Charts ─────────────────────────────────────── */}
       <div className="dashboard-charts-grid">
 
-        <BarChartCard leaves={leaves} programs={programs} allEixos={allEixos} thresholdsMap={thresholdsMap} labels={labels} />
+        <BarChartCard leaves={accessibleLeaves} programs={programs} allEixos={allEixos} thresholdsMap={thresholdsMap} labels={labels} />
 
         <Card title="Estado Global">
           {m.total === 0 ? (
@@ -1258,10 +1251,10 @@ export default function Dashboard() {
 
       {/* ── Row 4: Detail table ───────────────────────────────── */}
       <DetailTableCard
-        leaves={leaves}
+        leaves={accessibleLeaves}
         programs={programs}
         allEixos={allEixos}
-        allPlanos={allPlanos}
+        allPlanos={visiblePlanos}
         totalsRow={totalsRow}
         onRowClick={handleRowClick}
         thresholdsMap={thresholdsMap}

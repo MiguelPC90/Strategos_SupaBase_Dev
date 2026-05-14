@@ -701,7 +701,7 @@ function InternExtDonut({ internos, externos, iPct, ePct, total }: InternExtDonu
 export default function Recursos() {
   const { filters }  = useFilters()
   const programs = useAccessiblePrograms()
-  const { canViewCosts } = usePermissions()
+  const { canViewCosts, hasAccess } = usePermissions()
 
   const programId = filters.programIds[0] ?? programs[0]?.id
   const labels = useProgramLabels(programId ?? null)
@@ -757,17 +757,30 @@ export default function Recursos() {
   const { planos }             = usePlanos(programId)
   const { people }             = usePeople()
 
+  const accessiblePlanIds = useMemo(
+    () => new Set(planos.filter(p => hasAccess('recursos', p.program_id ?? undefined, p.id)).map(p => p.id)),
+    [planos, hasAccess],
+  )
+  const visiblePlanos = useMemo(
+    () => planos.filter(p => accessiblePlanIds.has(p.id)),
+    [planos, accessiblePlanIds],
+  )
+  const accessibleResources = useMemo(
+    () => resources.filter(r => !r.pds_id || accessiblePlanIds.has(r.pds_id)),
+    [resources, accessiblePlanIds],
+  )
+
   // ── Plano options ─────────────────────────────────────────────
   const planoOptions = useMemo(() =>
-    planos.map(p => p.eixo?.name ? `${p.eixo.name} > ${p.name}` : p.name),
-    [planos]
+    visiblePlanos.map(p => p.eixo?.name ? `${p.eixo.name} > ${p.name}` : p.name),
+    [visiblePlanos]
   )
 
   const planoLabelToId = useMemo(() => {
     const m = new Map<string, string>()
-    planos.forEach((p, i) => m.set(planoOptions[i], p.id))
+    visiblePlanos.forEach((p, i) => m.set(planoOptions[i], p.id))
     return m
-  }, [planos, planoOptions])
+  }, [visiblePlanos, planoOptions])
 
   const selectedPlanoIds = useMemo(() =>
     selectedPlanoLabels.flatMap(l => {
@@ -781,7 +794,7 @@ export default function Recursos() {
   const yearOptions = useMemo(() => {
     if (mgmtYears.length > 0) return mgmtYears
     const years = new Set<string>()
-    for (const r of resources) {
+    for (const r of accessibleResources) {
       if (r.start_date) years.add(r.start_date.substring(0, 4))
       if (r.end_date)   years.add(r.end_date.substring(0, 4))
     }
@@ -790,13 +803,13 @@ export default function Recursos() {
 
   // ── Plano name map ────────────────────────────────────────────
   const planoNames = useMemo(
-    () => new Map(planos.map(p => [p.id, p.eixo?.name ? `${p.eixo.name} > ${p.name}` : p.name])),
-    [planos]
+    () => new Map(visiblePlanos.map(p => [p.id, p.eixo?.name ? `${p.eixo.name} > ${p.name}` : p.name])),
+    [visiblePlanos]
   )
 
   // ── Scoped resources (plano + year filtered) ──────────────────
   const scoped = useMemo(() => {
-    let r = resources
+    let r = accessibleResources
     if (selectedPlanoIds.length > 0) {
       r = r.filter(res => selectedPlanoIds.includes(res.pds_id))
     }
@@ -1112,7 +1125,7 @@ export default function Recursos() {
       {selectedRes && (
         <ResourcePanel
           name={selectedRes}
-          resources={resources}
+          resources={accessibleResources}
           planoNames={planoNames}
           person={selectedPerson}
           onClose={() => setSelectedRes(null)}

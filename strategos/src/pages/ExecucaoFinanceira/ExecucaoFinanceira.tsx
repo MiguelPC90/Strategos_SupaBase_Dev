@@ -15,6 +15,7 @@ import { useFinancials } from '../../hooks/useFinancials'
 import type { FinBudgetLine } from '../../types/index'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
+import { usePermissions } from '../../hooks/usePermissions'
 import { useFilters } from '../../context/FilterContext'
 import { supabase } from '../../lib/supabase'
 import { colors, chartDefaults } from '../../lib/tokens'
@@ -293,18 +294,28 @@ export default function ExecucaoFinanceira() {
 
   const { budgetLines, contracts, invoices, loading } = useFinancials(programId)
   const { planos }                                    = usePlanos(programId)
+  const { hasAccess }                                 = usePermissions()
+
+  const accessiblePlanIds = useMemo(
+    () => new Set(planos.filter(p => hasAccess('exec-financeira', p.program_id ?? undefined, p.id)).map(p => p.id)),
+    [planos, hasAccess],
+  )
+  const visiblePlanos = useMemo(
+    () => planos.filter(p => accessiblePlanIds.has(p.id)),
+    [planos, accessiblePlanIds],
+  )
 
   // ── Plano options (label → id mapping) ──────────────────────
   const planoOptions = useMemo(() =>
-    planos.map(p => p.eixo?.name ? `${p.eixo.name} > ${p.name}` : p.name),
-    [planos]
+    visiblePlanos.map(p => p.eixo?.name ? `${p.eixo.name} > ${p.name}` : p.name),
+    [visiblePlanos]
   )
 
   const planoLabelToId = useMemo(() => {
     const m = new Map<string, string>()
-    planos.forEach((p, i) => m.set(planoOptions[i], p.id))
+    visiblePlanos.forEach((p, i) => m.set(planoOptions[i], p.id))
     return m
-  }, [planos, planoOptions])
+  }, [visiblePlanos, planoOptions])
 
   const selectedPlanoIds = useMemo(() =>
     selectedPlanoLabels.flatMap(l => {
@@ -314,11 +325,25 @@ export default function ExecucaoFinanceira() {
     [selectedPlanoLabels, planoLabelToId]
   )
 
+  // ── Accessible base data (plan-level permission filter) ─────
+  const accessibleBudgetLines = useMemo(
+    () => budgetLines.filter(l => !l.plano_id || accessiblePlanIds.has(l.plano_id)),
+    [budgetLines, accessiblePlanIds],
+  )
+  const accessibleContracts = useMemo(
+    () => contracts.filter(c => !c.plano_id || accessiblePlanIds.has(c.plano_id)),
+    [contracts, accessiblePlanIds],
+  )
+  const accessibleInvoices = useMemo(
+    () => invoices.filter(i => !i.plano_id || accessiblePlanIds.has(i.plano_id)),
+    [invoices, accessiblePlanIds],
+  )
+
   // ── Year options (management_years, fallback to budget line keys) ─
   const yearOptions = useMemo(() => {
     if (mgmtYears.length > 0) return mgmtYears
     const years = new Set<string>()
-    for (const l of budgetLines) {
+    for (const l of accessibleBudgetLines) {
       for (const key of Object.keys(l.values)) years.add(key.split('-')[0])
     }
     return [...years].sort()
@@ -327,21 +352,21 @@ export default function ExecucaoFinanceira() {
   // ── Step 1: plano-filtered data ──────────────────────────────
   const planLines = useMemo(() =>
     selectedPlanoIds.length > 0
-      ? budgetLines.filter(l => l.plano_id !== null && selectedPlanoIds.includes(l.plano_id))
-      : budgetLines,
-    [budgetLines, selectedPlanoIds]
+      ? accessibleBudgetLines.filter(l => l.plano_id !== null && selectedPlanoIds.includes(l.plano_id))
+      : accessibleBudgetLines,
+    [accessibleBudgetLines, selectedPlanoIds]
   )
   const planCtrs = useMemo(() =>
     selectedPlanoIds.length > 0
-      ? contracts.filter(c => c.plano_id !== null && selectedPlanoIds.includes(c.plano_id))
-      : contracts,
-    [contracts, selectedPlanoIds]
+      ? accessibleContracts.filter(c => c.plano_id !== null && selectedPlanoIds.includes(c.plano_id))
+      : accessibleContracts,
+    [accessibleContracts, selectedPlanoIds]
   )
   const planInvs = useMemo(() =>
     selectedPlanoIds.length > 0
-      ? invoices.filter(i => i.plano_id !== null && selectedPlanoIds.includes(i.plano_id))
-      : invoices,
-    [invoices, selectedPlanoIds]
+      ? accessibleInvoices.filter(i => i.plano_id !== null && selectedPlanoIds.includes(i.plano_id))
+      : accessibleInvoices,
+    [accessibleInvoices, selectedPlanoIds]
   )
 
   // Category → isCapex map (based on all plano lines, ignoring tipo chip)
@@ -571,7 +596,7 @@ export default function ExecucaoFinanceira() {
     })
   }, [ctrRows, invoiceAlertFilter, sortBy, sortDir])
 
-  const hasData = budgetLines.length > 0 || contracts.length > 0
+  const hasData = accessibleBudgetLines.length > 0 || accessibleContracts.length > 0
 
   return (
     <div className="ef-page">
