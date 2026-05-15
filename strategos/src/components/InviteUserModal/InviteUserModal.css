@@ -1,0 +1,85 @@
+@layer components {
+  .ium-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .ium-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+
+  .ium-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .ium-label {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .ium-input {
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    font-size: var(--text-md);
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .ium-input:focus {
+    border-color: var(--navy);
+  }
+
+  .ium-select {
+    height: 34px;
+    padding: 0 32px 0 10px;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    font-size: var(--text-md);
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235c5c58' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    transition: border-color 0.15s;
+  }
+
+  .ium-select:focus {
+    border-color: var(--navy);
+  }
+
+  .ium-perms-section {
+    margin-top: 8px;
+  }
+
+  .ium-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 8px 0 12px;
+  }
+
+  .ium-perms-heading {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 0 0 10px;
+  }
+}

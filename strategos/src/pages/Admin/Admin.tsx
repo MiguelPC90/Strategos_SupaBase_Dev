@@ -17,6 +17,8 @@ import {
   type HealthConfig, type HealthBlock, type HealthMetric,
 } from '../../lib/healthRules'
 import type { Program, Eixo, Plano, Profile, Person, CostRole, Snapshot, UserRole, AlertRule, AlertSeverity } from '../../types/index'
+import UserPermissionsForm, { type PermRow } from '../../components/UserPermissionsForm/UserPermissionsForm'
+import InviteUserModal from '../../components/InviteUserModal/InviteUserModal'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -881,31 +883,6 @@ function AdminProgramas() {
 }
 
 // ── Section 3b: Permissões por utilizador ─────────────────────
-const PERM_PAGES: { key: string; label: string }[] = [
-  { key: 'dashboard',           label: 'Dashboard'         },
-  { key: 'actividades',         label: 'Actividades'       },
-  { key: 'gantt',               label: 'Gantt'             },
-  { key: 'ponto-situacao',      label: 'Ponto de Situação' },
-  { key: 'exec-financeira',     label: 'Exec. Financeira'  },
-  { key: 'recursos',            label: 'Recursos'          },
-  { key: 'evolucao',            label: 'Evolução'          },
-  { key: 'gestao-iniciativas',  label: 'Gestão Iniciativas'},
-  { key: 'gestao-pds',          label: 'Gestão PDS'        },
-  { key: 'gestao-riscos',       label: 'Gestão Riscos'     },
-  { key: 'gestao-financeira',   label: 'Gestão Financeira' },
-  { key: 'gestao-recursos',     label: 'Gestão Recursos'   },
-]
-
-type CellValue = '' | 'full' | 'ops' | 'view' | 'view_ops' | 'denied'
-
-interface UserPermRow {
-  user_id: string
-  program_id: string | null
-  plan_id: string | null
-  page: string
-  access_level: CellValue
-}
-
 function UserPermissionsModal({ userId, userName, userRole, isOpen, onClose }: {
   userId: string
   userName: string
@@ -913,101 +890,9 @@ function UserPermissionsModal({ userId, userName, userRole, isOpen, onClose }: {
   isOpen: boolean
   onClose: () => void
 }) {
-  const { programs } = usePrograms()
   const { showToast } = useToast()
-  const [permissions,     setPermissions]     = useState<UserPermRow[]>([])
-  const [planosByProg,    setPlanosByProg]     = useState<Record<string, Plano[]>>({})
-  const [loading,         setLoading]          = useState(false)
-  const [saving,          setSaving]           = useState(false)
-  const [expandedProgs,   setExpandedProgs]    = useState<Set<string>>(new Set())
-  const [showRestrPicker, setShowRestrPicker]  = useState<Record<string, boolean>>({})
-  const loadingProgs = useRef<Set<string>>(new Set())
-
-  useEffect(() => {
-    if (!isOpen) {
-      setPermissions([])
-      setExpandedProgs(new Set())
-      setPlanosByProg({})
-      setShowRestrPicker({})
-      loadingProgs.current.clear()
-      return
-    }
-    setLoading(true)
-    supabase
-      .from('user_permissions')
-      .select('user_id, program_id, plan_id, page, access_level')
-      .eq('user_id', userId)
-      .then(({ data }) => {
-        const perms = (data ?? []) as UserPermRow[]
-        setPermissions(perms)
-        setLoading(false)
-        // Auto-load planos for programs that already have plan-level restrictions
-        const progsWithRestr = [...new Set(
-          perms.filter(p => p.plan_id !== null && p.program_id !== null).map(p => p.program_id as string)
-        )]
-        progsWithRestr.forEach(progId => fetchPlanosForProg(progId))
-      })
-  }, [isOpen, userId])
-
-  async function fetchPlanosForProg(programId: string) {
-    if (loadingProgs.current.has(programId)) return
-    loadingProgs.current.add(programId)
-    const { data } = await supabase
-      .from('planos')
-      .select('id, name, program_id, sort_order')
-      .eq('program_id', programId)
-      .order('name')
-    setPlanosByProg(p => {
-      loadingProgs.current.delete(programId)
-      return { ...p, [programId]: (data ?? []) as Plano[] }
-    })
-  }
-
-  function loadPlanosForProg(programId: string) {
-    if (planosByProg[programId] || loadingProgs.current.has(programId)) return
-    fetchPlanosForProg(programId)
-  }
-
-  function getPageLevel(programId: string, page: string): CellValue {
-    return (permissions.find(
-      p => p.program_id === programId && p.plan_id === null && p.page === page
-    )?.access_level ?? '') as CellValue
-  }
-
-  function getPlanLevel(programId: string, planId: string): CellValue {
-    const row = permissions.find(p => p.program_id === programId && p.plan_id === planId)
-    return (row?.access_level ?? '') as CellValue
-  }
-
-  function handlePageLevel(programId: string, page: string, value: CellValue) {
-    setPermissions(perms => {
-      const rest = perms.filter(p => !(p.program_id === programId && p.plan_id === null && p.page === page))
-      if (value === '') return rest
-      return [...rest, { user_id: userId, program_id: programId, plan_id: null, page, access_level: value }]
-    })
-  }
-
-  function handlePlanLevel(programId: string, planId: string, value: CellValue) {
-    setPermissions(perms => {
-      const rest = perms.filter(p => !(p.program_id === programId && p.plan_id === planId))
-      if (value === '') return rest
-      return [...rest, ...PERM_PAGES.map(pg => ({
-        user_id: userId, program_id: programId, plan_id: planId,
-        page: pg.key, access_level: value,
-      }))]
-    })
-  }
-
-  function addProgram(programId: string) {
-    PERM_PAGES.forEach(pg => handlePageLevel(programId, pg.key, 'view'))
-    setExpandedProgs(s => { const n = new Set(s); n.add(programId); return n })
-    loadPlanosForProg(programId)
-  }
-
-  function removeProgram(programId: string) {
-    if (!window.confirm('Remover todas as permissões para este programa?')) return
-    setPermissions(perms => perms.filter(p => p.program_id !== programId))
-  }
+  const [currentPerms, setCurrentPerms] = useState<PermRow[]>([])
+  const [saving, setSaving] = useState(false)
 
   async function handleSave() {
     setSaving(true)
@@ -1017,10 +902,10 @@ function UserPermissionsModal({ userId, userName, userRole, isOpen, onClose }: {
         .delete()
         .eq('user_id', userId)
       if (delErr) throw delErr
-      if (permissions.length > 0) {
+      if (currentPerms.length > 0) {
         const { error: insErr } = await supabase
           .from('user_permissions')
-          .insert(permissions)
+          .insert(currentPerms.map(r => ({ ...r, user_id: userId })))
         if (insErr) throw insErr
       }
       showToast('Permissões guardadas.', 'success')
@@ -1033,24 +918,9 @@ function UserPermissionsModal({ userId, userName, userRole, isOpen, onClose }: {
     }
   }
 
-  function toggleProg(programId: string) {
-    setExpandedProgs(s => {
-      const n = new Set(s)
-      if (n.has(programId)) { n.delete(programId) }
-      else { n.add(programId); loadPlanosForProg(programId) }
-      return n
-    })
-  }
-
-  const isEditableRole = ['admin', 'program_manager', 'editor'].includes(userRole)
-  const programsWithPerms    = programs.filter(prog => permissions.some(p => p.program_id === prog.id))
-  const programsWithoutPerms = programs.filter(prog => !permissions.some(p => p.program_id === prog.id))
-
   const modalFooter = (
     <>
-      <button className="adm-btn-secondary" onClick={onClose} disabled={saving}>
-        Cancelar
-      </button>
+      <button className="adm-btn-secondary" onClick={onClose} disabled={saving}>Cancelar</button>
       <button className="btn-primary" onClick={handleSave} disabled={saving}>
         {saving ? 'A guardar…' : 'Guardar'}
       </button>
@@ -1059,187 +929,7 @@ function UserPermissionsModal({ userId, userName, userRole, isOpen, onClose }: {
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Permissões: ${userName}`} width={600} footer={modalFooter}>
-      {loading ? (
-        <p className="adm-help">A carregar…</p>
-      ) : (
-        <div className="adm-perm-modal-body">
-          {/* ── Add program bar ── */}
-          {programsWithoutPerms.length > 0 && (
-            <div className="adm-perm-add-prog">
-              <span className="adm-perm-add-prog-label">Adicionar programa</span>
-              <select
-                className="styled-select-sm"
-                defaultValue=""
-                onChange={e => { if (e.target.value) { addProgram(e.target.value); e.target.value = '' } }}
-              >
-                <option value="">— seleccionar —</option>
-                {programsWithoutPerms.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </div>
-          )}
-
-          {programsWithPerms.length === 0 && (
-            <p className="adm-perm-empty">
-              Sem acesso atribuído. Selecciona um programa acima para começar.
-            </p>
-          )}
-
-          {/* ── Program sections ── */}
-          {programsWithPerms.map(prog => {
-            const expanded = expandedProgs.has(prog.id)
-            const allPlanos = planosByProg[prog.id] ?? []
-            const planosLoaded = !!planosByProg[prog.id]
-
-            // Unique plan IDs that have restrictions for this program
-            const restrictedPlanIds = [...new Set(
-              permissions
-                .filter(p => p.program_id === prog.id && p.plan_id !== null)
-                .map(p => p.plan_id as string)
-            )]
-            const restrictedSet = new Set(restrictedPlanIds)
-            const planoMap = Object.fromEntries(allPlanos.map(pl => [pl.id, pl]))
-
-            // Plans without a restriction (for the "add restriction" picker)
-            const availablePlanos = allPlanos
-              .filter(pl => !restrictedSet.has(pl.id))
-              .sort((a, b) => a.name.localeCompare(b.name))
-
-            // Restricted plan IDs sorted by name (unknown names sort last)
-            const sortedRestrPlanIds = [...restrictedPlanIds].sort((a, b) => {
-              const na = planoMap[a]?.name ?? 'zzz'
-              const nb = planoMap[b]?.name ?? 'zzz'
-              return na.localeCompare(nb)
-            })
-
-            return (
-              <div key={prog.id} className="adm-perm-prog-block">
-                {/* Program header (collapsible) */}
-                <div className="adm-perm-prog-header" onClick={() => toggleProg(prog.id)}>
-                  <span className="adm-perm-prog-name">{prog.name}</span>
-                  <button
-                    className="adm-icon-btn"
-                    title="Remover todas as permissões para este programa"
-                    style={{ color: 'var(--red)' }}
-                    onClick={e => { e.stopPropagation(); removeProgram(prog.id) }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                  <span className="adm-perm-chevron">{expanded ? '▲' : '▼'}</span>
-                </div>
-
-                {expanded && (
-                  <div className="adm-perm-prog-body">
-                    {/* ── Page access ── */}
-                    <div className="adm-perm-section">
-                      <p className="adm-perm-section-label">Acesso por página</p>
-                      <div className="adm-perm-page-list">
-                        {PERM_PAGES.map(pg => (
-                          <div key={pg.key} className="adm-perm-row">
-                            <span className="adm-perm-row-label">{pg.label}</span>
-                            <select
-                              className="styled-select-sm adm-perm-select"
-                              value={getPageLevel(prog.id, pg.key)}
-                              onChange={e => handlePageLevel(prog.id, pg.key, e.target.value as CellValue)}
-                            >
-                              <option value="">– Sem acesso –</option>
-                              {isEditableRole && (
-                                <>
-                                  <option value="full">Editar total</option>
-                                  <option value="ops">Editar (ops)</option>
-                                </>
-                              )}
-                              <option value="view">Visualização</option>
-                              <option value="view_ops">Visualização (ops)</option>
-                              <option value="denied">Bloqueado</option>
-                            </select>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* ── Plan restrictions ── */}
-                    <div className="adm-perm-section">
-                      <p className="adm-perm-section-label">Restrições por plano específico</p>
-                      <p className="adm-perm-helper">
-                        Sobrepõe o acesso por página para o plano. Usa apenas para restringir (nunca para ampliar).
-                      </p>
-
-                      {sortedRestrPlanIds.length > 0 && (
-                        <div className="adm-perm-page-list">
-                          {sortedRestrPlanIds.map(planId => (
-                            <div key={planId} className="adm-perm-row adm-perm-row--restr">
-                              <span className="adm-perm-row-label">
-                                {planosLoaded
-                                  ? (planoMap[planId]?.name ?? '(plano eliminado)')
-                                  : 'A carregar…'}
-                              </span>
-                              <select
-                                className="styled-select-sm adm-perm-select"
-                                value={getPlanLevel(prog.id, planId)}
-                                onChange={e => handlePlanLevel(prog.id, planId, e.target.value as CellValue)}
-                              >
-                                <option value="view">Forçar visualização</option>
-                                <option value="denied">Bloqueado</option>
-                              </select>
-                              <button
-                                className="adm-icon-btn"
-                                title="Remover restrição"
-                                onClick={() => handlePlanLevel(prog.id, planId, '')}
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Inline plan picker */}
-                      {showRestrPicker[prog.id] ? (
-                        <div className="adm-perm-row adm-perm-row--new">
-                          <select
-                            className="styled-select-sm adm-perm-picker-select"
-                            defaultValue=""
-                            onChange={e => {
-                              if (e.target.value) {
-                                handlePlanLevel(prog.id, e.target.value, 'view')
-                                setShowRestrPicker(s => ({ ...s, [prog.id]: false }))
-                              }
-                            }}
-                          >
-                            <option value="">— seleccionar plano —</option>
-                            {availablePlanos.map(pl => (
-                              <option key={pl.id} value={pl.id}>{pl.name}</option>
-                            ))}
-                          </select>
-                          <button
-                            className="adm-icon-btn"
-                            title="Cancelar"
-                            onClick={() => setShowRestrPicker(s => ({ ...s, [prog.id]: false }))}
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ) : (
-                        availablePlanos.length > 0 && (
-                          <button
-                            className="adm-btn-secondary adm-perm-add-restr-btn"
-                            onClick={() => {
-                              loadPlanosForProg(prog.id)
-                              setShowRestrPicker(s => ({ ...s, [prog.id]: true }))
-                            }}
-                          >
-                            + Adicionar restrição
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
+      <UserPermissionsForm userId={userId} userRole={userRole} onChange={setCurrentPerms} />
     </Modal>
   )
 }
@@ -1254,8 +944,6 @@ function roleBadge(role: UserRole) {
   return <Badge variant="grey">Viewer</Badge>
 }
 
-interface InviteForm { email: string; role: 'program_manager' | 'editor' | 'sponsor' | 'stakeholder' }
-
 function AdminUtilizadores() {
   const { user: currentUser } = useAuth()
   const { showToast } = useToast()
@@ -1265,9 +953,7 @@ function AdminUtilizadores() {
   const [editId,           setEditId]           = useState<string | null>(null)
   const [editRole,         setEditRole]         = useState<UserRole>('stakeholder')
   const [saving,           setSaving]           = useState(false)
-  const [showInvite,       setShowInvite]       = useState(false)
-  const [invite,           setInvite]           = useState<InviteForm>({ email: '', role: 'stakeholder' })
-  const [inviting,         setInviting]         = useState(false)
+  const [showInviteModal,  setShowInviteModal]  = useState(false)
   const [downgradeConfirm, setDowngradeConfirm] = useState<{ userId: string; editCount: number } | null>(null)
   const [permModal,        setPermModal]        = useState<{ userId: string; userName: string; userRole: UserRole } | null>(null)
 
@@ -1353,45 +1039,11 @@ function AdminUtilizadores() {
     await loadProfiles()
   }
 
-  async function handleInvite() {
-    if (!invite.email.trim()) return
-    setInviting(true)
-    try {
-      // Try admin invite; fall back to inserting a profile row
-      const { error } = await supabase.auth.admin.inviteUserByEmail(invite.email.trim())
-      if (error) {
-        // Fallback: insert profile row so the user appears in the list
-        await supabase.from('profiles').insert({
-          email: invite.email.trim(),
-          role: invite.role,
-          full_name: null,
-          avatar_url: null,
-        })
-      } else {
-        // Update role on the profile that the invite created
-        await supabase.from('profiles')
-          .update({ role: invite.role })
-          .eq('email', invite.email.trim())
-      }
-      const invitedEmail = invite.email.trim()
-      setShowInvite(false)
-      setInvite({ email: '', role: 'stakeholder' })
-      showToast('Convite enviado!', 'success')
-      const freshProfiles = await loadProfiles()
-      const newProfile = freshProfiles.find(p => p.email === invitedEmail)
-      if (newProfile && newProfile.role !== 'admin') {
-        setPermModal({ userId: newProfile.id, userName: newProfile.full_name || newProfile.email || invitedEmail, userRole: newProfile.role })
-      }
-    } finally {
-      setInviting(false)
-    }
-  }
-
   const inviteActions = (
     <button
       className="adm-btn-secondary"
       style={{ padding: '4px 12px', fontSize: 12 }}
-      onClick={() => { setShowInvite(v => !v); setInvite({ email: '', role: 'stakeholder' }) }}
+      onClick={() => setShowInviteModal(true)}
     >
       + Convidar Utilizador
     </button>
@@ -1403,46 +1055,10 @@ function AdminUtilizadores() {
 
         {/* ── Card 1: Utilizadores ── */}
         <Card title="Utilizadores" actions={inviteActions}>
-          {showInvite && (
-            <div className="adm-invite-form">
-              <div className="adm-field" style={{ margin: 0, flex: '1 1 200px' }}>
-                <label className="adm-label">Email</label>
-                <input
-                  className="adm-input"
-                  type="email"
-                  placeholder="utilizador@org.pt"
-                  value={invite.email}
-                  onChange={e => setInvite(v => ({ ...v, email: e.target.value }))}
-                  onKeyDown={e => { if (e.key === 'Enter') handleInvite(); if (e.key === 'Escape') setShowInvite(false) }}
-                />
-              </div>
-              <div className="adm-field" style={{ margin: 0 }}>
-                <label className="adm-label">Role</label>
-                <select
-                  className="adm-select"
-                  value={invite.role}
-                  onChange={e => setInvite(v => ({ ...v, role: e.target.value as InviteForm['role'] }))}
-                >
-                  <option value="program_manager">Program Manager — gere programas, pode editar</option>
-                  <option value="editor">Gestor — edita conforme permissões</option>
-                  <option value="sponsor">Sponsor — apenas visualização</option>
-                  <option value="stakeholder">Stakeholder — apenas visualização</option>
-
-                </select>
-              </div>
-              <div style={{ display: 'flex', gap: 8, paddingBottom: 1 }}>
-                <button className="btn-primary btn-lg" onClick={handleInvite} disabled={inviting || !invite.email.trim()}>
-                  {inviting ? 'A enviar…' : 'Convidar'}
-                </button>
-                <button className="adm-btn-secondary" onClick={() => setShowInvite(false)}>Cancelar</button>
-              </div>
-            </div>
-          )}
-
           {loadingP ? (
             <p className="adm-help" style={{ padding: '12px 0' }}>A carregar…</p>
           ) : (
-            <div style={{ margin: '-16px', marginTop: showInvite ? '8px' : '-16px' }}>
+            <div style={{ margin: '-16px' }}>
               <table className="adm-panel-table">
                 <thead>
                   <tr>
@@ -1552,6 +1168,13 @@ function AdminUtilizadores() {
           onClose={() => setPermModal(null)}
         />
       )}
+
+      {/* ── Invite user modal ── */}
+      <InviteUserModal
+        open={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        onSuccess={() => { void loadProfiles() }}
+      />
     </>
   )
 }
