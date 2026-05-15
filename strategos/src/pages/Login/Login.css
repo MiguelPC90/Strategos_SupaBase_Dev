@@ -164,6 +164,24 @@
     margin-top: 1px;
   }
 
+  /* ── Forgot password link ─────────────────────────────────── */
+  .login-forgot-link {
+    width: 100%;
+    margin-top: 4px;
+    padding: var(--space-2) 0;
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    text-align: center;
+    transition: color 150ms ease;
+  }
+  .login-forgot-link:hover {
+    color: var(--stratgos-ember);
+    text-decoration: underline;
+  }
+
   /* ── Footer note ───────────────────────────────────────────── */
   .login-note {
     font-size: var(--text-sm);

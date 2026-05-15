@@ -17,6 +17,7 @@ import Admin from './pages/Admin/Admin'
 import Profile from './pages/Profile/Profile'
 import PlanosCatalog from './pages/PlanosCatalog/PlanosCatalog'
 import PlanoPage from './pages/PlanoPage/PlanoPage'
+import ResetPassword from './pages/ResetPassword/ResetPassword'
 import { useAuth } from './hooks/useAuth'
 import { useRole } from './hooks/useRole'
 import { usePermissions } from './hooks/usePermissions'
@@ -135,6 +136,7 @@ export default function App() {
     <FavoritesProvider>
     <BrowserRouter>
       <Routes>
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route
           path="/"
           element={

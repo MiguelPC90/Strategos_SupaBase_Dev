@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useBranding } from '../../context/BrandingContext'
 import StratgosWordmark from '../../components/Brand/StratgosWordmark'
+import ForgotPasswordModal from '../../components/ForgotPasswordModal/ForgotPasswordModal'
 
 type Tab = 'password' | 'magic'
 
@@ -11,6 +12,7 @@ export default function Login() {
   const { mode, clientLogoUrl, clientTitle } = useBranding()
 
   const [tab, setTab] = useState<Tab>('password')
+  const [forgotOpen, setForgotOpen] = useState(false)
 
   // Email + password state
   const [email, setEmail] = useState('')
@@ -124,6 +126,13 @@ export default function Login() {
               <button className="btn-primary" type="submit" disabled={loading}>
                 {loading ? <span className="login-spinner" /> : 'Entrar'}
               </button>
+              <button
+                type="button"
+                className="login-forgot-link"
+                onClick={() => setForgotOpen(true)}
+              >
+                Esqueci-me da palavra-passe
+              </button>
             </form>
           )}
 
@@ -167,6 +176,8 @@ export default function Login() {
           </p>
         </div>
       </div>
+
+      <ForgotPasswordModal open={forgotOpen} onClose={() => setForgotOpen(false)} />
     </div>
   )
 }
