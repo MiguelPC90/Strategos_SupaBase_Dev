@@ -1,0 +1,8 @@
+@layer components {
+  .cm-message {
+    font-size: var(--text-md);
+    color: var(--text2);
+    line-height: 1.6;
+    margin: 0;
+  }
+}

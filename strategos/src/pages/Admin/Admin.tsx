@@ -19,6 +19,7 @@ import {
 import type { Program, Eixo, Plano, Profile, Person, CostRole, Snapshot, UserRole, AlertRule, AlertSeverity } from '../../types/index'
 import UserPermissionsForm, { type PermRow } from '../../components/UserPermissionsForm/UserPermissionsForm'
 import InviteUserModal from '../../components/InviteUserModal/InviteUserModal'
+import ConfirmModal from '../../components/ConfirmModal/ConfirmModal'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -956,6 +957,8 @@ function AdminUtilizadores() {
   const [showInviteModal,  setShowInviteModal]  = useState(false)
   const [downgradeConfirm, setDowngradeConfirm] = useState<{ userId: string; editCount: number } | null>(null)
   const [permModal,        setPermModal]        = useState<{ userId: string; userName: string; userRole: UserRole } | null>(null)
+  const [deleteConfirm,    setDeleteConfirm]    = useState<{ id: string; name: string } | null>(null)
+  const [deleting,         setDeleting]         = useState(false)
 
   async function loadProfiles(): Promise<Profile[]> {
     setLoadingP(true)
@@ -1032,11 +1035,27 @@ function AdminUtilizadores() {
     await commitSaveRole(downgradeConfirm.userId, editRole)
   }
 
-  async function deleteProfile(id: string, name: string | null) {
-    const label = name || 'este utilizador'
-    if (!window.confirm(`Remover ${label}? Esta acção não pode ser desfeita.`)) return
-    await supabase.from('profiles').delete().eq('id', id)
-    await loadProfiles()
+  function requestDeleteProfile(id: string, name: string | null) {
+    setDeleteConfirm({ id, name: name || 'este utilizador' })
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteConfirm) return
+    setDeleting(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId: deleteConfirm.id },
+      })
+      if (error) throw error
+      if (data?.error) throw new Error(data.error as string)
+      showToast('Utilizador removido.', 'success')
+      setDeleteConfirm(null)
+      await loadProfiles()
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Erro ao remover utilizador', 'error')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const inviteActions = (
@@ -1118,7 +1137,7 @@ function AdminUtilizadores() {
                                 title={isAdmin ? 'Utilizadores Admin não podem ser eliminados a partir desta interface' : isCurrentUser ? 'Não pode remover a própria conta' : 'Remover'}
                                 disabled={isAdmin || isCurrentUser}
                                 style={{ color: isAdmin || isCurrentUser ? undefined : 'var(--red)' }}
-                                onClick={() => deleteProfile(p.id, p.full_name)}
+                                onClick={() => requestDeleteProfile(p.id, p.full_name)}
                               ><Trash2 size={16} /></button>
                             </span>
                           )}
@@ -1175,6 +1194,21 @@ function AdminUtilizadores() {
         onClose={() => setShowInviteModal(false)}
         onSuccess={() => { void loadProfiles() }}
       />
+
+      {/* ── Delete user confirmation ── */}
+      {deleteConfirm && (
+        <ConfirmModal
+          open
+          title="Remover utilizador"
+          message={`Tem a certeza que pretende remover ${deleteConfirm.name}? Esta acção é permanente e não pode ser desfeita. Todas as permissões associadas serão também eliminadas.`}
+          confirmLabel="Remover"
+          cancelLabel="Cancelar"
+          destructive
+          loading={deleting}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeleteConfirm(null)}
+        />
+      )}
     </>
   )
 }
