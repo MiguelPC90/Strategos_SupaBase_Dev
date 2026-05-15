@@ -1,6 +1,6 @@
 import './Admin.css'
 import { useState, useEffect, useRef, Fragment, type ChangeEvent } from 'react'
-import { Check, X, Pencil, Trash2, AlertCircle, FileText, Lock } from 'lucide-react'
+import { Check, X, Pencil, Trash2, AlertCircle, FileText, Lock, Key } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import { useBranding } from '../../context/BrandingContext'
 import * as XLSX from 'xlsx'
@@ -959,6 +959,8 @@ function AdminUtilizadores() {
   const [permModal,        setPermModal]        = useState<{ userId: string; userName: string; userRole: UserRole } | null>(null)
   const [deleteConfirm,    setDeleteConfirm]    = useState<{ id: string; name: string } | null>(null)
   const [deleting,         setDeleting]         = useState(false)
+  const [resetConfirm,     setResetConfirm]     = useState<{ id: string; name: string; email: string } | null>(null)
+  const [resetting,        setResetting]        = useState(false)
 
   async function loadProfiles(): Promise<Profile[]> {
     setLoadingP(true)
@@ -1058,6 +1060,28 @@ function AdminUtilizadores() {
     }
   }
 
+  function requestResetPassword(id: string, name: string | null, email: string) {
+    setResetConfirm({ id, name: name || email, email })
+  }
+
+  async function handleConfirmReset() {
+    if (!resetConfirm) return
+    setResetting(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('force-reset-password', {
+        body: { userId: resetConfirm.id },
+      })
+      if (error) throw error
+      if (data?.error) throw new Error(data.error as string)
+      showToast(`Email de reset enviado para ${resetConfirm.email}`, 'success')
+      setResetConfirm(null)
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Erro ao enviar email de reset', 'error')
+    } finally {
+      setResetting(false)
+    }
+  }
+
   const inviteActions = (
     <button
       className="adm-btn-secondary"
@@ -1134,6 +1158,12 @@ function AdminUtilizadores() {
                               ><Lock size={15} /></button>
                               <button
                                 className="adm-icon-btn"
+                                title={isCurrentUser ? 'Não pode forçar reset da própria conta' : 'Forçar reset de password'}
+                                disabled={isCurrentUser}
+                                onClick={() => requestResetPassword(p.id, p.full_name, p.email || '')}
+                              ><Key size={15} /></button>
+                              <button
+                                className="adm-icon-btn"
                                 title={isAdmin ? 'Utilizadores Admin não podem ser eliminados a partir desta interface' : isCurrentUser ? 'Não pode remover a própria conta' : 'Remover'}
                                 disabled={isAdmin || isCurrentUser}
                                 style={{ color: isAdmin || isCurrentUser ? undefined : 'var(--red)' }}
@@ -1207,6 +1237,20 @@ function AdminUtilizadores() {
           loading={deleting}
           onConfirm={handleConfirmDelete}
           onCancel={() => setDeleteConfirm(null)}
+        />
+      )}
+
+      {/* ── Force reset password confirmation ── */}
+      {resetConfirm && (
+        <ConfirmModal
+          open
+          title="Forçar reset de password"
+          message={`Pretende enviar um email de reset de password para ${resetConfirm.name} (${resetConfirm.email})? O utilizador receberá um link para definir uma nova palavra-passe.`}
+          confirmLabel="Enviar email"
+          cancelLabel="Cancelar"
+          loading={resetting}
+          onConfirm={handleConfirmReset}
+          onCancel={() => setResetConfirm(null)}
         />
       )}
     </>
