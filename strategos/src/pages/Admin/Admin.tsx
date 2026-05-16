@@ -1000,8 +1000,8 @@ function AdminUtilizadores() {
       const { data, error } = await supabase.functions.invoke('delete-user', {
         body: { userId: deleteConfirm.id },
       })
-      if (error) throw error
       if (data?.error) throw new Error(data.error as string)
+      if (error) throw error
       showToast('Utilizador removido.', 'success')
       setDeleteConfirm(null)
       await loadProfiles()
@@ -1023,8 +1023,8 @@ function AdminUtilizadores() {
       const { data, error } = await supabase.functions.invoke('force-reset-password', {
         body: { userId: resetConfirm.id },
       })
-      if (error) throw error
       if (data?.error) throw new Error(data.error as string)
+      if (error) throw error
       showToast(`Email de reset enviado para ${resetConfirm.email}`, 'success')
       setResetConfirm(null)
     } catch (err: unknown) {

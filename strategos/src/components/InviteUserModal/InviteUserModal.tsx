@@ -63,8 +63,8 @@ export default function InviteUserModal({ open, onClose, onSuccess }: InviteUser
         },
       })
 
-      if (error) throw error
       if (data?.error) throw new Error(data.error as string)
+      if (error) throw error
 
       showToast('Convite enviado.', 'success')
       onSuccess?.()

@@ -87,8 +87,8 @@ export default function EditUserModal({ open, user, onClose, onSaved }: EditUser
         const { data, error } = await supabase.functions.invoke('update-user-email', {
           body: { userId: user.id, newEmail: email.trim() },
         })
-        if (error) throw error
         if (data?.error) throw new Error(data.error as string)
+        if (error) throw error
       }
       if (nameChanged || roleChanged) {
         const updates: Record<string, unknown> = {}
