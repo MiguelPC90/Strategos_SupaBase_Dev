@@ -20,6 +20,7 @@ import type { Program, Eixo, Plano, Profile, Person, CostRole, Snapshot, UserRol
 import UserPermissionsForm, { type PermRow } from '../../components/UserPermissionsForm/UserPermissionsForm'
 import InviteUserModal from '../../components/InviteUserModal/InviteUserModal'
 import ConfirmModal from '../../components/ConfirmModal/ConfirmModal'
+import EditUserModal from '../../components/EditUserModal/EditUserModal'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -964,18 +965,15 @@ function AdminUtilizadores() {
   const { user: currentUser } = useAuth()
   const { showToast } = useToast()
 
-  const [profiles,         setProfiles]         = useState<Profile[]>([])
-  const [loadingP,         setLoadingP]         = useState(true)
-  const [editId,           setEditId]           = useState<string | null>(null)
-  const [editRole,         setEditRole]         = useState<UserRole>('stakeholder')
-  const [saving,           setSaving]           = useState(false)
-  const [showInviteModal,  setShowInviteModal]  = useState(false)
-  const [downgradeConfirm, setDowngradeConfirm] = useState<{ userId: string; editCount: number } | null>(null)
-  const [permModal,        setPermModal]        = useState<{ userId: string; userName: string; userRole: UserRole } | null>(null)
-  const [deleteConfirm,    setDeleteConfirm]    = useState<{ id: string; name: string } | null>(null)
-  const [deleting,         setDeleting]         = useState(false)
-  const [resetConfirm,     setResetConfirm]     = useState<{ id: string; name: string; email: string } | null>(null)
-  const [resetting,        setResetting]        = useState(false)
+  const [profiles,        setProfiles]        = useState<Profile[]>([])
+  const [loadingP,        setLoadingP]        = useState(true)
+  const [editUser,        setEditUser]        = useState<Profile | null>(null)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [permModal,       setPermModal]       = useState<{ userId: string; userName: string; userRole: UserRole } | null>(null)
+  const [deleteConfirm,   setDeleteConfirm]   = useState<{ id: string; name: string } | null>(null)
+  const [deleting,        setDeleting]        = useState(false)
+  const [resetConfirm,    setResetConfirm]    = useState<{ id: string; name: string; email: string } | null>(null)
+  const [resetting,       setResetting]       = useState(false)
 
   async function loadProfiles(): Promise<Profile[]> {
     setLoadingP(true)
@@ -990,67 +988,6 @@ function AdminUtilizadores() {
   }
 
   useEffect(() => { loadProfiles() }, [])
-
-  function startEdit(p: Profile) {
-    setEditId(p.id)
-    setEditRole(p.role)
-  }
-
-  function cancelEdit() {
-    setEditId(null)
-  }
-
-  async function commitSaveRole(userId: string, newRole: UserRole) {
-    setSaving(true)
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId)
-        .select()
-      if (error) { showToast(`Erro: ${error.message}`, 'error'); return }
-      if (!data || data.length === 0) { showToast('Sem permissão para editar', 'warning'); return }
-      setEditId(null)
-      setDowngradeConfirm(null)
-      await loadProfiles()
-      showToast('Role actualizado', 'success')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function saveRole() {
-    if (!editId) return
-    // Downgrading from edit-capable to view-only role: check for stranded edit permissions
-    const viewOnlyRoles: UserRole[] = ['sponsor', 'stakeholder']
-    const editCapableRoles: UserRole[] = ['program_manager', 'editor']
-    if (viewOnlyRoles.includes(editRole)) {
-      const originalRole = profiles.find(p => p.id === editId)?.role
-      if (originalRole && editCapableRoles.includes(originalRole)) {
-        const { data } = await supabase
-          .from('user_permissions')
-          .select('id')
-          .eq('user_id', editId)
-          .in('access_level', ['full', 'ops'])
-        const editCount = data?.length ?? 0
-        if (editCount > 0) {
-          setDowngradeConfirm({ userId: editId, editCount })
-          return
-        }
-      }
-    }
-    await commitSaveRole(editId, editRole)
-  }
-
-  async function confirmDowngradeAndSave() {
-    if (!downgradeConfirm) return
-    await supabase
-      .from('user_permissions')
-      .update({ access_level: 'view' })
-      .eq('user_id', downgradeConfirm.userId)
-      .in('access_level', ['full', 'ops'])
-    await commitSaveRole(downgradeConfirm.userId, editRole)
-  }
 
   function requestDeleteProfile(id: string, name: string | null) {
     setDeleteConfirm({ id, name: name || 'este utilizador' })
@@ -1130,62 +1067,39 @@ function AdminUtilizadores() {
                   {profiles.map(p => {
                     const isCurrentUser = p.id === currentUser?.id
                     const isAdmin       = p.role === 'admin'
-                    const editing       = editId === p.id
                     return (
-                      <tr key={p.id} className={editing ? 'editing' : undefined}>
+                      <tr key={p.id}>
                         <td style={{ fontWeight: 500 }}>{p.full_name || '—'}</td>
                         <td style={{ color: 'var(--text2)', fontSize: 12 }}>{p.email}</td>
+                        <td>{roleBadge(p.role)}</td>
                         <td>
-                          {editing ? (
-                            <select
-                              className="styled-select-sm"
-                              value={editRole}
-                              onChange={e => setEditRole(e.target.value as UserRole)}
-                              autoFocus
-                            >
-                              <option value="admin">Admin</option>
-                              <option value="program_manager">Program Manager</option>
-                              <option value="editor">Gestor</option>
-                              <option value="sponsor">Sponsor</option>
-                              <option value="stakeholder">Stakeholder</option>
-                            </select>
-                          ) : roleBadge(p.role)}
-                        </td>
-                        <td>
-                          {editing ? (
-                            <span style={{ whiteSpace: 'nowrap' }}>
-                              <button className="adm-icon-btn" title="Guardar" onClick={saveRole} disabled={saving}><Check size={14} strokeWidth={1.5} /></button>
-                              <button className="adm-icon-btn" title="Cancelar" onClick={cancelEdit}><X size={16} /></button>
-                            </span>
-                          ) : (
-                            <span style={{ whiteSpace: 'nowrap' }}>
-                              <button
-                                className="adm-icon-btn"
-                                title={isAdmin ? 'Utilizadores Admin não podem ser editados a partir desta interface' : isCurrentUser ? 'Não editável' : 'Editar role'}
-                                disabled={isAdmin || isCurrentUser}
-                                onClick={() => startEdit(p)}
-                              ><Pencil size={16} /></button>
-                              <button
-                                className="adm-icon-btn"
-                                title={isAdmin ? 'Admin tem acesso total' : 'Editar permissões'}
-                                disabled={isAdmin}
-                                onClick={() => setPermModal({ userId: p.id, userName: p.full_name || p.email || p.id, userRole: p.role })}
-                              ><Lock size={15} /></button>
-                              <button
-                                className="adm-icon-btn"
-                                title={isCurrentUser ? 'Não pode forçar reset da própria conta' : 'Forçar reset de password'}
-                                disabled={isCurrentUser}
-                                onClick={() => requestResetPassword(p.id, p.full_name, p.email || '')}
-                              ><Key size={15} /></button>
-                              <button
-                                className="adm-icon-btn"
-                                title={isAdmin ? 'Utilizadores Admin não podem ser eliminados a partir desta interface' : isCurrentUser ? 'Não pode remover a própria conta' : 'Remover'}
-                                disabled={isAdmin || isCurrentUser}
-                                style={{ color: isAdmin || isCurrentUser ? undefined : 'var(--red)' }}
-                                onClick={() => requestDeleteProfile(p.id, p.full_name)}
-                              ><Trash2 size={16} /></button>
-                            </span>
-                          )}
+                          <span style={{ whiteSpace: 'nowrap' }}>
+                            <button
+                              className="adm-icon-btn"
+                              title={isAdmin ? 'Utilizadores Admin não podem ser editados a partir desta interface' : isCurrentUser ? 'Não editável' : 'Editar utilizador'}
+                              disabled={isAdmin || isCurrentUser}
+                              onClick={() => setEditUser(p)}
+                            ><Pencil size={16} /></button>
+                            <button
+                              className="adm-icon-btn"
+                              title={isAdmin ? 'Admin tem acesso total' : 'Editar permissões'}
+                              disabled={isAdmin}
+                              onClick={() => setPermModal({ userId: p.id, userName: p.full_name || p.email || p.id, userRole: p.role })}
+                            ><Lock size={15} /></button>
+                            <button
+                              className="adm-icon-btn"
+                              title={isCurrentUser ? 'Não pode forçar reset da própria conta' : 'Forçar reset de password'}
+                              disabled={isCurrentUser}
+                              onClick={() => requestResetPassword(p.id, p.full_name, p.email || '')}
+                            ><Key size={15} /></button>
+                            <button
+                              className="adm-icon-btn"
+                              title={isAdmin ? 'Utilizadores Admin não podem ser eliminados a partir desta interface' : isCurrentUser ? 'Não pode remover a própria conta' : 'Remover'}
+                              disabled={isAdmin || isCurrentUser}
+                              style={{ color: isAdmin || isCurrentUser ? undefined : 'var(--red)' }}
+                              onClick={() => requestDeleteProfile(p.id, p.full_name)}
+                            ><Trash2 size={16} /></button>
+                          </span>
                         </td>
                       </tr>
                     )
@@ -1201,26 +1115,15 @@ function AdminUtilizadores() {
 
       </div>
 
-      {/* ── Downgrade confirmation modal ── */}
-      <Modal
-        isOpen={!!downgradeConfirm}
-        onClose={() => setDowngradeConfirm(null)}
-        title="Mudar para role de visualização"
-        width={400}
-        footer={
-          <>
-            <button className="adm-btn-secondary" onClick={() => setDowngradeConfirm(null)}>Cancelar</button>
-            <button className="btn-primary btn-lg" onClick={confirmDowngradeAndSave} disabled={saving}>
-              {saving ? 'A guardar…' : 'Continuar'}
-            </button>
-          </>
-        }
-      >
-        <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text)' }}>
-          Este utilizador tem <strong>{downgradeConfirm?.editCount}</strong> permissões de edição (Editar Total / Editar Ops).
-          Ao mudar de role, estas permissões serão convertidas para apenas visualização.
-        </p>
-      </Modal>
+      {/* ── Edit user modal ── */}
+      {editUser && (
+        <EditUserModal
+          open
+          user={editUser}
+          onClose={() => setEditUser(null)}
+          onSaved={() => { void loadProfiles() }}
+        />
+      )}
 
       {/* ── User permissions modal ── */}
       {permModal && (

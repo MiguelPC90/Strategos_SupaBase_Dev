@@ -1,0 +1,55 @@
+@layer components {
+  .eum-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .eum-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .eum-label {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .eum-input {
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    font-size: var(--text-md);
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .eum-input:focus {
+    border-color: var(--navy);
+    box-shadow: 0 0 0 2px rgba(0, 46, 94, 0.1);
+  }
+
+  .eum-input:disabled {
+    background: var(--bg3);
+    color: var(--text2);
+    cursor: not-allowed;
+  }
+
+  .eum-hint {
+    font-size: var(--text-sm);
+    color: var(--text3);
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  .eum-hint-warn {
+    color: var(--amber);
+  }
+}
