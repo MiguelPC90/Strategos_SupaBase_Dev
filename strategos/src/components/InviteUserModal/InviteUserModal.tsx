@@ -4,6 +4,7 @@ import Modal from '../Modal/Modal'
 import UserPermissionsForm, { type PermRow } from '../UserPermissionsForm/UserPermissionsForm'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
+import { extractEdgeFunctionError } from '../../lib/edgeFunctionError'
 
 type InviteRole = 'program_manager' | 'editor' | 'sponsor' | 'stakeholder'
 
@@ -63,8 +64,11 @@ export default function InviteUserModal({ open, onClose, onSuccess }: InviteUser
         },
       })
 
+      if (error) {
+        const structuredMsg = await extractEdgeFunctionError(error)
+        throw new Error(structuredMsg ?? error.message)
+      }
       if (data?.error) throw new Error(data.error as string)
-      if (error) throw error
 
       showToast('Convite enviado.', 'success')
       onSuccess?.()

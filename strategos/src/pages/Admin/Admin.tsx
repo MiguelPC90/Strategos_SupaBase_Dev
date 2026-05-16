@@ -21,6 +21,7 @@ import UserPermissionsForm, { type PermRow } from '../../components/UserPermissi
 import InviteUserModal from '../../components/InviteUserModal/InviteUserModal'
 import ConfirmModal from '../../components/ConfirmModal/ConfirmModal'
 import EditUserModal from '../../components/EditUserModal/EditUserModal'
+import { extractEdgeFunctionError } from '../../lib/edgeFunctionError'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -1000,8 +1001,11 @@ function AdminUtilizadores() {
       const { data, error } = await supabase.functions.invoke('delete-user', {
         body: { userId: deleteConfirm.id },
       })
+      if (error) {
+        const structuredMsg = await extractEdgeFunctionError(error)
+        throw new Error(structuredMsg ?? error.message)
+      }
       if (data?.error) throw new Error(data.error as string)
-      if (error) throw error
       showToast('Utilizador removido.', 'success')
       setDeleteConfirm(null)
       await loadProfiles()
@@ -1023,8 +1027,11 @@ function AdminUtilizadores() {
       const { data, error } = await supabase.functions.invoke('force-reset-password', {
         body: { userId: resetConfirm.id },
       })
+      if (error) {
+        const structuredMsg = await extractEdgeFunctionError(error)
+        throw new Error(structuredMsg ?? error.message)
+      }
       if (data?.error) throw new Error(data.error as string)
-      if (error) throw error
       showToast(`Email de reset enviado para ${resetConfirm.email}`, 'success')
       setResetConfirm(null)
     } catch (err: unknown) {

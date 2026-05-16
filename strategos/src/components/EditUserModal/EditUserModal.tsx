@@ -4,6 +4,7 @@ import Modal from '../Modal/Modal'
 import ConfirmModal from '../ConfirmModal/ConfirmModal'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
+import { extractEdgeFunctionError } from '../../lib/edgeFunctionError'
 import type { Profile, UserRole } from '../../types/index'
 
 interface EditUserModalProps {
@@ -87,8 +88,11 @@ export default function EditUserModal({ open, user, onClose, onSaved }: EditUser
         const { data, error } = await supabase.functions.invoke('update-user-email', {
           body: { userId: user.id, newEmail: email.trim() },
         })
+        if (error) {
+          const structuredMsg = await extractEdgeFunctionError(error)
+          throw new Error(structuredMsg ?? error.message)
+        }
         if (data?.error) throw new Error(data.error as string)
-        if (error) throw error
       }
       if (nameChanged || roleChanged) {
         const updates: Record<string, unknown> = {}
