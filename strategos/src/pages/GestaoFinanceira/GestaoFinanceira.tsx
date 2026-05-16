@@ -16,6 +16,7 @@ import ContratoModal, { type ContractForm } from '../../components/Modals/Contra
 import FacturaModal,  { type InvoiceForm }  from '../../components/Modals/FacturaModal'
 import { invoiceStatusStyle } from '../../lib/invoiceHelpers'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
+import ConfirmModal from '../../components/ConfirmModal/ConfirmModal'
 
 // ── Types ──────────────────────────────────────────────────────────
 interface PlanOption {
@@ -381,6 +382,7 @@ function InvRowMenu({ invId, openId, onOpen, onEdit, onDuplicate, onDelete }: In
   const open   = openId === invId
   const btnRef = useRef<HTMLButtonElement>(null)
   const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
+  const [invoiceConfirm, setInvoiceConfirm] = useState(false)
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -406,7 +408,7 @@ function InvRowMenu({ invId, openId, onOpen, onEdit, onDuplicate, onDelete }: In
       <button className="gf-inv-menu-item" onClick={() => { onOpen(null); onDuplicate() }}>Duplicar</button>
       <button className="gf-inv-menu-item danger" onClick={() => {
         onOpen(null)
-        if (window.confirm('Eliminar esta factura?')) onDelete()
+        setInvoiceConfirm(true)
       }}>Eliminar</button>
     </div>
   )
@@ -415,6 +417,15 @@ function InvRowMenu({ invId, openId, onOpen, onEdit, onDuplicate, onDelete }: In
     <>
       <button ref={btnRef} className="btn-icon" onClick={handleClick} title="Acções"><MoreHorizontal size={16} strokeWidth={1.5} /></button>
       {open && pos !== null && createPortal(menu, document.body)}
+      <ConfirmModal
+        open={invoiceConfirm}
+        title="Eliminar factura"
+        message="Eliminar esta factura? Esta acção não pode ser desfeita."
+        confirmLabel="Eliminar"
+        destructive
+        onConfirm={() => { onDelete(); setInvoiceConfirm(false) }}
+        onCancel={() => setInvoiceConfirm(false)}
+      />
     </>
   )
 }

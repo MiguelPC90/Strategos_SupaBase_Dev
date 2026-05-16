@@ -341,6 +341,7 @@ function AdminProgramas() {
   const [planos,    setPlanos]    = useState<Plano[]>([])
   const [planoLoad, setPlanoLoad] = useState(false)
   const [planoDraft, setPlanoDraft] = useState<DraftPlano | null>(null)
+  const [planoDeleteConfirm, setPlanoDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
 
   const [errMsg, setErrMsg] = useState('')
 
@@ -472,9 +473,14 @@ function AdminProgramas() {
     await loadPlanos(selEixoId)
   }
 
-  async function deletePlano(id: string) {
-    if (!window.confirm('Apagar este plano? Esta acção não pode ser desfeita.')) return
-    await supabase.from('planos').delete().eq('id', id)
+  function requestDeletePlano(id: string, name: string) {
+    setPlanoDeleteConfirm({ id, name })
+  }
+
+  async function handleConfirmDeletePlano() {
+    if (!planoDeleteConfirm) return
+    await supabase.from('planos').delete().eq('id', planoDeleteConfirm.id)
+    setPlanoDeleteConfirm(null)
     if (selEixoId) await loadPlanos(selEixoId)
   }
 
@@ -813,7 +819,7 @@ function AdminProgramas() {
                                 <button className="adm-icon-btn" title="Editar"
                                   onClick={() => setPlanoDraft({ id: p.id, code: p.code, name: p.name, owner: p.owner ?? '', sponsor: p.sponsor ?? '' })}><Pencil size={16} /></button>
                                 <button className="adm-icon-btn" title="Apagar" style={{ color: 'var(--red)' }}
-                                  onClick={() => deletePlano(p.id)}><Trash2 size={16} /></button>
+                                  onClick={() => requestDeletePlano(p.id, p.name)}><Trash2 size={16} /></button>
                               </span>
                             )}
                           </td>
@@ -876,6 +882,15 @@ function AdminProgramas() {
 
       </div>
 
+      <ConfirmModal
+        open={planoDeleteConfirm !== null}
+        title="Apagar plano"
+        message={`Apagar "${planoDeleteConfirm?.name ?? ''}"? Esta acção não pode ser desfeita.`}
+        confirmLabel="Apagar"
+        destructive
+        onConfirm={handleConfirmDeletePlano}
+        onCancel={() => setPlanoDeleteConfirm(null)}
+      />
       {errMsg && (
         <div className="adm-toast" style={{ background: 'var(--red)' }}>{errMsg}</div>
       )}
@@ -1288,6 +1303,7 @@ function CostRolesTab() {
   const [loading,         setLoading]         = useState(true)
   const [draft,           setDraft]           = useState<DraftCostRole | null>(null)
   const [errMsg,          setErrMsg]          = useState('')
+  const [costRoleDeleteConfirm, setCostRoleDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
   const [defaultCurrency,       setDefaultCurrency]       = useState('EUR')
   const [defaultCurrencySymbol, setDefaultCurrencySymbol] = useState('€')
 
@@ -1332,10 +1348,15 @@ function CostRolesTab() {
     await loadCostRoles()
   }
 
-  async function deleteCostRole(id: string) {
-    if (!window.confirm('Remover este cargo?')) return
-    const { error } = await supabase.from('cost_roles').delete().eq('id', id)
-    if (error) { showErr(error.message); return }
+  function requestDeleteCostRole(id: string, name: string) {
+    setCostRoleDeleteConfirm({ id, name })
+  }
+
+  async function handleConfirmDeleteCostRole() {
+    if (!costRoleDeleteConfirm) return
+    const { error } = await supabase.from('cost_roles').delete().eq('id', costRoleDeleteConfirm.id)
+    if (error) { showErr(error.message); setCostRoleDeleteConfirm(null); return }
+    setCostRoleDeleteConfirm(null)
     await loadCostRoles()
   }
 
@@ -1407,7 +1428,7 @@ function CostRolesTab() {
                           <button className="adm-icon-btn" title="Editar"
                             onClick={() => setDraft({ id: cr.id, name: cr.name, cost_per_hour: String(cr.cost_per_hour), currency: cr.currency, is_active: cr.is_active })}><Pencil size={16} /></button>
                           <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
-                            onClick={() => deleteCostRole(cr.id)}><Trash2 size={16} /></button>
+                            onClick={() => requestDeleteCostRole(cr.id, cr.name)}><Trash2 size={16} /></button>
                         </span>
                       )}
                     </td>
@@ -1452,6 +1473,15 @@ function CostRolesTab() {
           </div>
         </div>
       )}
+      <ConfirmModal
+        open={costRoleDeleteConfirm !== null}
+        title="Remover cargo"
+        message={`Remover "${costRoleDeleteConfirm?.name ?? ''}"?`}
+        confirmLabel="Remover"
+        destructive
+        onConfirm={handleConfirmDeleteCostRole}
+        onCancel={() => setCostRoleDeleteConfirm(null)}
+      />
       {errMsg && <div className="adm-toast" style={{ background: 'var(--red)' }}>{errMsg}</div>}
     </>
   )
@@ -1539,6 +1569,7 @@ function PessoasTab() {
   const [loading,         setLoading]         = useState(true)
   const [draft,           setDraft]           = useState<DraftPerson | null>(null)
   const [errMsg,          setErrMsg]          = useState('')
+  const [personDeleteConfirm, setPersonDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
   const [profOpts,        setProfOpts]        = useState<string[]>([])
   const [unitOpts,        setUnitOpts]        = useState<string[]>([])
   const [costRoles,       setCostRoles]       = useState<CostRole[]>([])
@@ -1622,9 +1653,14 @@ function PessoasTab() {
     await loadPeople()
   }
 
-  async function deletePerson(id: string) {
-    if (!window.confirm('Remover esta pessoa?')) return
-    await supabase.from('people').delete().eq('id', id)
+  function requestDeletePerson(id: string, name: string) {
+    setPersonDeleteConfirm({ id, name })
+  }
+
+  async function handleConfirmDeletePerson() {
+    if (!personDeleteConfirm) return
+    await supabase.from('people').delete().eq('id', personDeleteConfirm.id)
+    setPersonDeleteConfirm(null)
     await loadPeople()
   }
 
@@ -1783,7 +1819,7 @@ function PessoasTab() {
                           <button className="adm-icon-btn" title="Editar"
                             onClick={() => setDraft({ id: p.id, name: p.name, email: p.email ?? '', company: p.company ?? '', is_external: p.is_external ?? false, org_unit: p.org_unit ?? '', role: p.role ?? '', cost_role_id: p.cost_role_id ?? '', cost_per_hour_override: p.cost_per_hour_override != null ? String(p.cost_per_hour_override) : '', profile_id: p.profile_id ?? null })}><Pencil size={16} /></button>
                           <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
-                            onClick={() => deletePerson(p.id)}><Trash2 size={16} /></button>
+                            onClick={() => requestDeletePerson(p.id, p.name)}><Trash2 size={16} /></button>
                         </span>
                       )}
                     </td>
@@ -1899,6 +1935,15 @@ function PessoasTab() {
           </div>
         </div>
       )}
+      <ConfirmModal
+        open={personDeleteConfirm !== null}
+        title="Remover pessoa"
+        message={`Remover "${personDeleteConfirm?.name ?? ''}"?`}
+        confirmLabel="Remover"
+        destructive
+        onConfirm={handleConfirmDeletePerson}
+        onCancel={() => setPersonDeleteConfirm(null)}
+      />
       {errMsg && <div className="adm-toast" style={{ background: 'var(--red)' }}>{errMsg}</div>}
     </>
   )
@@ -1944,6 +1989,7 @@ function MoedasTab() {
   const [loading,    setLoading]    = useState(true)
   const [draft,      setDraft]      = useState<DraftCurrency | null>(null)
   const [errMsg,     setErrMsg]     = useState('')
+  const [currencyDeleteConfirm, setCurrencyDeleteConfirm] = useState<{ id: string; code: string } | null>(null)
 
   function showErr(msg: string) { setErrMsg(msg); setTimeout(() => setErrMsg(''), 3000) }
 
@@ -1995,10 +2041,15 @@ function MoedasTab() {
     await loadCurrencies()
   }
 
-  async function deleteCurrency(c: Currency) {
+  function requestDeleteCurrency(c: Currency) {
     if (c.is_default) { showErr('Não é possível apagar a moeda padrão'); return }
-    if (!window.confirm(`Apagar moeda ${c.code}?`)) return
-    await supabase.from('currencies').delete().eq('id', c.id)
+    setCurrencyDeleteConfirm({ id: c.id, code: c.code })
+  }
+
+  async function handleConfirmDeleteCurrency() {
+    if (!currencyDeleteConfirm) return
+    await supabase.from('currencies').delete().eq('id', currencyDeleteConfirm.id)
+    setCurrencyDeleteConfirm(null)
     await loadCurrencies()
   }
 
@@ -2061,7 +2112,7 @@ function MoedasTab() {
                           <button className="adm-icon-btn" title="Editar"
                             onClick={() => setDraft({ id: c.id, code: c.code, name: c.name, symbol: c.symbol || '' })}><Pencil size={16} /></button>
                           <button className="adm-icon-btn" title="Apagar" style={{ color: 'var(--red)' }}
-                            onClick={() => deleteCurrency(c)}><Trash2 size={16} /></button>
+                            onClick={() => requestDeleteCurrency(c)}><Trash2 size={16} /></button>
                         </span>
                       )}
                     </td>
@@ -2108,6 +2159,15 @@ function MoedasTab() {
           </div>
         </div>
       )}
+      <ConfirmModal
+        open={currencyDeleteConfirm !== null}
+        title="Apagar moeda"
+        message={`Apagar moeda ${currencyDeleteConfirm?.code ?? ''}?`}
+        confirmLabel="Apagar"
+        destructive
+        onConfirm={handleConfirmDeleteCurrency}
+        onCancel={() => setCurrencyDeleteConfirm(null)}
+      />
       {errMsg && <div className="adm-toast" style={{ background: 'var(--red)' }}>{errMsg}</div>}
     </>
   )
@@ -2123,6 +2183,7 @@ function CategoriasTab({ programs }: ProgTabProps) {
   const [loading,          setLoading]          = useState(true)
   const [draft,            setDraft]            = useState<DraftCategory | null>(null)
   const [errMsg,           setErrMsg]           = useState('')
+  const [categoryDeleteConfirm, setCategoryDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
 
   function showErr(msg: string) { setErrMsg(msg); setTimeout(() => setErrMsg(''), 3000) }
 
@@ -2177,10 +2238,15 @@ function CategoriasTab({ programs }: ProgTabProps) {
     await loadAll()
   }
 
-  async function deleteCategory(id: string) {
-    if (!window.confirm('Remover esta categoria?')) return
-    // FK cascade handles cost_category_programs; delete category row
+  function requestDeleteCategory(id: string, name: string) {
+    setCategoryDeleteConfirm({ id, name })
+  }
+
+  async function handleConfirmDeleteCategory() {
+    if (!categoryDeleteConfirm) return
+    const { id } = categoryDeleteConfirm
     await supabase.from('cost_categories').delete().eq('id', id)
+    setCategoryDeleteConfirm(null)
     setCategories(prev => prev.filter(c => c.id !== id))
     setCategoryPrograms(prev => { const n = { ...prev }; delete n[id]; return n })
   }
@@ -2270,7 +2336,7 @@ function CategoriasTab({ programs }: ProgTabProps) {
                           <button className="adm-icon-btn" title="Editar"
                             onClick={() => setDraft({ id: cat.id, name: cat.name, is_capex: cat.is_capex, programIds: catProgIds })}><Pencil size={16} /></button>
                           <button className="adm-icon-btn" title="Remover" style={{ color: 'var(--red)' }}
-                            onClick={() => deleteCategory(cat.id)}><Trash2 size={16} /></button>
+                            onClick={() => requestDeleteCategory(cat.id, cat.name)}><Trash2 size={16} /></button>
                         </span>
                       )}
                     </td>
@@ -2320,6 +2386,15 @@ function CategoriasTab({ programs }: ProgTabProps) {
           </div>
         </div>
       )}
+      <ConfirmModal
+        open={categoryDeleteConfirm !== null}
+        title="Remover categoria"
+        message={`Remover "${categoryDeleteConfirm?.name ?? ''}"?`}
+        confirmLabel="Remover"
+        destructive
+        onConfirm={handleConfirmDeleteCategory}
+        onCancel={() => setCategoryDeleteConfirm(null)}
+      />
       {errMsg && <div className="adm-toast" style={{ background: 'var(--red)' }}>{errMsg}</div>}
     </>
   )
@@ -2789,6 +2864,7 @@ function SnapshotsTab() {
   const { showToast } = useToast()
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [loading,   setLoading]   = useState(true)
+  const [snapshotDeleteConfirm, setSnapshotDeleteConfirm] = useState<{ id: string; date: string } | null>(null)
 
   async function loadSnapshots() {
     setLoading(true)
@@ -2813,10 +2889,15 @@ function SnapshotsTab() {
     }
   }
 
-  async function deleteSnapshot(id: string) {
-    if (!window.confirm('Eliminar este snapshot?')) return
-    await supabase.from('snapshots').delete().eq('id', id)
-    setSnapshots(prev => prev.filter(s => s.id !== id))
+  function requestDeleteSnapshot(id: string, snapDate: string) {
+    setSnapshotDeleteConfirm({ id, date: fmtDate(snapDate) })
+  }
+
+  async function handleConfirmDeleteSnapshot() {
+    if (!snapshotDeleteConfirm) return
+    await supabase.from('snapshots').delete().eq('id', snapshotDeleteConfirm.id)
+    setSnapshots(prev => prev.filter(s => s.id !== snapshotDeleteConfirm.id))
+    setSnapshotDeleteConfirm(null)
   }
 
   const mostRecentId = snapshots[0]?.id ?? null
@@ -2863,7 +2944,7 @@ function SnapshotsTab() {
                         title={isMostRecent ? 'Não é possível eliminar o snapshot mais recente' : 'Eliminar'}
                         disabled={isMostRecent}
                         style={{ color: isMostRecent ? undefined : 'var(--red)' }}
-                        onClick={() => deleteSnapshot(s.id)}
+                        onClick={() => requestDeleteSnapshot(s.id, s.snap_date)}
                       ><Trash2 size={16} /></button>
                     </td>
                   </tr>
@@ -2874,6 +2955,15 @@ function SnapshotsTab() {
         </div>
       )}
 
+      <ConfirmModal
+        open={snapshotDeleteConfirm !== null}
+        title="Eliminar snapshot"
+        message={`Eliminar o snapshot de ${snapshotDeleteConfirm?.date ?? ''}?`}
+        confirmLabel="Eliminar"
+        destructive
+        onConfirm={handleConfirmDeleteSnapshot}
+        onCancel={() => setSnapshotDeleteConfirm(null)}
+      />
     </>
   )
 }
