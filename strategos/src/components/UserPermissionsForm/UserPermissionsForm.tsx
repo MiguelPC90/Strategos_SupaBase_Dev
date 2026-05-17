@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { usePrograms } from '../../hooks/usePrograms'
 import { supabase } from '../../lib/supabase'
+import ConfirmModal from '../ConfirmModal/ConfirmModal'
 import type { Plano } from '../../types/index'
 
 export const PERM_PAGES: { key: string; label: string }[] = [
@@ -39,9 +40,10 @@ export default function UserPermissionsForm({ userId, userRole, onChange }: User
   const { programs } = usePrograms()
   const [permissions,     setPermissions]     = useState<PermRow[]>([])
   const [planosByProg,    setPlanosByProg]     = useState<Record<string, Plano[]>>({})
-  const [loading,         setLoading]          = useState(false)
-  const [expandedProgs,   setExpandedProgs]    = useState<Set<string>>(new Set())
-  const [showRestrPicker, setShowRestrPicker]  = useState<Record<string, boolean>>({})
+  const [loading,              setLoading]              = useState(false)
+  const [expandedProgs,        setExpandedProgs]        = useState<Set<string>>(new Set())
+  const [showRestrPicker,      setShowRestrPicker]      = useState<Record<string, boolean>>({})
+  const [removeProgramConfirm, setRemoveProgramConfirm] = useState<{ id: string; name: string } | null>(null)
   const loadingProgs = useRef<Set<string>>(new Set())
 
   useEffect(() => {
@@ -124,9 +126,16 @@ export default function UserPermissionsForm({ userId, userRole, onChange }: User
     loadPlanosForProg(programId)
   }
 
-  function removeProgram(programId: string) {
-    if (!window.confirm('Remover todas as permissões para este programa?')) return
-    setPermissions(perms => perms.filter(p => p.program_id !== programId))
+  function requestRemoveProgram(programId: string) {
+    const prog = programs.find(p => p.id === programId)
+    const name = prog?.name ?? prog?.code ?? 'este programa'
+    setRemoveProgramConfirm({ id: programId, name })
+  }
+
+  function handleConfirmRemoveProgram() {
+    if (!removeProgramConfirm) return
+    setPermissions(perms => perms.filter(p => p.program_id !== removeProgramConfirm.id))
+    setRemoveProgramConfirm(null)
   }
 
   function toggleProg(programId: string) {
@@ -190,7 +199,7 @@ export default function UserPermissionsForm({ userId, userRole, onChange }: User
                 className="upf-icon-btn"
                 style={{ color: 'var(--red)' }}
                 title="Remover todas as permissões para este programa"
-                onClick={e => { e.stopPropagation(); removeProgram(prog.id) }}
+                onClick={e => { e.stopPropagation(); requestRemoveProgram(prog.id) }}
               >
                 <Trash2 size={14} />
               </button>
@@ -301,6 +310,19 @@ export default function UserPermissionsForm({ userId, userRole, onChange }: User
           </div>
         )
       })}
+
+      {removeProgramConfirm && (
+        <ConfirmModal
+          open
+          title="Remover permissões do programa"
+          message={`Pretende remover todas as permissões para o programa "${removeProgramConfirm.name}"? Esta acção não pode ser desfeita.`}
+          confirmLabel="Remover"
+          cancelLabel="Cancelar"
+          destructive
+          onConfirm={handleConfirmRemoveProgram}
+          onCancel={() => setRemoveProgramConfirm(null)}
+        />
+      )}
     </div>
   )
 }
