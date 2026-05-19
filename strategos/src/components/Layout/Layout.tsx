@@ -387,7 +387,7 @@ export default function Layout() {
 
         <button
           className="topbar-icon-btn"
-          onClick={() => navigate('/glossario')}
+          onClick={() => navigate('/glossary')}
           aria-label="Glossário"
           title="Glossário"
         >

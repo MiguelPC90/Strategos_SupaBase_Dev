@@ -19,7 +19,7 @@ import PlanosCatalog from './pages/PlanosCatalog/PlanosCatalog'
 import PlanoPage from './pages/PlanoPage/PlanoPage'
 import ResetPassword from './pages/ResetPassword/ResetPassword'
 import SetupPassword from './pages/SetupPassword/SetupPassword'
-import Glossario from './pages/Glossario/Glossario'
+import Glossary from './pages/Glossary/Glossary'
 import { useAuth } from './hooks/useAuth'
 import { useRole } from './hooks/useRole'
 import { usePermissions } from './hooks/usePermissions'
@@ -160,7 +160,7 @@ export default function App() {
           <Route path="budget"             element={<PageGuard page="gestao-financeira"> <BudgetPage />        </PageGuard>} />
           <Route path="admin"              element={<AdminGuard><Admin /></AdminGuard>} />
           <Route path="profile"           element={<Profile />} />
-          <Route path="glossario"         element={<Glossario />} />
+          <Route path="glossary"          element={<Glossary />} />
           <Route path="planos"            element={<PlanosCatalog />} />
           <Route path="planos/:planoId"   element={<PlanoPage />} />
         </Route>
