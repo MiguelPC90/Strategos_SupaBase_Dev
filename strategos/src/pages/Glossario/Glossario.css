@@ -1,0 +1,228 @@
+@layer components {
+  .glossario-page {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    min-height: calc(100vh - 64px);
+  }
+
+  /* ── Sidebar ── */
+  .glossario-sidebar {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+
+  .glossario-sidebar-title {
+    font-family: var(--font-serif);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--stratgos-ink-900);
+    margin: 0 0 16px 0;
+  }
+
+  .glossario-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .glossario-nav-item {
+    text-align: left;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    color: var(--stratgos-ink-500);
+    font: inherit;
+    font-size: var(--text-sm);
+    cursor: pointer;
+    border-radius: 0 6px 6px 0;
+    transition: all 120ms ease;
+  }
+
+  .glossario-nav-item:hover {
+    background: var(--stratgos-surface-2);
+    color: var(--stratgos-ink-700);
+  }
+
+  .glossario-nav-item.is-active {
+    background: var(--stratgos-ember-soft);
+    border-left-color: var(--stratgos-ember);
+    color: var(--stratgos-ink-900);
+    font-weight: 500;
+  }
+
+  /* ── Content ── */
+  .glossario-content {
+    min-width: 0;
+  }
+
+  .glossario-header {
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--stratgos-ink-100);
+  }
+
+  .glossario-title {
+    font-family: var(--font-serif);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    color: var(--stratgos-ink-900);
+    margin: 0 0 12px 0;
+  }
+
+  .glossario-intro {
+    font-size: var(--text-base);
+    color: var(--stratgos-ink-500);
+    margin: 0 0 20px 0;
+    max-width: 640px;
+  }
+
+  .glossario-search {
+    position: relative;
+    max-width: 480px;
+  }
+
+  .glossario-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--stratgos-ink-300);
+    pointer-events: none;
+  }
+
+  .glossario-search-input {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    font: inherit;
+    font-size: var(--text-sm);
+    background: var(--stratgos-surface);
+    border: 1px solid var(--stratgos-ink-100);
+    border-radius: 8px;
+    color: var(--stratgos-ink-900);
+    transition: all 120ms ease;
+  }
+
+  .glossario-search-input:focus {
+    outline: none;
+    border-color: var(--stratgos-ember);
+    box-shadow: 0 0 0 3px var(--stratgos-ember-soft);
+  }
+
+  .glossario-search-input::placeholder { color: var(--stratgos-ink-300); }
+
+  .glossario-empty {
+    padding: 32px;
+    text-align: center;
+    color: var(--stratgos-ink-500);
+    font-size: var(--text-sm);
+  }
+
+  /* ── Sections ── */
+  .glossario-section {
+    margin-bottom: 48px;
+    scroll-margin-top: 80px;
+  }
+
+  .glossario-section-title {
+    font-family: var(--font-serif);
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--stratgos-ink-900);
+    margin: 0 0 8px 0;
+  }
+
+  .glossario-section-intro {
+    font-size: var(--text-sm);
+    color: var(--stratgos-ink-500);
+    margin: 0 0 20px 0;
+    font-style: italic;
+  }
+
+  /* ── Terms ── */
+  .glossario-terms {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+  }
+
+  .glossario-term {
+    padding: 14px 18px;
+    background: var(--stratgos-surface);
+    border: 1px solid var(--stratgos-ink-100);
+    border-radius: var(--r);
+    transition: border-color 120ms ease;
+  }
+
+  .glossario-term:hover {
+    border-color: var(--stratgos-ink-200);
+  }
+
+  .glossario-term-name {
+    font-weight: 600;
+    font-size: var(--text-base);
+    color: var(--stratgos-ink-900);
+    margin: 0 0 4px 0;
+  }
+
+  .glossario-term-body {
+    margin: 0;
+  }
+
+  .glossario-term-definition {
+    font-size: var(--text-sm);
+    color: var(--stratgos-ink-700);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .glossario-term-formula {
+    margin: 6px 0 0 0;
+    font-size: var(--text-sm);
+    color: var(--stratgos-ink-500);
+  }
+
+  .glossario-term-formula-label {
+    font-weight: 500;
+    color: var(--stratgos-ink-700);
+  }
+
+  .glossario-term-formula code {
+    background: var(--stratgos-surface-2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    color: var(--stratgos-ink-900);
+  }
+
+  .glossario-term-notes {
+    margin: 6px 0 0 0;
+    font-size: var(--text-xs);
+    color: var(--stratgos-ink-500);
+    font-style: italic;
+  }
+
+  @media (max-width: 768px) {
+    .glossario-page {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .glossario-sidebar {
+      position: static;
+      max-height: none;
+      border-bottom: 1px solid var(--stratgos-ink-100);
+      padding-bottom: 16px;
+    }
+  }
+}

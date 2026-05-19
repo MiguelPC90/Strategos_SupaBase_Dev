@@ -2,7 +2,7 @@ import './Layout.css'
 import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react'
 import SplashScreen from '../SplashScreen/SplashScreen'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Star, Search } from 'lucide-react'
+import { Star, Search, HelpCircle } from 'lucide-react'
 import Badge from '../Badge/Badge'
 import { useAuth } from '../../hooks/useAuth'
 import { useRole } from '../../hooks/useRole'
@@ -383,6 +383,15 @@ export default function Layout() {
         >
           <Search size={15} />
           <span className="topbar-search-hint">⌘K</span>
+        </button>
+
+        <button
+          className="topbar-icon-btn"
+          onClick={() => navigate('/glossario')}
+          aria-label="Glossário"
+          title="Glossário"
+        >
+          <HelpCircle size={18} />
         </button>
 
         <div style={{ position: 'relative' }} ref={profileRef}>
