@@ -5,6 +5,8 @@ import { TrendingUp, TrendingDown, AlertTriangle, ChevronRight } from 'lucide-re
 import Spinner from '../../components/Spinner/Spinner'
 import SmartKpi from '../../components/Kpi/SmartKpi'
 import ContagemKpi from '../../components/Kpi/ContagemKpi'
+import TermTooltip from '../../components/TermTooltip/TermTooltip'
+import { getActivityStateTermId } from '../../lib/glossary'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LabelList,
@@ -380,7 +382,11 @@ const DETAIL_COLS: Column[] = [
       const state = row._estado as string | null
       if (!state) return <span style={{ color: 'var(--text3)' }}>—</span>
       const cls = ESTADO_CLASS[state] ?? ''
-      return <span className={`status-pill ${cls}`}>{state}</span>
+      return (
+        <TermTooltip term={getActivityStateTermId(state) || ''}>
+          <span className={`status-pill ${cls}`}>{state}</span>
+        </TermTooltip>
+      )
     },
   },
   { key: 'total',      label: 'Total',         sortable: true, width: '70px'  },
@@ -1095,9 +1101,9 @@ export default function Dashboard() {
             </div>
             <div className="executive-brief-card kpis-card">
               <div className="executive-kpi-grid">
-                <SmartKpi label="Grau de Execução"    value={grauExecVal}  delta={grauExecDelta}  target={grauExecTarget} />
-                <SmartKpi label="Concretização Geral" value={concGeralVal} delta={concGeralDelta} target={concGeralTarget} />
-                <SmartKpi label="Conc. à Data"        value={concDataVal}  delta={concDataDelta}  target={100} />
+                <SmartKpi label="Grau de Execução"    tooltipTerm="grau-execucao"       value={grauExecVal}  delta={grauExecDelta}  target={grauExecTarget} />
+                <SmartKpi label="Concretização Geral" tooltipTerm="concretizacao-geral" value={concGeralVal} delta={concGeralDelta} target={concGeralTarget} />
+                <SmartKpi label="Conc. à Data"        tooltipTerm="concretizacao-data"  value={concDataVal}  delta={concDataDelta}  target={100} />
               </div>
               <div className="contagem-kpi-grid">
                 <ContagemKpi value={m.concluidas} total={m.total} label="concluídas" delta={delta7Conc}     deltaVariant="good"    deltaLabel={delta7dLabel} />

@@ -352,7 +352,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
               )}
               {openAttention.length > 0 && (
                 <div className="ve-attn-group">
-                  <span className="ve-attn-group-lbl">Pontos de Atenção PDS</span>
+                  <span className="ve-attn-group-lbl">Pontos de Atenção</span>
                   <ul className="ve-attn-list">
                     {openAttention.slice(0, 5).map(item => (
                       <li key={item.id} className="ve-attn-item ve-attn-pds">

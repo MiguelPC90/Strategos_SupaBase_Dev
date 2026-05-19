@@ -308,6 +308,7 @@ export default function Evolucao() {
           <KpiCard
             variant="hero"
             label="Grau de Execução"
+            tooltipTerm="grau-execucao"
             value={lastKpi ? `${lastKpi.exec_media.toFixed(1)}%` : '—'}
             color={dExec !== null ? deltaColor(dExec, true) : 'text'}
             delta={dExec}

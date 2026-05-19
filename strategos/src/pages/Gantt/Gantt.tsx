@@ -4,6 +4,8 @@ import { ChevronDown, ChevronRight, X, CheckCircle2, CircleDot, AlertCircle, XCi
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import EmptyState from '../../components/EmptyState/EmptyState'
+import TermTooltip from '../../components/TermTooltip/TermTooltip'
+import { getActivityStateTermId } from '../../lib/glossary'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useThresholdsMap } from '../../hooks/useThresholdsMap'
@@ -47,7 +49,11 @@ const PILL_CLASS: Record<RowState, string> = {
 }
 
 function StatusPill({ state }: { state: RowState }) {
-  return <span className={`status-pill ${PILL_CLASS[state]}`}>{state}</span>
+  return (
+    <TermTooltip term={getActivityStateTermId(state) || ''}>
+      <span className={`status-pill ${PILL_CLASS[state]}`}>{state}</span>
+    </TermTooltip>
+  )
 }
 
 function highlightMatch(text: string, query: string): ReactNode {

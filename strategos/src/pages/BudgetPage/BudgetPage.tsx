@@ -594,18 +594,19 @@ export default function BudgetPage() {
     <div className="bp-page">
       {/* ── KPI row ── */}
       <div className="gf-kpi-row">
-        <KpiCard variant="hero" label="Orçamento"         value={fmtEur(bpOrc, defaultSymbol)} color="navy" />
-        <KpiCard variant="hero" label="Adjudicado"         value={fmtEur(bpAdj, defaultSymbol)} color="blue"
+        <KpiCard variant="hero" label="Orçamento"         tooltipTerm="orcamento"            value={fmtEur(bpOrc, defaultSymbol)} color="navy" />
+        <KpiCard variant="hero" label="Adjudicado"         tooltipTerm="adjudicado"           value={fmtEur(bpAdj, defaultSymbol)} color="blue"
           subtitle={`${bpPctAdj.toFixed(1)}% do valor orçamentado`} />
-        <KpiCard variant="hero" label="Pago"               value={fmtEur(kpis.pago, defaultSymbol)} color="green"
+        <KpiCard variant="hero" label="Pago"               tooltipTerm="pago"                 value={fmtEur(kpis.pago, defaultSymbol)} color="green"
           subtitle={`${bpPctPago.toFixed(1)}% do valor adjudicado`} />
-        <KpiCard variant="hero" label="Em Pagamento"       value={fmtEur(kpis.emPagamento, defaultSymbol)} color="amber"
+        <KpiCard variant="hero" label="Em Pagamento"       tooltipTerm="em-pagamento"         value={fmtEur(kpis.emPagamento, defaultSymbol)} color="amber"
           subtitle={`${bpPctEmPag.toFixed(1)}% do valor adjudicado`} />
-        <KpiCard variant="hero" label="Por Facturar"       value={fmtEur(Math.max(0, kpis.porFacturar), defaultSymbol)} color="text"
+        <KpiCard variant="hero" label="Por Facturar"       tooltipTerm="por-facturar"         value={fmtEur(Math.max(0, kpis.porFacturar), defaultSymbol)} color="text"
           subtitle={`${bpPctPorFac.toFixed(1)}% do valor adjudicado`} />
         <KpiCard
           variant="hero"
           label="Orçamento Disponível"
+          tooltipTerm="orcamento-disponivel"
           value={fmtEur(Math.abs(bpDisponivel), defaultSymbol)}
           color={bpOverBudget ? 'red' : 'green'}
           subtitle={bpOverBudget

@@ -1002,18 +1002,19 @@ export default function GestaoFinanceira({
         <>
           {/* KPI row */}
           <div className="gf-kpi-row">
-            <KpiCard variant="hero" label="Orçamento"       value={fmtEur(gfOrc, defaultSymbol)} color="navy" />
-            <KpiCard variant="hero" label="Adjudicado"       value={fmtEur(gfAdj, defaultSymbol)} color="blue"
+            <KpiCard variant="hero" label="Orçamento"       tooltipTerm="orcamento"            value={fmtEur(gfOrc, defaultSymbol)} color="navy" />
+            <KpiCard variant="hero" label="Adjudicado"       tooltipTerm="adjudicado"           value={fmtEur(gfAdj, defaultSymbol)} color="blue"
               subtitle={`${gfPctAdj.toFixed(1)}% do valor orçamentado`} />
-            <KpiCard variant="hero" label="Pago"             value={fmtEur(kpis.pago, defaultSymbol)} color="green"
+            <KpiCard variant="hero" label="Pago"             tooltipTerm="pago"                 value={fmtEur(kpis.pago, defaultSymbol)} color="green"
               subtitle={`${gfPctPago.toFixed(1)}% do valor adjudicado`} />
-            <KpiCard variant="hero" label="Em Pagamento"     value={fmtEur(kpis.emPagamento, defaultSymbol)} color="amber"
+            <KpiCard variant="hero" label="Em Pagamento"     tooltipTerm="em-pagamento"         value={fmtEur(kpis.emPagamento, defaultSymbol)} color="amber"
               subtitle={`${gfPctEmPag.toFixed(1)}% do valor adjudicado`} />
-            <KpiCard variant="hero" label="Por Facturar"     value={fmtEur(Math.max(0, kpis.porFacturar), defaultSymbol)} color="text"
+            <KpiCard variant="hero" label="Por Facturar"     tooltipTerm="por-facturar"         value={fmtEur(Math.max(0, kpis.porFacturar), defaultSymbol)} color="text"
               subtitle={`${gfPctPorFac.toFixed(1)}% do valor adjudicado`} />
             <KpiCard
               variant="hero"
               label="Orçamento Disponível"
+              tooltipTerm="orcamento-disponivel"
               value={fmtEur(Math.abs(gfDisponivel), defaultSymbol)}
               color={gfOverBudget ? 'red' : 'green'}
               subtitle={gfOverBudget

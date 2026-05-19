@@ -555,9 +555,9 @@ export default function PontoSituacao() {
                 </div>
                 <div className="pds-brief-card kpis-card">
                   <div className="executive-kpi-grid">
-                    <SmartKpi label="Grau de Execução"    value={kpi.pct}       target={kpi.pctPrev} />
-                    <SmartKpi label="Concretização Geral" value={kpi.geralReal} target={kpi.geralObj} />
-                    <SmartKpi label="Conc. à Data"        value={kpi.aDataReal} target={100} />
+                    <SmartKpi label="Grau de Execução"    tooltipTerm="grau-execucao"       value={kpi.pct}       target={kpi.pctPrev} />
+                    <SmartKpi label="Concretização Geral" tooltipTerm="concretizacao-geral" value={kpi.geralReal} target={kpi.geralObj} />
+                    <SmartKpi label="Conc. à Data"        tooltipTerm="concretizacao-data"  value={kpi.aDataReal} target={100} />
                   </div>
                   <div className="contagem-kpi-grid">
                     <ContagemKpi value={kpi.concluidas} total={kpi.total} label="concluídas" deltaVariant="good" />

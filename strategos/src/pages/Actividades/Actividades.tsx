@@ -4,7 +4,9 @@ import { Link2, ChevronDown, ChevronRight, X, Check, CheckCircle2, CircleDot, Al
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
+import TermTooltip from '../../components/TermTooltip/TermTooltip'
 import EmptyState from '../../components/EmptyState/EmptyState'
+import { getActivityStateTermId } from '../../lib/glossary'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useThresholdsMap } from '../../hooks/useThresholdsMap'
@@ -444,7 +446,9 @@ export default function Actividades() {
             </div>
           </td>
           <td className="act-td-c">
-            <span className={`status-pill ${STATE_PILL_CLASS[n1state]}`}>{STATE_LABEL[n1state]}</span>
+            <TermTooltip term={getActivityStateTermId(STATE_LABEL[n1state]) || ''}>
+              <span className={`status-pill ${STATE_PILL_CLASS[n1state]}`}>{STATE_LABEL[n1state]}</span>
+            </TermTooltip>
           </td>
           <CdaCell {...n1stats} />
           <td className="act-td-c"><DualBar exec={n1stats.exec} execObj={n1stats.exec_obj} /></td>
@@ -472,7 +476,9 @@ export default function Actividades() {
               </div>
             </td>
             <td className="act-td-c">
-              <span className={`status-pill ${STATE_PILL_CLASS[n2state]}`}>{STATE_LABEL[n2state]}</span>
+              <TermTooltip term={getActivityStateTermId(STATE_LABEL[n2state]) || ''}>
+                <span className={`status-pill ${STATE_PILL_CLASS[n2state]}`}>{STATE_LABEL[n2state]}</span>
+              </TermTooltip>
             </td>
             <CdaCell {...n2stats} />
             <td className="act-td-c"><DualBar exec={n2stats.exec} execObj={n2stats.exec_obj} /></td>
@@ -500,7 +506,9 @@ export default function Actividades() {
                     </div>
                   </td>
                   <td className="act-td-c">
-                    <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
+                    <TermTooltip term={getActivityStateTermId(STATE_LABEL[ast]) || ''}>
+                      <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
+                    </TermTooltip>
                   </td>
                   <td className="act-td-c" />
                   <td className="act-td-c"><DualBar exec={a.pct} execObj={pctPrev} /></td>
@@ -531,7 +539,9 @@ export default function Actividades() {
                     </div>
                   </td>
                   <td className="act-td-c">
-                    <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
+                    <TermTooltip term={getActivityStateTermId(STATE_LABEL[ast]) || ''}>
+                      <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
+                    </TermTooltip>
                   </td>
                   <td className="act-td-c" />
                   <td className="act-td-c"><DualBar exec={a.pct} execObj={pctPrev} /></td>
@@ -559,7 +569,9 @@ export default function Actividades() {
                 </div>
               </td>
               <td className="act-td-c">
-                <span className={`status-pill ${STATE_PILL_CLASS[n3state]}`}>{STATE_LABEL[n3state]}</span>
+                <TermTooltip term={getActivityStateTermId(STATE_LABEL[n3state]) || ''}>
+                  <span className={`status-pill ${STATE_PILL_CLASS[n3state]}`}>{STATE_LABEL[n3state]}</span>
+                </TermTooltip>
               </td>
               <CdaCell {...n3stats} />
               <td className="act-td-c"><DualBar exec={n3stats.exec} execObj={n3stats.exec_obj} /></td>
@@ -585,7 +597,9 @@ export default function Actividades() {
                   </div>
                 </td>
                 <td className="act-td-c">
-                  <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
+                  <TermTooltip term={getActivityStateTermId(STATE_LABEL[ast]) || ''}>
+                    <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
+                  </TermTooltip>
                 </td>
                 <td className="act-td-c" />
                 <td className="act-td-c"><DualBar exec={a.pct} execObj={pctPrev} /></td>
@@ -617,7 +631,9 @@ export default function Actividades() {
             </div>
           </td>
           <td className="act-td-c">
-            <span className={`status-pill ${STATE_PILL_CLASS[n0state]}`}>{STATE_LABEL[n0state]}</span>
+            <TermTooltip term={getActivityStateTermId(STATE_LABEL[n0state]) || ''}>
+              <span className={`status-pill ${STATE_PILL_CLASS[n0state]}`}>{STATE_LABEL[n0state]}</span>
+            </TermTooltip>
           </td>
           <CdaCell {...n0stats} />
           <td className="act-td-c"><DualBar exec={n0stats.exec} execObj={n0stats.exec_obj} /></td>
@@ -643,7 +659,7 @@ export default function Actividades() {
         <KpiCard variant="hero" label="Em dia"            value={summary.em_dia}      color="blue" />
         <KpiCard variant="hero" label="Em risco"          value={summary.em_risco}    color="amber" />
         <KpiCard variant="hero" label="Em atraso"         value={summary.em_atraso}   color="red" />
-        <KpiCard variant="hero" label="Grau de Execução"  value={`${Math.round(summary.exec)}%`} color="navy" subtitle={`Objectivo: ${Math.round(summary.exec_obj)}%`} />
+        <KpiCard variant="hero" label="Grau de Execução" tooltipTerm="grau-execucao" value={`${Math.round(summary.exec)}%`} color="navy" subtitle={`Objectivo: ${Math.round(summary.exec_obj)}%`} />
       </div>
 
       <Card title="Actividades">

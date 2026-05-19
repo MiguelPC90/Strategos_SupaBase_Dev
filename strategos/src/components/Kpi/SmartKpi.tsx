@@ -1,5 +1,6 @@
 import './SmartKpi.css'
 import { TrendingUp, TrendingDown } from 'lucide-react'
+import TermTooltip from '../TermTooltip/TermTooltip'
 
 export interface SmartKpiProps {
   label: string
@@ -7,14 +8,21 @@ export interface SmartKpiProps {
   delta?: number | null
   target?: number | null
   className?: string
+  tooltipTerm?: string
 }
 
-export default function SmartKpi({ label, value, delta = null, target = null }: SmartKpiProps) {
+export default function SmartKpi({ label, value, delta = null, target = null, tooltipTerm }: SmartKpiProps) {
   const abs = delta !== null ? Math.abs(delta) : 0
   const cls = delta === null || abs < 0.05 ? 'neutral' : delta > 0 ? 'positive' : 'negative'
   return (
     <div className="executive-kpi">
-      <div className="executive-kpi-label t-label">{label}</div>
+      {tooltipTerm ? (
+        <TermTooltip term={tooltipTerm}>
+          <div className="executive-kpi-label t-label">{label}</div>
+        </TermTooltip>
+      ) : (
+        <div className="executive-kpi-label t-label">{label}</div>
+      )}
       <div className="executive-kpi-value-row">
         <span className="executive-kpi-value t-headline t-tabular">
           {value !== null ? `${value.toFixed(1)}%` : '—'}

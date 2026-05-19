@@ -1,6 +1,7 @@
 import './KpiCard.css'
 import { type ReactNode } from 'react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
+import TermTooltip from '../TermTooltip/TermTooltip'
 
 type KpiColor = 'navy' | 'green' | 'blue' | 'red' | 'amber' | 'text'
 
@@ -19,6 +20,7 @@ interface KpiCardProps {
   deltaVariant?: 'positive' | 'negative'
   /** Suffix appended to the delta number in the chip (e.g. "pp", " actividades"). */
   deltaSuffix?: string
+  tooltipTerm?: string
 }
 
 const colorMap: Record<KpiColor, string> = {
@@ -51,13 +53,20 @@ export default function KpiCard({
   delta = null,
   deltaVariant = 'positive',
   deltaSuffix = '',
+  tooltipTerm,
 }: KpiCardProps) {
   if (variant === 'hero') {
     const hasDelta = delta !== null
     const sign = hasDelta && delta! > 0 ? '+' : ''
     return (
       <div className="kpi-card kpi-card-hero">
-        <span className="kpi-label t-label">{label}</span>
+        {tooltipTerm ? (
+          <TermTooltip term={tooltipTerm}>
+            <span className="kpi-label t-label">{label}</span>
+          </TermTooltip>
+        ) : (
+          <span className="kpi-label t-label">{label}</span>
+        )}
         <div className="kpi-value-row">
           <span className="kpi-value-hero t-headline-sm t-tabular" style={{ color: colorMap[color] }}>
             {value ?? '—'}
@@ -80,7 +89,13 @@ export default function KpiCard({
 
   return (
     <div className="kpi-card">
-      <span className="kpi-label">{label}</span>
+      {tooltipTerm ? (
+        <TermTooltip term={tooltipTerm}>
+          <span className="kpi-label">{label}</span>
+        </TermTooltip>
+      ) : (
+        <span className="kpi-label">{label}</span>
+      )}
       <span className="kpi-value t-title" style={{ color: colorMap[color] }}>
         {value ?? '—'}
       </span>
