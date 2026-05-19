@@ -24,7 +24,7 @@ import { generateStatusNarrative } from '../../lib/statusNarrative'
 const TABS = [
   { id: 'visao',        label: 'Visão Executiva' },
   { id: 'actividades',  label: 'Actividades'     },
-  { id: 'pds',          label: 'PDS'             },
+  { id: 'pds',          label: 'Ponto de Situação' },
   { id: 'riscos',       label: 'Riscos'          },
   { id: 'financeira',   label: 'Financeira'      },
   { id: 'recursos',     label: 'Recursos'        },

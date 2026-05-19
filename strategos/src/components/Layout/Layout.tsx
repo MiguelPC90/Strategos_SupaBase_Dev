@@ -78,7 +78,7 @@ const NAV_VIEW: NavItemConfig[] = [
   },
   {
     to: '/ponto-situacao',
-    label: 'Ponto de situação',
+    label: 'Ponto de Situação',
     icon: (
       <svg viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="10" />
