@@ -269,7 +269,7 @@
 
   .pc-prog-bar {
     height: 100%;
-    background: var(--stratgos-ember);
+    background: var(--stratgos-ink-300);   /* default — overridden inline based on estado */
     border-radius: 3px;
     transition: width 0.3s;
   }

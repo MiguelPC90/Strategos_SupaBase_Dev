@@ -49,11 +49,25 @@ function FavoriteToggle({ planoId: _planoId, isFav, canAdd, onToggle }: Favorite
   )
 }
 
-function MiniProgressBar({ pct }: { pct: number }) {
+const PROG_BAR_COLORS: Record<string, string> = {
+  'Concluída': 'var(--status-done)',
+  'Em dia':    'var(--status-ontrack)',
+  'Em risco':  'var(--status-risk)',
+  'Em atraso': 'var(--status-late)',
+}
+
+function MiniProgressBar({ pct, estado }: { pct: number; estado?: string }) {
+  const color = estado && PROG_BAR_COLORS[estado] ? PROG_BAR_COLORS[estado] : 'var(--stratgos-ink-300)'
   return (
     <div className="pc-prog-wrap">
       <div className="pc-prog-bar-outer">
-        <div className="pc-prog-bar" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+        <div
+          className="pc-prog-bar"
+          style={{
+            width: `${Math.min(100, Math.max(0, pct))}%`,
+            background: color,
+          }}
+        />
       </div>
       <span className="pc-prog-label">{Math.round(pct)}%</span>
     </div>
@@ -487,7 +501,7 @@ export default function PlanosCatalog() {
                     <span className={statusPillClass(p.status)}>{p.status}</span>
                   </td>
                   <td className="pc-td pc-td-bar">
-                    <MiniProgressBar pct={p.pct} />
+                    <MiniProgressBar pct={p.pct} estado={p.status} />
                   </td>
                   <td className="pc-td" style={{ padding: '8px 4px' }}>
                     {canEdit && (
@@ -539,7 +553,7 @@ export default function PlanosCatalog() {
                   {p.eixo?.name && <span className="pc-card-eixo">{p.eixo.name}</span>}
                 </div>
               )}
-              <MiniProgressBar pct={p.pct} />
+              <MiniProgressBar pct={p.pct} estado={p.status} />
               <div className="pc-card-footer">
                 <span className={statusPillClass(p.status)}>{p.status}</span>
                 <div className="pc-card-people">
