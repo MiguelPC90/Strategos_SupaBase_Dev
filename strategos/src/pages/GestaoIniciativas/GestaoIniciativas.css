@@ -808,7 +808,7 @@
     border-radius: 4px;
     padding: 0;
   }
-  .gi-dep-remove:hover { color: var(--status-late); background: rgba(184, 74, 63, 0.08); }
+  .gi-dep-remove:hover { color: var(--status-late); background: rgba(155, 45, 45, 0.08); }
 
   .gi-dep-confirm {
     display: inline-flex;

@@ -22,7 +22,7 @@ export const colors = {
   /** Semantic palette — status-driven charts and pills ONLY */
   status: {
     ontrack: '#4A7C59',
-    late:    '#B84A3F',
+    late:    '#9B2D2D',
     done:    '#2F5F8F',
     risk:    '#C89A3C',
   },
