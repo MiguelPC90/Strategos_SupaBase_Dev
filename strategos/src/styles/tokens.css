@@ -80,9 +80,9 @@
   --navy:    var(--stratgos-ink-800);   /* sidebar — deeper navy for authority (v5) */
   --navy2:   #2A3A5C;            /* legacy; near-zero usage; do not spread */
   --green:   var(--status-ontrack);
-  --bg:      var(--stratgos-parchment);
-  --bg2:     var(--stratgos-cream);
-  --bg3:     #EDE7D8;            /* tertiary surface; hover states           */
+  --bg:      var(--stratgos-bg);          /* Forge Deep v5 page background */
+  --bg2:     var(--stratgos-surface);     /* Forge Deep v5 card surface */
+  --bg3:     var(--stratgos-surface-2);   /* Forge Deep v5 tertiary surface; hover states */
   --text:    var(--stratgos-ink-900);
   --text2:   var(--stratgos-ink-500);
   --text3:   var(--stratgos-ink-300);

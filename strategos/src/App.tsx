@@ -20,6 +20,8 @@ import PlanoPage from './pages/PlanoPage/PlanoPage'
 import ResetPassword from './pages/ResetPassword/ResetPassword'
 import SetupPassword from './pages/SetupPassword/SetupPassword'
 import Glossary from './pages/Glossary/Glossary'
+import SplashScreen from './components/SplashScreen/SplashScreen'
+import NotFound from './pages/NotFound/NotFound'
 import { useAuth } from './hooks/useAuth'
 import { useRole } from './hooks/useRole'
 import { usePermissions } from './hooks/usePermissions'
@@ -103,26 +105,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
 
   if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--bg3)',
-      }}>
-        <span style={{
-          width: 28,
-          height: 28,
-          border: '3px solid var(--border2)',
-          borderTopColor: 'var(--navy)',
-          borderRadius: '50%',
-          display: 'inline-block',
-          animation: 'spin 0.7s linear infinite',
-        }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    )
+    return <SplashScreen />
   }
 
   if (!user) return <Login />
@@ -163,6 +146,7 @@ export default function App() {
           <Route path="glossary"          element={<Glossary />} />
           <Route path="planos"            element={<PlanosCatalog />} />
           <Route path="planos/:planoId"   element={<PlanoPage />} />
+          <Route path="*"               element={<NotFound />} />
         </Route>
       </Routes>
     </BrowserRouter>
