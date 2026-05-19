@@ -34,6 +34,13 @@
     color: var(--text);
   }
 
+  .kpi-value-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
   .kpi-chip {
     display: inline-flex;
     align-items: center;
@@ -48,9 +55,9 @@
     margin-top: 2px;
   }
 
-  .kpi-chip-good    { background: var(--green-bg); color: var(--status-ontrack); }
-  .kpi-chip-bad     { background: var(--red-bg);   color: var(--status-late);    }
-  .kpi-chip-neutral { background: var(--bg3);      color: var(--text2);          }
+  .kpi-chip-good    { background: var(--status-ontrack-tint); color: var(--status-ontrack); }
+  .kpi-chip-bad     { background: var(--status-late-tint);    color: var(--status-late);    }
+  .kpi-chip-neutral { background: var(--bg3);                 color: var(--text2);          }
 
   /* KPI grid helpers */
   .kpi-2col {

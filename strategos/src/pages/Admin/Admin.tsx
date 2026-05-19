@@ -1871,7 +1871,7 @@ function AdminRecursos() {
             className={`adm-tab${tab === t ? ' active' : ''}`}
             onClick={() => setTab(t)}
           >
-            {t === 'perfis' ? 'Perfis' : t === 'unidades' ? 'Unidades' : t === 'cargos' ? 'Cargos' : 'Pessoas'}
+            {t === 'perfis' ? 'Perfis' : t === 'unidades' ? 'Unidades' : t === 'cargos' ? 'Cargos' : 'Recursos'}
           </button>
         ))}
       </div>

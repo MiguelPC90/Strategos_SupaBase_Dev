@@ -29,9 +29,9 @@
     padding: 2px 6px;
     border-radius: 4px;
   }
-  .executive-kpi-delta.positive { background: #dcfce7; color: #166534; }
-  .executive-kpi-delta.negative { background: #fee2e2; color: #991b1b; }
-  .executive-kpi-delta.neutral  { background: var(--bg3); color: var(--text3); }
+  .executive-kpi-delta.positive { background: var(--status-ontrack-tint); color: var(--status-ontrack); }
+  .executive-kpi-delta.negative { background: var(--status-late-tint);    color: var(--status-late);    }
+  .executive-kpi-delta.neutral  { background: var(--bg3);                 color: var(--text3);          }
   .executive-kpi-target {
     font-size: var(--text-sm);
     color: var(--stratgos-ink-400, var(--text3));

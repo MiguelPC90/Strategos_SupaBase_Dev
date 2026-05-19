@@ -14,7 +14,7 @@ export const PERM_PAGES: { key: string; label: string }[] = [
   { key: 'exec-financeira',     label: 'Exec. Financeira'   },
   { key: 'recursos',            label: 'Recursos'           },
   { key: 'evolucao',            label: 'Evolução'           },
-  { key: 'gestao-iniciativas',  label: 'Gestão Iniciativas' },
+  { key: 'gestao-iniciativas',  label: 'Gestão Actividades' },
   { key: 'gestao-pds',          label: 'Gestão PDS'         },
   { key: 'gestao-riscos',       label: 'Gestão Riscos'      },
   { key: 'gestao-financeira',   label: 'Gestão Financeira'  },

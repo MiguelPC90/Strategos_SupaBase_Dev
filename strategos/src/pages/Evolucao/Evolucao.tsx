@@ -307,7 +307,7 @@ export default function Evolucao() {
         <div className="evol-kpi-row">
           <KpiCard
             variant="hero"
-            label="Execução média"
+            label="Grau de Execução"
             value={lastKpi ? `${lastKpi.exec_media.toFixed(1)}%` : '—'}
             color={dExec !== null ? deltaColor(dExec, true) : 'text'}
             delta={dExec}
@@ -392,7 +392,7 @@ export default function Evolucao() {
                   <Line
                     type="monotone"
                     dataKey="exec"
-                    name="Execução média"
+                    name="Grau de Execução"
                     stroke={NAVY}
                     strokeWidth={2}
                     dot={{ r: 3 }}

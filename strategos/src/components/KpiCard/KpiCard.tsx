@@ -58,19 +58,21 @@ export default function KpiCard({
     return (
       <div className="kpi-card kpi-card-hero">
         <span className="kpi-label t-label">{label}</span>
-        <span className="kpi-value-hero t-headline-sm t-tabular" style={{ color: colorMap[color] }}>
-          {value ?? '—'}
-        </span>
-        {hasDelta && (
-          <span className={deltaChipClass(delta!, deltaVariant)}>
-            {delta! > 0
-              ? <TrendingUp size={11} strokeWidth={2} />
-              : delta! < 0
-                ? <TrendingDown size={11} strokeWidth={2} />
-                : null}
-            {sign}{fmtDelta(delta!)}{deltaSuffix}
+        <div className="kpi-value-row">
+          <span className="kpi-value-hero t-headline-sm t-tabular" style={{ color: colorMap[color] }}>
+            {value ?? '—'}
           </span>
-        )}
+          {hasDelta && (
+            <span className={deltaChipClass(delta!, deltaVariant)}>
+              {delta! > 0
+                ? <TrendingUp size={11} strokeWidth={2} />
+                : delta! < 0
+                  ? <TrendingDown size={11} strokeWidth={2} />
+                  : null}
+              {sign}{fmtDelta(delta!)}{deltaSuffix}
+            </span>
+          )}
+        </div>
         {subtitle && <span className="kpi-subtitle">{subtitle}</span>}
       </div>
     )

@@ -580,20 +580,37 @@ export default function BudgetPage() {
     { id: 'invoices',  label: 'Facturas'  },
   ]
 
+  const bpOrc        = kpis.budgetTotal
+  const bpAdj        = kpis.adjudicado
+  const bpPctAdj     = bpOrc > 0 ? (bpAdj / bpOrc) * 100 : 0
+  const bpPctPago    = bpAdj > 0 ? (kpis.pago / bpAdj) * 100 : 0
+  const bpPctEmPag   = bpAdj > 0 ? (kpis.emPagamento / bpAdj) * 100 : 0
+  const bpPctPorFac  = bpAdj > 0 ? (Math.max(0, kpis.porFacturar) / bpAdj) * 100 : 0
+  const bpDisponivel = bpOrc - bpAdj
+  const bpPctDisp    = bpOrc > 0 ? (bpDisponivel / bpOrc) * 100 : 0
+  const bpOverBudget = bpDisponivel < 0
+
   return (
     <div className="bp-page">
       {/* ── KPI row ── */}
       <div className="gf-kpi-row">
-        <KpiCard label="Orçamento Total"  value={fmtEur(kpis.budgetTotal,  defaultSymbol)} color="navy"  />
-        <KpiCard label="Adjudicado"        value={fmtEur(kpis.adjudicado,  defaultSymbol)} color="blue"  />
-        <KpiCard label="Pago"              value={fmtEur(kpis.pago,         defaultSymbol)} color="green" />
-        <KpiCard label="Em Pagamento"      value={fmtEur(kpis.emPagamento, defaultSymbol)} color="amber" />
-        <KpiCard label="Por Facturar"      value={fmtEur(Math.max(0, kpis.porFacturar), defaultSymbol)} color="text" />
+        <KpiCard variant="hero" label="Orçamento"         value={fmtEur(bpOrc, defaultSymbol)} color="navy" />
+        <KpiCard variant="hero" label="Adjudicado"         value={fmtEur(bpAdj, defaultSymbol)} color="blue"
+          subtitle={`${bpPctAdj.toFixed(1)}% do valor orçamentado`} />
+        <KpiCard variant="hero" label="Pago"               value={fmtEur(kpis.pago, defaultSymbol)} color="green"
+          subtitle={`${bpPctPago.toFixed(1)}% do valor adjudicado`} />
+        <KpiCard variant="hero" label="Em Pagamento"       value={fmtEur(kpis.emPagamento, defaultSymbol)} color="amber"
+          subtitle={`${bpPctEmPag.toFixed(1)}% do valor adjudicado`} />
+        <KpiCard variant="hero" label="Por Facturar"       value={fmtEur(Math.max(0, kpis.porFacturar), defaultSymbol)} color="text"
+          subtitle={`${bpPctPorFac.toFixed(1)}% do valor adjudicado`} />
         <KpiCard
-          label="Desvio"
-          value={fmtEur(Math.abs(kpis.desvio), defaultSymbol)}
-          subtitle={kpis.desvio > 0 ? 'acima do orçamento' : kpis.desvio < 0 ? 'dentro do orçamento' : ''}
-          color={kpis.desvio > 0 ? 'red' : 'green'}
+          variant="hero"
+          label="Orçamento Disponível"
+          value={fmtEur(Math.abs(bpDisponivel), defaultSymbol)}
+          color={bpOverBudget ? 'red' : 'green'}
+          subtitle={bpOverBudget
+            ? `${Math.abs(bpPctDisp).toFixed(1)}% acima do orçamento`
+            : `${bpPctDisp.toFixed(1)}% do valor orçamentado`}
         />
       </div>
 

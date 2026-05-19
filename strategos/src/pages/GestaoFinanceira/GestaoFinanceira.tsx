@@ -976,6 +976,16 @@ export default function GestaoFinanceira({
         .reduce((s, i) => s + toEur(i.amount, i.exchange_rate), 0)
     : undefined
 
+  const gfOrc         = kpis.budgetTotal
+  const gfAdj         = kpis.adjudicado
+  const gfPctAdj      = gfOrc > 0 ? (gfAdj / gfOrc) * 100 : 0
+  const gfPctPago     = gfAdj > 0 ? (kpis.pago / gfAdj) * 100 : 0
+  const gfPctEmPag    = gfAdj > 0 ? (kpis.emPagamento / gfAdj) * 100 : 0
+  const gfPctPorFac   = gfAdj > 0 ? (Math.max(0, kpis.porFacturar) / gfAdj) * 100 : 0
+  const gfDisponivel  = gfOrc - gfAdj
+  const gfPctDisp     = gfOrc > 0 ? (gfDisponivel / gfOrc) * 100 : 0
+  const gfOverBudget  = gfDisponivel < 0
+
   return (
     <div className="gf-page">
       {loading ? (
@@ -992,17 +1002,23 @@ export default function GestaoFinanceira({
         <>
           {/* KPI row */}
           <div className="gf-kpi-row">
-            <KpiCard variant="hero" label="Orçamento Total"  value={fmtEur(kpis.budgetTotal,  defaultSymbol)} color="navy" />
-            <KpiCard variant="hero" label="Adjudicado"        value={fmtEur(kpis.adjudicado,  defaultSymbol)} color="blue" />
-            <KpiCard variant="hero" label="Pago"              value={fmtEur(kpis.pago,         defaultSymbol)} color="green" />
-            <KpiCard variant="hero" label="Em Pagamento"      value={fmtEur(kpis.emPagamento, defaultSymbol)} color="amber" />
-            <KpiCard variant="hero" label="Por Facturar"      value={fmtEur(Math.max(0, kpis.porFacturar), defaultSymbol)} color="text" />
+            <KpiCard variant="hero" label="Orçamento"       value={fmtEur(gfOrc, defaultSymbol)} color="navy" />
+            <KpiCard variant="hero" label="Adjudicado"       value={fmtEur(gfAdj, defaultSymbol)} color="blue"
+              subtitle={`${gfPctAdj.toFixed(1)}% do valor orçamentado`} />
+            <KpiCard variant="hero" label="Pago"             value={fmtEur(kpis.pago, defaultSymbol)} color="green"
+              subtitle={`${gfPctPago.toFixed(1)}% do valor adjudicado`} />
+            <KpiCard variant="hero" label="Em Pagamento"     value={fmtEur(kpis.emPagamento, defaultSymbol)} color="amber"
+              subtitle={`${gfPctEmPag.toFixed(1)}% do valor adjudicado`} />
+            <KpiCard variant="hero" label="Por Facturar"     value={fmtEur(Math.max(0, kpis.porFacturar), defaultSymbol)} color="text"
+              subtitle={`${gfPctPorFac.toFixed(1)}% do valor adjudicado`} />
             <KpiCard
               variant="hero"
-              label="Desvio"
-              value={fmtEur(Math.abs(kpis.desvio), defaultSymbol)}
-              subtitle={kpis.desvio > 0 ? 'acima do orçamento' : kpis.desvio < 0 ? 'dentro do orçamento' : ''}
-              color={kpis.desvio > 0 ? 'red' : 'green'}
+              label="Orçamento Disponível"
+              value={fmtEur(Math.abs(gfDisponivel), defaultSymbol)}
+              color={gfOverBudget ? 'red' : 'green'}
+              subtitle={gfOverBudget
+                ? `${Math.abs(gfPctDisp).toFixed(1)}% acima do orçamento`
+                : `${gfPctDisp.toFixed(1)}% do valor orçamentado`}
             />
           </div>
 
