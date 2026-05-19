@@ -318,6 +318,7 @@ export default function Evolucao() {
           <KpiCard
             variant="hero"
             label="Concluídas"
+            tooltipTerm="estado-concluida"
             value={lastKpi ? String(lastKpi.concluidas) : '—'}
             color={dConclui !== null ? deltaColor(dConclui, true) : 'text'}
             delta={dConclui}
@@ -327,6 +328,7 @@ export default function Evolucao() {
           <KpiCard
             variant="hero"
             label="Em dia"
+            tooltipTerm="estado-em-dia"
             value={lastKpi ? String(lastKpi.em_dia) : '—'}
             color={dEmDia !== null ? deltaColor(dEmDia, true) : 'text'}
             delta={dEmDia}
@@ -336,6 +338,7 @@ export default function Evolucao() {
           <KpiCard
             variant="hero"
             label="Em risco"
+            tooltipTerm="estado-em-risco"
             value={lastKpi ? String(lastKpi.em_risco ?? 0) : '—'}
             color={dEmRisco !== null ? deltaColor(dEmRisco, false) : 'text'}
             delta={dEmRisco}
@@ -345,6 +348,7 @@ export default function Evolucao() {
           <KpiCard
             variant="hero"
             label="Em atraso"
+            tooltipTerm="estado-em-atraso"
             value={lastKpi ? String(lastKpi.em_atraso) : '—'}
             color={dAtraso !== null ? deltaColor(dAtraso, false) : 'text'}
             delta={dAtraso}

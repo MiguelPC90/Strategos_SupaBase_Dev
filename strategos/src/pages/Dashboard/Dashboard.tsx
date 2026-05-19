@@ -1100,10 +1100,10 @@ export default function Dashboard() {
                 <SmartKpi label="Conc. à Data"        tooltipTerm="concretizacao-data"  value={concDataVal}  delta={concDataDelta}  target={100} />
               </div>
               <div className="contagem-kpi-grid">
-                <ContagemKpi value={m.concluidas} total={m.total} label="concluídas" delta={delta7Conc}     deltaVariant="good"    deltaLabel={delta7dLabel} />
-                <ContagemKpi value={m.em_dia}     total={m.total} label="em dia"     delta={delta7EmDia}    deltaVariant="neutral" deltaLabel={delta7dLabel} />
-                <ContagemKpi value={m.em_risco}   total={m.total} label="em risco"   delta={delta7EmRisco}  deltaVariant="bad"     deltaLabel={delta7dLabel} />
-                <ContagemKpi value={m.em_atraso}  total={m.total} label="em atraso"  delta={delta7EmAtraso} variant="late" deltaVariant="bad" deltaLabel={delta7dLabel} />
+                <ContagemKpi value={m.concluidas} total={m.total} label="concluídas" tooltipTerm="estado-concluida"  delta={delta7Conc}     deltaVariant="good"    deltaLabel={delta7dLabel} />
+                <ContagemKpi value={m.em_dia}     total={m.total} label="em dia"     tooltipTerm="estado-em-dia"     delta={delta7EmDia}    deltaVariant="neutral" deltaLabel={delta7dLabel} />
+                <ContagemKpi value={m.em_risco}   total={m.total} label="em risco"   tooltipTerm="estado-em-risco"   delta={delta7EmRisco}  deltaVariant="bad"     deltaLabel={delta7dLabel} />
+                <ContagemKpi value={m.em_atraso}  total={m.total} label="em atraso"  tooltipTerm="estado-em-atraso"  delta={delta7EmAtraso} variant="late" deltaVariant="bad" deltaLabel={delta7dLabel} />
               </div>
             </div>
           </div>

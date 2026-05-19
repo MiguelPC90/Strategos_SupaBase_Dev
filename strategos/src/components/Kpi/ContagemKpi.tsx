@@ -1,4 +1,5 @@
 import './ContagemKpi.css'
+import TermTooltip from '../TermTooltip/TermTooltip'
 
 export interface ContagemKpiProps {
   value: number
@@ -8,6 +9,7 @@ export interface ContagemKpiProps {
   deltaVariant?: 'good' | 'neutral' | 'bad'
   deltaLabel?: string | null
   variant?: 'default' | 'late'
+  tooltipTerm?: string
   className?: string
 }
 
@@ -17,6 +19,7 @@ export default function ContagemKpi({
   variant = 'default',
   deltaVariant = 'neutral',
   deltaLabel = null,
+  tooltipTerm,
 }: ContagemKpiProps) {
   const isLate = variant === 'late'
   return (
@@ -25,7 +28,13 @@ export default function ContagemKpi({
         <span className={`contagem-kpi-value t-headline t-tabular${isLate ? ' late' : ''}`}>{value}</span>
         <span className="contagem-kpi-denom">/ {total}</span>
       </div>
-      <div className="contagem-kpi-label">{label}</div>
+      {tooltipTerm ? (
+        <TermTooltip term={tooltipTerm}>
+          <div className="contagem-kpi-label">{label}</div>
+        </TermTooltip>
+      ) : (
+        <div className="contagem-kpi-label">{label}</div>
+      )}
       {delta !== null && (
         <div className={`contagem-kpi-delta ${deltaVariant}`}>
           {delta >= 0 ? '+' : ''}{delta} {deltaLabel ?? 'últimos 7 dias'}

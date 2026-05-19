@@ -560,10 +560,10 @@ export default function PontoSituacao() {
                     <SmartKpi label="Conc. à Data"        tooltipTerm="concretizacao-data"  value={kpi.aDataReal} target={100} />
                   </div>
                   <div className="contagem-kpi-grid">
-                    <ContagemKpi value={kpi.concluidas} total={kpi.total} label="concluídas" deltaVariant="good" />
-                    <ContagemKpi value={kpi.emDia}      total={kpi.total} label="em dia"     deltaVariant="neutral" />
-                    <ContagemKpi value={kpi.emRisco}    total={kpi.total} label="em risco"   deltaVariant="bad" />
-                    <ContagemKpi value={kpi.emAtraso}   total={kpi.total} label="em atraso"  variant="late" deltaVariant="bad" />
+                    <ContagemKpi value={kpi.concluidas} total={kpi.total} label="concluídas" tooltipTerm="estado-concluida"  deltaVariant="good" />
+                    <ContagemKpi value={kpi.emDia}      total={kpi.total} label="em dia"     tooltipTerm="estado-em-dia"     deltaVariant="neutral" />
+                    <ContagemKpi value={kpi.emRisco}    total={kpi.total} label="em risco"   tooltipTerm="estado-em-risco"   deltaVariant="bad" />
+                    <ContagemKpi value={kpi.emAtraso}   total={kpi.total} label="em atraso"  tooltipTerm="estado-em-atraso"  variant="late" deltaVariant="bad" />
                   </div>
                 </div>
               </div>
@@ -578,8 +578,8 @@ export default function PontoSituacao() {
                 <div className="pds-brief-card riscos-card">
                   <div className="riscos-card-body">
                     <div className="riscos-kpis-col">
-                      <ContagemKpi value={riskKpis.critical} total={riskKpis.total} label="críticos" variant="late" />
-                      <ContagemKpi value={riskKpis.open}     total={riskKpis.total} label="abertos" />
+                      <ContagemKpi value={riskKpis.critical} total={riskKpis.total} label="críticos" tooltipTerm="risco-critico" variant="late" />
+                      <ContagemKpi value={riskKpis.open}     total={riskKpis.total} label="abertos"  tooltipTerm="risco" />
                     </div>
                     <div className="riscos-matrix-wrapper">
                       <RiskMatrix
