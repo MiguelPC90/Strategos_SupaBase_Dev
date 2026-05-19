@@ -27,10 +27,28 @@
     transform: translateX(-50%);
   }
 
+  .term-tooltip--top::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 8px;
+  }
+
   .term-tooltip--bottom {
     top: calc(100% + 8px);
     left: 50%;
     transform: translateX(-50%);
+  }
+
+  .term-tooltip--bottom::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    height: 8px;
   }
 
   .term-tooltip-name {

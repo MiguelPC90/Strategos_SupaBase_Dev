@@ -46,7 +46,10 @@ export default function TermTooltip({ term, children, placement = 'auto' }: Term
 
   function hide() {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    setIsVisible(false)
+    timeoutRef.current = setTimeout(() => {
+      setIsVisible(false)
+      timeoutRef.current = null
+    }, 150)
   }
 
   function handleSeeGlossary(e: React.MouseEvent) {

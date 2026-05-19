@@ -5,8 +5,6 @@ import { TrendingUp, TrendingDown, AlertTriangle, ChevronRight } from 'lucide-re
 import Spinner from '../../components/Spinner/Spinner'
 import SmartKpi from '../../components/Kpi/SmartKpi'
 import ContagemKpi from '../../components/Kpi/ContagemKpi'
-import TermTooltip from '../../components/TermTooltip/TermTooltip'
-import { getActivityStateTermId } from '../../lib/glossary'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LabelList,
@@ -382,11 +380,7 @@ const DETAIL_COLS: Column[] = [
       const state = row._estado as string | null
       if (!state) return <span style={{ color: 'var(--text3)' }}>—</span>
       const cls = ESTADO_CLASS[state] ?? ''
-      return (
-        <TermTooltip term={getActivityStateTermId(state) || ''}>
-          <span className={`status-pill ${cls}`}>{state}</span>
-        </TermTooltip>
-      )
+      return <span className={`status-pill ${cls}`}>{state}</span>
     },
   },
   { key: 'total',      label: 'Total',         sortable: true, width: '70px'  },
