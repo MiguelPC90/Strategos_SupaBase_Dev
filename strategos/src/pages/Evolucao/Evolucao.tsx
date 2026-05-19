@@ -306,34 +306,49 @@ export default function Evolucao() {
       {hasEnough && (
         <div className="evol-kpi-row">
           <KpiCard
+            variant="hero"
             label="Execução média"
             value={lastKpi ? `${lastKpi.exec_media.toFixed(1)}%` : '—'}
-            subtitle={dExec !== null ? `${delta(dExec)}pp vs. início do período` : ''}
             color={dExec !== null ? deltaColor(dExec, true) : 'text'}
+            delta={dExec}
+            deltaVariant="positive"
+            deltaSuffix="pp"
           />
           <KpiCard
+            variant="hero"
             label="Concluídas"
             value={lastKpi ? String(lastKpi.concluidas) : '—'}
-            subtitle={dConclui !== null ? `${delta(dConclui)} actividades vs. início` : ''}
             color={dConclui !== null ? deltaColor(dConclui, true) : 'text'}
+            delta={dConclui}
+            deltaVariant="positive"
+            deltaSuffix=" actividades"
           />
           <KpiCard
+            variant="hero"
             label="Em dia"
             value={lastKpi ? String(lastKpi.em_dia) : '—'}
-            subtitle={dEmDia !== null ? `${delta(dEmDia)} actividades vs. início` : ''}
             color={dEmDia !== null ? deltaColor(dEmDia, true) : 'text'}
+            delta={dEmDia}
+            deltaVariant="positive"
+            deltaSuffix=" actividades"
           />
           <KpiCard
+            variant="hero"
             label="Em risco"
             value={lastKpi ? String(lastKpi.em_risco ?? 0) : '—'}
-            subtitle={dEmRisco !== null ? `${delta(dEmRisco)} actividades vs. início` : ''}
             color={dEmRisco !== null ? deltaColor(dEmRisco, false) : 'text'}
+            delta={dEmRisco}
+            deltaVariant="negative"
+            deltaSuffix=" actividades"
           />
           <KpiCard
+            variant="hero"
             label="Em atraso"
             value={lastKpi ? String(lastKpi.em_atraso) : '—'}
-            subtitle={dAtraso !== null ? `${delta(dAtraso)} actividades vs. início` : ''}
             color={dAtraso !== null ? deltaColor(dAtraso, false) : 'text'}
+            delta={dAtraso}
+            deltaVariant="negative"
+            deltaSuffix=" actividades"
           />
         </div>
       )}

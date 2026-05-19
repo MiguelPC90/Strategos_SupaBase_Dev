@@ -992,12 +992,13 @@ export default function GestaoFinanceira({
         <>
           {/* KPI row */}
           <div className="gf-kpi-row">
-            <KpiCard label="Orçamento Total"  value={fmtEur(kpis.budgetTotal,  defaultSymbol)} color="navy" />
-            <KpiCard label="Adjudicado"        value={fmtEur(kpis.adjudicado,  defaultSymbol)} color="blue" />
-            <KpiCard label="Pago"              value={fmtEur(kpis.pago,         defaultSymbol)} color="green" />
-            <KpiCard label="Em Pagamento"      value={fmtEur(kpis.emPagamento, defaultSymbol)} color="amber" />
-            <KpiCard label="Por Facturar"      value={fmtEur(Math.max(0, kpis.porFacturar), defaultSymbol)} color="text" />
+            <KpiCard variant="hero" label="Orçamento Total"  value={fmtEur(kpis.budgetTotal,  defaultSymbol)} color="navy" />
+            <KpiCard variant="hero" label="Adjudicado"        value={fmtEur(kpis.adjudicado,  defaultSymbol)} color="blue" />
+            <KpiCard variant="hero" label="Pago"              value={fmtEur(kpis.pago,         defaultSymbol)} color="green" />
+            <KpiCard variant="hero" label="Em Pagamento"      value={fmtEur(kpis.emPagamento, defaultSymbol)} color="amber" />
+            <KpiCard variant="hero" label="Por Facturar"      value={fmtEur(Math.max(0, kpis.porFacturar), defaultSymbol)} color="text" />
             <KpiCard
+              variant="hero"
               label="Desvio"
               value={fmtEur(Math.abs(kpis.desvio), defaultSymbol)}
               subtitle={kpis.desvio > 0 ? 'acima do orçamento' : kpis.desvio < 0 ? 'dentro do orçamento' : ''}

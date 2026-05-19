@@ -638,11 +638,11 @@ export default function Actividades() {
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 14 }}>
-        <KpiCard label="Total actividades" value={summary.total} />
-        <KpiCard label="Concluídas"        value={summary.concluidas} color="green" />
-        <KpiCard label="Em dia"            value={summary.em_dia}     color="blue" />
-        <KpiCard label="Em atraso"         value={summary.em_atraso}  color="red" />
-        <KpiCard label="Exec. real"        value={`${Math.round(summary.exec)}%`} color="navy" />
+        <KpiCard variant="hero" label="Total actividades" value={summary.total} />
+        <KpiCard variant="hero" label="Concluídas"        value={summary.concluidas} color="green" />
+        <KpiCard variant="hero" label="Em dia"            value={summary.em_dia}     color="blue" />
+        <KpiCard variant="hero" label="Em atraso"         value={summary.em_atraso}  color="red" />
+        <KpiCard variant="hero" label="Exec. real"        value={`${Math.round(summary.exec)}%`} color="navy" />
       </div>
 
       <Card title="Actividades">

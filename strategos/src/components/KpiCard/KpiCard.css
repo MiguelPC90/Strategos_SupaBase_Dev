@@ -24,6 +24,34 @@
     color: var(--text3);
   }
 
+  /* ── Hero variant ─────────────────────────────────── */
+  .kpi-card-hero {
+    padding: 16px 18px;
+    gap: 4px;
+  }
+
+  .kpi-value-hero {
+    color: var(--text);
+  }
+
+  .kpi-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 2px 6px;
+    border-radius: 10px;
+    width: fit-content;
+    margin-top: 2px;
+  }
+
+  .kpi-chip-good    { background: var(--green-bg); color: var(--status-ontrack); }
+  .kpi-chip-bad     { background: var(--red-bg);   color: var(--status-late);    }
+  .kpi-chip-neutral { background: var(--bg3);      color: var(--text2);          }
+
   /* KPI grid helpers */
   .kpi-2col {
     display: grid;
