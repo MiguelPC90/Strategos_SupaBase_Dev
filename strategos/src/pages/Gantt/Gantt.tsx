@@ -9,7 +9,7 @@ import { usePrograms } from '../../hooks/usePrograms'
 import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import { useFilters } from '../../context/FilterContext'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
-import { rollupPct, leafPctPrev, rollupPctPrev, leafStatus, rollupStatus, computeRowState, rollupDateRange, rollupRealDateRange, type RowState } from '../../lib/rollup'
+import { rollupPct, leafPctPrev, rollupPctPrev, leafStatus, rollupStatus, computeRowState, rollupDateRange, rollupRealDateRange, getN4Effective, type RowState } from '../../lib/rollup'
 import type { Activity, Program } from '../../types/index'
 import type { DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
@@ -298,10 +298,14 @@ function computeDateRange(activities: Activity[]): { rangeStart: Date; rangeEnd:
   return { rangeStart: addMonths(new Date(minT), -1), rangeEnd: addMonths(new Date(maxT), 1) }
 }
 
-function groupDateRange(acts: Activity[]) {
-  const leaves = acts.filter(a => a.level === 4)
-  const { bs, bf } = rollupDateRange(leaves)
-  const { rs, rf } = rollupRealDateRange(leaves)
+function groupDateRange(acts: Activity[], allActivities: Activity[]) {
+  const n4s = acts.filter(a => a.level === 4)
+  const effective = n4s.map(n4 => {
+    const eff = getN4Effective(n4, allActivities)
+    return { ...n4, bs: eff.bs, bf: eff.bf, rs: eff.rs, rf: eff.rf }
+  })
+  const { bs, bf } = rollupDateRange(effective)
+  const { rs, rf } = rollupRealDateRange(effective)
   return { bs, bf, rs, rf }
 }
 
@@ -593,13 +597,19 @@ export default function Gantt() {
   ): JSX.Element {
     let onEnter: ((e: React.MouseEvent) => void) | null = null
     if (act) {
-      onEnter = (e: React.MouseEvent) => setTooltip({
-        name: act.name, bs: act.bs, bf: act.bf, rs: act.rs, rf: act.rf,
-        pct: act.pct, pct_prev: leafPctPrev(act, TODAY),
-        rowState: rowStateForAct(act, thresholdsMap.get(act.plano_id ?? '')?.leaves),
-        childCount: null,
-        x: e.clientX, y: e.clientY,
-      })
+      onEnter = (e: React.MouseEvent) => {
+        const tooltipDates = act.level === 4
+          ? (() => { const e2 = getN4Effective(act, activities); return { bs: e2.bs, bf: e2.bf, rs: e2.rs, rf: e2.rf, pct: e2.pct } })()
+          : { bs: act.bs, bf: act.bf, rs: act.rs, rf: act.rf, pct: act.pct }
+        setTooltip({
+          name: act.name,
+          bs: tooltipDates.bs, bf: tooltipDates.bf, rs: tooltipDates.rs, rf: tooltipDates.rf,
+          pct: tooltipDates.pct, pct_prev: leafPctPrev(act, TODAY),
+          rowState: rowStateForAct(act, thresholdsMap.get(act.plano_id ?? '')?.leaves),
+          childCount: null,
+          x: e.clientX, y: e.clientY,
+        })
+      }
     } else if (tooltipGroup) {
       const { name, leaves } = tooltipGroup
       onEnter = (e: React.MouseEvent) => setTooltip({
@@ -655,7 +665,7 @@ export default function Gantt() {
       const n1key = `n1:${n1g.n1}`
       const n1col = collapsed.has(n1key)
       const n1st  = rowStateForGroup(n1g.allActs)
-      const n1dr  = groupDateRange(n1g.allActs)
+      const n1dr  = groupDateRange(n1g.allActs, activities)
       const showLabel = firstRow; firstRow = false
 
       rows.push(
@@ -684,7 +694,7 @@ export default function Gantt() {
         const n2key = `n2:${n1g.n1}:${n2g.n2}`
         const n2col = collapsed.has(n2key)
         const n2st  = rowStateForGroup(n2g.allActs)
-        const n2dr  = groupDateRange(n2g.allActs)
+        const n2dr  = groupDateRange(n2g.allActs, activities)
 
         rows.push(
           <tr key={n2key} className="gantt-row-n2">
@@ -726,7 +736,7 @@ export default function Gantt() {
                       <div className="gantt-sticky-exec">{a.pct}%</div>
                     </div>
                   </td>
-                  {makeTimeline(a.bs, a.bf, a.rs, a.rf, ast, a)}
+                  {(() => { const eff = getN4Effective(a, activities); return makeTimeline(eff.bs, eff.bf, eff.rs, eff.rf, ast, a) })()}
                   <td className="gantt-filler-td" />
                 </tr>
               )
@@ -771,7 +781,7 @@ export default function Gantt() {
           const n3key = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
           const n3col = collapsed.has(n3key)
           const n3st  = rowStateForGroup(n3ChildLeaves)
-          const n3dr  = groupDateRange(n3ChildLeaves)
+          const n3dr  = groupDateRange(n3ChildLeaves, activities)
 
           rows.push(
             <tr key={n3key} className="gantt-row-n3">
@@ -811,7 +821,7 @@ export default function Gantt() {
                     <div className="gantt-sticky-exec">{a.pct}%</div>
                   </div>
                 </td>
-                {makeTimeline(a.bs, a.bf, a.rs, a.rf, ast, a)}
+                {(() => { const eff = getN4Effective(a, activities); return makeTimeline(eff.bs, eff.bf, eff.rs, eff.rf, ast, a) })()}
                 <td className="gantt-filler-td" />
               </tr>
             )
@@ -829,7 +839,7 @@ export default function Gantt() {
       const n0key = `n0:${n0g.progId}`
       const n0col = collapsed.has(n0key)
       const n0st  = rowStateForGroup(n0g.allActs)
-      const n0dr  = groupDateRange(n0g.allActs)
+      const n0dr  = groupDateRange(n0g.allActs, activities)
       const showLabel = firstRow; firstRow = false
 
       rows.push(

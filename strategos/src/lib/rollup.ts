@@ -135,3 +135,31 @@ export function rollupRealDateRange(activities: Activity[]): { rs: string | null
   }
   return { rs: minRs, rf: maxRf }
 }
+
+/** Descendants (level > 4) of an N4 activity, matched via shared n1/n2/n3 + n4 === n4.name. */
+export function getN4DescendantLeaves(n4: Activity, all: Activity[]): Activity[] {
+  return all.filter(a =>
+    a.level > 4 &&
+    a.n1 === n4.n1 &&
+    a.n2 === n4.n2 &&
+    a.n3 === n4.n3 &&
+    a.n4 === n4.name
+  )
+}
+
+/**
+ * Effective dates and pct for an N4 activity.
+ * N4 with N5/N6 children → rolled up from descendants.
+ * N4 without children → its own DB values.
+ */
+export function getN4Effective(n4: Activity, all: Activity[]): {
+  bs: string | null; bf: string | null; rs: string | null; rf: string | null; pct: number
+} {
+  const descendants = getN4DescendantLeaves(n4, all)
+  if (descendants.length === 0) {
+    return { bs: n4.bs, bf: n4.bf, rs: n4.rs, rf: n4.rf, pct: n4.pct }
+  }
+  const { bs, bf } = rollupDateRange(descendants)
+  const { rs, rf } = rollupRealDateRange(descendants)
+  return { bs, bf, rs, rf, pct: rollupPct(descendants) }
+}
