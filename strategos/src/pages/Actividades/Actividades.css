@@ -157,6 +157,10 @@
     box-shadow: 0 1px 0 var(--stratgos-ink-100);
   }
   .act-table th.act-th-c { text-align: center; }
+  .act-table th.act-th-cda,
+  .act-table td.act-td-cda {
+    min-width: 200px;
+  }
   .act-table td {
     padding: 6px 10px;
     border-bottom: 1px solid var(--border);

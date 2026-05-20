@@ -299,7 +299,7 @@ function DeadlineCell({ bf, rf }: { bf: string | null; rf?: string | null }) {
 
 function CdaCell({ concluidas, em_dia, em_risco, em_atraso }: { concluidas: number; em_dia: number; em_risco: number; em_atraso: number }) {
   return (
-    <td className="act-td-c">
+    <td className="act-td-c act-td-cda">
       <div className="act-cda" title={`Concluídas: ${concluidas} · Em dia: ${em_dia} · Em risco: ${em_risco} · Em atraso: ${em_atraso}`}>
         <span className="act-cda-item" style={{ color: 'var(--status-done)' }} title={`Concluídas: ${concluidas}`}>
           <span className="act-cda-icon"><Check size={12} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle' }} /></span>
@@ -732,7 +732,7 @@ export default function Actividades() {
                 <tr>
                   <th style={{ minWidth: 300 }}>Designação</th>
                   <th className="act-th-c">Estado</th>
-                  <th className="act-th-c">N.º Actividades</th>
+                  <th className="act-th-c act-th-cda">N.º Actividades</th>
                   <th className="act-th-c">Grau de Execução / prev.</th>
                   <th className="act-th-c">Prazo</th>
                 </tr>
