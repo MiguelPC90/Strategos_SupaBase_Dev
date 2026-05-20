@@ -26,7 +26,7 @@ type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey'
 type DirtyChange  = Partial<Pick<Activity, 'pct' | 'sort_order'>>
 
 const STATUS_BADGE: Record<string, BadgeVariant> = {
-  'Concluída': 'green', 'Em dia': 'blue', 'Em risco': 'amber', 'Em atraso': 'red', 'atrasada': 'red',
+  'Concluída': 'blue', 'Em dia': 'green', 'Em risco': 'amber', 'Em atraso': 'red', 'atrasada': 'red',
 }
 
 function statusBadge(s: string): BadgeVariant { return STATUS_BADGE[s] ?? 'grey' }

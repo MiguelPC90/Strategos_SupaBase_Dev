@@ -23,6 +23,7 @@ import StratgosGMark from '../Brand/StratgosGMark'
 
 interface NavItemConfig {
   to: string
+  pageKey?: PageKey
   label: string
   icon: ReactNode
 }
@@ -126,6 +127,7 @@ const NAV_PLANOS: NavItemConfig[] = [
 const NAV_MANAGE: NavItemConfig[] = [
   {
     to: '/budget',
+    pageKey: 'gestao-financeira',
     label: 'Gestão Financeira',
     icon: (
       <svg viewBox="0 0 24 24">
@@ -240,11 +242,11 @@ export default function Layout() {
   }, [])
 
   const visibleView = useMemo(
-    () => NAV_VIEW.filter(item => hasAccess(item.to.slice(1) as PageKey)),
+    () => NAV_VIEW.filter(item => hasAccess((item.pageKey ?? item.to.slice(1)) as PageKey)),
     [hasAccess],
   )
   const visibleManage = useMemo(
-    () => NAV_MANAGE.filter(item => hasAccess(item.to.slice(1) as PageKey)),
+    () => NAV_MANAGE.filter(item => hasAccess((item.pageKey ?? item.to.slice(1)) as PageKey)),
     [hasAccess],
   )
 
