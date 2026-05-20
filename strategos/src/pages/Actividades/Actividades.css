@@ -159,6 +159,7 @@
   .act-table th.act-th-c { text-align: center; }
   .act-table th.act-th-cda,
   .act-table td.act-td-cda {
+    width: 260px;
     min-width: 260px;
   }
   .act-table td {
