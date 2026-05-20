@@ -9,7 +9,7 @@ import { usePrograms } from '../../hooks/usePrograms'
 import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import { useFilters } from '../../context/FilterContext'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
-import { rollupPct, leafPctPrev, rollupPctPrev, leafStatus, rollupStatus, computeRowState, type RowState } from '../../lib/rollup'
+import { rollupPct, leafPctPrev, rollupPctPrev, leafStatus, rollupStatus, computeRowState, rollupDateRange, rollupRealDateRange, type RowState } from '../../lib/rollup'
 import type { Activity, Program } from '../../types/index'
 import type { DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
@@ -299,15 +299,10 @@ function computeDateRange(activities: Activity[]): { rangeStart: Date; rangeEnd:
 }
 
 function groupDateRange(acts: Activity[]) {
-  let minBs: string | null = null, maxBf: string | null = null
-  let minRs: string | null = null, maxRf: string | null = null
-  for (const a of acts) {
-    if (a.bs && (!minBs || a.bs < minBs)) minBs = a.bs
-    if (a.bf && (!maxBf || a.bf > maxBf)) maxBf = a.bf
-    if (a.rs && (!minRs || a.rs < minRs)) minRs = a.rs
-    if (a.rf && (!maxRf || a.rf > maxRf)) maxRf = a.rf
-  }
-  return { bs: minBs, bf: maxBf, rs: minRs, rf: maxRf }
+  const leaves = acts.filter(a => a.level === 4)
+  const { bs, bf } = rollupDateRange(leaves)
+  const { rs, rf } = rollupRealDateRange(leaves)
+  return { bs, bf, rs, rf }
 }
 
 function fmt(d: string | null): string {

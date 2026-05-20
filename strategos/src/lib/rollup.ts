@@ -124,3 +124,14 @@ export function rollupDateRange(activities: Activity[]): { bs: string | null; bf
   }
   return { bs: minBs, bf: maxBf }
 }
+
+/** Earliest rs / latest rf across activities. Pass N4 leaves only. */
+export function rollupRealDateRange(activities: Activity[]): { rs: string | null; rf: string | null } {
+  let minRs: string | null = null
+  let maxRf: string | null = null
+  for (const a of activities) {
+    if (a.rs && (!minRs || a.rs < minRs)) minRs = a.rs
+    if (a.rf && (!maxRf || a.rf > maxRf)) maxRf = a.rf
+  }
+  return { rs: minRs, rf: maxRf }
+}
