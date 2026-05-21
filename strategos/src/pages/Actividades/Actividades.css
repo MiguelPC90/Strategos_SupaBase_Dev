@@ -208,6 +208,7 @@
   .act-name-n1,
   .act-name-n2,
   .act-name-n3 {
+    flex: 1 1 auto;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -215,11 +216,12 @@
   }
 
   .act-name-n4 {
+    flex: 1 1 auto;
     color: var(--stratgos-ink-500);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 280px;
+    min-width: 0;
   }
 
   /* Dual progress bar */
