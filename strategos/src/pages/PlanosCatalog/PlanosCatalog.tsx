@@ -136,13 +136,28 @@ export default function PlanosCatalog() {
   const [leaves, setLeaves] = useState<Activity[]>([])
   useEffect(() => {
     let cancelled = false
-    supabase
-      .from('activities')
-      .select('id, level, plano_id, pct, pct_prev, bf, bs, finish, status')
-      .eq('level', 4)
-      .then(({ data }) => {
-        if (!cancelled) setLeaves((data ?? []) as unknown as Activity[])
-      })
+    const PAGE_SIZE = 1000
+    async function fetchAllLeaves(): Promise<Activity[]> {
+      const all: Activity[] = []
+      let from = 0
+      while (true) {
+        const { data, error: err } = await supabase
+          .from('activities')
+          .select('id, level, plano_id, pct, pct_prev, bf, bs, finish, status')
+          .eq('level', 4)
+          .order('id', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1)
+        if (err) throw err
+        const batch = (data ?? []) as unknown as Activity[]
+        all.push(...batch)
+        if (batch.length < PAGE_SIZE) break
+        from += PAGE_SIZE
+      }
+      return all
+    }
+    fetchAllLeaves()
+      .then(rows => { if (!cancelled) setLeaves(rows) })
+      .catch(() => { /* leaves stay empty; enriched statuses degrade gracefully */ })
     return () => { cancelled = true }
   }, [])
 

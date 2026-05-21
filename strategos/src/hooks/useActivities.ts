@@ -46,34 +46,45 @@ export function useActivities(filters: ActivityFilters = {}): UseActivitiesResul
     setLoading(true)
     setError(null)
 
-    let query = supabase
-      .from('activities')
-      .select('*')
-      .order('sort_order', { ascending: true })
+    const PAGE_SIZE = 1000
+    async function fetchAll(): Promise<Activity[]> {
+      const all: Activity[] = []
+      let from = 0
+      while (true) {
+        let q = supabase
+          .from('activities')
+          .select('*')
+          .order('sort_order', { ascending: true })
+        if (program_id) q = q.eq('program_id', program_id)
+        if (plano_id)   q = q.eq('plano_id', plano_id)
+        if (n1)         q = q.eq('n1', n1)
+        if (n2)         q = q.eq('n2', n2)
+        if (owner)      q = q.eq('owner', owner)
+        if (sponsor)    q = q.eq('sponsor', sponsor)
+        if (status)     q = q.eq('status', status)
+        const { data, error: err } = await q.range(from, from + PAGE_SIZE - 1)
+        if (err) throw err
+        const batch = (data ?? []) as Activity[]
+        all.push(...batch)
+        if (batch.length < PAGE_SIZE) break
+        from += PAGE_SIZE
+      }
+      return all
+    }
 
-    if (program_id) query = query.eq('program_id', program_id)
-    if (plano_id)   query = query.eq('plano_id', plano_id)
-    if (n1)         query = query.eq('n1', n1)
-    if (n2)         query = query.eq('n2', n2)
-    if (owner)      query = query.eq('owner', owner)
-    if (sponsor)    query = query.eq('sponsor', sponsor)
-    if (status)     query = query.eq('status', status)
-
-    query.then(({ data, error: err }) => {
-      if (cancelled) return
-      if (err) {
-        setError(err.message)
+    fetchAll()
+      .then(rows => {
+        if (cancelled) return
+        let final = rows
+        if (cutoffDate) { final = rows.map(a => applyStatusCutoff(a, cutoffDate)) }
+        setActivities(final)
         setLoading(false)
-        return
-      }
-
-      let rows = (data ?? []) as Activity[]
-      if (cutoffDate) {
-        rows = rows.map(a => applyStatusCutoff(a, cutoffDate))
-      }
-      setActivities(rows)
-      setLoading(false)
-    })
+      })
+      .catch(err => {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : String(err))
+        setLoading(false)
+      })
 
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
