@@ -440,7 +440,7 @@ export default function Actividades() {
               <button className="act-toggle" onClick={() => toggle(n1key)}>
                 {n1col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}
               </button>
-              <span className="act-name-n1">{highlightMatch(n1g.n1, searchQuery)}</span>
+              <span className="act-name-n1" title={n1g.n1}>{highlightMatch(n1g.n1, searchQuery)}</span>
             </div>
           </td>
           <td className="act-td-c">
@@ -468,7 +468,7 @@ export default function Actividades() {
                 <button className="act-toggle" onClick={() => toggle(n2key)}>
                   {n2col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}
                 </button>
-                <span className="act-name-n2">{highlightMatch(n2g.n2, searchQuery)}</span>
+                <span className="act-name-n2" title={n2g.n2}>{highlightMatch(n2g.n2, searchQuery)}</span>
               </div>
             </td>
             <td className="act-td-c">
@@ -555,7 +555,7 @@ export default function Actividades() {
                   <button className="act-toggle" onClick={() => toggle(n3key)}>
                     {n3col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}
                   </button>
-                  <span className="act-name-n3">{highlightMatch(n3g.n3, searchQuery)}</span>
+                  <span className="act-name-n3" title={n3g.n3}>{highlightMatch(n3g.n3, searchQuery)}</span>
                 </div>
               </td>
               <td className="act-td-c">
@@ -613,7 +613,7 @@ export default function Actividades() {
               <button className="act-toggle" onClick={() => toggle(n0key)}>
                 {n0col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}
               </button>
-              <span className="act-name-n0">{highlightMatch(n0g.progName, searchQuery)}</span>
+              <span className="act-name-n0" title={n0g.progName}>{highlightMatch(n0g.progName, searchQuery)}</span>
             </div>
           </td>
           <td className="act-td-c">
