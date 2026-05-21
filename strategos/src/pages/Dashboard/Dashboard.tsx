@@ -26,7 +26,7 @@ import { supabase } from '../../lib/supabase'
 import { generateAlerts } from '../../lib/alerts'
 import type { Alert, AlertRule } from '../../lib/alerts'
 import type { Activity, Program, Eixo, Plano } from '../../types/index'
-import { leafPctPrev, leafStatus, computeRowState, rollupDateRange, type RowState } from '../../lib/rollup'
+import { leafPctPrev, leafStatus, computeRowState, rollupDateRange, type RowState, type ThresholdBand } from '../../lib/rollup'
 import { buildThresholdsMap, type PlanoThresholds } from '../../hooks/useThresholdsMap'
 import { colors, statusColor } from '../../lib/tokens'
 
@@ -74,7 +74,7 @@ interface Metrics {
 
 function classify(
   a: Activity,
-  tLeaves: number = 0,
+  tLeaves?: ThresholdBand,
 ): 'concluida' | 'em_dia' | 'em_risco' | 'em_atraso' {
   const s = leafStatus(a, TODAY, tLeaves)
   if (s === 'Concluída') return 'concluida'
@@ -93,7 +93,7 @@ function calcMetrics(
   }
   let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0, sumPct = 0, sumPrev = 0
   for (const a of acts) {
-    const tLeaves = thresholdsMap?.get(a.plano_id ?? '')?.leaves ?? 0
+    const tLeaves = thresholdsMap?.get(a.plano_id ?? '')?.leaves
     const cls = classify(a, tLeaves)
     if (cls === 'concluida') concluidas++
     else if (cls === 'em_dia') em_dia++
@@ -168,7 +168,7 @@ function barCounts(
 ): { concluidas: number; em_dia: number; em_risco: number; em_atraso: number } {
   let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0
   for (const a of acts) {
-    const tLeaves = thresholdsMap?.get(a.plano_id ?? '')?.leaves ?? 0
+    const tLeaves = thresholdsMap?.get(a.plano_id ?? '')?.leaves
     const cls = classify(a, tLeaves)
     if (cls === 'concluida') concluidas++
     else if (cls === 'em_dia') em_dia++

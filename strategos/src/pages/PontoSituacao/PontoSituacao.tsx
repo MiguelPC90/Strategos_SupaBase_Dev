@@ -21,7 +21,7 @@ import { useRisks } from '../../hooks/useRisks'
 import { useActivities } from '../../hooks/useActivities'
 import { useFilters } from '../../context/FilterContext'
 
-import { leafStatus, leafPctPrev } from '../../lib/rollup'
+import { leafStatus, leafPctPrev, type ThresholdBand } from '../../lib/rollup'
 import { supabase } from '../../lib/supabase'
 import type { PdsItem, Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
@@ -340,8 +340,11 @@ export default function PontoSituacao() {
     [programs, programId]
   )
 
-  const psThresholdLeaves = useMemo(
-    () => selectedPlano?.threshold_leaves ?? selectedProgram?.threshold_leaves ?? 0,
+  const psThresholdLeaves = useMemo<ThresholdBand>(
+    () => ({
+      low:  selectedPlano?.threshold_leaves_low  ?? selectedProgram?.threshold_leaves_low  ?? 5,
+      high: selectedPlano?.threshold_leaves_high ?? selectedProgram?.threshold_leaves_high ?? 10,
+    }),
     [selectedPlano, selectedProgram]
   )
 

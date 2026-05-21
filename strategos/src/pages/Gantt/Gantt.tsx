@@ -9,7 +9,7 @@ import { usePrograms } from '../../hooks/usePrograms'
 import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import { useFilters } from '../../context/FilterContext'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
-import { rollupPct, leafPctPrev, rollupPctPrev, leafStatus, rollupStatus, computeRowState, rollupDateRange, rollupRealDateRange, getN4Effective, type RowState } from '../../lib/rollup'
+import { rollupPct, leafPctPrev, rollupPctPrev, leafStatus, rollupStatus, computeRowState, rollupDateRange, rollupRealDateRange, getN4Effective, type RowState, type ThresholdBand } from '../../lib/rollup'
 import type { Activity, Program } from '../../types/index'
 import type { DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
@@ -34,7 +34,7 @@ const STATE_FILL: Record<RowState, string> = {
   'Em risco': 'var(--status-risk)', 'Em atraso': 'var(--status-late)',
 }
 
-function rowStateForAct(a: Activity, tLeaves: number = 0): RowState {
+function rowStateForAct(a: Activity, tLeaves?: ThresholdBand): RowState {
   return leafStatus(a, TODAY, tLeaves) as RowState
 }
 function rowStateForGroup(acts: Activity[]): RowState {

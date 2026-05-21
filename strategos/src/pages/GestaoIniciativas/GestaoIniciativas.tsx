@@ -14,7 +14,7 @@ import { useEixos } from '../../hooks/useEixos'
 import { useProgramLabels, type ProgramLabels } from '../../hooks/useProgramLabels'
 import { usePlanos } from '../../hooks/usePlanos'
 import { supabase } from '../../lib/supabase'
-import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange, leafPctPrev, leafStatus } from '../../lib/rollup'
+import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange, leafPctPrev, leafStatus, getThresholdAggregates, type ThresholdBand } from '../../lib/rollup'
 import type { Activity, ActivityDependency, DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 import { validateNewDependency, propagateDateChanges, computeDepGap, DEP_GAP_WARNING_THRESHOLD } from '../../lib/activityDependencies'
@@ -739,22 +739,27 @@ export default function GestaoIniciativas({
   const tableRef = useRef<HTMLDivElement>(null)
 
   const [batchSaving, setBatchSaving] = useState(false)
-  const [delayThreshold, setDelayThreshold] = useState(20)
-
-  useEffect(() => {
-    supabase.from('app_config').select('data').eq('config_key', 'status_delay_threshold').single()
-      .then(({ data }) => { if (data) setDelayThreshold(parseInt(data.data) || 20) })
-  }, [])
-
   // Per-plano threshold map — computed from the selected program + loaded planos
   const giThresholdsMap = useMemo(() => {
-    const progLeaves = program?.threshold_leaves ?? 0
-    const progAggs   = program?.threshold_aggregates ?? 20
-    const map = new Map<string, { leaves: number; aggregates: number }>()
+    const progLeaves: ThresholdBand = {
+      low:  program?.threshold_leaves_low  ?? 5,
+      high: program?.threshold_leaves_high ?? 10,
+    }
+    const progAggs: ThresholdBand = {
+      low:  program?.threshold_aggregates_low  ?? 15,
+      high: program?.threshold_aggregates_high ?? 25,
+    }
+    const map = new Map<string, { leaves: ThresholdBand; aggregates: ThresholdBand }>()
     for (const pl of dbPlanos) {
       map.set(pl.id, {
-        leaves:     pl.threshold_leaves     ?? progLeaves,
-        aggregates: pl.threshold_aggregates ?? progAggs,
+        leaves: {
+          low:  pl.threshold_leaves_low  ?? progLeaves.low,
+          high: pl.threshold_leaves_high ?? progLeaves.high,
+        },
+        aggregates: {
+          low:  pl.threshold_aggregates_low  ?? progAggs.low,
+          high: pl.threshold_aggregates_high ?? progAggs.high,
+        },
       })
     }
     return map
@@ -1151,7 +1156,7 @@ export default function GestaoIniciativas({
         const n3col = collapsed.has(n3g.key)
         const n3leaves = n3g.all.filter(a => a.level === 4)
         const n3pct = rollupPct(n3leaves); const n3prev = rollupPctPrev(n3leaves, TODAY)
-        const n3st  = rollupStatus(n3leaves, TODAY, delayThreshold); const n3dr = rollupDateRange(n3leaves)
+        const n3st  = rollupStatus(n3leaves, TODAY, getThresholdAggregates()); const n3dr = rollupDateRange(n3leaves)
         const n3Rep  = n3g.all.find(a => a.level === 3)
         const n3Sibs = n3Rep
           ? localActs.filter(a => a.level === 3 && a.n1 === n3Rep.n1 && a.n2 === n3Rep.n2)
@@ -1207,7 +1212,7 @@ export default function GestaoIniciativas({
           const n4col = collapsed.has(n4g.key)
           const n4leaves = n4g.all.filter(a => a.level === 4)
           const n4pct = rollupPct(n4leaves); const n4prev = rollupPctPrev(n4leaves, TODAY)
-          const n4st  = rollupStatus(n4leaves, TODAY, delayThreshold); const n4dr = rollupDateRange(n4leaves)
+          const n4st  = rollupStatus(n4leaves, TODAY, getThresholdAggregates()); const n4dr = rollupDateRange(n4leaves)
           const n4Rep  = n4g.all.find(a => a.level === 4)
           const n4Sibs = n4Rep
             ? localActs.filter(a => a.level === 4 && a.n1 === n4Rep.n1 && a.n2 === n4Rep.n2 && a.n3 === n4Rep.n3)

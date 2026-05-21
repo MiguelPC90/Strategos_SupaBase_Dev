@@ -202,6 +202,8 @@ export default function Layout() {
       .from('app_config')
       .select('config_key,data')
       .in('config_key', [
+        'status_delay_threshold_aggregates_low',  'status_delay_threshold_aggregates_high',
+        'status_delay_threshold_leaves_low',       'status_delay_threshold_leaves_high',
         'status_delay_threshold_aggregates', 'status_delay_threshold', 'status_delay_threshold_leaves',
       ])
       .then(({ data }) => {
@@ -211,9 +213,14 @@ export default function Layout() {
           const map: Record<string, string> = {}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           for (const row of data as any[]) map[row.config_key] = row.data ?? ''
-          const aggThreshold    = parseInt(map['status_delay_threshold_aggregates'] ?? map['status_delay_threshold'] ?? '20') || 20
-          const leavesThreshold = parseInt(map['status_delay_threshold_leaves'] ?? '0') || 0
-          setThresholds(aggThreshold, leavesThreshold)
+          const aggLow   = parseInt(map['status_delay_threshold_aggregates_low']  ?? '15') || 15
+          const aggHigh  = parseInt(map['status_delay_threshold_aggregates_high'] ?? '25') || 25
+          const leafLow  = parseInt(map['status_delay_threshold_leaves_low']      ?? '5')  || 5
+          const leafHigh = parseInt(map['status_delay_threshold_leaves_high']     ?? '10') || 10
+          setThresholds(
+            { low: aggLow,  high: aggHigh },
+            { low: leafLow, high: leafHigh },
+          )
         }
         setConfigLoaded(true)
       })

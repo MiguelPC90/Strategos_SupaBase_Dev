@@ -45,10 +45,18 @@ export interface Plano {
   end_date: string | null
   objective: string | null
   sort_order: number
-  /** Per-plano leaf threshold override (pp). NULL = inherit from program. */
+  /** @deprecated Single-threshold model. Use threshold_leaves_low/high. */
   threshold_leaves: number | null
-  /** Per-plano aggregate threshold override (pp). NULL = inherit from program. */
+  /** @deprecated Single-threshold model. Use threshold_aggregates_low/high. */
   threshold_aggregates: number | null
+  /** Per-plano override (pp). NULL = inherit from program. */
+  threshold_leaves_low: number | null
+  /** Per-plano override (pp). NULL = inherit from program. */
+  threshold_leaves_high: number | null
+  /** Per-plano override (pp). NULL = inherit from program. */
+  threshold_aggregates_low: number | null
+  /** Per-plano override (pp). NULL = inherit from program. */
+  threshold_aggregates_high: number | null
   created_at: string
   updated_at: string
   /** Joined from eixos when queried with eixo:eixos(name,code) */
@@ -62,10 +70,18 @@ export interface Program {
   name: string
   description: string | null
   sort_order: number
-  /** Leaf-activity threshold for this program (pp). NOT NULL DEFAULT 0. */
+  /** @deprecated Single-threshold model. Use threshold_leaves_low/high. */
   threshold_leaves: number
-  /** Aggregate-rollup threshold for this program (pp). NOT NULL DEFAULT 20. */
+  /** @deprecated Single-threshold model. Use threshold_aggregates_low/high. */
   threshold_aggregates: number
+  /** Low band for leaves status (pp). delta <= low → Em dia. */
+  threshold_leaves_low: number
+  /** High band for leaves status (pp). delta > high → Em atraso. */
+  threshold_leaves_high: number
+  /** Low band for aggregates status (pp). delta <= low → Em dia. */
+  threshold_aggregates_low: number
+  /** High band for aggregates status (pp). delta > high → Em atraso. */
+  threshold_aggregates_high: number
   created_at: string
   updated_at: string
 }

@@ -15,7 +15,7 @@ import { usePlanos } from '../../hooks/usePlanos'
 import { usePermissions } from '../../hooks/usePermissions'
 import type { Activity, Program } from '../../types/index'
 import type { PlanoThresholds } from '../../hooks/useThresholdsMap'
-import { leafPctPrev, leafStatus, computeRowState, type RowState } from '../../lib/rollup'
+import { leafPctPrev, leafStatus, computeRowState, type RowState, type ThresholdBand } from '../../lib/rollup'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 const ALL_STATUS_KEYS: RowState[] = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
@@ -24,7 +24,7 @@ const ALL_STATUS_KEYS: RowState[] = ['Concluída', 'Em dia', 'Em risco', 'Em atr
 type StatusCls = 'concluida' | 'em_dia' | 'em_risco' | 'em_atraso'
 type LevelView  = 'todos' | 'programa' | 'eixo' | 'plano' | 'macro' | 'actividade'
 
-function actStatus(a: Activity, tLeaves: number = 0): StatusCls {
+function actStatus(a: Activity, tLeaves?: ThresholdBand): StatusCls {
   const s = leafStatus(a, TODAY, tLeaves)
   if (s === 'Concluída') return 'concluida'
   if (s === 'Em risco')  return 'em_risco'
@@ -73,7 +73,7 @@ function computeStats(
   let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0, sumPct = 0, sumPrev = 0
   let latest_end: string | null = null
   for (const a of acts) {
-    const tLeaves = thresholdsMap?.get(a.plano_id ?? '')?.leaves ?? 0
+    const tLeaves = thresholdsMap?.get(a.plano_id ?? '')?.leaves
     const s = actStatus(a, tLeaves)
     if (s === 'concluida') concluidas++
     else if (s === 'em_dia') em_dia++
