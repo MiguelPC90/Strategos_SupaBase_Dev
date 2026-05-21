@@ -7,6 +7,7 @@ import { usePrograms } from '../../hooks/usePrograms'
 import { useFavorites } from '../../hooks/useFavorites'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useActivities } from '../../hooks/useActivities'
+import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Spinner from '../../components/Spinner/Spinner'
 import VisaoExecutiva from './VisaoExecutiva'
@@ -65,7 +66,11 @@ export default function PlanoPage() {
   const today = useMemo(() => new Date().toISOString().split('T')[0], [])
   const { activities: planActivities } = useActivities(planoId ? { plano_id: planoId } : {})
   const planLeaves = useMemo(() => planActivities.filter(a => a.level === 4), [planActivities])
-  const planoStatus = useMemo(() => rollupStatus(planLeaves, today), [planLeaves, today])
+  const thresholdsMap = useThresholdsMap()
+  const planoStatus = useMemo(
+    () => rollupStatus(planLeaves, today, thresholdsMap.get(planoId ?? '')?.aggregates),
+    [planLeaves, today, thresholdsMap, planoId],
+  )
 
   const execMedia    = useMemo(() => rollupPct(planLeaves),            [planLeaves])
   const execTarget   = useMemo(() => rollupPctPrev(planLeaves, today), [planLeaves, today])

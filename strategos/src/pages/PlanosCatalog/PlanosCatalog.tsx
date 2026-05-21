@@ -10,6 +10,7 @@ import { useToast } from '../../context/ToastContext'
 import { useRole } from '../../hooks/useRole'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 import { usePermissions } from '../../hooks/usePermissions'
+import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import { supabase } from '../../lib/supabase'
 import { rollupStatus, rollupPct } from '../../lib/rollup'
 import MultiSelect from '../../components/MultiSelect/MultiSelect'
@@ -115,6 +116,7 @@ function PlanoRowMenu({ planoId, openId, onOpen, onEdit, onDuplicate }: PlanoRow
 
 export default function PlanosCatalog() {
   const { planos, loading, refetch } = usePlanos()
+  const thresholdsMap = useThresholdsMap()
   const { programs } = usePrograms()
   const { isFavorite, toggle, canAddMore } = useFavorites()
   const { showToast } = useToast()
@@ -183,11 +185,11 @@ export default function PlanosCatalog() {
   // ── Enrich planos with computed status + pct ──────────────────
   const enriched = useMemo(() => planos.map(plano => {
     const lv      = leavesByPlano.get(plano.id) ?? []
-    const status  = rollupStatus(lv, today)
+    const status  = rollupStatus(lv, today, thresholdsMap.get(plano.id)?.aggregates)
     const pct     = rollupPct(lv)
     const program = plano.program_id ? programMap.get(plano.program_id) ?? null : null
     return { ...plano, status, pct, program }
-  }), [planos, leavesByPlano, today, programMap])
+  }), [planos, leavesByPlano, today, programMap, thresholdsMap])
 
   // ── Plan-level access filter ──────────────────────────────────
   const accessiblePlanIds = useMemo(
