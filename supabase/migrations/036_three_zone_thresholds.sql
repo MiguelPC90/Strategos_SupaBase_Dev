@@ -77,13 +77,14 @@ ALTER TABLE planos
     );
 
 -- Step 6: Add keys to app_config
-INSERT INTO app_config (key, value, updated_at)
+-- Note: app_config schema uses (config_key TEXT UNIQUE, data JSONB)
+INSERT INTO app_config (config_key, data, updated_at)
 VALUES
-  ('status_delay_threshold_aggregates_low',  '15', NOW()),
-  ('status_delay_threshold_aggregates_high', '25', NOW()),
-  ('status_delay_threshold_leaves_low',      '5',  NOW()),
-  ('status_delay_threshold_leaves_high',     '10', NOW())
-ON CONFLICT (key) DO NOTHING;
+  ('status_delay_threshold_aggregates_low',  to_jsonb(15), NOW()),
+  ('status_delay_threshold_aggregates_high', to_jsonb(25), NOW()),
+  ('status_delay_threshold_leaves_low',      to_jsonb(5),  NOW()),
+  ('status_delay_threshold_leaves_high',     to_jsonb(10), NOW())
+ON CONFLICT (config_key) DO NOTHING;
 
 -- =============================================================================
 -- Rollback (if needed)
@@ -106,7 +107,7 @@ ON CONFLICT (key) DO NOTHING;
 --   DROP COLUMN IF EXISTS threshold_leaves_high;
 --
 -- DELETE FROM app_config
--- WHERE key IN (
+-- WHERE config_key IN (
 --   'status_delay_threshold_aggregates_low',
 --   'status_delay_threshold_aggregates_high',
 --   'status_delay_threshold_leaves_low',
