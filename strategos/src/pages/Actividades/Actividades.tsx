@@ -724,7 +724,7 @@ export default function Actividades() {
               <colgroup>
                 <col />
                 <col style={{ width: '110px' }} />
-                <col style={{ width: '150px' }} />
+                <col style={{ width: '260px' }} />
                 <col style={{ width: '180px' }} />
                 <col style={{ width: '110px' }} />
               </colgroup>

@@ -203,6 +203,17 @@
   .act-name-n1 { font-weight: 600; color: var(--stratgos-ink-700); }
   .act-name-n2 { font-weight: 500; color: var(--stratgos-ink-900); }
   .act-name-n3 { color: var(--stratgos-ink-500); }
+
+  .act-name-n0,
+  .act-name-n1,
+  .act-name-n2,
+  .act-name-n3 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
   .act-name-n4 {
     color: var(--stratgos-ink-500);
     white-space: nowrap;
