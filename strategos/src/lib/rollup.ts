@@ -1,16 +1,37 @@
 import type { Activity } from '../types/index'
 
+/** A pair of thresholds defining the 3-zone status model. */
+export type ThresholdBand = {
+  low:  number
+  high: number
+}
+
+export type RowState = 'Concluída' | 'Em dia' | 'Em risco' | 'Em atraso'
+
 // ── Module-level thresholds (set once at app startup via setThresholds) ───────
-let THRESHOLD_AGGREGATES = 20  // for N0-N3 rollup status
-let THRESHOLD_LEAVES     = 0   // for N4+ leaf status
+// Defaults are based on the 3-zone model from Wave 3a migration.
+let THRESHOLD_AGGREGATES: ThresholdBand = { low: 15, high: 25 }
+let THRESHOLD_LEAVES:     ThresholdBand = { low: 5,  high: 10 }
 
 /**
  * Set both thresholds from app_config. Called once in Layout on startup.
  * Fallback chain: new key → old key → hardcoded default.
  */
-export function setThresholds(aggregates: number, leaves: number): void {
+export function setThresholds(aggregates: ThresholdBand, leaves: ThresholdBand): void {
   THRESHOLD_AGGREGATES = aggregates
   THRESHOLD_LEAVES     = leaves
+}
+
+/**
+ * Compute 3-zone status from a delay delta (target - actual, in pp).
+ * - delta <= band.low    → Em dia
+ * - delta <= band.high   → Em risco
+ * - delta > band.high    → Em atraso
+ */
+function statusFromDelta(delta: number, band: ThresholdBand): RowState {
+  if (delta <= band.low)  return 'Em dia'
+  if (delta <= band.high) return 'Em risco'
+  return 'Em atraso'
 }
 
 /**
@@ -34,25 +55,22 @@ export function leafPctPrev(a: Activity, today: string): number {
 
 /**
  * Derived status for a single leaf activity (level === 4) — 4-state model.
- * - pct >= 100                                        → 'Concluída'
- * - today > bf AND pct < 100                          → 'Em atraso' (missed deadline)
- * - pct < (leafPctPrev(a, today) − THRESHOLD_LEAVES)  → 'Em risco' (behind but deadline not yet passed)
- * - else                                              → 'Em dia'
- *
- * THRESHOLD_LEAVES defaults to 0 (any gap triggers risk). Configurable via
- * app_config key 'status_delay_threshold_leaves'.
+ * Resolution order (first match wins):
+ *  1. pct >= 100                          → 'Concluída'
+ *  2. today > bf AND pct < 100            → 'Em atraso' (deadline missed)
+ *  3. 3-zone delta vs leaves thresholds   → Em dia / Em risco / Em atraso
  */
 export function leafStatus(
   a: Activity,
   today: string,
-  threshold: number = THRESHOLD_LEAVES,
-): string {
+  band: ThresholdBand = THRESHOLD_LEAVES,
+): RowState {
   if (a.pct >= 100) return 'Concluída'
-  const pct_prev = leafPctPrev(a, today)
-  const overdue  = a.bf ? today > a.bf : false
+  const overdue = a.bf ? today > a.bf : false
   if (overdue) return 'Em atraso'
-  if (a.pct < pct_prev - threshold) return 'Em risco'
-  return 'Em dia'
+  const target = leafPctPrev(a, today)
+  const delta  = target - a.pct
+  return statusFromDelta(delta, band)
 }
 
 /** Average % execução (0-100). Pass N4 leaves only. */
@@ -69,19 +87,17 @@ export function rollupPctPrev(activities: Activity[], today: string): number {
 
 /**
  * Rollup status from N4 leaves using date + schedule logic — 4-state model.
- * - All pct >= 100                                    → 'Concluída'
- * - today > max(bf) AND avg pct < 100                → 'Em atraso' (group missed deadline)
- * - (avg pct_previsto − avg pct) > threshold         → 'Em risco' (behind but deadline not yet passed)
- * - else                                             → 'Em dia'
- *
- * `threshold` defaults to THRESHOLD_AGGREGATES (configurable via app_config
- * key 'status_delay_threshold_aggregates'). Pages may override by passing
- * their own locally-fetched value; the module default ensures the correct
- * value when no explicit argument is supplied.
- *
- * Pass N4 leaves only.
+ * Resolution order (first match wins):
+ *  1. leaves.length === 0                          → 'Em dia'
+ *  2. All pct >= 100                               → 'Concluída'
+ *  3. today > max(bf) AND avg pct < 100            → 'Em atraso' (group deadline missed)
+ *  4. 3-zone delta vs aggregates thresholds        → Em dia / Em risco / Em atraso
  */
-export function rollupStatus(leaves: Activity[], today: string, threshold = THRESHOLD_AGGREGATES): string {
+export function rollupStatus(
+  leaves: Activity[],
+  today: string,
+  band: ThresholdBand = THRESHOLD_AGGREGATES,
+): RowState {
   if (leaves.length === 0) return 'Em dia'
   if (leaves.every(a => a.pct >= 100)) return 'Concluída'
   const avgPct = leaves.reduce((s, a) => s + a.pct, 0) / leaves.length
@@ -91,26 +107,34 @@ export function rollupStatus(leaves: Activity[], today: string, threshold = THRE
   }, null)
   if (maxBf && today > maxBf && avgPct < 100) return 'Em atraso'
   const avgPrev = rollupPctPrev(leaves, today)
-  if ((avgPrev - avgPct) > threshold) return 'Em risco'
-  return 'Em dia'
+  const delta   = avgPrev - avgPct
+  return statusFromDelta(delta, band)
 }
-
-export type RowState = 'Concluída' | 'Em dia' | 'Em risco' | 'Em atraso'
 
 /**
  * 4-state status from already-computed actual vs target percentages.
- * Uses THRESHOLD_AGGREGATES: within threshold → 'Em risco', beyond → 'Em atraso'.
+ * Uses 3-zone aggregates threshold band.
+ *
+ * NOTE: This function does NOT consider deadlines. If a caller has access
+ * to leaves, prefer rollupStatus(leaves, today, band) which handles
+ * date-based overrides correctly.
  */
-export function computeRowState(actual: number, target: number): RowState {
+export function computeRowState(
+  actual: number,
+  target: number,
+  band: ThresholdBand = THRESHOLD_AGGREGATES,
+): RowState {
   if (actual >= 100) return 'Concluída'
   const delta = target - actual
-  if (delta <= 0) return 'Em dia'
-  if (delta <= THRESHOLD_AGGREGATES) return 'Em risco'
-  return 'Em atraso'
+  return statusFromDelta(delta, band)
 }
 
-export function getThresholdAggregates(): number {
+export function getThresholdAggregates(): ThresholdBand {
   return THRESHOLD_AGGREGATES
+}
+
+export function getThresholdLeaves(): ThresholdBand {
+  return THRESHOLD_LEAVES
 }
 
 /** Earliest bs / latest bf across activities. Pass N4 leaves only. */
