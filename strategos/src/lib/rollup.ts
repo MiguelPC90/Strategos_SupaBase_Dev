@@ -33,7 +33,7 @@ export function leafPctPrev(a: Activity, today: string): number {
 }
 
 /**
- * Derived status for a single leaf activity (level >= 4) — 4-state model.
+ * Derived status for a single leaf activity (level === 4) — 4-state model.
  * - pct >= 100                                        → 'Concluída'
  * - today > bf AND pct < 100                          → 'Em atraso' (missed deadline)
  * - pct < (leafPctPrev(a, today) − THRESHOLD_LEAVES)  → 'Em risco' (behind but deadline not yet passed)

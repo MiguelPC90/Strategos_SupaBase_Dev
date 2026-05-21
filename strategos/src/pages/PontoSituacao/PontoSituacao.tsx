@@ -360,10 +360,10 @@ export default function PontoSituacao() {
     return risks.filter(r => r.plano_id === selectedKey)
   }, [risks, selectedKey])
 
-  // N4+ leaf activities for KPIs, filtered by plano_id
+  // N4 leaf activities for KPIs, filtered by plano_id (level === 4 is the canonical KPI unit)
   const planLeaves = useMemo(() => {
     if (!selectedKey) return []
-    return activities.filter(a => a.plano_id === selectedKey && a.level >= 4)
+    return activities.filter(a => a.plano_id === selectedKey && a.level === 4)
   }, [activities, selectedKey])
 
   const planLabel = planOptions.find(o => o.key === selectedKey)?.label ?? ''
