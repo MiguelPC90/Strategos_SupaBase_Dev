@@ -706,7 +706,6 @@ export default function Recursos() {
   const programId = filters.programIds[0] ?? programs[0]?.id
   const labels = useProgramLabels(programId ?? null)
 
-  const [selectedPlanoLabels, setSelectedPlanoLabels] = useState<string[]>([])
   const [selectedYears,       setSelectedYears]       = useState<string[]>([])
   const [mgmtYears,           setMgmtYears]           = useState<string[]>([])
   const [activeTab,           setActiveTab]           = useState<'plano' | 'recurso' | 'lista'>('plano')
@@ -714,9 +713,8 @@ export default function Recursos() {
   const [selectedRes,         setSelectedRes]         = useState<string | null>(null)
   const [currSymbol,          setCurrSymbol]          = useState('€')
 
-  // Reset plano/year selection when program changes
+  // Reset year selection when program changes
   useEffect(() => {
-    setSelectedPlanoLabels([])
     setSelectedYears([])
   }, [programId])
 
@@ -770,25 +768,32 @@ export default function Recursos() {
     [resources, accessiblePlanIds],
   )
 
-  // ── Plano options ─────────────────────────────────────────────
-  const planoOptions = useMemo(() =>
-    visiblePlanos.map(p => p.eixo?.name ? `${p.eixo.name} > ${p.name}` : p.name),
-    [visiblePlanos]
-  )
+  // ── Breadcrumb + owner/sponsor plano scope ───────────────────
+  const breadcrumbPlanoId = useMemo(() => {
+    const n2Name = filters.n2Values[0] ?? null
+    if (!n2Name) return null
+    return visiblePlanos.find(p => p.name === n2Name)?.id ?? null
+  }, [filters.n2Values, visiblePlanos])
 
-  const planoLabelToId = useMemo(() => {
-    const m = new Map<string, string>()
-    visiblePlanos.forEach((p, i) => m.set(planoOptions[i], p.id))
-    return m
-  }, [visiblePlanos, planoOptions])
+  const ownerPlanoIds = useMemo(() => {
+    if (filters.owners.length === 0) return null
+    return new Set(
+      visiblePlanos.filter(p => {
+        const vals = (p.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)
+        return vals.some(v => filters.owners.includes(v))
+      }).map(p => p.id)
+    )
+  }, [filters.owners, visiblePlanos])
 
-  const selectedPlanoIds = useMemo(() =>
-    selectedPlanoLabels.flatMap(l => {
-      const id = planoLabelToId.get(l)
-      return id ? [id] : []
-    }),
-    [selectedPlanoLabels, planoLabelToId]
-  )
+  const sponsorPlanoIds = useMemo(() => {
+    if (filters.sponsors.length === 0) return null
+    return new Set(
+      visiblePlanos.filter(p => {
+        const vals = (p.sponsor ?? '').split('|').map(s => s.trim()).filter(Boolean)
+        return vals.some(v => filters.sponsors.includes(v))
+      }).map(p => p.id)
+    )
+  }, [filters.sponsors, visiblePlanos])
 
   // ── Year options ──────────────────────────────────────────────
   const yearOptions = useMemo(() => {
@@ -807,12 +812,13 @@ export default function Recursos() {
     [visiblePlanos]
   )
 
-  // ── Scoped resources (plano + year filtered) ──────────────────
+  // ── Scoped resources (breadcrumb + owner/sponsor + year filtered) ─
   const scoped = useMemo(() => {
-    let r = accessibleResources
-    if (selectedPlanoIds.length > 0) {
-      r = r.filter(res => selectedPlanoIds.includes(res.pds_id))
-    }
+    let r = accessibleResources.filter(res =>
+      (!breadcrumbPlanoId || res.pds_id === breadcrumbPlanoId) &&
+      (!ownerPlanoIds     || (res.pds_id != null && ownerPlanoIds.has(res.pds_id))) &&
+      (!sponsorPlanoIds   || (res.pds_id != null && sponsorPlanoIds.has(res.pds_id)))
+    )
     if (selectedYears.length > 0) {
       r = r.filter(res => selectedYears.some(y => {
         const yearStart = `${y}-01-01`
@@ -823,7 +829,7 @@ export default function Recursos() {
       }))
     }
     return r
-  }, [resources, selectedPlanoIds, selectedYears])
+  }, [accessibleResources, breadcrumbPlanoId, ownerPlanoIds, sponsorPlanoIds, selectedYears])
 
   // ── Period (used by heatmap) ──────────────────────────────────
   const { periodStart, periodEnd } = useMemo(() => {
@@ -961,17 +967,6 @@ export default function Recursos() {
 
       {/* ── Filter bar ─────────────────────────────────────────── */}
       <div className="rec-filter-bar">
-        {/* Plano — zone 1 */}
-        <div className="rec-filter-zone">
-          <MultiSelect
-            label="Plano"
-            options={planoOptions}
-            placeholder="Todos os planos"
-            value={selectedPlanoLabels}
-            onChange={setSelectedPlanoLabels}
-          />
-        </div>
-
         {/* Ano — zone 3 */}
         <div className="rec-filter-zone">
           <MultiSelect

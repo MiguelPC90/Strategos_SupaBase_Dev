@@ -237,7 +237,6 @@ export default function ExecucaoFinanceira() {
 
   const programId = filters.programIds[0] ?? programs[0]?.id
 
-  const [selectedPlanoLabels, setSelectedPlanoLabels] = useState<string[]>([])
   const [selectedYears,       setSelectedYears]       = useState<string[]>([])
   const [tipoFilter,          setTipoFilter]          = useState<TipoFilter>('todos')
   const [currSymbol,          setCurrSymbol]          = useState('€')
@@ -248,9 +247,8 @@ export default function ExecucaoFinanceira() {
   const [sortBy,              setSortBy]              = useState('supplier')
   const [sortDir,             setSortDir]             = useState<'asc' | 'desc'>('asc')
 
-  // Reset plano/year selection when program changes
+  // Reset year selection when program changes
   useEffect(() => {
-    setSelectedPlanoLabels([])
     setSelectedYears([])
   }, [programId])
 
@@ -305,25 +303,32 @@ export default function ExecucaoFinanceira() {
     [planos, accessiblePlanIds],
   )
 
-  // ── Plano options (label → id mapping) ──────────────────────
-  const planoOptions = useMemo(() =>
-    visiblePlanos.map(p => p.eixo?.name ? `${p.eixo.name} > ${p.name}` : p.name),
-    [visiblePlanos]
-  )
+  // ── Breadcrumb + owner/sponsor plano scope ───────────────────
+  const breadcrumbPlanoId = useMemo(() => {
+    const n2Name = filters.n2Values[0] ?? null
+    if (!n2Name) return null
+    return visiblePlanos.find(p => p.name === n2Name)?.id ?? null
+  }, [filters.n2Values, visiblePlanos])
 
-  const planoLabelToId = useMemo(() => {
-    const m = new Map<string, string>()
-    visiblePlanos.forEach((p, i) => m.set(planoOptions[i], p.id))
-    return m
-  }, [visiblePlanos, planoOptions])
+  const ownerPlanoIds = useMemo(() => {
+    if (filters.owners.length === 0) return null
+    return new Set(
+      visiblePlanos.filter(p => {
+        const vals = (p.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)
+        return vals.some(v => filters.owners.includes(v))
+      }).map(p => p.id)
+    )
+  }, [filters.owners, visiblePlanos])
 
-  const selectedPlanoIds = useMemo(() =>
-    selectedPlanoLabels.flatMap(l => {
-      const id = planoLabelToId.get(l)
-      return id ? [id] : []
-    }),
-    [selectedPlanoLabels, planoLabelToId]
-  )
+  const sponsorPlanoIds = useMemo(() => {
+    if (filters.sponsors.length === 0) return null
+    return new Set(
+      visiblePlanos.filter(p => {
+        const vals = (p.sponsor ?? '').split('|').map(s => s.trim()).filter(Boolean)
+        return vals.some(v => filters.sponsors.includes(v))
+      }).map(p => p.id)
+    )
+  }, [filters.sponsors, visiblePlanos])
 
   // ── Accessible base data (plan-level permission filter) ─────
   const accessibleBudgetLines = useMemo(
@@ -349,25 +354,28 @@ export default function ExecucaoFinanceira() {
     return [...years].sort()
   }, [mgmtYears, budgetLines])
 
-  // ── Step 1: plano-filtered data ──────────────────────────────
-  const planLines = useMemo(() =>
-    selectedPlanoIds.length > 0
-      ? accessibleBudgetLines.filter(l => l.plano_id !== null && selectedPlanoIds.includes(l.plano_id))
-      : accessibleBudgetLines,
-    [accessibleBudgetLines, selectedPlanoIds]
-  )
-  const planCtrs = useMemo(() =>
-    selectedPlanoIds.length > 0
-      ? accessibleContracts.filter(c => c.plano_id !== null && selectedPlanoIds.includes(c.plano_id))
-      : accessibleContracts,
-    [accessibleContracts, selectedPlanoIds]
-  )
-  const planInvs = useMemo(() =>
-    selectedPlanoIds.length > 0
-      ? accessibleInvoices.filter(i => i.plano_id !== null && selectedPlanoIds.includes(i.plano_id))
-      : accessibleInvoices,
-    [accessibleInvoices, selectedPlanoIds]
-  )
+  // ── Step 1: plano/owner/sponsor-filtered data ─────────────────
+  const planLines = useMemo(() => {
+    return accessibleBudgetLines.filter(l =>
+      (!breadcrumbPlanoId || l.plano_id === breadcrumbPlanoId) &&
+      (!ownerPlanoIds     || (l.plano_id !== null && ownerPlanoIds.has(l.plano_id))) &&
+      (!sponsorPlanoIds   || (l.plano_id !== null && sponsorPlanoIds.has(l.plano_id)))
+    )
+  }, [accessibleBudgetLines, breadcrumbPlanoId, ownerPlanoIds, sponsorPlanoIds])
+  const planCtrs = useMemo(() => {
+    return accessibleContracts.filter(c =>
+      (!breadcrumbPlanoId || c.plano_id === breadcrumbPlanoId) &&
+      (!ownerPlanoIds     || (c.plano_id !== null && ownerPlanoIds.has(c.plano_id))) &&
+      (!sponsorPlanoIds   || (c.plano_id !== null && sponsorPlanoIds.has(c.plano_id)))
+    )
+  }, [accessibleContracts, breadcrumbPlanoId, ownerPlanoIds, sponsorPlanoIds])
+  const planInvs = useMemo(() => {
+    return accessibleInvoices.filter(i =>
+      (!breadcrumbPlanoId || i.plano_id === breadcrumbPlanoId) &&
+      (!ownerPlanoIds     || (i.plano_id !== null && ownerPlanoIds.has(i.plano_id))) &&
+      (!sponsorPlanoIds   || (i.plano_id !== null && sponsorPlanoIds.has(i.plano_id)))
+    )
+  }, [accessibleInvoices, breadcrumbPlanoId, ownerPlanoIds, sponsorPlanoIds])
 
   // Category → isCapex map (based on all plano lines, ignoring tipo chip)
   const catCapexMap = useMemo(() => {
@@ -603,17 +611,6 @@ export default function ExecucaoFinanceira() {
 
       {/* ── Filter bar ─────────────────────────────────────────── */}
       <div className="ef-filter-bar">
-        {/* Plano — zone 1 (1.5fr) */}
-        <div className="ef-filter-zone">
-          <MultiSelect
-            label="Plano"
-            options={planoOptions}
-            placeholder="Todos os planos"
-            value={selectedPlanoLabels}
-            onChange={setSelectedPlanoLabels}
-          />
-        </div>
-
         {/* Ano — zone 3 (1fr) */}
         <div className="ef-filter-zone">
           <MultiSelect
