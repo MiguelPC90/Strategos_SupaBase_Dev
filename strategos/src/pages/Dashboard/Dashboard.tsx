@@ -699,7 +699,7 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
         .map(prog => {
           const progLeaves = leaves.filter(a => a.program_id === prog.id)
           if (progLeaves.length === 0) return null
-          return { ...buildRow(prog.name, calcMetrics(progLeaves, thresholdsMap), false, progLeaves), _prog_id: prog.id }
+          return { ...buildRow(prog.name, calcMetrics(progLeaves, thresholdsMap), false, progLeaves), _prog_id: prog.id } as Record<string, unknown>
         })
         .filter((r): r is Record<string, unknown> => r !== null)
     }

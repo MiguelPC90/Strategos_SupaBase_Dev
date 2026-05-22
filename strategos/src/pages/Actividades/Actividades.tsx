@@ -15,7 +15,7 @@ import { usePlanos } from '../../hooks/usePlanos'
 import { usePermissions } from '../../hooks/usePermissions'
 import type { Activity, Program } from '../../types/index'
 import type { PlanoThresholds } from '../../hooks/useThresholdsMap'
-import { leafPctPrev, leafStatus, computeRowState, type RowState, type ThresholdBand } from '../../lib/rollup'
+import { leafPctPrev, leafStatus, computeRowState, rollupStatus, getThresholdAggregates, type RowState, type ThresholdBand } from '../../lib/rollup'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 const ALL_STATUS_KEYS: RowState[] = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
@@ -431,7 +431,7 @@ export default function Actividades() {
       const n1col    = collapsed.has(n1key)
       const n1leaves = n1g.allActs.filter(a => a.level === 4)
       const n1stats  = computeStats(n1leaves, thresholdsMap)
-      const n1state  = computeRowState(n1stats.exec, n1stats.exec_obj)
+      const n1state  = rollupStatus(n1leaves, TODAY, getThresholdAggregates())
 
       rows.push(
         <tr key={n1key} className="act-row-n1">
@@ -459,7 +459,7 @@ export default function Actividades() {
         const n2col    = collapsed.has(n2key)
         const n2leaves = n2g.allActs.filter(a => a.level === 4)
         const n2stats  = computeStats(n2leaves, thresholdsMap)
-        const n2state  = computeRowState(n2stats.exec, n2stats.exec_obj)
+        const n2state  = rollupStatus(n2leaves, TODAY, getThresholdAggregates())
 
         rows.push(
           <tr key={n2key} className="act-row-n2">
@@ -546,7 +546,7 @@ export default function Actividades() {
           const n3col    = collapsed.has(n3key)
           const n3leaves = n3g.acts.filter(a => a.level === 4)
           const n3stats  = computeStats(n3leaves, thresholdsMap)
-          const n3state  = computeRowState(n3stats.exec, n3stats.exec_obj)
+          const n3state  = rollupStatus(n3leaves, TODAY, getThresholdAggregates())
 
           rows.push(
             <tr key={n3key} className="act-row-n3">
@@ -604,7 +604,7 @@ export default function Actividades() {
       const n0col    = collapsed.has(n0key)
       const n0leaves = n0g.allActs.filter(a => a.level === 4)
       const n0stats  = computeStats(n0leaves)
-      const n0state  = computeRowState(n0stats.exec, n0stats.exec_obj)
+      const n0state  = rollupStatus(n0leaves, TODAY, getThresholdAggregates())
 
       rows.push(
         <tr key={n0key} className="act-row-n0">
