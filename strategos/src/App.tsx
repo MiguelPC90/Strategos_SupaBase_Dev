@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { ToastProvider } from './context/ToastContext'
 import { FavoritesProvider } from './context/FavoritesContext'
@@ -13,14 +14,15 @@ import PontoSituacao from './pages/PontoSituacao/PontoSituacao'
 import ExecucaoFinanceira from './pages/ExecucaoFinanceira/ExecucaoFinanceira'
 import Recursos from './pages/Recursos/Recursos'
 import BudgetPage from './pages/BudgetPage/BudgetPage'
-import Admin from './pages/Admin/Admin'
+const Admin = lazy(() => import('./pages/Admin/Admin'))
+const PlanosCatalog = lazy(() => import('./pages/PlanosCatalog/PlanosCatalog'))
+const PlanoPage = lazy(() => import('./pages/PlanoPage/PlanoPage'))
 import Profile from './pages/Profile/Profile'
-import PlanosCatalog from './pages/PlanosCatalog/PlanosCatalog'
-import PlanoPage from './pages/PlanoPage/PlanoPage'
 import ResetPassword from './pages/ResetPassword/ResetPassword'
 import SetupPassword from './pages/SetupPassword/SetupPassword'
 import Glossary from './pages/Glossary/Glossary'
 import SplashScreen from './components/SplashScreen/SplashScreen'
+import Spinner from './components/Spinner/Spinner'
 import NotFound from './pages/NotFound/NotFound'
 import { useAuth } from './hooks/useAuth'
 import { useRole } from './hooks/useRole'
@@ -120,6 +122,7 @@ export default function App() {
     <ProfileProvider>
     <FavoritesProvider>
     <BrowserRouter>
+      <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}><Spinner size="lg" /></div>}>
       <Routes>
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/setup-password" element={<SetupPassword />} />
@@ -149,6 +152,7 @@ export default function App() {
           <Route path="*"               element={<NotFound />} />
         </Route>
       </Routes>
+      </Suspense>
     </BrowserRouter>
     </FavoritesProvider>
     </ProfileProvider>
