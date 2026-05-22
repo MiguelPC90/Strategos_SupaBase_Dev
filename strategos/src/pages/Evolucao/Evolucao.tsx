@@ -51,9 +51,6 @@ function fmtSnapTooltip(isoDate: string): string {
   return time ? `${dd}/${mm}/${yyyy} ${time}` : `${dd}/${mm}/${yyyy}`
 }
 
-function delta(val: number): string {
-  return val >= 0 ? `+${val.toFixed(1)}` : val.toFixed(1)
-}
 
 type KpiColor = 'navy' | 'green' | 'blue' | 'red' | 'amber' | 'text'
 

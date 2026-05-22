@@ -485,7 +485,7 @@ export default function PontoSituacao() {
     cutoff.setDate(cutoff.getDate() - hideCompletedDays)
     const cutoffStr = cutoff.toISOString().slice(0, 10)
     const hidden = visCommitments.filter(item =>
-      (item.status === 'Concluído' || item.status === 'Concluída') &&
+      item.status === 'Concluído' &&
       item.date && item.date < cutoffStr
     )
     return {

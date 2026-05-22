@@ -87,8 +87,7 @@ function AdminGeral() {
         setSubtitle(map['client_subtitle'] ?? '')
         setLogoUrl(map['client_logo_url']  ?? '')
         setCutoffDate(map['cutoff_date']   ?? '')
-      })
-      .catch(() => { if (!cancelled) setLoading(false) })
+      }, () => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
 
@@ -1416,8 +1415,7 @@ function StringListEditor({ configKey, label, defaults = [] }: { configKey: stri
         setLoading(false)
         if (!data) { setItems(defaults); return }
         try { setItems(JSON.parse(data.data) as string[]) } catch { setItems(defaults) }
-      })
-      .catch(() => { if (!cancelled) setLoading(false) })
+      }, () => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [configKey])
 
@@ -2582,8 +2580,7 @@ function MatrizTab() {
           }
         }
         setLoading(false)
-      })
-      .catch(() => { if (!cancelled) setLoading(false) })
+      }, () => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
 
@@ -2918,7 +2915,7 @@ function RegistoTab() {
       if (error) { setLogError(true); setLoading(false); return }
       setRows((data ?? []) as ChangeLogRow[])
       setLoading(false)
-    }).catch(() => {
+    }, () => {
       if (!cancelled) { setLogError(true); setLoading(false) }
     })
     return () => { cancelled = true }
@@ -3395,8 +3392,7 @@ function AdminPlano() {
           try { setHealthConfig({ ...DEFAULT_HEALTH_CONFIG, ...JSON.parse(map['health_rules']) }) }
           catch { /* keep defaults */ }
         }
-      })
-      .catch(() => { if (!cancelled) setLoading(false) })
+      }, () => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
 

@@ -1,5 +1,6 @@
 import './Gantt.css'
 import { useState, useMemo, useCallback, useRef, useLayoutEffect, useEffect, type ReactNode } from 'react'
+import type { JSX } from 'react'
 import { ChevronDown, ChevronRight, X, CheckCircle2, CircleDot, AlertCircle, XCircle } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'

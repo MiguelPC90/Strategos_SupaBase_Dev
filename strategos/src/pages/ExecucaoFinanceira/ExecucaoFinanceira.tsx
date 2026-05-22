@@ -144,7 +144,7 @@ function VisaoGeralChart({ data, sym }: { data: OverviewBar[]; sym: string }) {
           <LabelList
             dataKey="value"
             position="top"
-            formatter={(v: number) => compactNumber(v)}
+            formatter={((v: number) => compactNumber(v)) as never}
             style={{ fontSize: 10, fontWeight: 600 }}
           />
         </Bar>
@@ -163,7 +163,7 @@ function MonthlyStatusChart({ data, sym }: { data: MonthStatusBar[]; sym: string
         <YAxis tickFormatter={(v: number) => compactNumber(v)} tick={{ fontSize: 10 }} width={44} />
         <Tooltip
           formatter={(v) => fmtEur(v as number, sym)}
-          labelFormatter={(l: string) => fmtMonth(l)}
+          labelFormatter={((l: string) => fmtMonth(l)) as never}
           contentStyle={{ fontSize: 12 }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -186,7 +186,7 @@ function BurnRateChart({ data, sym }: { data: BurnRatePoint[]; sym: string }) {
         <YAxis tickFormatter={(v: number) => compactNumber(v)} tick={{ fontSize: 10 }} width={44} domain={['auto', 'auto']} />
         <Tooltip
           formatter={(v) => fmtEur(v as number, sym)}
-          labelFormatter={(l: string) => fmtMonth(l)}
+          labelFormatter={((l: string) => fmtMonth(l)) as never}
           contentStyle={{ fontSize: 12 }}
         />
         <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="top" />
@@ -212,7 +212,7 @@ function TopFornecedoresChart({ data, sym }: { data: SupplierBar[]; sym: string 
           <LabelList
             dataKey="value"
             position="right"
-            formatter={(v: number) => compactNumber(v)}
+            formatter={((v: number) => compactNumber(v)) as never}
             style={{ fontSize: 10 }}
           />
         </Bar>

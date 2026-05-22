@@ -708,7 +708,7 @@ export default function GestaoIniciativas({
   const { programs } = usePrograms()
   const { activities: rawActivities, loading, refetch } = useActivities({ plano_id: propPlanoId })
   const { eixos: dbEixos } = useEixos(selProgId ?? undefined)
-  const { planos: dbPlanos, refetch: refetchPlanos } = usePlanos(selProgId ?? undefined)
+  const { planos: dbPlanos, refetch: _refetchPlanos } = usePlanos(selProgId ?? undefined)
   const labels = useProgramLabels(selProgId)
 
   const program = useMemo(() => programs.find(p => p.id === selProgId), [programs, selProgId])
@@ -1019,7 +1019,7 @@ export default function GestaoIniciativas({
       successor_id: successorId, predecessor_id: predecessorId,
       dep_type: depType, lag_days: lagDays,
     })
-    if ('error' in result) return result.error.message
+    if ('error' in result) return result.error?.message ?? 'Unknown error'
     return null
   }, [activities, dependencies, createDependency])
 

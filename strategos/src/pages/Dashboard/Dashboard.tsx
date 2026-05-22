@@ -1,7 +1,7 @@
 import './Dashboard.css'
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { TrendingUp, TrendingDown, AlertTriangle, ChevronRight } from 'lucide-react'
+import { AlertTriangle, ChevronRight } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import SmartKpi from '../../components/Kpi/SmartKpi'
 import ContagemKpi from '../../components/Kpi/ContagemKpi'

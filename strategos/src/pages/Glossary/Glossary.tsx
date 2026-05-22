@@ -6,7 +6,7 @@ import './Glossary.css'
 export default function Glossary() {
   const [query, setQuery] = useState('')
   const [activeSection, setActiveSection] = useState<string>(GLOSSARY_SECTIONS[0].id)
-  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
 
   const filteredSections = useMemo(() => {
     if (!query.trim()) return GLOSSARY_SECTIONS

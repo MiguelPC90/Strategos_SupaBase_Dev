@@ -666,8 +666,6 @@ export default function GestaoFinanceira({
 
   // ── Draft setters ────────────────────────────────────────────
   const setBudget    = useCallback((budget: FinBudgetLine[])   => setDraft(d => ({ ...d, budget })), [])
-  const setContracts = useCallback((contracts: FinContract[])  => setDraft(d => ({ ...d, contracts })), [])
-  const setInvoices  = useCallback((invoices: FinInvoice[])    => setDraft(d => ({ ...d, invoices })), [])
 
   const deleteBudget = useCallback((id: string) => {
     setDraft(d => ({ ...d, budget: d.budget.filter(b => b.id !== id) }))

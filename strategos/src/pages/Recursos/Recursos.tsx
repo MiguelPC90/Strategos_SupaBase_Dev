@@ -623,8 +623,8 @@ function FteEvolutionChart({ data }: FteEvolutionChartProps) {
         <XAxis dataKey="month" tickFormatter={fmtMo} tick={{ fontSize: 10 }} />
         <YAxis domain={['auto', 'auto']} tick={{ fontSize: 10 }} />
         <Tooltip
-          formatter={(v: number) => [v.toFixed(2), 'FTE']}
-          labelFormatter={fmtMo}
+          formatter={((v: number) => [v.toFixed(2), 'FTE']) as never}
+          labelFormatter={fmtMo as never}
           contentStyle={{ fontSize: 12 }}
         />
         <Line

@@ -856,7 +856,7 @@ export default function GestaoRecursos({
       const newRows   = draft.filter(r => isNew(r.id))
       const delArr    = Array.from(deleted)
 
-      const ops: Promise<unknown>[] = []
+      const ops: PromiseLike<unknown>[] = []
 
       const makePayload = (r: DraftResource, idx?: number) => ({
         pds_id: pdsId, app_id: r.app_id, program_id: progId,
