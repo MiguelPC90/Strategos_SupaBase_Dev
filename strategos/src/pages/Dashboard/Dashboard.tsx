@@ -26,7 +26,7 @@ import { supabase } from '../../lib/supabase'
 import { generateAlerts } from '../../lib/alerts'
 import type { Alert, AlertRule } from '../../lib/alerts'
 import type { Activity, Program, Eixo, Plano } from '../../types/index'
-import { leafPctPrev, leafStatus, computeRowState, rollupDateRange, type RowState, type ThresholdBand } from '../../lib/rollup'
+import { leafPctPrev, leafStatus, computeRowState, rollupStatus, rollupDateRange, type RowState, type ThresholdBand } from '../../lib/rollup'
 import { buildThresholdsMap, type PlanoThresholds } from '../../hooks/useThresholdsMap'
 import { colors, statusColor } from '../../lib/tokens'
 
@@ -253,7 +253,13 @@ function DeviationBar({ actual, target }: DeviationBarProps) {
   )
 }
 
-function buildRow(nome: string, m: Metrics, isParent: boolean): Record<string, unknown> {
+function buildRow(
+  nome: string,
+  m: Metrics,
+  isParent: boolean,
+  leaves: Activity[],
+  band?: ThresholdBand,
+): Record<string, unknown> {
   const concGeral = safeDiv(m.concluidas, m.total) * 100
   const concData  = safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100
   const cgObj     = safeDiv(m.concluidas + m.em_atraso, m.total) * 100
@@ -262,7 +268,7 @@ function buildRow(nome: string, m: Metrics, isParent: boolean): Record<string, u
   return {
     _isParent: isParent,
     nome,
-    _estado: grauExec !== null && execObj !== null ? computeRowState(grauExec, execObj) : null,
+    _estado: m.total > 0 ? rollupStatus(leaves, TODAY, band) : null,
     total:      m.total,
     concluidas: m.concluidas,
     em_dia:     m.em_dia,
@@ -693,7 +699,7 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
         .map(prog => {
           const progLeaves = leaves.filter(a => a.program_id === prog.id)
           if (progLeaves.length === 0) return null
-          return { ...buildRow(prog.name, calcMetrics(progLeaves, thresholdsMap), false), _prog_id: prog.id }
+          return { ...buildRow(prog.name, calcMetrics(progLeaves, thresholdsMap), false, progLeaves), _prog_id: prog.id }
         })
         .filter((r): r is Record<string, unknown> => r !== null)
     }
@@ -724,9 +730,9 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
       for (const prog of sortedProgs) {
         const progLeaves = leaves.filter(a => a.program_id === prog.id)
         if (progLeaves.length === 0) continue
-        rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, thresholdsMap), false), _prog_id: prog.id, _isProgHeader: true })
+        rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, thresholdsMap), false, progLeaves), _prog_id: prog.id, _isProgHeader: true })
         for (const { name, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
-          rows.push({ ...buildRow(name, calcMetrics(eixoLeaves, thresholdsMap), false), _n1: name, _prog_id: prog.id })
+          rows.push({ ...buildRow(name, calcMetrics(eixoLeaves, thresholdsMap), false, eixoLeaves), _n1: name, _prog_id: prog.id })
         }
       }
       return rows
@@ -736,9 +742,9 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
     for (const prog of sortedProgs) {
       const progLeaves = leaves.filter(a => a.program_id === prog.id)
       if (progLeaves.length === 0) continue
-      rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, thresholdsMap), false), _prog_id: prog.id, _isProgHeader: true })
+      rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, thresholdsMap), false, progLeaves), _prog_id: prog.id, _isProgHeader: true })
       for (const { name: eixoName, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
-        rows.push({ ...buildRow(eixoName, calcMetrics(eixoLeaves, thresholdsMap), true), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
+        rows.push({ ...buildRow(eixoName, calcMetrics(eixoLeaves, thresholdsMap), true, eixoLeaves), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
         const byPlano = groupBy(eixoLeaves, a => a.n2 || '(sem plano)')
         const eixoPlanos = allPlanos
           .filter(p => p.program_id === prog.id && p.eixo?.name === eixoName)
@@ -748,11 +754,12 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
           const acts = byPlano.get(plano.name)
           if (!acts) continue
           seen.add(plano.name)
-          rows.push({ ...buildRow(plano.name, calcMetrics(acts, thresholdsMap), false), _n1: eixoName, _n2: plano.name, _indent: 2 })
+          const planoBand = thresholdsMap.get(plano.id)?.aggregates
+          rows.push({ ...buildRow(plano.name, calcMetrics(acts, thresholdsMap), false, acts, planoBand), _n1: eixoName, _n2: plano.name, _indent: 2 })
         }
         for (const [n2, acts] of byPlano) {
           if (seen.has(n2)) continue
-          rows.push({ ...buildRow(n2, calcMetrics(acts, thresholdsMap), false), _n1: eixoName, _n2: n2, _indent: 2 })
+          rows.push({ ...buildRow(n2, calcMetrics(acts, thresholdsMap), false, acts), _n1: eixoName, _n2: n2, _indent: 2 })
         }
       }
     }
@@ -1033,7 +1040,7 @@ export default function Dashboard() {
     return {
       _isTotals: true,
       nome:      'TOTAL',
-      _estado:   grauExec !== null && execObj !== null ? computeRowState(grauExec, execObj) : null,
+      _estado:   m.total > 0 ? rollupStatus(accessibleLeaves, TODAY) : null,
       total:      m.total,
       concluidas: m.concluidas,
       em_dia:     m.em_dia,
