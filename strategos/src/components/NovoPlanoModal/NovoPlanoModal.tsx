@@ -2,6 +2,7 @@ import './NovoPlanoModal.css'
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, AlertTriangle, X, Download, Paperclip, FileText } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import Modal from '../Modal/Modal'
 import SearchableSelect from '../SearchableSelect/SearchableSelect'
 import MultiPersonSelect from '../MultiPersonSelect/MultiPersonSelect'
@@ -73,7 +74,6 @@ function parseDate(raw: unknown): string | null {
 }
 
 async function parseExcelFile(file: File): Promise<{ activities: ParsedActivity[]; errors: ParseError[] }> {
-  const XLSX = await import('xlsx')
   const buf = await file.arrayBuffer()
   const wb  = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true })
   const ws  = wb.Sheets[wb.SheetNames[0]]
@@ -147,8 +147,7 @@ function buildN345(act: ParsedActivity, all: ParsedActivity[]): { n3: string; n4
   return { n3: byLevel.get(3) ?? '', n4: byLevel.get(4) ?? '', n5: byLevel.get(5) ?? '' }
 }
 
-async function downloadTemplate() {
-  const XLSX = await import('xlsx')
+function downloadTemplate() {
   const headers = ['Nivel', 'Nome', 'Inicio_Planeado', 'Fim_Planeado', 'Inicio_Real', 'Fim_Real', 'Pct_Execucao', 'Notas']
   const examples: (string | number)[][] = [
     [3, 'M1 - Análise',     '01/04/2026', '30/04/2026', '', '', 0, 'Fase de análise'],
