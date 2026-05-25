@@ -181,43 +181,31 @@
     white-space: nowrap;
   }
 
-  .adm-tree-row-prog {
-    border-left: 3px solid transparent;
+  /* Row level backgrounds — mirror Actividades pattern */
+  .adm-tree-row-prog > td {
+    background: var(--stratgos-parchment-deep);
+    font-weight: 700;
+    color: var(--stratgos-ink-700);
   }
 
-  .adm-tree-row-prog.selected,
-  .adm-tree-row-prog.editing {
-    border-left-color: var(--navy);
-    background: #EEF3FA;
+  .adm-tree-row-eixo > td {
+    background: var(--stratgos-parchment);
+    font-weight: 600;
+    color: var(--stratgos-ink-700);
   }
 
-  .adm-tree-row-eixo {
-    border-left: 3px solid transparent;
-  }
-
-  .adm-tree-row-eixo.selected {
-    border-left-color: var(--stratgos-ember);
-  }
-
-  .adm-panel-table .adm-tree-row-eixo.selected td {
-    background: var(--bg3);
-  }
-
-  .adm-tree-row-eixo.editing {
-    background: #E8EDF5;
-  }
-
-  .adm-tree-row-plano {
+  .adm-tree-row-plano > td {
     background: transparent;
+    font-weight: 500;
+    color: var(--stratgos-ink-900);
   }
 
-  .adm-tree-row-add {
+  /* "+ Novo X" rows — link-like, transparent (overrides level bg/color via source order) */
+  .adm-tree-row-add > td {
     background: transparent;
-  }
-
-  .adm-tree-row-add td {
-    padding-top: 4px;
-    padding-bottom: 4px;
+    font-weight: 400;
+    color: var(--navy);
+    cursor: pointer;
   }
 
   .adm-tree-cell {
@@ -340,11 +328,25 @@
   }
 
   .adm-panel-table tr:hover:not(.editing) td {
-    background: var(--bg2);
+    background: var(--bg3);
   }
 
-  .adm-panel-table tr.selected td {
-    background: #EEF3FA;
+  /* Tree table: move border-bottom from td to tr — keeps line on empty cells */
+  .adm-tree-table td {
+    border-bottom: none;
+  }
+
+  .adm-tree-row-prog,
+  .adm-tree-row-eixo,
+  .adm-tree-row-plano,
+  .adm-tree-row-add {
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Compact height for "+ Novo X" rows (higher specificity beats panel-table padding) */
+  .adm-panel-table .adm-tree-row-add > td {
+    padding-top: 4px;
+    padding-bottom: 4px;
   }
 
   .adm-row-input {
