@@ -177,6 +177,8 @@ export interface NovoPlanoModalProps {
   programId?: string | null
   /** Pre-select eixo in create mode */
   defaultEixoId?: string
+  /** Optional breadcrumb shown in modal title (e.g. "em Programa › Eixo") */
+  contextLabel?: string
 }
 
 export default function NovoPlanoModal({
@@ -186,6 +188,7 @@ export default function NovoPlanoModal({
   planoToEdit,
   programId,
   defaultEixoId,
+  contextLabel,
 }: NovoPlanoModalProps) {
   const { showToast } = useToast()
   const navigate = useNavigate()
@@ -414,7 +417,7 @@ export default function NovoPlanoModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={planoToEdit ? `Editar ${labels.n2}` : `Novo ${labels.n2}`}
+      title={`${planoToEdit ? 'Editar' : 'Novo'} ${labels.n2}${contextLabel ? ` · ${contextLabel}` : ''}`}
       width={560}
       footer={
         <>
