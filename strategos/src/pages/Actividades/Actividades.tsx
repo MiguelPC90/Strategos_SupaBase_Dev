@@ -12,6 +12,7 @@ import { useFilters } from '../../context/FilterContext'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 import { usePlanos } from '../../hooks/usePlanos'
+import { useEixos } from '../../hooks/useEixos'
 import { usePermissions } from '../../hooks/usePermissions'
 import type { Activity, Program } from '../../types/index'
 import type { PlanoThresholds } from '../../hooks/useThresholdsMap'
@@ -334,8 +335,22 @@ export default function Actividades() {
   const thresholdsMap = useThresholdsMap()
   const { dependencies } = useActivityDependencies()
   const { planos } = usePlanos(filters.programIds[0])
+  const { eixos } = useEixos(filters.programIds[0])
   const { hasAccess } = usePermissions()
   const multiProg = programs.length > 1
+
+  const programSortMap = useMemo(
+    () => new Map(programs.map(p => [p.id, p.sort_order] as [string, number])),
+    [programs],
+  )
+  const eixoSortMap = useMemo(
+    () => new Map(eixos.map(e => [`${e.program_id}:${e.name}`, e.sort_order] as [string, number])),
+    [eixos],
+  )
+  const planoSortMap = useMemo(
+    () => new Map(planos.map(p => [p.id, p.sort_order] as [string, number])),
+    [planos],
+  )
 
   const predecessorCounts = useMemo(() => {
     const m = new Map<string, number>()
@@ -374,10 +389,26 @@ export default function Actividades() {
     })
   }, [searchFilteredActs, statusFilter, thresholdsMap])
 
-  const tree     = useMemo(() => buildTree(finalActs), [finalActs])
+  const sortedActivities = useMemo(() => {
+    return [...finalActs].sort((a, b) => {
+      const pa = programSortMap.get(a.program_id ?? '') ?? Infinity
+      const pb = programSortMap.get(b.program_id ?? '') ?? Infinity
+      if (pa !== pb) return pa - pb
+      const ea = eixoSortMap.get(`${a.program_id}:${a.n1}`) ?? Infinity
+      const eb = eixoSortMap.get(`${b.program_id}:${b.n1}`) ?? Infinity
+      if (ea !== eb) return ea - eb
+      const ka = planoSortMap.get(a.plano_id ?? '') ?? Infinity
+      const kb = planoSortMap.get(b.plano_id ?? '') ?? Infinity
+      if (ka !== kb) return ka - kb
+      if (a.level !== b.level) return a.level - b.level
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0)
+    })
+  }, [finalActs, programSortMap, eixoSortMap, planoSortMap])
+
+  const tree     = useMemo(() => buildTree(sortedActivities), [sortedActivities])
   const n0tree   = useMemo(
-    () => multiProg ? buildProgramTree(finalActs, programs) : null,
-    [finalActs, programs, multiProg]
+    () => multiProg ? buildProgramTree(sortedActivities, programs) : null,
+    [sortedActivities, programs, multiProg]
   )
   const summary  = useMemo(() => computeStats(finalActs.filter(a => a.level === 4), thresholdsMap), [finalActs, thresholdsMap])
 
