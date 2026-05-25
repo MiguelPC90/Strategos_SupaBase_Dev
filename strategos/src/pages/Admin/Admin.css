@@ -181,28 +181,24 @@
     white-space: nowrap;
   }
 
-  /* Row level backgrounds — mirror Actividades pattern */
+  /* Row level — hierarchy expressed via font weight + color only (no bg tint) */
   .adm-tree-row-prog > td {
-    background: var(--stratgos-parchment-deep);
     font-weight: 700;
     color: var(--stratgos-ink-700);
   }
 
   .adm-tree-row-eixo > td {
-    background: var(--stratgos-parchment);
     font-weight: 600;
     color: var(--stratgos-ink-700);
   }
 
   .adm-tree-row-plano > td {
-    background: transparent;
     font-weight: 500;
     color: var(--stratgos-ink-900);
   }
 
-  /* "+ Novo X" rows — link-like, transparent (overrides level bg/color via source order) */
+  /* "+ Novo X" rows — link-like, transparent (overrides level color via source order) */
   .adm-tree-row-add > td {
-    background: transparent;
     font-weight: 400;
     color: var(--navy);
     cursor: pointer;
@@ -331,19 +327,12 @@
     background: var(--bg3);
   }
 
-  /* Tree table: move border-bottom from td to tr — keeps line on empty cells */
-  .adm-tree-table td {
-    border-bottom: none;
-  }
-
-  .adm-tree-row-prog,
-  .adm-tree-row-eixo,
-  .adm-tree-row-plano,
-  .adm-tree-row-add {
+  /* Single border-bottom source: high-specificity td rule covers all rows including empty cells */
+  .adm-panel-table.adm-tree-table > tbody > tr > td {
     border-bottom: 1px solid var(--border);
   }
 
-  /* Compact height for "+ Novo X" rows (higher specificity beats panel-table padding) */
+  /* Compact height for "+ Novo X" rows */
   .adm-panel-table .adm-tree-row-add > td {
     padding-top: 4px;
     padding-bottom: 4px;
