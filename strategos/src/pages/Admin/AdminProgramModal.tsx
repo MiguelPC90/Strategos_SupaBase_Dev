@@ -121,27 +121,6 @@ export default function AdminProgramModal({ program, programs, onClose, onSaved 
 
         <div className="threshold-pair">
           <div className="adm-field">
-            <label className="adm-label">Actividades (N4-N6) — Low</label>
-            <input
-              className={`adm-input threshold-input-low${errMsg && (draft.threshold_leaves_low < 0 || draft.threshold_leaves_low > 100 || draft.threshold_leaves_high < draft.threshold_leaves_low) ? ' adm-input-error' : ''}`}
-              type="number" min={0} max={100}
-              value={draft.threshold_leaves_low}
-              onChange={e => set({ threshold_leaves_low: Number(e.target.value) })}
-            />
-          </div>
-          <div className="adm-field">
-            <label className="adm-label">Actividades (N4-N6) — High</label>
-            <input
-              className={`adm-input threshold-input-high${errMsg && (draft.threshold_leaves_high < 0 || draft.threshold_leaves_high > 100 || draft.threshold_leaves_high < draft.threshold_leaves_low) ? ' adm-input-error' : ''}`}
-              type="number" min={0} max={100}
-              value={draft.threshold_leaves_high}
-              onChange={e => set({ threshold_leaves_high: Number(e.target.value) })}
-            />
-          </div>
-        </div>
-
-        <div className="threshold-pair">
-          <div className="adm-field">
             <label className="adm-label">Plano e Macroact. (N2-N3) — Low</label>
             <input
               className={`adm-input threshold-input-low${errMsg && (draft.threshold_aggregates_low < 0 || draft.threshold_aggregates_low > 100 || draft.threshold_aggregates_high < draft.threshold_aggregates_low) ? ' adm-input-error' : ''}`}
@@ -157,6 +136,27 @@ export default function AdminProgramModal({ program, programs, onClose, onSaved 
               type="number" min={0} max={100}
               value={draft.threshold_aggregates_high}
               onChange={e => set({ threshold_aggregates_high: Number(e.target.value) })}
+            />
+          </div>
+        </div>
+
+        <div className="threshold-pair">
+          <div className="adm-field">
+            <label className="adm-label">Actividades (N4-N6) — Low</label>
+            <input
+              className={`adm-input threshold-input-low${errMsg && (draft.threshold_leaves_low < 0 || draft.threshold_leaves_low > 100 || draft.threshold_leaves_high < draft.threshold_leaves_low) ? ' adm-input-error' : ''}`}
+              type="number" min={0} max={100}
+              value={draft.threshold_leaves_low}
+              onChange={e => set({ threshold_leaves_low: Number(e.target.value) })}
+            />
+          </div>
+          <div className="adm-field">
+            <label className="adm-label">Actividades (N4-N6) — High</label>
+            <input
+              className={`adm-input threshold-input-high${errMsg && (draft.threshold_leaves_high < 0 || draft.threshold_leaves_high > 100 || draft.threshold_leaves_high < draft.threshold_leaves_low) ? ' adm-input-error' : ''}`}
+              type="number" min={0} max={100}
+              value={draft.threshold_leaves_high}
+              onChange={e => set({ threshold_leaves_high: Number(e.target.value) })}
             />
           </div>
         </div>

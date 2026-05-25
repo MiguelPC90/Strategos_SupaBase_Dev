@@ -175,6 +175,12 @@
     vertical-align: middle;
   }
 
+  .adm-tree-table th:nth-child(2),
+  .adm-tree-table td:nth-child(2) {
+    min-width: 260px;
+    white-space: nowrap;
+  }
+
   .adm-tree-row-prog {
     border-left: 3px solid transparent;
   }

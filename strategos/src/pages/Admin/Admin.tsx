@@ -329,9 +329,8 @@ function HealthBlockEditor({ color, label, block, onChange }: HealthBlockEditorP
 // ── Section 2: Programas e Eixos ──────────────────────────────
 function formatThresholdCell(inherited: boolean, ll: number, lh: number, al: number, ah: number) {
   return (
-    <span className={inherited ? 'adm-tree-limiares-inherited' : 'adm-tree-limiares-own'} style={{ fontSize: 11, lineHeight: 1.5 }}>
-      <span style={{ display: 'block' }}>Act {ll}–{lh}pp</span>
-      <span style={{ display: 'block' }}>Agr {al}–{ah}pp</span>
+    <span className={inherited ? 'adm-tree-limiares-inherited' : 'adm-tree-limiares-own'}>
+      Agregados {al}–{ah}pp · Actividades {ll}–{lh}pp
     </span>
   )
 }

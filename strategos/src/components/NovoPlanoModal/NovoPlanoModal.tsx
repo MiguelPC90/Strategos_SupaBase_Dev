@@ -547,34 +547,6 @@ export default function NovoPlanoModal({
             </p>
             <div className="threshold-pair" style={{ marginTop: 10 }}>
               <label className="gi-field">
-                <span className="gi-field-label">Actividades (N4-N6) — Low</span>
-                <input
-                  className="gi-field-input threshold-input-low"
-                  type="number" min={0} max={100}
-                  value={planoForm.threshold_leaves_low ?? ''}
-                  placeholder={`padrão: ${effectiveProgram?.threshold_leaves_low ?? 5}`}
-                  onChange={e => setPlanoForm(f => ({
-                    ...f,
-                    threshold_leaves_low: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
-                  }))}
-                />
-              </label>
-              <label className="gi-field">
-                <span className="gi-field-label">Actividades (N4-N6) — High</span>
-                <input
-                  className="gi-field-input threshold-input-high"
-                  type="number" min={0} max={100}
-                  value={planoForm.threshold_leaves_high ?? ''}
-                  placeholder={`padrão: ${effectiveProgram?.threshold_leaves_high ?? 10}`}
-                  onChange={e => setPlanoForm(f => ({
-                    ...f,
-                    threshold_leaves_high: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
-                  }))}
-                />
-              </label>
-            </div>
-            <div className="threshold-pair" style={{ marginTop: 8 }}>
-              <label className="gi-field">
                 <span className="gi-field-label">Plano e Macroactividades (N2-N3) — Low</span>
                 <input
                   className="gi-field-input threshold-input-low"
@@ -597,6 +569,34 @@ export default function NovoPlanoModal({
                   onChange={e => setPlanoForm(f => ({
                     ...f,
                     threshold_aggregates_high: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
+                  }))}
+                />
+              </label>
+            </div>
+            <div className="threshold-pair" style={{ marginTop: 8 }}>
+              <label className="gi-field">
+                <span className="gi-field-label">Actividades (N4-N6) — Low</span>
+                <input
+                  className="gi-field-input threshold-input-low"
+                  type="number" min={0} max={100}
+                  value={planoForm.threshold_leaves_low ?? ''}
+                  placeholder={`padrão: ${effectiveProgram?.threshold_leaves_low ?? 5}`}
+                  onChange={e => setPlanoForm(f => ({
+                    ...f,
+                    threshold_leaves_low: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
+                  }))}
+                />
+              </label>
+              <label className="gi-field">
+                <span className="gi-field-label">Actividades (N4-N6) — High</span>
+                <input
+                  className="gi-field-input threshold-input-high"
+                  type="number" min={0} max={100}
+                  value={planoForm.threshold_leaves_high ?? ''}
+                  placeholder={`padrão: ${effectiveProgram?.threshold_leaves_high ?? 10}`}
+                  onChange={e => setPlanoForm(f => ({
+                    ...f,
+                    threshold_leaves_high: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
                   }))}
                 />
               </label>
