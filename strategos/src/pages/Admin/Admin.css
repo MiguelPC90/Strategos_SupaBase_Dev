@@ -186,13 +186,15 @@
   }
 
   .adm-tree-row-eixo {
-    background: var(--bg2);
     border-left: 3px solid transparent;
   }
 
   .adm-tree-row-eixo.selected {
-    border-left-color: var(--border2);
-    background: #E8EDF5;
+    border-left-color: var(--stratgos-ember);
+  }
+
+  .adm-panel-table .adm-tree-row-eixo.selected td {
+    background: var(--bg3);
   }
 
   .adm-tree-row-eixo.editing {
@@ -200,7 +202,7 @@
   }
 
   .adm-tree-row-plano {
-    background: var(--bg3);
+    background: transparent;
   }
 
   .adm-tree-row-add {
