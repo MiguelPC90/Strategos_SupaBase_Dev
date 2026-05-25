@@ -544,7 +544,7 @@ export default function NovoPlanoModal({
             </p>
             <div className="threshold-pair" style={{ marginTop: 10 }}>
               <label className="gi-field">
-                <span className="gi-field-label">Folhas Low (N4-N6)</span>
+                <span className="gi-field-label">Actividades (N4-N6) — Low</span>
                 <input
                   className="gi-field-input threshold-input-low"
                   type="number" min={0} max={100}
@@ -557,7 +557,7 @@ export default function NovoPlanoModal({
                 />
               </label>
               <label className="gi-field">
-                <span className="gi-field-label">Folhas High (N4-N6)</span>
+                <span className="gi-field-label">Actividades (N4-N6) — High</span>
                 <input
                   className="gi-field-input threshold-input-high"
                   type="number" min={0} max={100}
@@ -572,7 +572,7 @@ export default function NovoPlanoModal({
             </div>
             <div className="threshold-pair" style={{ marginTop: 8 }}>
               <label className="gi-field">
-                <span className="gi-field-label">Agregados Low (N0-N3)</span>
+                <span className="gi-field-label">Plano e Macroactividades (N2-N3) — Low</span>
                 <input
                   className="gi-field-input threshold-input-low"
                   type="number" min={0} max={100}
@@ -585,7 +585,7 @@ export default function NovoPlanoModal({
                 />
               </label>
               <label className="gi-field">
-                <span className="gi-field-label">Agregados High (N0-N3)</span>
+                <span className="gi-field-label">Plano e Macroactividades (N2-N3) — High</span>
                 <input
                   className="gi-field-input threshold-input-high"
                   type="number" min={0} max={100}

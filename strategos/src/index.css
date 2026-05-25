@@ -154,4 +154,15 @@
     border-color: var(--red) !important;
     background-color: color-mix(in srgb, var(--red) 5%, transparent);
   }
+
+  /* ── Remove browser spinner arrows from threshold number inputs ── */
+  .threshold-pair input[type="number"]::-webkit-inner-spin-button,
+  .threshold-pair input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .threshold-pair input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 }
