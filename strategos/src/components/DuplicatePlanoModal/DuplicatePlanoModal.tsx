@@ -90,8 +90,10 @@ export default function DuplicatePlanoModal({
           owner:                source.owner,
           sponsor:              source.sponsor,
           objective:            source.objective,
-          threshold_leaves:     source.threshold_leaves,
-          threshold_aggregates: source.threshold_aggregates,
+          threshold_leaves_low:      source.threshold_leaves_low,
+          threshold_leaves_high:     source.threshold_leaves_high,
+          threshold_aggregates_low:  source.threshold_aggregates_low,
+          threshold_aggregates_high: source.threshold_aggregates_high,
         })
         .select('id, name')
         .single()

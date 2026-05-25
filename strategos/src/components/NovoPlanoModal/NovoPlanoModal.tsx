@@ -18,14 +18,17 @@ import type { Plano } from '../../types/index'
 interface PlanoForm {
   name: string; code: string; eixo_id: string
   owner: string; sponsor: string; objective: string
-  threshold_leaves: number | null
-  threshold_aggregates: number | null
+  threshold_leaves_low: number | null
+  threshold_leaves_high: number | null
+  threshold_aggregates_low: number | null
+  threshold_aggregates_high: number | null
 }
 
 const BLANK_PLANO: PlanoForm = {
   name: '', code: '', eixo_id: '',
   owner: '', sponsor: '', objective: '',
-  threshold_leaves: null, threshold_aggregates: null,
+  threshold_leaves_low: null, threshold_leaves_high: null,
+  threshold_aggregates_low: null, threshold_aggregates_high: null,
 }
 
 interface ParsedActivity {
@@ -249,8 +252,10 @@ export default function NovoPlanoModal({
         owner:               planoToEdit.owner ?? '',
         sponsor:             planoToEdit.sponsor ?? '',
         objective:           planoToEdit.objective ?? '',
-        threshold_leaves:    planoToEdit.threshold_leaves ?? null,
-        threshold_aggregates: planoToEdit.threshold_aggregates ?? null,
+        threshold_leaves_low:     planoToEdit.threshold_leaves_low ?? null,
+        threshold_leaves_high:    planoToEdit.threshold_leaves_high ?? null,
+        threshold_aggregates_low:  planoToEdit.threshold_aggregates_low ?? null,
+        threshold_aggregates_high: planoToEdit.threshold_aggregates_high ?? null,
       })
       setPlanoStep(1)
     } else {
@@ -277,6 +282,10 @@ export default function NovoPlanoModal({
     if (!planoForm.name.trim())   errs.name    = 'Nome obrigatório.'
     if (!planoForm.code.trim())   errs.code    = 'Código obrigatório.'
     if (!planoForm.eixo_id)       errs.eixo_id = `${labels.n1} obrigatório.`
+    const { threshold_leaves_low: ll, threshold_leaves_high: lh,
+            threshold_aggregates_low: al, threshold_aggregates_high: ah } = planoForm
+    if (ll !== null && lh !== null && lh < ll) errs.threshold = 'Folhas High deve ser ≥ Folhas Low'
+    else if (al !== null && ah !== null && ah < al) errs.threshold = 'Agregados High deve ser ≥ Agregados Low'
     if (Object.keys(errs).length) { setPlanoErrors(errs); return }
     setPlanoStep(2)
   }, [planoForm])
@@ -306,6 +315,10 @@ export default function NovoPlanoModal({
     if (!planoForm.name.trim()) errs.name = 'Nome obrigatório.'
     if (!planoForm.code.trim()) errs.code = 'Código obrigatório.'
     if (Object.keys(errs).length) { setPlanoErrors(errs); return }
+    const { threshold_leaves_low: ll, threshold_leaves_high: lh,
+            threshold_aggregates_low: al, threshold_aggregates_high: ah } = planoForm
+    if (ll !== null && lh !== null && lh < ll) { setPlanoErrors({ threshold: 'Folhas High deve ser ≥ Folhas Low' }); return }
+    if (al !== null && ah !== null && ah < al) { setPlanoErrors({ threshold: 'Agregados High deve ser ≥ Agregados Low' }); return }
     setPlanoSaving(true); setPlanoErrors({})
     const { error } = await supabase
       .from('planos')
@@ -315,8 +328,10 @@ export default function NovoPlanoModal({
         owner:                planoForm.owner    || null,
         sponsor:              planoForm.sponsor  || null,
         objective:            planoForm.objective || null,
-        threshold_leaves:     planoForm.threshold_leaves,
-        threshold_aggregates: planoForm.threshold_aggregates,
+        threshold_leaves_low:      planoForm.threshold_leaves_low,
+        threshold_leaves_high:     planoForm.threshold_leaves_high,
+        threshold_aggregates_low:  planoForm.threshold_aggregates_low,
+        threshold_aggregates_high: planoForm.threshold_aggregates_high,
       })
       .eq('id', planoToEdit.id)
     setPlanoSaving(false)
@@ -345,9 +360,11 @@ export default function NovoPlanoModal({
       owner:                planoForm.owner    || null,
       sponsor:              planoForm.sponsor  || null,
       objective:            planoForm.objective || null,
-      threshold_leaves:     planoForm.threshold_leaves,
-      threshold_aggregates: planoForm.threshold_aggregates,
-      sort_order:           nextSort,
+      threshold_leaves_low:      planoForm.threshold_leaves_low,
+      threshold_leaves_high:     planoForm.threshold_leaves_high,
+      threshold_aggregates_low:  planoForm.threshold_aggregates_low,
+      threshold_aggregates_high: planoForm.threshold_aggregates_high,
+      sort_order:                nextSort,
     }
 
     const { data: newPlano, error: planoErr } = await supabase
@@ -522,44 +539,75 @@ export default function NovoPlanoModal({
 
           <div className="gi-section">
             <div className="gi-section-title">Limiares de Estado</div>
-            <div className="gi-two-col" style={{ marginTop: 10 }}>
-              <div className="gi-field">
-                <span className="gi-field-label">Tolerância Folhas (N4-N6)</span>
+            <p style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6 }}>
+              Margem em pontos percentuais. Vazio = herdar do programa. Low = limite entre «Em dia» e «Em risco»; High = limite entre «Em risco» e «Em atraso».
+            </p>
+            <div className="threshold-pair" style={{ marginTop: 10 }}>
+              <label className="gi-field">
+                <span className="gi-field-label">Folhas Low (N4-N6)</span>
                 <input
-                  className="gi-field-input"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={planoForm.threshold_leaves ?? ''}
-                  placeholder={`padrão: ${effectiveProgram?.threshold_leaves ?? 0}`}
+                  className="gi-field-input threshold-input-low"
+                  type="number" min={0} max={100}
+                  value={planoForm.threshold_leaves_low ?? ''}
+                  placeholder={`padrão: ${effectiveProgram?.threshold_leaves_low ?? 5}`}
                   onChange={e => setPlanoForm(f => ({
                     ...f,
-                    threshold_leaves: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
+                    threshold_leaves_low: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
                   }))}
                 />
-                <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-                  Margem em pontos percentuais antes de marcar Em risco. Vazio = herdar do programa.
-                </span>
-              </div>
-              <div className="gi-field">
-                <span className="gi-field-label">Tolerância Agregados (N0-N3)</span>
+              </label>
+              <label className="gi-field">
+                <span className="gi-field-label">Folhas High (N4-N6)</span>
                 <input
-                  className="gi-field-input"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={planoForm.threshold_aggregates ?? ''}
-                  placeholder={`padrão: ${effectiveProgram?.threshold_aggregates ?? 20}`}
+                  className="gi-field-input threshold-input-high"
+                  type="number" min={0} max={100}
+                  value={planoForm.threshold_leaves_high ?? ''}
+                  placeholder={`padrão: ${effectiveProgram?.threshold_leaves_high ?? 10}`}
                   onChange={e => setPlanoForm(f => ({
                     ...f,
-                    threshold_aggregates: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
+                    threshold_leaves_high: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
                   }))}
                 />
-                <span style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
-                  Margem em pontos percentuais antes de marcar Em risco. Vazio = herdar do programa.
-                </span>
-              </div>
+              </label>
             </div>
+            <div className="threshold-pair" style={{ marginTop: 8 }}>
+              <label className="gi-field">
+                <span className="gi-field-label">Agregados Low (N0-N3)</span>
+                <input
+                  className="gi-field-input threshold-input-low"
+                  type="number" min={0} max={100}
+                  value={planoForm.threshold_aggregates_low ?? ''}
+                  placeholder={`padrão: ${effectiveProgram?.threshold_aggregates_low ?? 15}`}
+                  onChange={e => setPlanoForm(f => ({
+                    ...f,
+                    threshold_aggregates_low: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
+                  }))}
+                />
+              </label>
+              <label className="gi-field">
+                <span className="gi-field-label">Agregados High (N0-N3)</span>
+                <input
+                  className="gi-field-input threshold-input-high"
+                  type="number" min={0} max={100}
+                  value={planoForm.threshold_aggregates_high ?? ''}
+                  placeholder={`padrão: ${effectiveProgram?.threshold_aggregates_high ?? 25}`}
+                  onChange={e => setPlanoForm(f => ({
+                    ...f,
+                    threshold_aggregates_high: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
+                  }))}
+                />
+              </label>
+            </div>
+            {(() => {
+              const ll = planoForm.threshold_leaves_low, lh = planoForm.threshold_leaves_high
+              const al = planoForm.threshold_aggregates_low, ah = planoForm.threshold_aggregates_high
+              const err = (ll !== null && lh !== null && lh < ll)
+                ? 'Folhas High deve ser ≥ Folhas Low'
+                : (al !== null && ah !== null && ah < al)
+                ? 'Agregados High deve ser ≥ Agregados Low'
+                : null
+              return err ? <span style={{ fontSize: 11, color: 'var(--red)', marginTop: 4, display: 'block' }}>{err}</span> : null
+            })()}
           </div>
 
         </div>

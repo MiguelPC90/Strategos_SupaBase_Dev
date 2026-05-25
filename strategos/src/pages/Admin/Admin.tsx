@@ -324,7 +324,17 @@ function HealthBlockEditor({ color, label, block, onChange }: HealthBlockEditorP
 }
 
 // ── Section 2: Programas e Eixos ──────────────────────────────
-interface DraftProg  { id: string | null; code: string; name: string; threshold_leaves: number; threshold_aggregates: number }
+interface DraftProg  { id: string | null; code: string; name: string; threshold_leaves_low: number; threshold_leaves_high: number; threshold_aggregates_low: number; threshold_aggregates_high: number }
+
+function validateThresholds(d: DraftProg): string | null {
+  if (d.threshold_leaves_low < 0 || d.threshold_leaves_low > 100) return 'Folhas Low deve ser 0–100'
+  if (d.threshold_leaves_high < 0 || d.threshold_leaves_high > 100) return 'Folhas High deve ser 0–100'
+  if (d.threshold_leaves_high < d.threshold_leaves_low) return 'Folhas High deve ser ≥ Folhas Low'
+  if (d.threshold_aggregates_low < 0 || d.threshold_aggregates_low > 100) return 'Agregados Low deve ser 0–100'
+  if (d.threshold_aggregates_high < 0 || d.threshold_aggregates_high > 100) return 'Agregados High deve ser 0–100'
+  if (d.threshold_aggregates_high < d.threshold_aggregates_low) return 'Agregados High deve ser ≥ Agregados Low'
+  return null
+}
 interface DraftEixo  { id: string | null; code: string; name: string }
 interface DraftPlano { id: string | null; code: string; name: string; owner: string; sponsor: string }
 
@@ -355,7 +365,7 @@ function AdminProgramas() {
     setProgLoad(true)
     const { data } = await supabase
       .from('programs')
-      .select('id, code, name, sort_order, threshold_leaves, threshold_aggregates')
+      .select('id, code, name, sort_order, threshold_leaves_low, threshold_leaves_high, threshold_aggregates_low, threshold_aggregates_high')
       .order('sort_order')
       .order('name')
     setPrograms((data ?? []) as Program[])
@@ -404,7 +414,8 @@ function AdminProgramas() {
 
   async function saveProg() {
     if (!draft || !draft.name.trim()) return
-    const basePayload = { code: draft.code.trim(), name: draft.name.trim(), threshold_leaves: draft.threshold_leaves, threshold_aggregates: draft.threshold_aggregates }
+    if (validateThresholds(draft)) return
+    const basePayload = { code: draft.code.trim(), name: draft.name.trim(), threshold_leaves_low: draft.threshold_leaves_low, threshold_leaves_high: draft.threshold_leaves_high, threshold_aggregates_low: draft.threshold_aggregates_low, threshold_aggregates_high: draft.threshold_aggregates_high }
     if (draft.id) {
       await supabase.from('programs').update(basePayload).eq('id', draft.id)
     } else {
@@ -506,7 +517,7 @@ function AdminProgramas() {
                   <tr>
                     <th>Código</th>
                     <th>Nome</th>
-                    <th style={{ width: 110 }} title="Folhas (N4-N6) / Agregados (N0-N3) — em pontos percentuais">Limiares</th>
+                    <th style={{ width: 130 }} title="Folhas (N4-N6) / Agregados (N0-N3) — bandas em pontos percentuais (Low = limite Em dia; High = limite Em atraso)">Limiares</th>
                     <th style={{ width: 72 }}>Acções</th>
                   </tr>
                 </thead>
@@ -541,40 +552,68 @@ function AdminProgramas() {
                             />
                           ) : p.name}
                         </td>
-                        <td style={{ width: 110 }}>
+                        <td style={{ width: 130 }}>
                           {editing ? (
-                            <span style={{ display: 'flex', gap: 4 }}>
-                              <input
-                                className="adm-row-input" type="number" min={0} max={100}
-                                style={{ width: 46 }} placeholder="F" title="Folhas N4-N6 (pp) — margem antes de marcar Em risco"
-                                value={draft!.threshold_leaves}
-                                onChange={e => setDraft(d => d ? { ...d, threshold_leaves: Number(e.target.value) } : d)}
-                                onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
-                              />
-                              <input
-                                className="adm-row-input" type="number" min={0} max={100}
-                                style={{ width: 46 }} placeholder="A" title="Agregados N0-N3 (pp) — margem antes de marcar Em risco"
-                                value={draft!.threshold_aggregates}
-                                onChange={e => setDraft(d => d ? { ...d, threshold_aggregates: Number(e.target.value) } : d)}
-                                onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
-                              />
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                                <span style={{ fontSize: 10, color: 'var(--text3)', width: 10 }}>L</span>
+                                <input
+                                  className={`adm-row-input threshold-input-low${validateThresholds(draft!) && (draft!.threshold_leaves_low < 0 || draft!.threshold_leaves_low > 100 || draft!.threshold_leaves_high < draft!.threshold_leaves_low) ? ' adm-input-error' : ''}`}
+                                  type="number" min={0} max={100} style={{ width: 38 }} placeholder="Low"
+                                  title="Folhas Low (pp) — limite Em dia → Em risco"
+                                  value={draft!.threshold_leaves_low}
+                                  onChange={e => setDraft(d => d ? { ...d, threshold_leaves_low: Number(e.target.value) } : d)}
+                                  onKeyDown={e => { if (e.key === 'Escape') setDraft(null) }}
+                                />
+                                <input
+                                  className={`adm-row-input threshold-input-high${validateThresholds(draft!) && (draft!.threshold_leaves_high < 0 || draft!.threshold_leaves_high > 100 || draft!.threshold_leaves_high < draft!.threshold_leaves_low) ? ' adm-input-error' : ''}`}
+                                  type="number" min={0} max={100} style={{ width: 38 }} placeholder="High"
+                                  title="Folhas High (pp) — limite Em risco → Em atraso"
+                                  value={draft!.threshold_leaves_high}
+                                  onChange={e => setDraft(d => d ? { ...d, threshold_leaves_high: Number(e.target.value) } : d)}
+                                  onKeyDown={e => { if (e.key === 'Escape') setDraft(null) }}
+                                />
+                              </div>
+                              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                                <span style={{ fontSize: 10, color: 'var(--text3)', width: 10 }}>A</span>
+                                <input
+                                  className={`adm-row-input threshold-input-low${validateThresholds(draft!) && (draft!.threshold_aggregates_low < 0 || draft!.threshold_aggregates_low > 100 || draft!.threshold_aggregates_high < draft!.threshold_aggregates_low) ? ' adm-input-error' : ''}`}
+                                  type="number" min={0} max={100} style={{ width: 38 }} placeholder="Low"
+                                  title="Agregados Low (pp)"
+                                  value={draft!.threshold_aggregates_low}
+                                  onChange={e => setDraft(d => d ? { ...d, threshold_aggregates_low: Number(e.target.value) } : d)}
+                                  onKeyDown={e => { if (e.key === 'Escape') setDraft(null) }}
+                                />
+                                <input
+                                  className={`adm-row-input threshold-input-high${validateThresholds(draft!) && (draft!.threshold_aggregates_high < 0 || draft!.threshold_aggregates_high > 100 || draft!.threshold_aggregates_high < draft!.threshold_aggregates_low) ? ' adm-input-error' : ''}`}
+                                  type="number" min={0} max={100} style={{ width: 38 }} placeholder="High"
+                                  title="Agregados High (pp)"
+                                  value={draft!.threshold_aggregates_high}
+                                  onChange={e => setDraft(d => d ? { ...d, threshold_aggregates_high: Number(e.target.value) } : d)}
+                                  onKeyDown={e => { if (e.key === 'Escape') setDraft(null) }}
+                                />
+                              </div>
+                              {validateThresholds(draft!) && (
+                                <span style={{ fontSize: 10, color: 'var(--red)' }}>{validateThresholds(draft!)}</span>
+                              )}
+                            </div>
                           ) : (
-                            <span style={{ fontSize: 12, color: 'var(--text2)' }}>
-                              {p.threshold_leaves ?? 0}% / {p.threshold_aggregates ?? 20}%
+                            <span style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.4 }}>
+                              <span style={{ display: 'block' }}>L: {p.threshold_leaves_low ?? 5}–{p.threshold_leaves_high ?? 10}pp</span>
+                              <span style={{ display: 'block' }}>A: {p.threshold_aggregates_low ?? 15}–{p.threshold_aggregates_high ?? 25}pp</span>
                             </span>
                           )}
                         </td>
                         <td>
                           {editing ? (
                             <span style={{ whiteSpace: 'nowrap' }}>
-                              <button className="adm-icon-btn" title="Guardar"  onClick={e => { e.stopPropagation(); saveProg() }}><Check size={14} strokeWidth={1.5} /></button>
+                              <button className="adm-icon-btn" title="Guardar" disabled={!!validateThresholds(draft!)} onClick={e => { e.stopPropagation(); saveProg() }}><Check size={14} strokeWidth={1.5} /></button>
                               <button className="adm-icon-btn" title="Cancelar" onClick={e => { e.stopPropagation(); setDraft(null) }}><X size={16} /></button>
                             </span>
                           ) : (
                             <span style={{ whiteSpace: 'nowrap' }}>
                               <button className="adm-icon-btn" title="Editar"
-                                onClick={e => { e.stopPropagation(); setDraft({ id: p.id, code: p.code, name: p.name, threshold_leaves: p.threshold_leaves ?? 0, threshold_aggregates: p.threshold_aggregates ?? 20 }) }}><Pencil size={16} /></button>
+                                onClick={e => { e.stopPropagation(); setDraft({ id: p.id, code: p.code, name: p.name, threshold_leaves_low: p.threshold_leaves_low ?? 5, threshold_leaves_high: p.threshold_leaves_high ?? 10, threshold_aggregates_low: p.threshold_aggregates_low ?? 15, threshold_aggregates_high: p.threshold_aggregates_high ?? 25 }) }}><Pencil size={16} /></button>
                               <button className="adm-icon-btn" title="Apagar" style={{ color: 'var(--red)' }}
                                 onClick={e => { e.stopPropagation(); deleteProg(p.id) }}><Trash2 size={16} /></button>
                             </span>
@@ -599,27 +638,50 @@ function AdminProgramas() {
                           onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
                         />
                       </td>
-                      <td style={{ width: 110 }}>
-                        <span style={{ display: 'flex', gap: 4 }}>
-                          <input
-                            className="adm-row-input" type="number" min={0} max={100}
-                            style={{ width: 46 }} placeholder="F" title="Folhas N4-N6 (pp) — margem antes de marcar Em risco"
-                            value={draft.threshold_leaves}
-                            onChange={e => setDraft(d => d ? { ...d, threshold_leaves: Number(e.target.value) } : d)}
-                            onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
-                          />
-                          <input
-                            className="adm-row-input" type="number" min={0} max={100}
-                            style={{ width: 46 }} placeholder="A" title="Agregados N0-N3 (pp) — margem antes de marcar Em risco"
-                            value={draft.threshold_aggregates}
-                            onChange={e => setDraft(d => d ? { ...d, threshold_aggregates: Number(e.target.value) } : d)}
-                            onKeyDown={e => { if (e.key === 'Enter') saveProg(); if (e.key === 'Escape') setDraft(null) }}
-                          />
-                        </span>
+                      <td style={{ width: 130 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                            <span style={{ fontSize: 10, color: 'var(--text3)', width: 10 }}>L</span>
+                            <input
+                              className="adm-row-input threshold-input-low" type="number" min={0} max={100}
+                              style={{ width: 38 }} placeholder="Low" title="Folhas Low (pp)"
+                              value={draft.threshold_leaves_low}
+                              onChange={e => setDraft(d => d ? { ...d, threshold_leaves_low: Number(e.target.value) } : d)}
+                              onKeyDown={e => { if (e.key === 'Escape') setDraft(null) }}
+                            />
+                            <input
+                              className="adm-row-input threshold-input-high" type="number" min={0} max={100}
+                              style={{ width: 38 }} placeholder="High" title="Folhas High (pp)"
+                              value={draft.threshold_leaves_high}
+                              onChange={e => setDraft(d => d ? { ...d, threshold_leaves_high: Number(e.target.value) } : d)}
+                              onKeyDown={e => { if (e.key === 'Escape') setDraft(null) }}
+                            />
+                          </div>
+                          <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                            <span style={{ fontSize: 10, color: 'var(--text3)', width: 10 }}>A</span>
+                            <input
+                              className="adm-row-input threshold-input-low" type="number" min={0} max={100}
+                              style={{ width: 38 }} placeholder="Low" title="Agregados Low (pp)"
+                              value={draft.threshold_aggregates_low}
+                              onChange={e => setDraft(d => d ? { ...d, threshold_aggregates_low: Number(e.target.value) } : d)}
+                              onKeyDown={e => { if (e.key === 'Escape') setDraft(null) }}
+                            />
+                            <input
+                              className="adm-row-input threshold-input-high" type="number" min={0} max={100}
+                              style={{ width: 38 }} placeholder="High" title="Agregados High (pp)"
+                              value={draft.threshold_aggregates_high}
+                              onChange={e => setDraft(d => d ? { ...d, threshold_aggregates_high: Number(e.target.value) } : d)}
+                              onKeyDown={e => { if (e.key === 'Escape') setDraft(null) }}
+                            />
+                          </div>
+                          {validateThresholds(draft) && (
+                            <span style={{ fontSize: 10, color: 'var(--red)' }}>{validateThresholds(draft)}</span>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <span style={{ whiteSpace: 'nowrap' }}>
-                          <button className="adm-icon-btn" title="Guardar"  onClick={saveProg}><Check size={14} strokeWidth={1.5} /></button>
+                          <button className="adm-icon-btn" title="Guardar" disabled={!!validateThresholds(draft)} onClick={saveProg}><Check size={14} strokeWidth={1.5} /></button>
                           <button className="adm-icon-btn" title="Cancelar" onClick={() => setDraft(null)}><X size={16} /></button>
                         </span>
                       </td>
@@ -632,7 +694,7 @@ function AdminProgramas() {
               <button
                 className="adm-add-btn"
                 disabled={draft !== null}
-                onClick={() => setDraft({ id: null, code: '', name: '', threshold_leaves: 0, threshold_aggregates: 20 })}
+                onClick={() => setDraft({ id: null, code: '', name: '', threshold_leaves_low: 5, threshold_leaves_high: 10, threshold_aggregates_low: 15, threshold_aggregates_high: 25 })}
               >
                 + Novo Programa
               </button>
@@ -3349,7 +3411,11 @@ function AdminDados() {
 }
 
 // ── Section 9: Plano ──────────────────────────────────────────
-const PLANO_CONFIG_KEYS = ['status_delay_threshold', 'status_delay_threshold_aggregates', 'status_delay_threshold_leaves', 'pds_hide_completed_days', 'health_rules'] as const
+const PLANO_CONFIG_KEYS = [
+  'status_delay_threshold_aggregates_low', 'status_delay_threshold_aggregates_high',
+  'status_delay_threshold_leaves_low', 'status_delay_threshold_leaves_high',
+  'pds_hide_completed_days', 'health_rules',
+] as const
 
 const SEVERITY_OPTS: AlertSeverity[] = ['critical', 'high', 'medium', 'low']
 const SEVERITY_LABELS: Record<AlertSeverity, string> = {
@@ -3358,8 +3424,10 @@ const SEVERITY_LABELS: Record<AlertSeverity, string> = {
 
 function AdminPlano() {
   const { showToast } = useToast()
-  const [delayThreshold,       setDelayThreshold]       = useState(20)
-  const [delayThresholdLeaves, setDelayThresholdLeaves] = useState(0)
+  const [delayAggLow,  setDelayAggLow]  = useState(15)
+  const [delayAggHigh, setDelayAggHigh] = useState(25)
+  const [delayLvsLow,  setDelayLvsLow]  = useState(5)
+  const [delayLvsHigh, setDelayLvsHigh] = useState(10)
   const [hideCompletedDays,    setHideCompletedDays]    = useState(90)
   const [healthConfig,         setHealthConfig]         = useState<HealthConfig>(DEFAULT_HEALTH_CONFIG)
   const [loading,    setLoading]    = useState(true)
@@ -3385,9 +3453,10 @@ function AdminPlano() {
         if (error || !data) return
         const map: Record<string, string> = {}
         for (const row of data) map[row.config_key] = row.data
-        // New key takes priority; fall back to legacy key for existing installations
-        setDelayThreshold(parseInt(map['status_delay_threshold_aggregates'] ?? map['status_delay_threshold'] ?? '20') || 20)
-        setDelayThresholdLeaves(parseInt(map['status_delay_threshold_leaves'] ?? '0') || 0)
+        setDelayAggLow(parseInt(map['status_delay_threshold_aggregates_low']  ?? '15') || 15)
+        setDelayAggHigh(parseInt(map['status_delay_threshold_aggregates_high'] ?? '25') || 25)
+        setDelayLvsLow(parseInt(map['status_delay_threshold_leaves_low']       ?? '5')  || 5)
+        setDelayLvsHigh(parseInt(map['status_delay_threshold_leaves_high']     ?? '10') || 10)
         const hcd = parseInt(map['pds_hide_completed_days'] ?? '')
         if (!isNaN(hcd)) setHideCompletedDays(hcd)
         if (map['health_rules']) {
@@ -3446,41 +3515,61 @@ function AdminPlano() {
   return (
     <div className="adm-plano-stack">
       <Card title="Limiares de atraso" actions={
-        savedKey && ['status_delay_threshold_aggregates', 'status_delay_threshold_leaves', 'pds_hide_completed_days'].includes(savedKey)
+        savedKey && ['status_delay_threshold_aggregates_low', 'status_delay_threshold_aggregates_high', 'status_delay_threshold_leaves_low', 'status_delay_threshold_leaves_high', 'pds_hide_completed_days'].includes(savedKey)
           ? <span className="adm-saved-indicator">Guardado</span>
           : undefined
       }>
-        <p className="adm-section-desc">Desvio tolerado (em pontos percentuais) entre execução prevista e real antes de marcar actividades como atrasadas.</p>
+        <p className="adm-section-desc">Desvio tolerado (em pontos percentuais) entre execução prevista e real. Low = limite entre «Em dia» e «Em risco»; High = limite entre «Em risco» e «Em atraso».</p>
         <div className="adm-thresholds-row">
           <div className="adm-field">
-            <label className="adm-label">Agregados (%)</label>
+            <label className="adm-label">Agregados — Low (pp)</label>
             <input
-              className="adm-input"
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              value={delayThreshold}
-              onChange={e => setDelayThreshold(parseInt(e.target.value) || 0)}
-              onBlur={() => saveConfigKey('status_delay_threshold_aggregates', String(delayThreshold))}
+              className="adm-input threshold-input-low"
+              type="number" min={0} max={100} step={1}
+              value={delayAggLow}
+              onChange={e => setDelayAggLow(parseInt(e.target.value) || 0)}
+              onBlur={() => saveConfigKey('status_delay_threshold_aggregates_low', String(delayAggLow))}
             />
-            <span className="adm-help">Desvio tolerado antes de marcar planos, eixos e programas como atrasados.</span>
-            {errorKey === 'status_delay_threshold_aggregates' && <span className="adm-error-indicator">Erro ao guardar</span>}
+            <span className="adm-help">Desvio acima do qual planos, eixos e programas passam a «Em risco».</span>
+            {errorKey === 'status_delay_threshold_aggregates_low' && <span className="adm-error-indicator">Erro ao guardar</span>}
           </div>
           <div className="adm-field">
-            <label className="adm-label">Folhas (%)</label>
+            <label className="adm-label">Agregados — High (pp)</label>
             <input
-              className="adm-input"
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              value={delayThresholdLeaves}
-              onChange={e => setDelayThresholdLeaves(parseInt(e.target.value) || 0)}
-              onBlur={() => saveConfigKey('status_delay_threshold_leaves', String(delayThresholdLeaves))}
+              className="adm-input threshold-input-high"
+              type="number" min={0} max={100} step={1}
+              value={delayAggHigh}
+              onChange={e => setDelayAggHigh(parseInt(e.target.value) || 0)}
+              onBlur={() => saveConfigKey('status_delay_threshold_aggregates_high', String(delayAggHigh))}
             />
-            <span className="adm-help">Desvio tolerado antes de marcar actividades individuais como atrasadas. 0 = qualquer desvio é atraso.</span>
-            {errorKey === 'status_delay_threshold_leaves' && <span className="adm-error-indicator">Erro ao guardar</span>}
+            <span className="adm-help">Desvio acima do qual planos, eixos e programas passam a «Em atraso».</span>
+            {errorKey === 'status_delay_threshold_aggregates_high' && <span className="adm-error-indicator">Erro ao guardar</span>}
+          </div>
+        </div>
+        <div className="adm-thresholds-row" style={{ marginTop: 'var(--space-3)' }}>
+          <div className="adm-field">
+            <label className="adm-label">Folhas — Low (pp)</label>
+            <input
+              className="adm-input threshold-input-low"
+              type="number" min={0} max={100} step={1}
+              value={delayLvsLow}
+              onChange={e => setDelayLvsLow(parseInt(e.target.value) || 0)}
+              onBlur={() => saveConfigKey('status_delay_threshold_leaves_low', String(delayLvsLow))}
+            />
+            <span className="adm-help">Desvio acima do qual actividades individuais passam a «Em risco».</span>
+            {errorKey === 'status_delay_threshold_leaves_low' && <span className="adm-error-indicator">Erro ao guardar</span>}
+          </div>
+          <div className="adm-field">
+            <label className="adm-label">Folhas — High (pp)</label>
+            <input
+              className="adm-input threshold-input-high"
+              type="number" min={0} max={100} step={1}
+              value={delayLvsHigh}
+              onChange={e => setDelayLvsHigh(parseInt(e.target.value) || 0)}
+              onBlur={() => saveConfigKey('status_delay_threshold_leaves_high', String(delayLvsHigh))}
+            />
+            <span className="adm-help">Desvio acima do qual actividades individuais passam a «Em atraso».</span>
+            {errorKey === 'status_delay_threshold_leaves_high' && <span className="adm-error-indicator">Erro ao guardar</span>}
           </div>
         </div>
         <div className="adm-field" style={{ marginTop: 'var(--space-3)' }}>

@@ -45,10 +45,6 @@ export interface Plano {
   end_date: string | null
   objective: string | null
   sort_order: number
-  /** @deprecated Single-threshold model. Use threshold_leaves_low/high. */
-  threshold_leaves: number | null
-  /** @deprecated Single-threshold model. Use threshold_aggregates_low/high. */
-  threshold_aggregates: number | null
   /** Per-plano override (pp). NULL = inherit from program. */
   threshold_leaves_low: number | null
   /** Per-plano override (pp). NULL = inherit from program. */
@@ -70,10 +66,6 @@ export interface Program {
   name: string
   description: string | null
   sort_order: number
-  /** @deprecated Single-threshold model. Use threshold_leaves_low/high. */
-  threshold_leaves: number
-  /** @deprecated Single-threshold model. Use threshold_aggregates_low/high. */
-  threshold_aggregates: number
   /** Low band for leaves status (pp). delta <= low → Em dia. */
   threshold_leaves_low: number
   /** High band for leaves status (pp). delta > high → Em atraso. */

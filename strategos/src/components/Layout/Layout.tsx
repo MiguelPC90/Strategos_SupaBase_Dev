@@ -204,7 +204,6 @@ export default function Layout() {
       .in('config_key', [
         'status_delay_threshold_aggregates_low',  'status_delay_threshold_aggregates_high',
         'status_delay_threshold_leaves_low',       'status_delay_threshold_leaves_high',
-        'status_delay_threshold_aggregates', 'status_delay_threshold', 'status_delay_threshold_leaves',
       ])
       .then(({ data }) => {
         if (cancelled) return
