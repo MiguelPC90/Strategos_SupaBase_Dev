@@ -156,12 +156,19 @@
   }
 
   /* ── Remove browser spinner arrows from threshold number inputs ── */
+  /* .threshold-pair covers edit form inputs; direct class selectors cover global config inputs */
   .threshold-pair input[type="number"]::-webkit-inner-spin-button,
-  .threshold-pair input[type="number"]::-webkit-outer-spin-button {
+  .threshold-pair input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"].threshold-input-low::-webkit-inner-spin-button,
+  input[type="number"].threshold-input-low::-webkit-outer-spin-button,
+  input[type="number"].threshold-input-high::-webkit-inner-spin-button,
+  input[type="number"].threshold-input-high::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
   }
-  .threshold-pair input[type="number"] {
+  .threshold-pair input[type="number"],
+  input[type="number"].threshold-input-low,
+  input[type="number"].threshold-input-high {
     -moz-appearance: textfield;
     appearance: textfield;
   }
