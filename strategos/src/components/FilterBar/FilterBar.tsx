@@ -6,6 +6,8 @@ import { useFilters } from '../../context/FilterContext'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useActivities } from '../../hooks/useActivities'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
+import { useEixos } from '../../hooks/useEixos'
+import { usePlanos } from '../../hooks/usePlanos'
 
 const STATUS_OPTIONS = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
 
@@ -13,6 +15,8 @@ export default function FilterBar() {
   const { filters, setFilter, resetFilters, ownerOptions, sponsorOptions } = useFilters()
   const { programs } = usePrograms()
   const { activities } = useActivities()
+  const { eixos: allEixos } = useEixos()
+  const { planos: allPlanos } = usePlanos()
 
   const activeProgramId = filters.programIds.length === 1 ? filters.programIds[0] : undefined
   const labels = useProgramLabels(activeProgramId)
@@ -38,17 +42,30 @@ export default function FilterBar() {
     return activities.filter(a => filters.programIds.includes(a.program_id ?? ''))
   }, [activities, filters.programIds])
 
-  const n1Options = useMemo(
-    () => [...new Set(actsForOptions.map(a => a.n1).filter(Boolean))].sort(),
-    [actsForOptions],
-  )
+  const n1Options = useMemo(() => {
+    const names = [...new Set(actsForOptions.map(a => a.n1).filter(Boolean))] as string[]
+    return names
+      .map(name => {
+        const eixo = allEixos.find(e => e.name === name)
+        return { name, sortOrder: eixo?.sort_order ?? Infinity }
+      })
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map(item => item.name)
+  }, [actsForOptions, allEixos])
 
   const n2Options = useMemo(() => {
     const base = filters.n1Values.length > 0
       ? actsForOptions.filter(a => filters.n1Values.includes(a.n1))
       : actsForOptions
-    return [...new Set(base.map(a => a.n2).filter(Boolean))].sort()
-  }, [actsForOptions, filters.n1Values])
+    const names = [...new Set(base.map(a => a.n2).filter(Boolean))] as string[]
+    return names
+      .map(name => {
+        const plano = allPlanos.find(p => p.name === name)
+        return { name, sortOrder: plano?.sort_order ?? Infinity }
+      })
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map(item => item.name)
+  }, [actsForOptions, allPlanos, filters.n1Values])
 
   function handleProgramChange(names: string[]) {
     const ids = names

@@ -13,6 +13,7 @@ import { usePermissions } from '../../hooks/usePermissions'
 import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import { supabase } from '../../lib/supabase'
 import { rollupStatus, rollupPct } from '../../lib/rollup'
+import { comparePlanos } from '../../lib/sort'
 import MultiSelect from '../../components/MultiSelect/MultiSelect'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Spinner from '../../components/Spinner/Spinner'
@@ -20,7 +21,6 @@ import NovoPlanoModal from '../../components/NovoPlanoModal/NovoPlanoModal'
 import DuplicatePlanoModal from '../../components/DuplicatePlanoModal/DuplicatePlanoModal'
 import type { Activity, Plano } from '../../types/index'
 
-const STATUS_ORDER = ['Em atraso', 'Em risco', 'Em dia', 'Concluída']
 
 function statusPillClass(status: string): string {
   if (status === 'Em atraso') return 'status-pill pc-pill-late'
@@ -164,6 +164,11 @@ export default function PlanosCatalog() {
   // ── Lookup maps ───────────────────────────────────────────────
   const programMap = useMemo(
     () => new Map(programs.map(p => [p.id, p])),
+    [programs],
+  )
+
+  const programCodeMap = useMemo(
+    () => new Map(programs.map(p => [p.id, p.code])),
     [programs],
   )
 
@@ -321,13 +326,11 @@ export default function PlanosCatalog() {
     return true
   }), [visibleEnriched, onlyFavorites, progFilter, eixoFilter, statusFilter, ownerFilter, sponsorFilter, search, isFavorite])
 
-  // ── Sort: by program then by status priority ──────────────────
-  const sorted = useMemo(() => [...filtered].sort((a, b) => {
-    const pa = a.program?.name ?? ''
-    const pb = b.program?.name ?? ''
-    if (pa !== pb) return pa.localeCompare(pb)
-    return STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status)
-  }), [filtered])
+  // ── Sort: hierarchical (program → eixo → plano) ──────────────
+  const sorted = useMemo(
+    () => [...filtered].sort((a, b) => comparePlanos(a, b, programCodeMap)),
+    [filtered, programCodeMap],
+  )
 
   const activeFilterCount =
     progFilter.length + eixoFilter.length + statusFilter.length +

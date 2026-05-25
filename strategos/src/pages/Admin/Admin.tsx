@@ -404,11 +404,12 @@ function AdminProgramas() {
 
   async function saveProg() {
     if (!draft || !draft.name.trim()) return
-    const payload = { code: draft.code.trim(), name: draft.name.trim(), sort_order: 0, threshold_leaves: draft.threshold_leaves, threshold_aggregates: draft.threshold_aggregates }
+    const basePayload = { code: draft.code.trim(), name: draft.name.trim(), threshold_leaves: draft.threshold_leaves, threshold_aggregates: draft.threshold_aggregates }
     if (draft.id) {
-      await supabase.from('programs').update(payload).eq('id', draft.id)
+      await supabase.from('programs').update(basePayload).eq('id', draft.id)
     } else {
-      await supabase.from('programs').insert(payload)
+      const sort_order = Math.max(0, ...programs.map(p => p.sort_order)) + 1
+      await supabase.from('programs').insert({ ...basePayload, sort_order })
     }
     setDraft(null)
     await loadPrograms()
@@ -430,11 +431,12 @@ function AdminProgramas() {
 
   async function saveEixo() {
     if (!eixoDraft || !eixoDraft.name.trim() || !selProgId) return
-    const payload = { program_id: selProgId, code: eixoDraft.code.trim(), name: eixoDraft.name.trim(), sort_order: 0 }
+    const basePayload = { program_id: selProgId, code: eixoDraft.code.trim(), name: eixoDraft.name.trim() }
     if (eixoDraft.id) {
-      await supabase.from('eixos').update(payload).eq('id', eixoDraft.id)
+      await supabase.from('eixos').update(basePayload).eq('id', eixoDraft.id)
     } else {
-      await supabase.from('eixos').insert(payload)
+      const sort_order = Math.max(0, ...eixos.map(e => e.sort_order)) + 1
+      await supabase.from('eixos').insert({ ...basePayload, sort_order })
     }
     setEixoDraft(null)
     await loadEixos(selProgId)
@@ -456,19 +458,19 @@ function AdminProgramas() {
 
   async function savePlano() {
     if (!planoDraft || !planoDraft.name.trim() || !selEixoId) return
-    const payload = {
+    const basePayload = {
       eixo_id:    selEixoId,
       program_id: selProgId,
       code:       planoDraft.code.trim(),
       name:       planoDraft.name.trim(),
       owner:      planoDraft.owner.trim() || null,
       sponsor:    planoDraft.sponsor.trim() || null,
-      sort_order: 0,
     }
     if (planoDraft.id) {
-      await supabase.from('planos').update(payload).eq('id', planoDraft.id)
+      await supabase.from('planos').update(basePayload).eq('id', planoDraft.id)
     } else {
-      await supabase.from('planos').insert(payload)
+      const sort_order = Math.max(0, ...planos.map(p => p.sort_order)) + 1
+      await supabase.from('planos').insert({ ...basePayload, sort_order })
     }
     setPlanoDraft(null)
     await loadPlanos(selEixoId)
