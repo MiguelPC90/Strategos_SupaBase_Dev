@@ -343,15 +343,21 @@ export default function NovoPlanoModal({
     if (al !== null && ah !== null && ah < al) { setPlanoErrors({ threshold: 'Agregados High deve ser ≥ Agregados Low' }); return }
     setPlanoSaving(true); setPlanoErrors({})
     const ownerNames = (planoForm.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)
-    const ownerPersonIds = ownerNames
-      .map(n => peopleByName.get(n)?.id)
-      .filter((id): id is string => Boolean(id))
-    const ownerLabelOverrideVal = ownerLabelOverride.trim() || null
+    const ownerPersonIds: string[] = []
+    const ownerUnmatched: string[] = []
+    for (const n of ownerNames) {
+      const id = peopleByName.get(n)?.id
+      if (id) { ownerPersonIds.push(id) } else { ownerUnmatched.push(n) }
+    }
+    const ownerLabelOverrideVal = [ownerLabelOverride.trim(), ownerUnmatched.join(' | ')].filter(Boolean).join(' | ') || null
     const sponsorNames = (planoForm.sponsor ?? '').split('|').map(s => s.trim()).filter(Boolean)
-    const sponsorPersonIds = sponsorNames
-      .map(n => peopleByName.get(n)?.id)
-      .filter((id): id is string => Boolean(id))
-    const sponsorLabelOverrideVal = sponsorLabelOverride.trim() || null
+    const sponsorPersonIds: string[] = []
+    const sponsorUnmatched: string[] = []
+    for (const n of sponsorNames) {
+      const id = peopleByName.get(n)?.id
+      if (id) { sponsorPersonIds.push(id) } else { sponsorUnmatched.push(n) }
+    }
+    const sponsorLabelOverrideVal = [sponsorLabelOverride.trim(), sponsorUnmatched.join(' | ')].filter(Boolean).join(' | ') || null
     const { error } = await supabase
       .from('planos')
       .update({
@@ -389,15 +395,21 @@ export default function NovoPlanoModal({
     const nextSort = ((maxResult as { sort_order: number }[] | null)?.[0]?.sort_order ?? 0) + 1
 
     const ownerNamesNew = (planoForm.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)
-    const ownerPersonIdsNew = ownerNamesNew
-      .map(n => peopleByName.get(n)?.id)
-      .filter((id): id is string => Boolean(id))
-    const ownerLabelOverrideNew = ownerLabelOverride.trim() || null
+    const ownerPersonIdsNew: string[] = []
+    const ownerUnmatchedNew: string[] = []
+    for (const n of ownerNamesNew) {
+      const id = peopleByName.get(n)?.id
+      if (id) { ownerPersonIdsNew.push(id) } else { ownerUnmatchedNew.push(n) }
+    }
+    const ownerLabelOverrideNew = [ownerLabelOverride.trim(), ownerUnmatchedNew.join(' | ')].filter(Boolean).join(' | ') || null
     const sponsorNamesNew = (planoForm.sponsor ?? '').split('|').map(s => s.trim()).filter(Boolean)
-    const sponsorPersonIdsNew = sponsorNamesNew
-      .map(n => peopleByName.get(n)?.id)
-      .filter((id): id is string => Boolean(id))
-    const sponsorLabelOverrideNew = sponsorLabelOverride.trim() || null
+    const sponsorPersonIdsNew: string[] = []
+    const sponsorUnmatchedNew: string[] = []
+    for (const n of sponsorNamesNew) {
+      const id = peopleByName.get(n)?.id
+      if (id) { sponsorPersonIdsNew.push(id) } else { sponsorUnmatchedNew.push(n) }
+    }
+    const sponsorLabelOverrideNew = [sponsorLabelOverride.trim(), sponsorUnmatchedNew.join(' | ')].filter(Boolean).join(' | ') || null
     const planoPayload = {
       name:                 planoForm.name.trim(),
       code:                 planoForm.code.trim().toUpperCase(),
