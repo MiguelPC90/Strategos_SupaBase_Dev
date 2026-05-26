@@ -60,3 +60,39 @@ export function resolveOwnerPrimaryEmail(
 export function formatPeopleList(names: string[], separator = ' · '): string {
   return names.join(separator)
 }
+
+/** Build the legacy `planos.owner` string from FK selection + label override.
+ *  Used during the dual-write transition (commit 2). Will be unused after commit 3. */
+export function buildLegacyOwnerString(
+  ownerPersonIds: string[],
+  ownerLabelOverride: string | null,
+  peopleMap: Map<string, Person>,
+): string {
+  const names: string[] = []
+  for (const id of ownerPersonIds) {
+    const p = peopleMap.get(id)
+    if (p) names.push(p.name)
+  }
+  if (ownerLabelOverride && ownerLabelOverride.trim() !== '') {
+    names.push(ownerLabelOverride.trim())
+  }
+  return names.join(' | ')
+}
+
+/** Build the legacy `planos.sponsor` string from FK selection + label override.
+ *  Used during the dual-write transition (commit 2). Will be unused after commit 3. */
+export function buildLegacySponsorString(
+  sponsorPersonIds: string[],
+  sponsorLabelOverride: string | null,
+  peopleMap: Map<string, Person>,
+): string {
+  const names: string[] = []
+  for (const id of sponsorPersonIds) {
+    const p = peopleMap.get(id)
+    if (p) names.push(p.name)
+  }
+  if (sponsorLabelOverride && sponsorLabelOverride.trim() !== '') {
+    names.push(sponsorLabelOverride.trim())
+  }
+  return names.join(' | ')
+}
