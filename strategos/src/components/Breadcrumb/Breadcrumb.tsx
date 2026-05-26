@@ -66,51 +66,57 @@ function SecondaryFiltersMenu() {
         <div className="breadcrumb-filters-popup">
           <div className="bfp-group">
             <div className="bfp-group-title">Estado</div>
-            {STATUS_OPTIONS.map(s => (
-              <label key={s} className="bfp-option">
-                <input
-                  type="checkbox"
-                  checked={filters.statuses.includes(s)}
-                  onChange={() => toggleFilter(filters.statuses, 'statuses', s)}
-                />
-                <span>{s}</span>
-              </label>
-            ))}
+            <div className="bfp-group-options">
+              {STATUS_OPTIONS.map(s => (
+                <label key={s} className="bfp-option">
+                  <input
+                    type="checkbox"
+                    checked={filters.statuses.includes(s)}
+                    onChange={() => toggleFilter(filters.statuses, 'statuses', s)}
+                  />
+                  <span>{s}</span>
+                </label>
+              ))}
+            </div>
           </div>
           {ownerOptions.length > 0 && (
             <div className="bfp-group">
               <div className="bfp-group-title">{labels.owner}</div>
-              {ownerOptions.map(name => {
-                const id = ownerNameToId.get(name)
-                return (
-                  <label key={name} className="bfp-option">
-                    <input
-                      type="checkbox"
-                      checked={!!id && filters.owners.includes(id)}
-                      onChange={() => { if (id) toggleFilter(filters.owners, 'owners', id) }}
-                    />
-                    <span>{name}</span>
-                  </label>
-                )
-              })}
+              <div className="bfp-group-options">
+                {ownerOptions.map(name => {
+                  const id = ownerNameToId.get(name)
+                  return (
+                    <label key={name} className="bfp-option">
+                      <input
+                        type="checkbox"
+                        checked={!!id && filters.owners.includes(id)}
+                        onChange={() => { if (id) toggleFilter(filters.owners, 'owners', id) }}
+                      />
+                      <span>{name}</span>
+                    </label>
+                  )
+                })}
+              </div>
             </div>
           )}
           {sponsorOptions.length > 0 && (
             <div className="bfp-group">
               <div className="bfp-group-title">{labels.sponsor}</div>
-              {sponsorOptions.map(name => {
-                const id = ownerNameToId.get(name)
-                return (
-                  <label key={name} className="bfp-option">
-                    <input
-                      type="checkbox"
-                      checked={!!id && filters.sponsors.includes(id)}
-                      onChange={() => { if (id) toggleFilter(filters.sponsors, 'sponsors', id) }}
-                    />
-                    <span>{name}</span>
-                  </label>
-                )
-              })}
+              <div className="bfp-group-options">
+                {sponsorOptions.map(name => {
+                  const id = ownerNameToId.get(name)
+                  return (
+                    <label key={name} className="bfp-option">
+                      <input
+                        type="checkbox"
+                        checked={!!id && filters.sponsors.includes(id)}
+                        onChange={() => { if (id) toggleFilter(filters.sponsors, 'sponsors', id) }}
+                      />
+                      <span>{name}</span>
+                    </label>
+                  )
+                })}
+              </div>
             </div>
           )}
         </div>

@@ -232,6 +232,15 @@
     color: var(--text3);
     font-weight: 600;
     padding: 4px 4px 6px 4px;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 1;
+  }
+
+  .bfp-group-options {
+    max-height: 180px;
+    overflow-y: auto;
   }
 
   .bfp-option {
