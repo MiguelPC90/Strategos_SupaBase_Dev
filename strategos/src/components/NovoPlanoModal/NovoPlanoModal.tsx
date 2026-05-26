@@ -13,7 +13,6 @@ import { usePrograms } from '../../hooks/usePrograms'
 import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
 import type { Plano } from '../../types/index'
-import { buildLegacyOwnerString, buildLegacySponsorString } from '../../lib/owners'
 
 // ── Types ──────────────────────────────────────────────────────
 interface PlanoForm {
@@ -264,12 +263,8 @@ export default function NovoPlanoModal({
     if (planoToEdit) {
       const editOwnerIds = planoToEdit.owner_person_ids ?? []
       const editSponsorIds = planoToEdit.sponsor_person_ids ?? []
-      const ownerStr = (editOwnerIds.length > 0 && peopleMap.size > 0)
-        ? editOwnerIds.map(id => peopleMap.get(id)?.name ?? '').filter(Boolean).join(' | ')
-        : (planoToEdit.owner ?? '')
-      const sponsorStr = (editSponsorIds.length > 0 && peopleMap.size > 0)
-        ? editSponsorIds.map(id => peopleMap.get(id)?.name ?? '').filter(Boolean).join(' | ')
-        : (planoToEdit.sponsor ?? '')
+      const ownerStr = editOwnerIds.map(id => peopleMap.get(id)?.name ?? '').filter(Boolean).join(' | ')
+      const sponsorStr = editSponsorIds.map(id => peopleMap.get(id)?.name ?? '').filter(Boolean).join(' | ')
       setPlanoForm({
         name:                planoToEdit.name,
         code:                planoToEdit.code,
@@ -368,8 +363,6 @@ export default function NovoPlanoModal({
         sponsor_person_ids:   sponsorPersonIds,
         sponsor_primary_id:   sponsorPersonIds[0] ?? null,
         sponsor_label_override: sponsorLabelOverrideVal,
-        owner:                buildLegacyOwnerString(ownerPersonIds, ownerLabelOverrideVal, peopleMap) || null,
-        sponsor:              buildLegacySponsorString(sponsorPersonIds, sponsorLabelOverrideVal, peopleMap) || null,
         objective:            planoForm.objective || null,
         threshold_leaves_low:      planoForm.threshold_leaves_low,
         threshold_leaves_high:     planoForm.threshold_leaves_high,
@@ -382,7 +375,7 @@ export default function NovoPlanoModal({
     showToast('Plano guardado.', 'success')
     onClose()
     onSaved()
-  }, [planoToEdit, planoForm, ownerLabelOverride, sponsorLabelOverride, peopleByName, peopleMap, showToast, onClose, onSaved])
+  }, [planoToEdit, planoForm, ownerLabelOverride, sponsorLabelOverride, peopleByName, showToast, onClose, onSaved])
 
   const handleSavePlanoWithActivities = useCallback(async () => {
     if (parseErrors.length > 0) return
@@ -416,8 +409,6 @@ export default function NovoPlanoModal({
       sponsor_person_ids:   sponsorPersonIdsNew,
       sponsor_primary_id:   sponsorPersonIdsNew[0] ?? null,
       sponsor_label_override: sponsorLabelOverrideNew,
-      owner:                buildLegacyOwnerString(ownerPersonIdsNew, ownerLabelOverrideNew, peopleMap) || null,
-      sponsor:              buildLegacySponsorString(sponsorPersonIdsNew, sponsorLabelOverrideNew, peopleMap) || null,
       objective:            planoForm.objective || null,
       threshold_leaves_low:      planoForm.threshold_leaves_low,
       threshold_leaves_high:     planoForm.threshold_leaves_high,
@@ -467,7 +458,7 @@ export default function NovoPlanoModal({
     onClose()
     onSaved()
     navigate(`/planos/${(newPlano as { id: string }).id}`)
-  }, [planoForm, effectiveProgramId, effectiveProgram, parsedActivities, parseErrors, dbEixos, ownerLabelOverride, sponsorLabelOverride, peopleByName, peopleMap, showToast, onClose, onSaved, navigate])
+  }, [planoForm, effectiveProgramId, effectiveProgram, parsedActivities, parseErrors, dbEixos, ownerLabelOverride, sponsorLabelOverride, peopleByName, showToast, onClose, onSaved, navigate])
 
   return (
     <Modal

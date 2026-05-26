@@ -1,11 +1,9 @@
 import './DuplicatePlanoModal.css'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import Modal from '../Modal/Modal'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../context/ToastContext'
 import type { Plano } from '../../types/index'
-import { buildLegacyOwnerString, buildLegacySponsorString } from '../../lib/owners'
-import { usePeople } from '../../hooks/usePeople'
 
 function shiftDate(iso: string | null, offsetDays: number): string | null {
   if (!iso) return null
@@ -33,8 +31,6 @@ export default function DuplicatePlanoModal({
   source,
 }: DuplicatePlanoModalProps) {
   const { showToast } = useToast()
-  const { people } = usePeople()
-  const peopleMap = useMemo(() => new Map(people.map(p => [p.id, p])), [people])
   const [name,      setName]      = useState('')
   const [code,      setCode]      = useState('')
   const [strategy,  setStrategy]  = useState<'shift' | 'clear'>('shift')
@@ -97,8 +93,6 @@ export default function DuplicatePlanoModal({
           sponsor_person_ids:   source.sponsor_person_ids ?? [],
           sponsor_primary_id:   source.sponsor_primary_id ?? null,
           sponsor_label_override: source.sponsor_label_override ?? null,
-          owner:                buildLegacyOwnerString(source.owner_person_ids ?? [], source.owner_label_override ?? null, peopleMap) || source.owner || null,
-          sponsor:              buildLegacySponsorString(source.sponsor_person_ids ?? [], source.sponsor_label_override ?? null, peopleMap) || source.sponsor || null,
           objective:            source.objective,
           threshold_leaves_low:      source.threshold_leaves_low,
           threshold_leaves_high:     source.threshold_leaves_high,

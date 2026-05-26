@@ -12,7 +12,7 @@ import { usePlanos } from '../../hooks/usePlanos'
 const STATUS_OPTIONS = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
 
 export default function FilterBar() {
-  const { filters, setFilter, resetFilters, ownerOptions, sponsorOptions } = useFilters()
+  const { filters, setFilter, resetFilters, ownerOptions, sponsorOptions, personIdToName } = useFilters()
   const { programs } = usePrograms()
   const { activities } = useActivities()
   const { eixos: allEixos } = useEixos()
@@ -34,6 +34,20 @@ export default function FilterBar() {
   const selectedPrograms = useMemo(
     () => filters.programIds.map(id => programIdToName.get(id) ?? id),
     [filters.programIds, programIdToName],
+  )
+
+  // Owner / sponsor name ↔ id helpers
+  const ownerNameToId = useMemo(
+    () => new Map([...personIdToName.entries()].map(([id, name]) => [name, id])),
+    [personIdToName],
+  )
+  const selectedOwnerNames = useMemo(
+    () => filters.owners.map(id => personIdToName.get(id) ?? id),
+    [filters.owners, personIdToName],
+  )
+  const selectedSponsorNames = useMemo(
+    () => filters.sponsors.map(id => personIdToName.get(id) ?? id),
+    [filters.sponsors, personIdToName],
   )
 
   // Activities restricted to selected programs (for cascading n1/n2 options)
@@ -74,6 +88,20 @@ export default function FilterBar() {
     setFilter('programIds', ids)
   }
 
+  function handleOwnerChange(names: string[]) {
+    const ids = names
+      .map(n => ownerNameToId.get(n))
+      .filter((id): id is string => id !== undefined)
+    setFilter('owners', ids)
+  }
+
+  function handleSponsorChange(names: string[]) {
+    const ids = names
+      .map(n => ownerNameToId.get(n))
+      .filter((id): id is string => id !== undefined)
+    setFilter('sponsors', ids)
+  }
+
   const activeCount =
     filters.programIds.length +
     filters.n1Values.length +
@@ -107,14 +135,14 @@ export default function FilterBar() {
       <MultiSelect
         label={labels.owner}
         options={ownerOptions}
-        value={filters.owners}
-        onChange={v => setFilter('owners', v)}
+        value={selectedOwnerNames}
+        onChange={handleOwnerChange}
       />
       <MultiSelect
         label={labels.sponsor}
         options={sponsorOptions}
-        value={filters.sponsors}
-        onChange={v => setFilter('sponsors', v)}
+        value={selectedSponsorNames}
+        onChange={handleSponsorChange}
       />
       <MultiSelect
         label="Estado"

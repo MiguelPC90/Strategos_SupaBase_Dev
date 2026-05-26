@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { Star, LayoutList, LayoutGrid, Plus, MoreHorizontal } from 'lucide-react'
 import { usePlanos } from '../../hooks/usePlanos'
+import { usePeople } from '../../hooks/usePeople'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFavorites } from '../../hooks/useFavorites'
@@ -13,6 +14,7 @@ import { usePermissions } from '../../hooks/usePermissions'
 import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import { supabase } from '../../lib/supabase'
 import { rollupStatus, rollupPct } from '../../lib/rollup'
+import { resolveOwnerNames, resolveSponsorNames } from '../../lib/owners'
 import { comparePlanos } from '../../lib/sort'
 import MultiSelect from '../../components/MultiSelect/MultiSelect'
 import EmptyState from '../../components/EmptyState/EmptyState'
@@ -118,6 +120,8 @@ export default function PlanosCatalog() {
   const { planos, loading, refetch } = usePlanos()
   const thresholdsMap = useThresholdsMap()
   const { programs } = usePrograms()
+  const { people } = usePeople()
+  const peopleMap = useMemo(() => new Map(people.map(p => [p.id, p])), [people])
   const { isFavorite, toggle, canAddMore } = useFavorites()
   const { showToast } = useToast()
   const { isAdmin, isProgramManager } = useRole()
@@ -204,12 +208,14 @@ export default function PlanosCatalog() {
 
   // ── Enrich planos with computed status + pct ──────────────────
   const enriched = useMemo(() => planos.map(plano => {
-    const lv      = leavesByPlano.get(plano.id) ?? []
-    const status  = rollupStatus(lv, today, thresholdsMap.get(plano.id)?.aggregates)
-    const pct     = rollupPct(lv)
-    const program = plano.program_id ? programMap.get(plano.program_id) ?? null : null
-    return { ...plano, status, pct, program }
-  }), [planos, leavesByPlano, today, programMap, thresholdsMap])
+    const lv           = leavesByPlano.get(plano.id) ?? []
+    const status       = rollupStatus(lv, today, thresholdsMap.get(plano.id)?.aggregates)
+    const pct          = rollupPct(lv)
+    const program      = plano.program_id ? programMap.get(plano.program_id) ?? null : null
+    const ownerNames   = resolveOwnerNames(plano, peopleMap).join(', ') || null
+    const sponsorNames = resolveSponsorNames(plano, peopleMap).join(', ') || null
+    return { ...plano, status, pct, program, ownerNames, sponsorNames }
+  }), [planos, leavesByPlano, today, programMap, thresholdsMap, peopleMap])
 
   // ── Plan-level access filter ──────────────────────────────────
   const accessiblePlanIds = useMemo(
@@ -242,16 +248,18 @@ export default function PlanosCatalog() {
     let base = visibleEnriched
     if (progFilter.length  > 0) base = base.filter(p => progFilter.includes(p.program?.name ?? ''))
     if (eixoFilter.length  > 0) base = base.filter(p => eixoFilter.includes(p.eixo?.name ?? ''))
-    return [...new Set(base.flatMap(p => (p.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)))].sort()
-  }, [visibleEnriched, progFilter, eixoFilter])
+    const ids = new Set(base.flatMap(p => p.owner_person_ids))
+    return [...ids].map(id => peopleMap.get(id)?.name).filter((n): n is string => !!n).sort()
+  }, [visibleEnriched, progFilter, eixoFilter, peopleMap])
 
   // Sponsor options: narrowed to selected programs + selected eixos
   const sponsorOptions = useMemo(() => {
     let base = visibleEnriched
     if (progFilter.length  > 0) base = base.filter(p => progFilter.includes(p.program?.name ?? ''))
     if (eixoFilter.length  > 0) base = base.filter(p => eixoFilter.includes(p.eixo?.name ?? ''))
-    return [...new Set(base.flatMap(p => (p.sponsor ?? '').split('|').map(s => s.trim()).filter(Boolean)))].sort()
-  }, [visibleEnriched, progFilter, eixoFilter])
+    const ids = new Set(base.flatMap(p => p.sponsor_person_ids))
+    return [...ids].map(id => peopleMap.get(id)?.name).filter((n): n is string => !!n).sort()
+  }, [visibleEnriched, progFilter, eixoFilter, peopleMap])
 
   const statusOptions = ['Em atraso', 'Em risco', 'Em dia', 'Concluída']
 
@@ -312,12 +320,12 @@ export default function PlanosCatalog() {
     if (eixoFilter.length    > 0 && !eixoFilter.includes(p.eixo?.name ?? ''))     return false
     if (statusFilter.length  > 0 && !statusFilter.includes(p.status))             return false
     if (ownerFilter.length   > 0) {
-      const vals = (p.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)
-      if (!ownerFilter.some(f => vals.includes(f))) return false
+      const names = p.owner_person_ids.map(id => peopleMap.get(id)?.name).filter(Boolean) as string[]
+      if (!ownerFilter.some(f => names.includes(f))) return false
     }
     if (sponsorFilter.length > 0) {
-      const vals = (p.sponsor ?? '').split('|').map(s => s.trim()).filter(Boolean)
-      if (!sponsorFilter.some(f => vals.includes(f))) return false
+      const names = p.sponsor_person_ids.map(id => peopleMap.get(id)?.name).filter(Boolean) as string[]
+      if (!sponsorFilter.some(f => names.includes(f))) return false
     }
     if (search.trim()) {
       const q = search.toLowerCase()
@@ -516,7 +524,7 @@ export default function PlanosCatalog() {
                   </td>
                   <td className="pc-td pc-td-meta">{p.program?.name ?? '—'}</td>
                   <td className="pc-td pc-td-meta">{p.eixo?.name ?? '—'}</td>
-                  <td className="pc-td pc-td-meta">{p.owner ? p.owner.split('|').map(s => s.trim()).filter(Boolean).join(', ') : '—'}</td>
+                  <td className="pc-td pc-td-meta">{p.ownerNames ?? '—'}</td>
                   <td className="pc-td">
                     <span className={statusPillClass(p.status)}>{p.status}</span>
                   </td>
@@ -577,8 +585,8 @@ export default function PlanosCatalog() {
               <div className="pc-card-footer">
                 <span className={statusPillClass(p.status)}>{p.status}</span>
                 <div className="pc-card-people">
-                  {p.owner   && <span className="pc-card-person">{p.owner.split('|').map(s => s.trim()).filter(Boolean).join(', ')}</span>}
-                  {p.sponsor && <span className="pc-card-person pc-card-sponsor">{p.sponsor.split('|').map(s => s.trim()).filter(Boolean).join(', ')}</span>}
+                  {p.ownerNames   && <span className="pc-card-person">{p.ownerNames}</span>}
+                  {p.sponsorNames && <span className="pc-card-person pc-card-sponsor">{p.sponsorNames}</span>}
                 </div>
               </div>
             </div>

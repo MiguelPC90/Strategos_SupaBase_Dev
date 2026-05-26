@@ -23,10 +23,15 @@ const GESTAO_PAGES: PageKey[] = [
 const STATUS_OPTIONS = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
 
 function SecondaryFiltersMenu() {
-  const { filters, setFilter, ownerOptions, sponsorOptions } = useFilters()
+  const { filters, setFilter, ownerOptions, sponsorOptions, personIdToName } = useFilters()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const labels = useProgramLabels(filters.programIds[0])
+
+  const ownerNameToId = useMemo(
+    () => new Map([...personIdToName.entries()].map(([id, name]) => [name, id])),
+    [personIdToName],
+  )
 
   useEffect(() => {
     if (!open) return
@@ -75,31 +80,37 @@ function SecondaryFiltersMenu() {
           {ownerOptions.length > 0 && (
             <div className="bfp-group">
               <div className="bfp-group-title">{labels.owner}</div>
-              {ownerOptions.map(o => (
-                <label key={o} className="bfp-option">
-                  <input
-                    type="checkbox"
-                    checked={filters.owners.includes(o)}
-                    onChange={() => toggleFilter(filters.owners, 'owners', o)}
-                  />
-                  <span>{o}</span>
-                </label>
-              ))}
+              {ownerOptions.map(name => {
+                const id = ownerNameToId.get(name)
+                return (
+                  <label key={name} className="bfp-option">
+                    <input
+                      type="checkbox"
+                      checked={!!id && filters.owners.includes(id)}
+                      onChange={() => { if (id) toggleFilter(filters.owners, 'owners', id) }}
+                    />
+                    <span>{name}</span>
+                  </label>
+                )
+              })}
             </div>
           )}
           {sponsorOptions.length > 0 && (
             <div className="bfp-group">
               <div className="bfp-group-title">{labels.sponsor}</div>
-              {sponsorOptions.map(s => (
-                <label key={s} className="bfp-option">
-                  <input
-                    type="checkbox"
-                    checked={filters.sponsors.includes(s)}
-                    onChange={() => toggleFilter(filters.sponsors, 'sponsors', s)}
-                  />
-                  <span>{s}</span>
-                </label>
-              ))}
+              {sponsorOptions.map(name => {
+                const id = ownerNameToId.get(name)
+                return (
+                  <label key={name} className="bfp-option">
+                    <input
+                      type="checkbox"
+                      checked={!!id && filters.sponsors.includes(id)}
+                      onChange={() => { if (id) toggleFilter(filters.sponsors, 'sponsors', id) }}
+                    />
+                    <span>{name}</span>
+                  </label>
+                )
+              })}
             </div>
           )}
         </div>
@@ -200,7 +211,7 @@ function FilterChip({ label, onRemove }: FilterChipProps) {
 // ── Main component ─────────────────────────────────────────────
 
 export default function Breadcrumb() {
-  const { filters, setFilter } = useFilters()
+  const { filters, setFilter, personIdToName } = useFilters()
   const { showToast } = useToast()
   const location = useLocation()
 
@@ -215,11 +226,9 @@ export default function Breadcrumb() {
 
   const labels = useProgramLabels(programId)
 
-  // All eixos + planos — filtered in dropdowns based on current selections
   const { eixos: allEixos } = useEixos()
   const { planos: allPlanos } = usePlanos()
 
-  // useCanEditCurrent always called (hook rules); only used when isGestaoCurrent
   const canEditPage = useCanEditCurrent(isGestaoCurrent ? pageKey : 'gestao-pds')
   const showReadOnly = isGestaoCurrent && !canEditPage
 
@@ -230,13 +239,11 @@ export default function Breadcrumb() {
     [accessiblePrograms],
   )
 
-  // Plan-level access: hide plans the user cannot view at all
   const accessiblePlanIds = useMemo(
     () => new Set(allPlanos.filter(p => hasAccess('actividades', p.program_id ?? undefined, p.id)).map(p => p.id)),
     [allPlanos, hasAccess],
   )
 
-  // Eixo-level access: only show eixos that have at least one accessible plan
   const accessibleEixoIds = useMemo(
     () => new Set(
       allPlanos
@@ -247,7 +254,6 @@ export default function Breadcrumb() {
     [allPlanos, accessiblePlanIds],
   )
 
-  // Cascade-restricted dropdown options, always bounded by accessible programs and plans
   const eixoOptions = useMemo(() => {
     const base = programId
       ? allEixos.filter(e => e.program_id === programId)
@@ -264,7 +270,6 @@ export default function Breadcrumb() {
     return base.filter(p => accessiblePlanIds.has(p.id))
   }, [allPlanos, n1Name, programId, accessibleProgramIds, accessiblePlanIds])
 
-  // Programmatic selection guard — blocks inaccessible programs and shows feedback
   function trySetProgram(id: string | null) {
     if (id && !accessiblePrograms.find(p => p.id === id)) {
       showToast('Sem acesso a este programa', 'warning')
@@ -273,7 +278,6 @@ export default function Breadcrumb() {
     setFilter('programIds', id ? [id] : [])
   }
 
-  // Auto-reset programId when it's not accessible on the current page
   useEffect(() => {
     if (!programId) return
     if (accessiblePrograms.length === 0) return
@@ -282,7 +286,6 @@ export default function Breadcrumb() {
     }
   }, [accessiblePrograms, programId, setFilter])
 
-  // Auto-select when only one program is accessible
   useEffect(() => {
     if (accessiblePrograms.length !== 1) return
     const only = accessiblePrograms[0]
@@ -304,7 +307,6 @@ export default function Breadcrumb() {
   return (
     <div className="breadcrumb">
       <div className="breadcrumb-main">
-        {/* Programa — always visible; display-only when only one program accessible */}
         <BreadcrumbSegment
           label={currentProgram?.name ?? 'Todos os programas'}
           isFirst
@@ -319,7 +321,6 @@ export default function Breadcrumb() {
 
         <span className="breadcrumb-separator">›</span>
 
-        {/* Eixo — always visible, restricted to selected program */}
         <BreadcrumbSegment
           label={n1Name ?? labels.n1}
           options={[
@@ -332,7 +333,6 @@ export default function Breadcrumb() {
 
         <span className="breadcrumb-separator">›</span>
 
-        {/* Plano — always visible, restricted to selected eixo or program */}
         <BreadcrumbSegment
           label={n2Name ?? labels.n2}
           options={[
@@ -348,7 +348,6 @@ export default function Breadcrumb() {
         <span className="breadcrumb-readonly-badge">Só leitura</span>
       )}
 
-      {/* Secondary filter chips + filter button */}
       <div className="breadcrumb-chips">
         {filters.statuses.map(s => (
           <FilterChip
@@ -357,18 +356,18 @@ export default function Breadcrumb() {
             onRemove={() => setFilter('statuses', filters.statuses.filter(x => x !== s))}
           />
         ))}
-        {filters.owners.map(o => (
+        {filters.owners.map(id => (
           <FilterChip
-            key={`owner:${o}`}
-            label={`${labels.owner}: ${o}`}
-            onRemove={() => setFilter('owners', filters.owners.filter(x => x !== o))}
+            key={`owner:${id}`}
+            label={`${labels.owner}: ${personIdToName.get(id) ?? id}`}
+            onRemove={() => setFilter('owners', filters.owners.filter(x => x !== id))}
           />
         ))}
-        {filters.sponsors.map(s => (
+        {filters.sponsors.map(id => (
           <FilterChip
-            key={`sponsor:${s}`}
-            label={`${labels.sponsor}: ${s}`}
-            onRemove={() => setFilter('sponsors', filters.sponsors.filter(x => x !== s))}
+            key={`sponsor:${id}`}
+            label={`${labels.sponsor}: ${personIdToName.get(id) ?? id}`}
+            onRemove={() => setFilter('sponsors', filters.sponsors.filter(x => x !== id))}
           />
         ))}
         <SecondaryFiltersMenu />

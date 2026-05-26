@@ -359,12 +359,12 @@ function AdminProgramas() {
         .select('id, program_id, code, name, sort_order, created_at, updated_at')
         .order('sort_order').order('name'),
       supabase.from('planos')
-        .select('id, eixo_id, program_id, code, name, owner, sponsor, sort_order, created_at, updated_at, threshold_leaves_low, threshold_leaves_high, threshold_aggregates_low, threshold_aggregates_high')
+        .select('id, eixo_id, program_id, code, name, owner_person_ids, owner_primary_id, owner_label_override, sponsor_person_ids, sponsor_primary_id, sponsor_label_override, sort_order, created_at, updated_at, threshold_leaves_low, threshold_leaves_high, threshold_aggregates_low, threshold_aggregates_high')
         .order('sort_order').order('name'),
     ])
     setPrograms((progsRes.data ?? []) as Program[])
     setEixos((eixosRes.data ?? []) as Eixo[])
-    setPlanos((planosRes.data ?? []) as Plano[])
+    setPlanos((planosRes.data ?? []) as unknown as Plano[])
     setLoading(false)
   }
 
@@ -461,7 +461,7 @@ function AdminProgramas() {
                                         <span className="adm-tree-code">{p.code}.{e.code}.{pl.code}</span>
                                         <span className="adm-tree-name adm-tree-name--plano">{pl.name}</span>
                                         <span className="adm-tree-tooltip-trigger"
-                                          data-tooltip={`Resp: ${pl.owner || '—'} · Patr: ${pl.sponsor || '—'}`}
+                                          data-tooltip={`Resp: ${pl.owner_label_override || (pl.owner_person_ids?.length > 0 ? `${pl.owner_person_ids.length} pessoa(s)` : '—')} · Patr: ${pl.sponsor_label_override || (pl.sponsor_person_ids?.length > 0 ? `${pl.sponsor_person_ids.length} pessoa(s)` : '—')}`}
                                         ><Info size={11} /></span>
                                       </td>
                                       <td>{formatThresholdCell(!plHasOwn, leavesLow, leavesHigh, aggLow, aggHigh)}</td>

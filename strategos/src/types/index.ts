@@ -39,10 +39,6 @@ export interface Plano {
   program_id: string | null
   code: string
   name: string
-  /** @deprecated Use owner_person_ids + owner_primary_id + owner_label_override. Will be dropped in commit 3. */
-  owner: string | null
-  /** @deprecated Use sponsor_person_ids + sponsor_primary_id + sponsor_label_override. Will be dropped in commit 3. */
-  sponsor: string | null
   owner_person_ids: string[]
   owner_primary_id: string | null
   owner_label_override: string | null

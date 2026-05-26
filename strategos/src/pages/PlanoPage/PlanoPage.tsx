@@ -4,6 +4,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { Star, ChevronLeft } from 'lucide-react'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
+import { usePeople } from '../../hooks/usePeople'
 import { useFavorites } from '../../hooks/useFavorites'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useActivities } from '../../hooks/useActivities'
@@ -19,6 +20,7 @@ import GestaoIniciativas from '../GestaoIniciativas/GestaoIniciativas'
 import NovoPlanoModal from '../../components/NovoPlanoModal/NovoPlanoModal'
 import { rollupStatus, rollupPct, rollupPctPrev, leafStatus, rollupDateRange } from '../../lib/rollup'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
+import { resolveOwnerNames, resolveSponsorNames } from '../../lib/owners'
 import { statusColor } from '../../lib/tokens'
 import { generateStatusNarrative } from '../../lib/statusNarrative'
 
@@ -60,6 +62,8 @@ export default function PlanoPage() {
 
   const { planos, loading: planosLoading, refetch: refetchPlano } = usePlanos()
   const { programs, loading: programsLoading } = usePrograms()
+  const { people } = usePeople()
+  const peopleMap = useMemo(() => new Map(people.map(p => [p.id, p])), [people])
   const { isFavorite, toggle: toggleFav, canAddMore } = useFavorites()
   const { canEdit, hasAccess } = usePermissions()
 
@@ -93,6 +97,9 @@ export default function PlanoPage() {
   const plano = planos.find(p => p.id === planoId)
   const program = programs.find(p => p.id === plano?.program_id)
   const labels = useProgramLabels(plano?.program_id)
+
+  const ownerNames   = useMemo(() => plano ? resolveOwnerNames(plano, peopleMap)   : [], [plano, peopleMap])
+  const sponsorNames = useMemo(() => plano ? resolveSponsorNames(plano, peopleMap) : [], [plano, peopleMap])
 
   const [planoEditOpen, setPlanoEditOpen] = useState(false)
 
@@ -209,8 +216,8 @@ export default function PlanoPage() {
         </div>
 
         <div className="pp-meta">
-          {plano.owner   && <span className="pp-meta-item"><span className="pp-meta-lbl">{labels.owner}</span>{plano.owner.split('|').map(s => s.trim()).filter(Boolean).join(', ')}</span>}
-          {plano.sponsor && <span className="pp-meta-item"><span className="pp-meta-lbl">{labels.sponsor}</span>{plano.sponsor.split('|').map(s => s.trim()).filter(Boolean).join(', ')}</span>}
+          {ownerNames.length > 0   && <span className="pp-meta-item"><span className="pp-meta-lbl">{labels.owner}</span>{ownerNames.join(', ')}</span>}
+          {sponsorNames.length > 0 && <span className="pp-meta-item"><span className="pp-meta-lbl">{labels.sponsor}</span>{sponsorNames.join(', ')}</span>}
           {dateLine      && (
             <span className="pp-meta-item">
               <span className="pp-meta-lbl">Datas</span>

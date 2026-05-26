@@ -313,20 +313,18 @@ export default function ExecucaoFinanceira() {
   const ownerPlanoIds = useMemo(() => {
     if (filters.owners.length === 0) return null
     return new Set(
-      visiblePlanos.filter(p => {
-        const vals = (p.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)
-        return vals.some(v => filters.owners.includes(v))
-      }).map(p => p.id)
+      visiblePlanos.filter(p =>
+        p.owner_person_ids.some(id => filters.owners.includes(id))
+      ).map(p => p.id)
     )
   }, [filters.owners, visiblePlanos])
 
   const sponsorPlanoIds = useMemo(() => {
     if (filters.sponsors.length === 0) return null
     return new Set(
-      visiblePlanos.filter(p => {
-        const vals = (p.sponsor ?? '').split('|').map(s => s.trim()).filter(Boolean)
-        return vals.some(v => filters.sponsors.includes(v))
-      }).map(p => p.id)
+      visiblePlanos.filter(p =>
+        p.sponsor_person_ids.some(id => filters.sponsors.includes(id))
+      ).map(p => p.id)
     )
   }, [filters.sponsors, visiblePlanos])
 

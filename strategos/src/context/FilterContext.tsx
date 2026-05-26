@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState, useEffect, t
 import { usePlanos } from '../hooks/usePlanos'
 import { useEixos } from '../hooks/useEixos'
 import { usePrograms } from '../hooks/usePrograms'
+import { usePeople } from '../hooks/usePeople'
 import { buildThresholdsMap } from '../hooks/useThresholdsMap'
 import { leafStatus } from '../lib/rollup'
 import type { Activity } from '../types/index'
@@ -14,9 +15,9 @@ export interface FilterState {
   n1Values: string[]
   /** Selected n2 (plano) names */
   n2Values: string[]
-  /** Selected owner names */
+  /** Selected owner person UUIDs */
   owners: string[]
-  /** Selected sponsor names */
+  /** Selected sponsor person UUIDs */
   sponsors: string[]
   /** Selected status values */
   statuses: string[]
@@ -34,13 +35,15 @@ const DEFAULT_FILTERS: FilterState = {
   cutoffDate:  null,
 }
 
-const STORAGE_KEY = 'stratgos:filters'
+const STORAGE_KEY     = 'stratgos:filters'
+const STORAGE_VERSION = 'v2'  // bump when filter identity format changes
 
 function loadFromStorage(): FilterState {
   try {
     const saved = sessionStorage.getItem(STORAGE_KEY)
     if (!saved) return DEFAULT_FILTERS
-    const parsed = JSON.parse(saved) as Partial<FilterState>
+    const parsed = JSON.parse(saved) as Partial<FilterState> & { _v?: string }
+    if (parsed._v !== STORAGE_VERSION) return DEFAULT_FILTERS
     return { ...DEFAULT_FILTERS, ...parsed }
   } catch {
     return DEFAULT_FILTERS
@@ -53,8 +56,12 @@ interface FilterContextValue {
   setFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void
   resetFilters: () => void
   getFilteredActivities: (activities: Activity[]) => Activity[]
+  /** Display names for the owner filter dropdown */
   ownerOptions: string[]
+  /** Display names for the sponsor filter dropdown */
   sponsorOptions: string[]
+  /** Maps person UUID → display name (for chip labels) */
+  personIdToName: Map<string, string>
 }
 
 const FilterContext = createContext<FilterContextValue | null>(null)
@@ -63,40 +70,47 @@ const FilterContext = createContext<FilterContextValue | null>(null)
 export function FilterProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<FilterState>(loadFromStorage)
 
-  // All eixos + planos needed for cascade auto-fill and owner/sponsor lists
   const { eixos: allEixos }     = useEixos()
   const { planos: allPlanos }   = usePlanos()
   const { programs: allPrograms } = usePrograms()
+  const { people }              = usePeople()
 
   const thresholdsMap = useMemo(
     () => buildThresholdsMap(allPrograms, allPlanos),
     [allPrograms, allPlanos],
   )
 
+  const personIdToName = useMemo(
+    () => new Map(people.map(p => [p.id, p.name])),
+    [people],
+  )
+
   // Persist to sessionStorage on every filter change
   useEffect(() => {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(filters))
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...filters, _v: STORAGE_VERSION }))
   }, [filters])
 
-  const ownerOptions = useMemo(
-    () => {
-      const base = filters.programIds.length > 0
-        ? allPlanos.filter(p => filters.programIds.includes(p.program_id ?? ''))
-        : allPlanos
-      return [...new Set(base.flatMap(p => (p.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)))].sort()
-    },
-    [allPlanos, filters.programIds],
-  )
+  const ownerOptions = useMemo(() => {
+    const base = filters.programIds.length > 0
+      ? allPlanos.filter(p => filters.programIds.includes(p.program_id ?? ''))
+      : allPlanos
+    const ids = new Set(base.flatMap(p => p.owner_person_ids))
+    return [...ids]
+      .map(id => personIdToName.get(id))
+      .filter((n): n is string => !!n)
+      .sort()
+  }, [allPlanos, filters.programIds, personIdToName])
 
-  const sponsorOptions = useMemo(
-    () => {
-      const base = filters.programIds.length > 0
-        ? allPlanos.filter(p => filters.programIds.includes(p.program_id ?? ''))
-        : allPlanos
-      return [...new Set(base.flatMap(p => (p.sponsor ?? '').split('|').map(s => s.trim()).filter(Boolean)))].sort()
-    },
-    [allPlanos, filters.programIds],
-  )
+  const sponsorOptions = useMemo(() => {
+    const base = filters.programIds.length > 0
+      ? allPlanos.filter(p => filters.programIds.includes(p.program_id ?? ''))
+      : allPlanos
+    const ids = new Set(base.flatMap(p => p.sponsor_person_ids))
+    return [...ids]
+      .map(id => personIdToName.get(id))
+      .filter((n): n is string => !!n)
+      .sort()
+  }, [allPlanos, filters.programIds, personIdToName])
 
   const setFilter = useCallback(<K extends keyof FilterState>(
     key: K,
@@ -106,7 +120,6 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       const next = { ...prev, [key]: value }
 
       if (key === 'programIds') {
-        // Parent changed → clear both children
         next.n1Values = []
         next.n2Values = []
         return next
@@ -115,13 +128,11 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       if (key === 'n1Values') {
         const eixoName = (value as string[])[0]
         if (eixoName) {
-          // Auto-fill programa from eixo; prefer a match in current program if names collide
           const currentProgId = prev.programIds[0]
           const eixo = allEixos.find(e => e.name === eixoName && e.program_id === currentProgId)
                     || allEixos.find(e => e.name === eixoName)
           if (eixo?.program_id) next.programIds = [eixo.program_id]
         }
-        // Always clear plano (incompatible with new eixo selection or Todos)
         next.n2Values = []
         return next
       }
@@ -129,7 +140,6 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       if (key === 'n2Values') {
         const planoName = (value as string[])[0]
         if (planoName) {
-          // Auto-fill programa + eixo from plano
           const plano = allPlanos.find(p => p.name === planoName)
           if (plano) {
             if (plano.program_id) next.programIds = [plano.program_id]
@@ -137,7 +147,6 @@ export function FilterProvider({ children }: { children: ReactNode }) {
             next.n1Values = eixoName ? [eixoName] : []
           }
         }
-        // Plano = Todos → don't touch parents
         return next
       }
 
@@ -154,16 +163,14 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     const today = new Date().toISOString().slice(0, 10)
 
     const ownerPlanoIds = owners.length
-      ? new Set(allPlanos.filter(p => {
-          const vals = (p.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)
-          return vals.some(v => owners.includes(v))
-        }).map(p => p.id))
+      ? new Set(allPlanos.filter(p =>
+          p.owner_person_ids.some(id => owners.includes(id))
+        ).map(p => p.id))
       : null
     const sponsorPlanoIds = sponsors.length
-      ? new Set(allPlanos.filter(p => {
-          const vals = (p.sponsor ?? '').split('|').map(s => s.trim()).filter(Boolean)
-          return vals.some(v => sponsors.includes(v))
-        }).map(p => p.id))
+      ? new Set(allPlanos.filter(p =>
+          p.sponsor_person_ids.some(id => sponsors.includes(id))
+        ).map(p => p.id))
       : null
 
     return activities.filter(a => {
@@ -173,8 +180,6 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       if (ownerPlanoIds   && !ownerPlanoIds.has(a.plano_id ?? ''))                 return false
       if (sponsorPlanoIds && !sponsorPlanoIds.has(a.plano_id ?? ''))               return false
 
-      // Status filter: only applied to leaf activities (level >= 4)
-      // Parent activities always included to preserve tree structure
       if (statuses.length && a.level >= 4) {
         const tLeaves = thresholdsMap.get(a.plano_id ?? '')?.leaves
         if (!statuses.includes(leafStatus(a, today, tLeaves))) return false
@@ -185,7 +190,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   }, [filters, allPlanos, thresholdsMap])
 
   return (
-    <FilterContext.Provider value={{ filters, setFilter, resetFilters, getFilteredActivities, ownerOptions, sponsorOptions }}>
+    <FilterContext.Provider value={{ filters, setFilter, resetFilters, getFilteredActivities, ownerOptions, sponsorOptions, personIdToName }}>
       {children}
     </FilterContext.Provider>
   )
