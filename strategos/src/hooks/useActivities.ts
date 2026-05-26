@@ -7,8 +7,6 @@ interface ActivityFilters {
   plano_id?: string
   n1?: string
   n2?: string
-  owner?: string
-  sponsor?: string
   status?: string
   /** ISO date string — activities past this date without rf are recalculated as 'atrasada' */
   cutoffDate?: string | null
@@ -33,7 +31,7 @@ function applyStatusCutoff(activity: Activity, cutoffDate: string): Activity {
 }
 
 export function useActivities(filters: ActivityFilters = {}): UseActivitiesResult {
-  const { program_id, plano_id, n1, n2, owner, sponsor, status, cutoffDate } = filters
+  const { program_id, plano_id, n1, n2, status, cutoffDate } = filters
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -59,8 +57,6 @@ export function useActivities(filters: ActivityFilters = {}): UseActivitiesResul
         if (plano_id)   q = q.eq('plano_id', plano_id)
         if (n1)         q = q.eq('n1', n1)
         if (n2)         q = q.eq('n2', n2)
-        if (owner)      q = q.eq('owner', owner)
-        if (sponsor)    q = q.eq('sponsor', sponsor)
         if (status)     q = q.eq('status', status)
         const { data, error: err } = await q.range(from, from + PAGE_SIZE - 1)
         if (err) throw err
@@ -88,7 +84,7 @@ export function useActivities(filters: ActivityFilters = {}): UseActivitiesResul
 
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [program_id, plano_id, n1, n2, owner, sponsor, status, cutoffDate, tick])
+  }, [program_id, plano_id, n1, n2, status, cutoffDate, tick])
 
   return { activities, loading, error, refetch }
 }
