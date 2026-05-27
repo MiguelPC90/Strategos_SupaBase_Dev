@@ -367,6 +367,26 @@ JS/TS source of truth for brand colors (mirrors CSS `:root` variables). Used by 
 
 **Rule:** charts NEVER hardcode hex values. Always import from `tokens.ts`.
 
+### `src/lib/excel-import.ts`
+
+Excel parser for activity bulk import. Used by `NovoPlanoModal` Step 2 (create flow) and will be used by `BulkActivitiesModal` (Phase 2, post-create flow).
+
+**Algorithm:** stack-walking based on `Nivel` column. For each row, the level's name is pushed to the stack; all deeper levels are invalidated; ancestors are read from the stack. The numeric prefix in `Nome` is NOT used for hierarchy resolution (intentional — `Nome` is free-form per entity convention).
+
+**Exports:** `parseExcelFile(File)`, `parseExcelBuffer(ArrayBuffer)`, `parseRows(unknown[][])`, `buildAncestors(act, all)`, `downloadActivitiesTemplate()`, `parseDate(raw)`, types `ParsedActivity`, `ParseError`, `ParseResult`, `Ancestors`.
+
+**`parseRows`** is the core parsing function — accepts raw row arrays (row 0 = headers, row 1+ = data). `parseExcelBuffer` and `parseExcelFile` are thin wrappers that read XLSX files and delegate to `parseRows`. Tests call `parseRows` directly to avoid XLSX file round-trips.
+
+**Hidden `_uuid` column:** when present, used to match parsed rows against existing DB activities (Phase 3 diff preview). When absent, all rows treated as new.
+
+**Warnings (non-fatal):** missing-ancestor cases (e.g. level 6 with no level 5 in stack) attach to `ParsedActivity.warnings`. Parser continues; ancestors below the gap stay empty strings.
+
+**Validations (fatal — emit `ParseError`, skip row):** invalid level (not 3-6), missing name, missing/invalid required dates (Inicio_Planeado, Fim_Planeado), end_date < start_date.
+
+**Bug fixed (Phase 1):** `n6` was never populated in the INSERT payload for level 6 activities. `buildAncestors` (renamed from `buildN345`) now returns all four levels.
+
+**Test suite:** `src/lib/excel-import.test.ts` — 18 vitest cases covering golden path, stack invalidation, skip-level warnings, empty rows, invalid levels, missing columns, 8 date formats, and UUID present/invalid/absent.
+
 ### `src/lib/edgeFunctionError.ts`
 
 `extractEdgeFunctionError(error)` reads `FunctionsHttpError.context.json()` to surface specific error messages from Edge Function 4xx/5xx responses. See **Known Issues — FunctionsHttpError gotcha** below.
