@@ -369,7 +369,7 @@ JS/TS source of truth for brand colors (mirrors CSS `:root` variables). Used by 
 
 ### `src/lib/excel-import.ts`
 
-Excel parser for activity bulk import. Used by `NovoPlanoModal` Step 2 (create flow) and will be used by `BulkActivitiesModal` (Phase 2, post-create flow).
+Excel parser for activity bulk import. Used by `NovoPlanoModal` Step 2 (create flow) and `BulkActivitiesModal` (post-create append flow).
 
 **Algorithm:** stack-walking based on `Nivel` column. For each row, the level's name is pushed to the stack; all deeper levels are invalidated; ancestors are read from the stack. The numeric prefix in `Nome` is NOT used for hierarchy resolution (intentional — `Nome` is free-form per entity convention).
 
@@ -410,6 +410,7 @@ Supabase client setup.
 ### Forms & Pickers
 
 - **`NovoPlanoModal`** (new-plan modal) — 2-step `Plano` (action plan) wizard (Step 1 form, Step 2 optional Excel import). Shared by `PlanosCatalog` and embedded `GestaoIniciativas`. Used in both create + edit modes.
+- **`BulkActivitiesModal`** — post-create Excel import modal. Mounted in `GestaoIniciativas` (Actividades tab). 2-step flow: upload (file select + download template) → preview (table with level/name/dates/pct, error block, summary). Append-only: inserts with `MAX(sort_order) + 1 + i`. Duplicate detection by name (case-insensitive) — skipped with count in toast. Error rows (fatal parse failures) excluded from import; warning rows (missing ancestors) are included but flagged in preview. Gate: rendered only when `propPlanoId` is set and `!readOnly`.
 - **`DuplicatePlanoModal`** — deep-copy with hybrid time-shift (offset by `chosenDate - earliestSourceBs`). `activity_dependencies` remapped via `oldId → newId`. Not cloned: risks, recursos (resources), PDS, fin_*.
 - **`SearchableSelect`** — typeahead with `position: fixed` dropdown (escapes parent `overflow: clip`), `min-width: 280px`, closes on scroll/resize.
 - **`MultiPersonSelect`** — Linear/Notion style single input. Sources: active people + unique `org_units` from `people.org_unit`. Storage: text joined with `' | '` (no schema change). Backward compatible with legacy single-value entries.

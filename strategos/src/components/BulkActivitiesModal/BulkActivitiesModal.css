@@ -1,0 +1,204 @@
+@layer components {
+  /* ── Upload zone ─────────────────────────────────────────────── */
+  .bam-upload-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    gap: 16px;
+    text-align: center;
+    border: 2px dashed var(--border2);
+    border-radius: var(--rl);
+    transition: border-color 100ms ease, background 100ms ease;
+  }
+
+  .bam-upload-zone--dragging {
+    border-color: var(--blue);
+    background: rgba(24, 95, 165, 0.05);
+  }
+
+  .bam-upload-icon {
+    color: var(--text3);
+  }
+
+  .bam-upload-hint {
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.6;
+    max-width: 380px;
+    margin: 0;
+  }
+
+  .bam-parsing-msg {
+    font-size: 13px;
+    color: var(--text2);
+    margin: 0;
+  }
+
+  /* ── Preview ─────────────────────────────────────────────────── */
+  .bam-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .bam-file-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .bam-file-label {
+    color: var(--text2);
+    flex-shrink: 0;
+  }
+
+  .bam-file-val {
+    font-weight: 500;
+    color: var(--text);
+    word-break: break-all;
+  }
+
+  /* ── Error block ─────────────────────────────────────────────── */
+  .bam-errors {
+    background: #fef2f2;
+    border: 1px solid rgba(163, 45, 45, 0.2);
+    border-radius: var(--r);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .bam-errors-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--red);
+  }
+
+  .bam-error-row {
+    font-size: 12px;
+    color: var(--red);
+    padding-left: 20px;
+  }
+
+  .bam-empty {
+    font-size: 13px;
+    color: var(--text2);
+    text-align: center;
+    padding: 24px 0;
+    margin: 0;
+  }
+
+  /* ── Table ───────────────────────────────────────────────────── */
+  .bam-table-wrap {
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    overflow: hidden;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .bam-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .bam-table th {
+    background: var(--bg2);
+    padding: 6px 8px;
+    text-align: left;
+    font-weight: 500;
+    color: var(--text2);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .bam-table td {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+
+  .bam-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .bam-th-lvl,
+  .bam-td-lvl {
+    width: 52px;
+    text-align: center;
+    color: var(--text2);
+    font-size: 11px;
+  }
+
+  .bam-th-date,
+  .bam-td-date {
+    width: 76px;
+    text-align: center;
+    color: var(--text2);
+  }
+
+  .bam-th-pct,
+  .bam-td-pct {
+    width: 56px;
+    text-align: right;
+    color: var(--text2);
+  }
+
+  .bam-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .bam-row-x {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--red);
+    line-height: 1;
+  }
+
+  .bam-row-warn {
+    flex-shrink: 0;
+    color: var(--amber);
+    display: flex;
+    align-items: center;
+  }
+
+  .bam-name-strike {
+    text-decoration: line-through;
+    color: var(--text3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bam-tr-error td {
+    background: #fef8f8;
+  }
+
+  /* ── Summary line ────────────────────────────────────────────── */
+  .bam-summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    padding-top: 2px;
+  }
+
+  .bam-summary-ok   { color: var(--green); font-weight: 500; }
+  .bam-summary-err  { color: var(--red);   font-weight: 500; }
+  .bam-summary-warn { color: var(--amber); font-weight: 500; }
+}

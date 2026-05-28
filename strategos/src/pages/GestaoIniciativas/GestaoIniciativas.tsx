@@ -20,6 +20,7 @@ import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 import { validateNewDependency, propagateDateChanges, computeDepGap, DEP_GAP_WARNING_THRESHOLD } from '../../lib/activityDependencies'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 import { useRole } from '../../hooks/useRole'
+import BulkActivitiesModal from '../../components/BulkActivitiesModal/BulkActivitiesModal'
 
 // ── Types ──────────────────────────────────────────────────────
 type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey'
@@ -739,6 +740,7 @@ export default function GestaoIniciativas({
   const tableRef = useRef<HTMLDivElement>(null)
 
   const [batchSaving, setBatchSaving] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
   // Per-plano threshold map — computed from the selected program + loaded planos
   const giThresholdsMap = useMemo(() => {
     const progLeaves: ThresholdBand = {
@@ -1334,10 +1336,18 @@ export default function GestaoIniciativas({
           )}
         </div>
         {!readOnly && (
-          <button className="btn-primary" onClick={openNew} disabled={!selProgId}
-            title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
-            Nova Actividade
-          </button>
+          <>
+            <button className="btn-primary" onClick={openNew} disabled={!selProgId}
+              title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
+              Nova Actividade
+            </button>
+            {propPlanoId && (
+              <button className="btn" onClick={() => setBulkOpen(true)} disabled={!selProgId}
+                title={!selProgId ? 'Selecciona um programa primeiro' : undefined}>
+                Importar actividades
+              </button>
+            )}
+          </>
         )}
         <div className="gi-sep" />
         <button
@@ -1410,6 +1420,20 @@ export default function GestaoIniciativas({
         )}
       </Card>
       </div>
+
+      {propPlanoId && selProgId && (
+        <BulkActivitiesModal
+          isOpen={bulkOpen}
+          onClose={() => setBulkOpen(false)}
+          onImported={() => { setBulkOpen(false); refetch() }}
+          planoId={propPlanoId}
+          programId={selProgId}
+          eixoId={currentPlano?.eixo_id ?? null}
+          n0={program?.name ?? ''}
+          n1={currentPlano?.eixo?.name ?? ''}
+          n2={currentPlano?.name ?? ''}
+        />
+      )}
 
       {panelForm && (
         <Modal
