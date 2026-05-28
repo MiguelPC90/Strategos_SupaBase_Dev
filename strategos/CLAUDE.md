@@ -373,11 +373,11 @@ Excel parser for activity bulk import. Used by `NovoPlanoModal` Step 2 (create f
 
 **Algorithm:** stack-walking based on `Nivel` column. For each row, the level's name is pushed to the stack; all deeper levels are invalidated; ancestors are read from the stack. The numeric prefix in `Nome` is NOT used for hierarchy resolution (intentional — `Nome` is free-form per entity convention).
 
-**Exports:** `parseExcelFile(File)`, `parseExcelBuffer(ArrayBuffer)`, `parseRows(unknown[][])`, `buildAncestors(act, all)`, `downloadActivitiesTemplate()`, `parseDate(raw)`, types `ParsedActivity`, `ParseError`, `ParseResult`, `Ancestors`.
+**Exports:** `parseExcelFile(File)`, `parseExcelBuffer(ArrayBuffer)`, `parseRows(unknown[][])`, `buildAncestors(act, all)`, `downloadActivitiesTemplate()`, `parseDate(raw)`, `exportActivitiesToExcel(activities, planoName)`, `computeDiff(parsed, existing)`, types `ParsedActivity`, `ParseError`, `ParseResult`, `Ancestors`, `ActivityForExport`, `ExistingActivity`, `DiffType`, `FieldChange`, `ActivityDiff`, `DiffResult`.
 
 **`parseRows`** is the core parsing function — accepts raw row arrays (row 0 = headers, row 1+ = data). `parseExcelBuffer` and `parseExcelFile` are thin wrappers that read XLSX files and delegate to `parseRows`. Tests call `parseRows` directly to avoid XLSX file round-trips.
 
-**Hidden `_uuid` column:** when present, used to match parsed rows against existing DB activities (Phase 3 diff preview). When absent, all rows treated as new.
+**Hidden `_uuid` column:** when present, used to match parsed rows against existing DB activities (diff preview). When absent, all rows treated as new.
 
 **Warnings (non-fatal):** missing-ancestor cases (e.g. level 6 with no level 5 in stack) attach to `ParsedActivity.warnings`. Parser continues; ancestors below the gap stay empty strings.
 
@@ -385,7 +385,11 @@ Excel parser for activity bulk import. Used by `NovoPlanoModal` Step 2 (create f
 
 **Bug fixed (Phase 1):** `n6` was never populated in the INSERT payload for level 6 activities. `buildAncestors` (renamed from `buildN345`) now returns all four levels.
 
-**Test suite:** `src/lib/excel-import.test.ts` — 18 vitest cases covering golden path, stack invalidation, skip-level warnings, empty rows, invalid levels, missing columns, 8 date formats, and UUID present/invalid/absent.
+**`exportActivitiesToExcel(activities, planoName)`** — downloads current plano activities as an XLSX with a hidden `_uuid` column. Filename: `actividades-{slugified-plano-name}.xlsx`. The hidden UUID column is what enables round-trip diffing on re-import.
+
+**`computeDiff(parsed, existing)`** — matches parsed rows against existing DB activities by `uuid` field. Classifies each entry as `'new' | 'modified' | 'unchanged' | 'deleted'` across 8 fields (name, level, bs, bf, rs, rf, pct, notes). Rows without a UUID in the parsed file are treated as new. Returns `DiffResult` with `.diffs[]` and `.summary` (counts + `levelChanges`).
+
+**Test suite:** `src/lib/excel-import.test.ts` — 26 vitest cases: 18 covering golden path, stack invalidation, skip-level warnings, empty rows, invalid levels, missing columns, 8 date formats, and UUID present/invalid/absent; 8 covering `computeDiff` (all-new, all-unchanged, pct-only modified, multi-field modified, level-change flagged, deletion, mixed batch, date-null-vs-value).
 
 ### `src/lib/edgeFunctionError.ts`
 
@@ -410,7 +414,7 @@ Supabase client setup.
 ### Forms & Pickers
 
 - **`NovoPlanoModal`** (new-plan modal) — 2-step `Plano` (action plan) wizard (Step 1 form, Step 2 optional Excel import). Shared by `PlanosCatalog` and embedded `GestaoIniciativas`. Used in both create + edit modes.
-- **`BulkActivitiesModal`** — post-create Excel import modal. Mounted in `GestaoIniciativas` (Actividades tab). 2-step flow: upload (file select + download template) → preview (table with level/name/dates/pct, error block, summary). Append-only: inserts with `MAX(sort_order) + 1 + i`. Duplicate detection by name (case-insensitive) — skipped with count in toast. Error rows (fatal parse failures) excluded from import; warning rows (missing ancestors) are included but flagged in preview. Gate: rendered only when `propPlanoId` is set and `!readOnly`.
+- **`BulkActivitiesModal`** — post-create Excel import modal. Mounted in `GestaoIniciativas` (Actividades tab). 2-step flow: upload (drag-and-drop or click, `.xlsx`/`.xls` only) → diff preview. Upload triggers parallel parse + DB fetch → `computeDiff` → colour-coded table (green=new, amber=modified, crimson=deleted, plain=unchanged). Filter chips (Todas / Novas / Modificadas / A apagar). "Exportar actividades" button downloads current activities with hidden `_uuid` col for round-trip diffing. Apply calls `supabase.rpc('apply_activity_diff', ...)` (transactional). ConfirmModal extra step when diff contains deletions. Gate: rendered only when `propPlanoId` is set and `!readOnly`.
 - **`DuplicatePlanoModal`** — deep-copy with hybrid time-shift (offset by `chosenDate - earliestSourceBs`). `activity_dependencies` remapped via `oldId → newId`. Not cloned: risks, recursos (resources), PDS, fin_*.
 - **`SearchableSelect`** — typeahead with `position: fixed` dropdown (escapes parent `overflow: clip`), `min-width: 280px`, closes on scroll/resize.
 - **`MultiPersonSelect`** — Linear/Notion style single input. Sources: active people + unique `org_units` from `people.org_unit`. Storage: text joined with `' | '` (no schema change). Backward compatible with legacy single-value entries.
@@ -525,7 +529,7 @@ Supabase client setup.
 
 ### Migrations naming
 
-Files in `supabase/migrations/NNN_description.sql` (NNN zero-padded). Apply manually via Supabase SQL Editor. Lives only in `_Dev` repo. Latest applied: 036 (3-zone threshold model).
+Files in `supabase/migrations/NNN_description.sql` (NNN zero-padded). Apply manually via Supabase SQL Editor. Lives only in `_Dev` repo. Latest applied: 036 (3-zone threshold model). Pending manual application: **043** (`apply_activity_diff` — transactional bulk-import apply function; see `supabase/migrations/043_apply_activity_diff.sql`).
 
 -----
 

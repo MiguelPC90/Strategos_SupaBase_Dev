@@ -18,89 +18,116 @@
     background: rgba(24, 95, 165, 0.05);
   }
 
-  .bam-upload-icon {
-    color: var(--text3);
-  }
+  .bam-upload-icon { color: var(--text3); }
 
   .bam-upload-hint {
     font-size: 14px;
     color: var(--text2);
     line-height: 1.6;
-    max-width: 380px;
+    max-width: 400px;
     margin: 0;
   }
 
-  .bam-parsing-msg {
-    font-size: 13px;
-    color: var(--text2);
-    margin: 0;
-  }
+  .bam-parsing-msg { font-size: 13px; color: var(--text2); margin: 0; }
 
-  /* ── Preview ─────────────────────────────────────────────────── */
-  .bam-preview {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
+  .bam-export-btn { display: flex; align-items: center; gap: 5px; }
 
-  .bam-file-name {
+  /* ── Preview wrapper ─────────────────────────────────────────── */
+  .bam-preview { display: flex; flex-direction: column; gap: 10px; }
+
+  .bam-file-name { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .bam-file-label { color: var(--text2); flex-shrink: 0; }
+  .bam-file-val { font-weight: 500; color: var(--text); word-break: break-all; }
+
+  /* ── Summary chips ───────────────────────────────────────────── */
+  .bam-diff-summary {
     display: flex;
-    align-items: center;
+    flex-wrap: wrap;
     gap: 6px;
-    font-size: 13px;
   }
 
-  .bam-file-label {
-    color: var(--text2);
-    flex-shrink: 0;
-  }
-
-  .bam-file-val {
+  .bam-sum-chip {
+    font-size: 12px;
     font-weight: 500;
-    color: var(--text);
-    word-break: break-all;
+    padding: 3px 8px;
+    border-radius: 12px;
   }
 
-  /* ── Error block ─────────────────────────────────────────────── */
-  .bam-errors {
-    background: #fef2f2;
-    border: 1px solid rgba(163, 45, 45, 0.2);
+  .bam-sum-new       { background: var(--status-ontrack-tint); color: var(--status-ontrack); }
+  .bam-sum-modified  { background: var(--status-risk-tint);    color: var(--status-risk); }
+  .bam-sum-deleted   { background: var(--status-late-tint);    color: var(--status-late); }
+  .bam-sum-unchanged { background: var(--bg3); color: var(--text2); }
+
+  /* ── Warnings block ──────────────────────────────────────────── */
+  .bam-warnings-block {
+    background: rgba(200, 154, 60, 0.06);
+    border: 1px solid rgba(200, 154, 60, 0.25);
     border-radius: var(--r);
-    padding: 10px 12px;
+    padding: 8px 12px;
     display: flex;
     flex-direction: column;
     gap: 4px;
   }
 
-  .bam-errors-header {
+  .bam-warn-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .bam-warn-line svg { flex-shrink: 0; margin-top: 1px; color: var(--status-risk); }
+
+  .bam-warn-error svg { color: var(--status-late); }
+  .bam-warn-error span { color: var(--status-late); }
+
+  .bam-warn-level svg  { color: var(--status-risk); }
+  .bam-warn-level span { color: var(--status-risk); font-weight: 500; }
+
+  /* ── Filter chips ────────────────────────────────────────────── */
+  .bam-filter-row { display: flex; gap: 4px; flex-wrap: wrap; }
+
+  .bam-filter-chip {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--red);
-  }
-
-  .bam-error-row {
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 14px;
+    border: 1px solid var(--border2);
+    background: var(--bg);
     font-size: 12px;
-    color: var(--red);
-    padding-left: 20px;
+    color: var(--text2);
+    cursor: pointer;
+    transition: border-color 80ms, background 80ms;
   }
 
-  .bam-empty {
-    font-size: 13px;
-    color: var(--text2);
-    text-align: center;
-    padding: 24px 0;
-    margin: 0;
+  .bam-filter-chip:hover { border-color: var(--navy); color: var(--text); }
+
+  .bam-filter-chip.active {
+    border-color: var(--navy);
+    background: var(--navy);
+    color: #fff;
   }
+
+  .bam-filter-count {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.12);
+    min-width: 16px;
+    text-align: center;
+  }
+
+  .bam-filter-chip.active .bam-filter-count { background: rgba(255, 255, 255, 0.25); }
 
   /* ── Table ───────────────────────────────────────────────────── */
   .bam-table-wrap {
     border: 1px solid var(--border);
     border-radius: var(--r);
     overflow: hidden;
-    max-height: 300px;
+    max-height: 320px;
     overflow-y: auto;
   }
 
@@ -129,76 +156,80 @@
     vertical-align: middle;
   }
 
-  .bam-table tbody tr:last-child td {
-    border-bottom: none;
-  }
+  .bam-table tbody tr:last-child td { border-bottom: none; }
 
-  .bam-th-lvl,
-  .bam-td-lvl {
-    width: 52px;
-    text-align: center;
-    color: var(--text2);
-    font-size: 11px;
-  }
+  /* ── Diff row types ──────────────────────────────────────────── */
+  .bam-diff-row-new td:first-child       { box-shadow: inset 3px 0 0 var(--status-ontrack); }
+  .bam-diff-row-new                      { background: var(--status-ontrack-tint); }
+  .bam-diff-row-modified td:first-child  { box-shadow: inset 3px 0 0 var(--status-risk); }
+  .bam-diff-row-modified                 { background: var(--status-risk-tint); }
+  .bam-diff-row-deleted td:first-child   { box-shadow: inset 3px 0 0 var(--status-late); }
+  .bam-diff-row-deleted                  { background: var(--status-late-tint); }
 
-  .bam-th-date,
-  .bam-td-date {
-    width: 76px;
-    text-align: center;
-    color: var(--text2);
-  }
+  /* ── Action chip ─────────────────────────────────────────────── */
+  .bam-th-action, .bam-td-action { width: 72px; white-space: nowrap; }
 
-  .bam-th-pct,
-  .bam-td-pct {
-    width: 56px;
-    text-align: right;
-    color: var(--text2);
-  }
-
-  .bam-name-cell {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    min-width: 0;
-  }
-
-  .bam-row-x {
-    flex-shrink: 0;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--red);
-    line-height: 1;
-  }
-
-  .bam-row-warn {
-    flex-shrink: 0;
-    color: var(--amber);
-    display: flex;
-    align-items: center;
-  }
-
-  .bam-name-strike {
-    text-decoration: line-through;
-    color: var(--text3);
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .bam-action-chip {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 2px 5px;
+    border-radius: 4px;
     white-space: nowrap;
   }
 
-  .bam-tr-error td {
-    background: #fef8f8;
+  .bam-action-new       { background: var(--status-ontrack-tint); color: var(--status-ontrack); }
+  .bam-action-modified  { background: var(--status-risk-tint);    color: var(--status-risk); }
+  .bam-action-deleted   { background: var(--status-late-tint);    color: var(--status-late); }
+  .bam-action-unchanged { background: var(--bg3);                 color: var(--text3); }
+
+  /* ── Level column ────────────────────────────────────────────── */
+  .bam-th-lvl, .bam-td-lvl {
+    width: 40px;
+    text-align: center;
+    color: var(--text2);
+    font-size: 11px;
   }
 
-  /* ── Summary line ────────────────────────────────────────────── */
-  .bam-summary {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  .bam-level-change {
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--status-risk);
+    white-space: nowrap;
+  }
+
+  /* ── Name cell ───────────────────────────────────────────────── */
+  .bam-name-cell { display: flex; align-items: center; gap: 5px; min-width: 0; }
+  .bam-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── Changes column ──────────────────────────────────────────── */
+  .bam-th-changes, .bam-td-changes { width: 210px; font-size: 11px; color: var(--text2); }
+
+  .bam-changes-list { display: inline; }
+
+  .bam-change-item { white-space: nowrap; }
+  .bam-change-sep  { color: var(--text3); }
+
+  .bam-change-lvl-icon {
+    display: inline;
+    vertical-align: -2px;
+    margin-right: 2px;
+    color: var(--status-risk);
+  }
+
+  .bam-change-del  { color: var(--status-late); font-style: italic; }
+  .bam-change-none { color: var(--text3); }
+
+  /* ── Apply error ─────────────────────────────────────────────── */
+  .bam-apply-error {
     font-size: 12px;
-    padding-top: 2px;
+    color: var(--status-late);
+    padding: 6px 10px;
+    background: var(--status-late-tint);
+    border-radius: var(--r);
   }
 
-  .bam-summary-ok   { color: var(--green); font-weight: 500; }
-  .bam-summary-err  { color: var(--red);   font-weight: 500; }
-  .bam-summary-warn { color: var(--amber); font-weight: 500; }
+  /* ── Empty ───────────────────────────────────────────────────── */
+  .bam-empty { font-size: 13px; color: var(--text2); text-align: center; padding: 20px 0; margin: 0; }
 }

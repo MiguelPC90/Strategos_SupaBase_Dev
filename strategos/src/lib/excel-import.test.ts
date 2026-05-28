@@ -3,7 +3,9 @@ import {
   parseRows,
   parseDate,
   buildAncestors,
+  computeDiff,
   type ParsedActivity,
+  type ExistingActivity,
 } from './excel-import'
 
 // ── Test data helpers ───────────────────────────────────────────
@@ -217,5 +219,95 @@ describe('UUID support', () => {
     const act: ParsedActivity = activities[0]
     expect(act.uuid).toBeNull()
     expect(act.warnings).toHaveLength(0)
+  })
+})
+
+// ── computeDiff ─────────────────────────────────────────────────
+const UUID_A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+const UUID_B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+
+function mkExisting(overrides: Partial<ExistingActivity> = {}): ExistingActivity {
+  return { id: UUID_A, level: 4, name: 'Test', bs: '2026-01-01', bf: '2026-03-31', rs: null, rf: null, pct: 0, notes: null, ...overrides }
+}
+
+function mkParsed(overrides: Partial<ParsedActivity> = {}): ParsedActivity {
+  return { rowNum: 2, uuid: UUID_A, level: 4, name: 'Test', start_date: '2026-01-01', end_date: '2026-03-31', real_start: null, real_end: null, pct: 0, notes: '', parentIndex: null, warnings: [], ...overrides }
+}
+
+describe('computeDiff', () => {
+  it('classifies all as new when existing is empty', () => {
+    const p = mkParsed({ uuid: null })
+    const result = computeDiff([p], [])
+    expect(result.summary.new).toBe(1)
+    expect(result.summary.modified).toBe(0)
+    expect(result.summary.deleted).toBe(0)
+    expect(result.diffs[0].type).toBe('new')
+  })
+
+  it('classifies as unchanged when all fields are identical', () => {
+    const result = computeDiff([mkParsed()], [mkExisting()])
+    expect(result.summary.unchanged).toBe(1)
+    expect(result.summary.modified).toBe(0)
+    expect(result.diffs[0].type).toBe('unchanged')
+  })
+
+  it('classifies as modified when pct differs', () => {
+    const result = computeDiff([mkParsed({ pct: 60 })], [mkExisting({ pct: 50 })])
+    expect(result.diffs[0].type).toBe('modified')
+    const changes = result.diffs[0].changes!
+    expect(changes).toHaveLength(1)
+    expect(changes[0]).toEqual({ field: 'pct', oldValue: 50, newValue: 60 })
+  })
+
+  it('reports all changed fields for multi-field modification', () => {
+    const result = computeDiff(
+      [mkParsed({ name: 'Renamed', end_date: '2026-04-30' })],
+      [mkExisting()],
+    )
+    expect(result.diffs[0].type).toBe('modified')
+    const fields = result.diffs[0].changes!.map(c => c.field)
+    expect(fields).toContain('name')
+    expect(fields).toContain('bf')
+  })
+
+  it('sets levelChanged when level differs', () => {
+    const result = computeDiff([mkParsed({ level: 5 })], [mkExisting({ level: 4 })])
+    expect(result.diffs[0].type).toBe('modified')
+    expect(result.diffs[0].levelChanged).toBe(true)
+    expect(result.summary.levelChanges).toBe(1)
+  })
+
+  it('classifies as deleted when uuid in existing is absent from parsed', () => {
+    const result = computeDiff([], [mkExisting()])
+    expect(result.summary.deleted).toBe(1)
+    expect(result.diffs[0].type).toBe('deleted')
+    expect(result.diffs[0].uuid).toBe(UUID_A)
+  })
+
+  it('handles a mixed batch of new/modified/deleted/unchanged', () => {
+    const parsed = [
+      mkParsed({ uuid: UUID_A, pct: 50 }),      // modified (pct changed)
+      mkParsed({ uuid: null, name: 'Brand new' }), // new (no uuid)
+      mkParsed({ uuid: UUID_B }),                 // unchanged
+    ]
+    const existing = [
+      mkExisting({ id: UUID_A, pct: 0 }),
+      mkExisting({ id: UUID_B }),
+      mkExisting({ id: 'cccccccc-cccc-cccc-cccc-cccccccccccc' }), // deleted
+    ]
+    const result = computeDiff(parsed, existing)
+    expect(result.summary.new).toBe(1)
+    expect(result.summary.modified).toBe(1)
+    expect(result.summary.unchanged).toBe(1)
+    expect(result.summary.deleted).toBe(1)
+  })
+
+  it('treats null and date-string as different (date null vs value)', () => {
+    // bf/end_date: DB has null, parsed has a date → should be modified
+    const modified = computeDiff([mkParsed({ end_date: '2026-06-30' })], [mkExisting({ bf: null })])
+    expect(modified.diffs[0].type).toBe('modified')
+    // bf/end_date: both null → unchanged
+    const unchanged = computeDiff([mkParsed({ end_date: null })], [mkExisting({ bf: null })])
+    expect(unchanged.diffs[0].type).toBe('unchanged')
   })
 })

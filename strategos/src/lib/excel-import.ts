@@ -213,3 +213,161 @@ export function downloadActivitiesTemplate(): void {
   XLSX.utils.book_append_sheet(wb, ws, 'Actividades')
   XLSX.writeFile(wb, 'template-actividades.xlsx')
 }
+
+// ── Phase 3: Export + Diff ──────────────────────────────────────
+
+export interface ActivityForExport {
+  id: string
+  level: number
+  name: string
+  bs: string | null
+  bf: string | null
+  rs: string | null
+  rf: string | null
+  pct: number
+  notes: string | null
+}
+
+export interface ExistingActivity {
+  id: string
+  level: number
+  name: string
+  bs: string | null
+  bf: string | null
+  rs: string | null
+  rf: string | null
+  pct: number
+  notes: string | null
+}
+
+export type DiffType = 'new' | 'modified' | 'unchanged' | 'deleted'
+
+export interface FieldChange {
+  field: string
+  oldValue: string | number | null
+  newValue: string | number | null
+}
+
+export interface ActivityDiff {
+  type: DiffType
+  uuid: string | null
+  level: number
+  name: string
+  parsed?: ParsedActivity
+  ancestors?: Ancestors
+  changes?: FieldChange[]
+  existing?: ExistingActivity
+  levelChanged?: boolean
+  warnings: string[]
+}
+
+export interface DiffResult {
+  diffs: ActivityDiff[]
+  summary: {
+    new: number
+    modified: number
+    unchanged: number
+    deleted: number
+    levelChanges: number
+  }
+}
+
+function fmtDateForExport(d: string | null): string {
+  if (!d) return ''
+  const p = d.split('-')
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d
+}
+
+function slugify(s: string): string {
+  return s
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '').slice(0, 40)
+}
+
+export function exportActivitiesToExcel(activities: ActivityForExport[], planoName: string): void {
+  const headers = ['Nivel', 'Nome', 'Inicio_Planeado', 'Fim_Planeado', 'Inicio_Real', 'Fim_Real', 'Pct_Execucao', 'Notas', '_uuid']
+  const rows = activities.map(a => [
+    a.level, a.name,
+    fmtDateForExport(a.bs), fmtDateForExport(a.bf),
+    fmtDateForExport(a.rs), fmtDateForExport(a.rf),
+    a.pct, a.notes ?? '', a.id,
+  ])
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+  ws['!cols'] = [
+    { wch: 7 }, { wch: 30 }, { wch: 14 }, { wch: 14 },
+    { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 30 },
+    { wch: 0, hidden: true },
+  ]
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Actividades')
+  XLSX.writeFile(wb, `actividades-${slugify(planoName)}.xlsx`)
+}
+
+export function computeDiff(parsed: ParsedActivity[], existing: ExistingActivity[]): DiffResult {
+  const existingByUuid = new Map(existing.map(e => [e.id, e]))
+  const seenUuids = new Set<string>()
+  const diffs: ActivityDiff[] = []
+
+  for (const p of parsed) {
+    const ancestors = buildAncestors(p, parsed)
+
+    if (!p.uuid) {
+      diffs.push({ type: 'new', uuid: null, level: p.level, name: p.name, parsed: p, ancestors, warnings: p.warnings })
+      continue
+    }
+
+    seenUuids.add(p.uuid)
+    const ex = existingByUuid.get(p.uuid)
+
+    if (!ex) {
+      diffs.push({
+        type: 'new', uuid: p.uuid, level: p.level, name: p.name, parsed: p, ancestors,
+        warnings: [...p.warnings, 'UUID não encontrado — será inserido como novo'],
+      })
+      continue
+    }
+
+    type Check = { field: string; oldV: string | number | null; newV: string | number | null }
+    const checks: Check[] = [
+      { field: 'name',  oldV: (ex.name  ?? '').trim(), newV: p.name.trim()        },
+      { field: 'level', oldV: ex.level,                 newV: p.level              },
+      { field: 'bs',    oldV: ex.bs   ?? null,          newV: p.start_date ?? null },
+      { field: 'bf',    oldV: ex.bf   ?? null,          newV: p.end_date   ?? null },
+      { field: 'rs',    oldV: ex.rs   ?? null,          newV: p.real_start ?? null },
+      { field: 'rf',    oldV: ex.rf   ?? null,          newV: p.real_end   ?? null },
+      { field: 'pct',   oldV: ex.pct,                   newV: p.pct                },
+      { field: 'notes', oldV: (ex.notes ?? '').trim(),  newV: p.notes.trim()       },
+    ]
+    const changes: FieldChange[] = checks
+      .filter(c => c.oldV !== c.newV)
+      .map(c => ({ field: c.field, oldValue: c.oldV, newValue: c.newV }))
+
+    if (changes.length === 0) {
+      diffs.push({ type: 'unchanged', uuid: p.uuid, level: p.level, name: p.name, parsed: p, ancestors, warnings: p.warnings })
+    } else {
+      diffs.push({
+        type: 'modified', uuid: p.uuid, level: p.level, name: p.name,
+        parsed: p, ancestors, changes, levelChanged: ex.level !== p.level,
+        warnings: p.warnings,
+      })
+    }
+  }
+
+  for (const ex of existing) {
+    if (!seenUuids.has(ex.id)) {
+      diffs.push({ type: 'deleted', uuid: ex.id, level: ex.level, name: ex.name, existing: ex, warnings: [] })
+    }
+  }
+
+  return {
+    diffs,
+    summary: {
+      new:          diffs.filter(d => d.type === 'new').length,
+      modified:     diffs.filter(d => d.type === 'modified').length,
+      unchanged:    diffs.filter(d => d.type === 'unchanged').length,
+      deleted:      diffs.filter(d => d.type === 'deleted').length,
+      levelChanges: diffs.filter(d => d.levelChanged).length,
+    },
+  }
+}
