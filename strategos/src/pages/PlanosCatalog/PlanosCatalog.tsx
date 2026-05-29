@@ -11,9 +11,9 @@ import { useToast } from '../../context/ToastContext'
 import { useRole } from '../../hooks/useRole'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 import { usePermissions } from '../../hooks/usePermissions'
-import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import { supabase } from '../../lib/supabase'
-import { rollupStatus, rollupPct } from '../../lib/rollup'
+import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
+import type { RowState } from '../../lib/rollup'
 import { resolveOwnerNames, resolveSponsorNames } from '../../lib/owners'
 import { comparePlanos } from '../../lib/sort'
 import MultiSelect from '../../components/MultiSelect/MultiSelect'
@@ -116,9 +116,17 @@ function PlanoRowMenu({ planoId, openId, onOpen, onEdit, onDuplicate }: PlanoRow
   )
 }
 
+function groupState(lv: Activity[], eff: Map<string, EffectiveValue>): RowState {
+  if (lv.length === 0) return 'Em dia'
+  const statuses = lv.map(a => eff.get(a.id)?.status ?? 'Em dia')
+  if (statuses.every(s => s === 'Concluída')) return 'Concluída'
+  if (statuses.some(s => s === 'Em atraso'))  return 'Em atraso'
+  if (statuses.some(s => s === 'Em risco'))   return 'Em risco'
+  return 'Em dia'
+}
+
 export default function PlanosCatalog() {
   const { planos, loading, refetch } = usePlanos()
-  const thresholdsMap = useThresholdsMap()
   const { programs } = usePrograms()
   const { people } = usePeople()
   const peopleMap = useMemo(() => new Map(people.map(p => [p.id, p])), [people])
@@ -187,6 +195,8 @@ export default function PlanosCatalog() {
     return m
   }, [leaves])
 
+  const eff = useEffectiveValues(leaves, today)
+
   // ── Filter state ──────────────────────────────────────────────
   const [progFilter,    setProgFilter]    = useState<string[]>([])
   const [eixoFilter,    setEixoFilter]    = useState<string[]>([])
@@ -209,13 +219,13 @@ export default function PlanosCatalog() {
   // ── Enrich planos with computed status + pct ──────────────────
   const enriched = useMemo(() => planos.map(plano => {
     const lv           = leavesByPlano.get(plano.id) ?? []
-    const status       = rollupStatus(lv, today, thresholdsMap.get(plano.id)?.aggregates)
-    const pct          = rollupPct(lv)
+    const status       = groupState(lv, eff)
+    const pct          = lv.length === 0 ? 0 : lv.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / lv.length
     const program      = plano.program_id ? programMap.get(plano.program_id) ?? null : null
     const ownerNames   = resolveOwnerNames(plano, peopleMap).join(', ') || null
     const sponsorNames = resolveSponsorNames(plano, peopleMap).join(', ') || null
     return { ...plano, status, pct, program, ownerNames, sponsorNames }
-  }), [planos, leavesByPlano, today, programMap, thresholdsMap, peopleMap])
+  }), [planos, leavesByPlano, eff, programMap, peopleMap])
 
   // ── Plan-level access filter ──────────────────────────────────
   const accessiblePlanIds = useMemo(

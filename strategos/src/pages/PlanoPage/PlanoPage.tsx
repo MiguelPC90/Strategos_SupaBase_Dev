@@ -8,7 +8,6 @@ import { usePeople } from '../../hooks/usePeople'
 import { useFavorites } from '../../hooks/useFavorites'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useActivities } from '../../hooks/useActivities'
-import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import Spinner from '../../components/Spinner/Spinner'
 import VisaoExecutiva from './VisaoExecutiva'
@@ -18,7 +17,8 @@ import GestaoRecursos from '../GestaoRecursos/GestaoRecursos'
 import GestaoFinanceira from '../GestaoFinanceira/GestaoFinanceira'
 import GestaoIniciativas from '../GestaoIniciativas/GestaoIniciativas'
 import NovoPlanoModal from '../../components/NovoPlanoModal/NovoPlanoModal'
-import { rollupStatus, rollupPct, rollupPctPrev, leafStatus, rollupDateRange } from '../../lib/rollup'
+import { rollupPctPrev, rollupDateRange, type RowState } from '../../lib/rollup'
+import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { resolveOwnerNames, resolveSponsorNames } from '../../lib/owners'
 import { statusColor } from '../../lib/tokens'
@@ -70,17 +70,30 @@ export default function PlanoPage() {
   const today = useMemo(() => new Date().toISOString().split('T')[0], [])
   const { activities: planActivities } = useActivities(planoId ? { plano_id: planoId } : {})
   const planLeaves = useMemo(() => planActivities.filter(a => a.level === 4), [planActivities])
-  const thresholdsMap = useThresholdsMap()
+  const eff = useEffectiveValues(planActivities, today)
+
+  function groupState(leaves: typeof planLeaves, effMap: Map<string, EffectiveValue>): RowState {
+    if (leaves.length === 0) return 'Em dia'
+    const statuses = leaves.map(a => effMap.get(a.id)?.status ?? 'Em dia')
+    if (statuses.every(s => s === 'Concluída')) return 'Concluída'
+    if (statuses.some(s => s === 'Em atraso'))  return 'Em atraso'
+    if (statuses.some(s => s === 'Em risco'))   return 'Em risco'
+    return 'Em dia'
+  }
+
   const planoStatus = useMemo(
-    () => rollupStatus(planLeaves, today, thresholdsMap.get(planoId ?? '')?.aggregates),
-    [planLeaves, today, thresholdsMap, planoId],
+    () => groupState(planLeaves, eff),
+    [planLeaves, eff],
   )
 
-  const execMedia    = useMemo(() => rollupPct(planLeaves),            [planLeaves])
+  const execMedia    = useMemo(
+    () => planLeaves.length === 0 ? 0 : planLeaves.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / planLeaves.length,
+    [planLeaves, eff],
+  )
   const execTarget   = useMemo(() => rollupPctPrev(planLeaves, today), [planLeaves, today])
   const delayedCount = useMemo(
-    () => planLeaves.filter(a => leafStatus(a, today) === 'Em atraso').length,
-    [planLeaves, today],
+    () => planLeaves.filter(a => eff.get(a.id)?.status === 'Em atraso').length,
+    [planLeaves, eff],
   )
   const narrative = useMemo(() => {
     if (planLeaves.length === 0) return ''

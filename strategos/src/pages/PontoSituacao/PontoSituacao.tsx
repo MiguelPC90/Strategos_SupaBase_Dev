@@ -21,7 +21,8 @@ import { useRisks } from '../../hooks/useRisks'
 import { useActivities } from '../../hooks/useActivities'
 import { useFilters } from '../../context/FilterContext'
 
-import { leafStatus, leafPctPrev, type ThresholdBand } from '../../lib/rollup'
+import { leafPctPrev } from '../../lib/rollup'
+import { useEffectiveValues } from '../../hooks/useEffectiveValues'
 import { supabase } from '../../lib/supabase'
 import type { PdsItem, Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
@@ -335,18 +336,7 @@ export default function PontoSituacao() {
     [planos, selectedKey]
   )
 
-  const selectedProgram = useMemo(
-    () => programs.find(p => p.id === programId) ?? null,
-    [programs, programId]
-  )
-
-  const psThresholdLeaves = useMemo<ThresholdBand>(
-    () => ({
-      low:  selectedPlano?.threshold_leaves_low  ?? selectedProgram?.threshold_leaves_low  ?? 5,
-      high: selectedPlano?.threshold_leaves_high ?? selectedProgram?.threshold_leaves_high ?? 10,
-    }),
-    [selectedPlano, selectedProgram]
-  )
+  const eff = useEffectiveValues(activities, TODAY)
 
   const planEntries = useMemo(() => {
     if (!selectedPlano) return []
@@ -392,12 +382,12 @@ export default function PontoSituacao() {
   // ── KPI computations ───────────────────────────────────────
   const kpi = useMemo(() => {
     const total      = planLeaves.length
-    const statuses   = planLeaves.map(a => leafStatus(a, TODAY, psThresholdLeaves))
+    const statuses   = planLeaves.map(a => eff.get(a.id)?.status ?? 'Em dia')
     const concluidas = statuses.filter(s => s === 'Concluída').length
     const emDia      = statuses.filter(s => s === 'Em dia').length
     const emRisco    = statuses.filter(s => s === 'Em risco').length
     const emAtraso   = statuses.filter(s => s === 'Em atraso').length
-    const pct        = total > 0 ? Math.round(planLeaves.reduce((s, a) => s + a.pct, 0) / total) : 0
+    const pct        = total > 0 ? Math.round(planLeaves.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / total) : 0
     const pctPrev    = total > 0 ? Math.round(planLeaves.reduce((s, a) => s + leafPctPrev(a, TODAY), 0) / total) : 0
     const geralReal  = total > 0 ? Math.round((concluidas / total) * 100) : 0
     const geralObj   = total > 0 ? Math.round(((concluidas + emAtraso) / total) * 100) : 0
@@ -405,7 +395,7 @@ export default function PontoSituacao() {
       ? Math.round((concluidas / (concluidas + emAtraso)) * 100)
       : 0
     return { total, concluidas, emDia, emRisco, emAtraso, pct, pctPrev, geralReal, geralObj, aDataReal }
-  }, [planLeaves, psThresholdLeaves])
+  }, [planLeaves, eff])
 
   // ── Plan navigation ────────────────────────────────────────
   // Scope arrows to eixo selected in breadcrumb (or all planos in program)
@@ -438,10 +428,10 @@ export default function PontoSituacao() {
   const healthInput = useMemo((): HealthInput => {
     const total     = planLeaves.length
     const delayed   = planLeaves.filter(a => {
-      const s = leafStatus(a, TODAY, psThresholdLeaves)
+      const s = eff.get(a.id)?.status ?? 'Em dia'
       return s === 'Em atraso' || s === 'Em risco'
     }).length
-    const avgPct    = total > 0 ? planLeaves.reduce((s, a) => s + a.pct, 0) / total : 0
+    const avgPct    = total > 0 ? planLeaves.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / total : 0
     const avgPrev   = total > 0 ? planLeaves.reduce((s, a) => s + leafPctPrev(a, TODAY), 0) / total : 0
     const attOpen   = visAttention.filter(i => {
       const s = (i.status ?? '').toLowerCase()
@@ -457,7 +447,7 @@ export default function PontoSituacao() {
       }).length,
       attentionOpen: attOpen,
     }
-  }, [planLeaves, psThresholdLeaves, planRisks, visAttention, thresholds])
+  }, [planLeaves, eff, planRisks, visAttention, thresholds])
 
   const health = useMemo(
     () => computeHealth(healthInput, healthConfig),

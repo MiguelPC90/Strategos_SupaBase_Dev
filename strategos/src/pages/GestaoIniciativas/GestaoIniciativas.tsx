@@ -14,7 +14,8 @@ import { useEixos } from '../../hooks/useEixos'
 import { useProgramLabels, type ProgramLabels } from '../../hooks/useProgramLabels'
 import { usePlanos } from '../../hooks/usePlanos'
 import { supabase } from '../../lib/supabase'
-import { rollupPct, rollupPctPrev, rollupStatus, rollupDateRange, leafPctPrev, leafStatus, getThresholdAggregates, type ThresholdBand } from '../../lib/rollup'
+import { rollupPctPrev, rollupDateRange, leafPctPrev, type RowState } from '../../lib/rollup'
+import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
 import type { Activity, ActivityDependency, DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 import { validateNewDependency, propagateDateChanges, computeDepGap, DEP_GAP_WARNING_THRESHOLD } from '../../lib/activityDependencies'
@@ -40,6 +41,20 @@ function fmtDate(iso: string | null): string {
 
 const TODAY = new Date().toISOString().slice(0, 10)
 const DEP_TYPE_TOOLTIP = 'FS: Fim → Início · SS: Início → Início · FF: Fim → Fim · SF: Início → Fim'
+
+function groupState(leaves: Activity[], eff: Map<string, EffectiveValue>): RowState {
+  if (leaves.length === 0) return 'Em dia'
+  const statuses = leaves.map(a => eff.get(a.id)?.status ?? 'Em dia')
+  if (statuses.every(s => s === 'Concluída')) return 'Concluída'
+  if (statuses.some(s => s === 'Em atraso'))  return 'Em atraso'
+  if (statuses.some(s => s === 'Em risco'))   return 'Em risco'
+  return 'Em dia'
+}
+
+function groupPct(leaves: Activity[], eff: Map<string, EffectiveValue>): number {
+  if (leaves.length === 0) return 0
+  return leaves.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / leaves.length
+}
 
 // ── computePctPrev ─────────────────────────────────────────────
 function computePctPrev(bs: string, bf: string): number {
@@ -741,31 +756,6 @@ export default function GestaoIniciativas({
 
   const [batchSaving, setBatchSaving] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
-  // Per-plano threshold map — computed from the selected program + loaded planos
-  const giThresholdsMap = useMemo(() => {
-    const progLeaves: ThresholdBand = {
-      low:  program?.threshold_leaves_low  ?? 5,
-      high: program?.threshold_leaves_high ?? 10,
-    }
-    const progAggs: ThresholdBand = {
-      low:  program?.threshold_aggregates_low  ?? 15,
-      high: program?.threshold_aggregates_high ?? 25,
-    }
-    const map = new Map<string, { leaves: ThresholdBand; aggregates: ThresholdBand }>()
-    for (const pl of dbPlanos) {
-      map.set(pl.id, {
-        leaves: {
-          low:  pl.threshold_leaves_low  ?? progLeaves.low,
-          high: pl.threshold_leaves_high ?? progLeaves.high,
-        },
-        aggregates: {
-          low:  pl.threshold_aggregates_low  ?? progAggs.low,
-          high: pl.threshold_aggregates_high ?? progAggs.high,
-        },
-      })
-    }
-    return map
-  }, [program, dbPlanos])
 
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -801,6 +791,8 @@ export default function GestaoIniciativas({
     const q = searchQuery.toLowerCase().trim()
     return localActs.filter(a => a.name.toLowerCase().includes(q))
   }, [localActs, searchQuery])
+
+  const eff = useEffectiveValues(localActs, TODAY)
 
   const tree = useMemo(() => buildTree(searchFilteredActs), [searchFilteredActs])
 
@@ -1087,7 +1079,7 @@ export default function GestaoIniciativas({
       const aEnd   = a.rf ?? a.bf ?? a.finish
       const pctVal = dirty.get(a.id)?.pct ?? a.pct
       const aPrev    = leafPctPrev(a, TODAY)
-      const aStatus  = leafStatus(a, TODAY, giThresholdsMap.get(a.plano_id ?? '')?.leaves)
+      const aStatus  = eff.get(a.id)?.status ?? 'Em dia'
       const isSelected = selectedId === a.id
       return (
         <tr
@@ -1157,8 +1149,8 @@ export default function GestaoIniciativas({
         }
         const n3col = collapsed.has(n3g.key)
         const n3leaves = n3g.all.filter(a => a.level === 4)
-        const n3pct = rollupPct(n3leaves); const n3prev = rollupPctPrev(n3leaves, TODAY)
-        const n3st  = rollupStatus(n3leaves, TODAY, getThresholdAggregates()); const n3dr = rollupDateRange(n3leaves)
+        const n3pct = groupPct(n3leaves, eff); const n3prev = rollupPctPrev(n3leaves, TODAY)
+        const n3st  = groupState(n3leaves, eff); const n3dr = rollupDateRange(n3leaves)
         const n3Rep  = n3g.all.find(a => a.level === 3)
         const n3Sibs = n3Rep
           ? localActs.filter(a => a.level === 3 && a.n1 === n3Rep.n1 && a.n2 === n3Rep.n2)
@@ -1213,8 +1205,8 @@ export default function GestaoIniciativas({
           }
           const n4col = collapsed.has(n4g.key)
           const n4leaves = n4g.all.filter(a => a.level === 4)
-          const n4pct = rollupPct(n4leaves); const n4prev = rollupPctPrev(n4leaves, TODAY)
-          const n4st  = rollupStatus(n4leaves, TODAY, getThresholdAggregates()); const n4dr = rollupDateRange(n4leaves)
+          const n4pct = groupPct(n4leaves, eff); const n4prev = rollupPctPrev(n4leaves, TODAY)
+          const n4st  = groupState(n4leaves, eff); const n4dr = rollupDateRange(n4leaves)
           const n4Rep  = n4g.all.find(a => a.level === 4)
           const n4Sibs = n4Rep
             ? localActs.filter(a => a.level === 4 && a.n1 === n4Rep.n1 && a.n2 === n4Rep.n2 && a.n3 === n4Rep.n3)

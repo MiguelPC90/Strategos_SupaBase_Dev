@@ -96,6 +96,7 @@ export interface Activity {
   n3: string
   n4: string
   n5: string
+  n6: string
   /** Legacy text ID at level 0 — keep but prefer program_id for queries */
   id0: string
   id1: string

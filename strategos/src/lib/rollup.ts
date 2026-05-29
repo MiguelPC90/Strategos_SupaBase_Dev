@@ -53,32 +53,6 @@ export function leafPctPrev(a: Activity, today: string): number {
   return ((now - start) / (end - start)) * 100
 }
 
-/**
- * Derived status for a single leaf activity (level === 4) — 4-state model.
- * Resolution order (first match wins):
- *  1. pct >= 100                          → 'Concluída'
- *  2. today > bf AND pct < 100            → 'Em atraso' (deadline missed)
- *  3. 3-zone delta vs leaves thresholds   → Em dia / Em risco / Em atraso
- */
-export function leafStatus(
-  a: Activity,
-  today: string,
-  band: ThresholdBand = THRESHOLD_LEAVES,
-): RowState {
-  if (a.pct >= 100) return 'Concluída'
-  const overdue = a.bf ? today > a.bf : false
-  if (overdue) return 'Em atraso'
-  const target = leafPctPrev(a, today)
-  const delta  = target - a.pct
-  return statusFromDelta(delta, band)
-}
-
-/** Average % execução (0-100). Pass N4 leaves only. */
-export function rollupPct(activities: Activity[]): number {
-  if (activities.length === 0) return 0
-  return activities.reduce((s, a) => s + a.pct, 0) / activities.length
-}
-
 /** Average % prevista (0-100), date-derived. Pass N4 leaves only. */
 export function rollupPctPrev(activities: Activity[], today: string): number {
   if (activities.length === 0) return 0
@@ -86,38 +60,12 @@ export function rollupPctPrev(activities: Activity[], today: string): number {
 }
 
 /**
- * Rollup status from N4 leaves using date + schedule logic — 4-state model.
- * Resolution order (first match wins):
- *  1. leaves.length === 0                          → 'Em dia'
- *  2. All pct >= 100                               → 'Concluída'
- *  3. today > max(bf) AND avg pct < 100            → 'Em atraso' (group deadline missed)
- *  4. 3-zone delta vs aggregates thresholds        → Em dia / Em risco / Em atraso
- */
-export function rollupStatus(
-  leaves: Activity[],
-  today: string,
-  band: ThresholdBand = THRESHOLD_AGGREGATES,
-): RowState {
-  if (leaves.length === 0) return 'Em dia'
-  if (leaves.every(a => a.pct >= 100)) return 'Concluída'
-  const avgPct = leaves.reduce((s, a) => s + a.pct, 0) / leaves.length
-  const maxBf  = leaves.reduce((m: string | null, a) => {
-    const bf = a.bf ?? a.finish
-    return bf ? (!m || bf > m ? bf : m) : m
-  }, null)
-  if (maxBf && today > maxBf && avgPct < 100) return 'Em atraso'
-  const avgPrev = rollupPctPrev(leaves, today)
-  const delta   = avgPrev - avgPct
-  return statusFromDelta(delta, band)
-}
-
-/**
  * 4-state status from already-computed actual vs target percentages.
  * Uses 3-zone aggregates threshold band.
  *
  * NOTE: This function does NOT consider deadlines. If a caller has access
- * to leaves, prefer rollupStatus(leaves, today, band) which handles
- * date-based overrides correctly.
+ * to the full activities array, prefer getEffectiveStatus(activity, all, today)
+ * which handles date-based overrides and recursion correctly.
  */
 export function computeRowState(
   actual: number,
@@ -160,30 +108,123 @@ export function rollupRealDateRange(activities: Activity[]): { rs: string | null
   return { rs: minRs, rf: maxRf }
 }
 
-/** Descendants (level > 4) of an N4 activity, matched via shared n1/n2/n3 + n4 === n4.name. */
-export function getN4DescendantLeaves(n4: Activity, all: Activity[]): Activity[] {
-  return all.filter(a =>
-    a.level > 4 &&
-    a.n1 === n4.n1 &&
-    a.n2 === n4.n2 &&
-    a.n3 === n4.n3 &&
-    a.n4 === n4.name
-  )
+/**
+ * Returns the direct children of an activity (level + 1, matched by name
+ * in the corresponding n{level} column plus all ancestor n columns).
+ * Returns [] for level 6 (no children in this domain).
+ */
+export function getDirectChildren(activity: Activity, all: Activity[]): Activity[] {
+  const L = activity.level
+  if (L < 3 || L > 5) return []
+
+  return all.filter(a => {
+    if (a.level !== L + 1) return false
+    const parentField = `n${L}` as keyof Activity
+    if (a[parentField] !== activity.name) return false
+    if (L >= 1 && a.n1 !== activity.n1) return false
+    if (L >= 2 && a.n2 !== activity.n2) return false
+    if (L >= 3 && a.n3 !== activity.n3) return false
+    if (L >= 4 && a.n4 !== activity.n4) return false
+    return true
+  })
 }
 
 /**
- * Effective dates and pct for an N4 activity.
- * N4 with N5/N6 children → rolled up from descendants.
- * N4 without children → its own DB values.
+ * Recursive bottom-up effective pct for any activity at level 3-6.
+ * Leaf (no children in `all`) → returns own pct.
+ * With children → simple average of effectivePct(child) for each direct child.
  */
-export function getN4Effective(n4: Activity, all: Activity[]): {
-  bs: string | null; bf: string | null; rs: string | null; rf: string | null; pct: number
-} {
-  const descendants = getN4DescendantLeaves(n4, all)
-  if (descendants.length === 0) {
-    return { bs: n4.bs, bf: n4.bf, rs: n4.rs, rf: n4.rf, pct: n4.pct }
-  }
-  const { bs, bf } = rollupDateRange(descendants)
-  const { rs, rf } = rollupRealDateRange(descendants)
-  return { bs, bf, rs, rf, pct: rollupPct(descendants) }
+export function getEffectivePct(activity: Activity, all: Activity[]): number {
+  const children = getDirectChildren(activity, all)
+  if (children.length === 0) return activity.pct
+  const sum = children.reduce((s, c) => s + getEffectivePct(c, all), 0)
+  return sum / children.length
 }
+
+/**
+ * Aggregate effective pct: simple average of getEffectivePct over leaves.
+ * Handles N4 leaves that themselves have N5/N6 descendants.
+ * `all` must be the full activity array so descendants can be resolved.
+ */
+export function rollupEffectivePct(leaves: Activity[], all: Activity[]): number {
+  if (leaves.length === 0) return 0
+  const sum = leaves.reduce((s, leaf) => s + getEffectivePct(leaf, all), 0)
+  return sum / leaves.length
+}
+
+/**
+ * Collect all leaf descendants (activities with no children of their own)
+ * under the given activity, recursively. If the activity itself is a leaf,
+ * returns [activity].
+ */
+export function getDescendantLeaves(activity: Activity, all: Activity[]): Activity[] {
+  const children = getDirectChildren(activity, all)
+  if (children.length === 0) return [activity]
+  return children.flatMap(c => getDescendantLeaves(c, all))
+}
+
+/**
+ * Effective baseline and real dates for any activity in the hierarchy.
+ * Leaf → own stored dates.
+ * Has children → min(bs)/max(bf) and min(rs)/max(rf) over all descendant leaves.
+ * rs/rf remain null when no descendant leaf has real-date data (no baseline fallback).
+ */
+export function getEffectiveDates(activity: Activity, all: Activity[]): {
+  bs: string | null; bf: string | null; rs: string | null; rf: string | null
+} {
+  const children = getDirectChildren(activity, all)
+  if (children.length === 0) {
+    return { bs: activity.bs, bf: activity.bf, rs: activity.rs, rf: activity.rf }
+  }
+  const leaves = getDescendantLeaves(activity, all)
+  const { bs, bf } = rollupDateRange(leaves)
+  const { rs, rf } = rollupRealDateRange(leaves)
+  return { bs, bf, rs, rf }
+}
+
+/**
+ * Unified effective status for any activity at any level.
+ * Band is derived from activity.level (>= 3 → THRESHOLD_LEAVES, < 3 → THRESHOLD_AGGREGATES).
+ * Resolution order:
+ *   1. Concluída  — leaf pct >= 100, OR every descendant leaf pct >= 100 (per-leaf, not averaged)
+ *   2. Em atraso  — effective bf in the past and effective pct < 100
+ *   3. 3-zone delta vs band → Em dia / Em risco / Em atraso
+ */
+export function getEffectiveStatus(
+  activity: Activity,
+  all: Activity[],
+  today: string,
+): RowState {
+  const band     = activity.level >= 3 ? THRESHOLD_LEAVES : THRESHOLD_AGGREGATES
+  const children = getDirectChildren(activity, all)
+  const leaves   = getDescendantLeaves(activity, all)
+
+  let pct: number
+  let bf: string | null
+  let target: number
+
+  if (children.length === 0) {
+    pct    = activity.pct
+    bf     = activity.bf ?? activity.finish
+    target = leafPctPrev(activity, today)
+  } else {
+    pct = getEffectivePct(activity, all)
+    bf  = getEffectiveDates(activity, all).bf
+    const withDates = leaves.filter(l => l.bs && (l.bf ?? l.finish))
+    target = withDates.length > 0
+      ? withDates.reduce((s, l) => s + leafPctPrev(l, today), 0) / withDates.length
+      : 0
+  }
+
+  // Step 1 — Concluída
+  if (children.length === 0) {
+    if (pct >= 100) return 'Concluída'
+  } else {
+    if (leaves.length > 0 && leaves.every(l => l.pct >= 100)) return 'Concluída'
+  }
+  // Step 2 — Em atraso by deadline
+  if (bf && today > bf && pct < 100) return 'Em atraso'
+  // Step 3 — delta vs band
+  return statusFromDelta(target - pct, band)
+}
+

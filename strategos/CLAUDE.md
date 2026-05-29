@@ -262,6 +262,7 @@ Pages with embedded `gestão` (management) tabs — `PlanoPage` (plan page) now 
 |`useFilter()`                                                                                |`{ filters, setFilter, clearAll }`. `filters.{programIds, n1Values, n2Values, statuses, owners, sponsors}[]`                                                                                |
 |`useProgramLabels(programId)`                                                                |Dynamic filter labels per program; module-level cache (one fetch per program per session)                                                                                                   |
 |`useSnapshots()`                                                                             |KPI snapshots for `Evolução` (Evolution page)                                                                                                                                               |
+|`useEffectiveValues(activities, today)`                                                      |Returns `Map<id, EffectiveValue>` (pct + bs/bf/rs/rf + status) for every activity in the array. Single call per page; memoized. All pages consume this instead of calling rollup functions directly.|
 
 -----
 
@@ -288,28 +289,26 @@ Two independent bands are loaded from `app_config` at startup (via `setThreshold
 |Aggregates|15 pp|25 pp |N0-N3 levels (`Programa` / `Eixo` / `Plano` / `Macro-actividade`)|
 |Leaves    |5 pp |10 pp |N4-N6 levels (`Actividade` / `Sub-actividade` / `Detalhe`)       |
 
-**Exports:** `setThresholds(aggregates, leaves)`, `getThresholdAggregates()`, `getThresholdLeaves()`, `leafPctPrev(activity, today)`, `leafStatus(activity, today, band?)`, `rollupPct(leaves)`, `rollupPctPrev(leaves, today)`, `rollupStatus(leaves, today, band?)`, `computeRowState(actual, target, band?)`, `rollupDateRange(activities)`, `rollupRealDateRange(activities)`, `getN4DescendantLeaves(n4, all)`, `getN4Effective(n4, all)`.
+**Exports:** `setThresholds(aggregates, leaves)`, `getThresholdAggregates()`, `getThresholdLeaves()`, `leafPctPrev(activity, today)`, `rollupPctPrev(leaves, today)`, `computeRowState(actual, target, band?)`, `rollupDateRange(activities)`, `rollupRealDateRange(activities)`, `getDirectChildren(activity, all)`, `getEffectivePct(activity, all)`, `rollupEffectivePct(leaves, all)`, `getDescendantLeaves(activity, all)`, `getEffectiveDates(activity, all)`, `getEffectiveStatus(activity, all, today)`.
 
 **`leafPctPrev(activity, today)`** — date-based expected % for a single activity (0-100). Linear interpolation between `bs` (baseline start) and `bf` (baseline finish). `today <= bs` → 0, `today >= bf` → 100, else linear. Falls back to stored `pct_prev` when baseline dates are missing.
 
-**`leafStatus(activity, today, band = THRESHOLD_LEAVES)`** — 4-state status for a single leaf (level 4-6). Resolution order (first match wins):
+**`computeRowState(actual, target, band)`** — 4-state status from already-computed percentages. Does NOT consider deadlines. Prefer `getEffectiveStatus` when the caller has access to the full activities array.
 
-1. `pct >= 100` → `"Concluída"`
-1. `today > bf AND pct < 100` → `"Em atraso"` (deadline missed)
-1. Compute `delta = leafPctPrev(today) - pct`; apply 3-zone bands → `"Em dia"` / `"Em risco"` / `"Em atraso"`
+**Unifying principle — effective values everywhere:** An activity's %, dates, and status are ALWAYS effective — rolled up from children when they exist, own stored values when it is a leaf. KPIs select `level === 4` rows only (N5/N6 are detail records and NEVER included to avoid double-counting), but each N4 contributes its EFFECTIVE pct and status, not the raw stored values. An N4 with all children at 100% must show 100% and "Concluída" in every KPI and every status badge.
 
-**`rollupStatus(leaves, today, band = THRESHOLD_AGGREGATES)`** — 4-state status for an aggregate (N0-N3), computed from its N4 leaves. Resolution order:
+**Recursive effective pct model** — All pct display and KPI sums use `getEffectivePct(activity, all)`, which recursively averages direct children (level + 1, matched by the child's `n{level}` column equalling the parent's `name`, plus ancestor column equality). Leaves (no children in `all`) return their own `pct`. Aggregate rows (N0-N3 in tables) use `rollupEffectivePct(leaves, all)` over their level-4 children, which automatically handles N4 leaves that themselves have N5/N6 descendants. `getDirectChildren(activity, all)` is the traversal helper used internally.
 
-1. `leaves.length === 0` → `"Em dia"`
-1. All `pct >= 100` → `"Concluída"`
-1. `today > max(bf of leaves) AND avg pct < 100` → `"Em atraso"` (group deadline missed)
-1. Compute `delta = avg pct_prevista - avg pct`; apply 3-zone bands → `"Em dia"` / `"Em risco"` / `"Em atraso"`
+**`getEffectiveDates(activity, all)`** — returns `{ bs, bf, rs, rf }`. Leaf (no direct children) returns its own stored dates. With children, `bs`/`bf` roll up as min/max over all descendant leaves; `rs`/`rf` roll up similarly but remain `null` when no descendant has real-date data (no baseline fallback — model stays null-honest).
 
-**`computeRowState(actual, target, band)`** — 4-state status from already-computed percentages. Does NOT consider deadlines. Prefer `rollupStatus` when the caller has access to leaves (handles date-based overrides correctly).
+**`getEffectiveStatus(activity, all, today)`** — unified 3-step status for any activity at any level. Band is chosen automatically by `activity.level` (N0-N2 → aggregates band, N3-N6 → leaves band). Resolution order:
+1. **Concluída** — leaf `pct >= 100`, OR (for aggregates) every descendant leaf has `pct >= 100`
+2. **Em atraso** — effective `bf` is in the past and effective `pct < 100`
+3. **Delta vs band** — `target − pct` compared to the band's `low`/`high` thresholds → `"Em dia"` / `"Em risco"` / `"Em atraso"`. Target excludes dateless leaves (avoids polluting the average with activities that have no schedule data).
 
-**KPI rule:** all KPI aggregations use `level === 4` only. N5/N6 are detail records and NEVER included.
+**`useEffectiveValues` hook** (`src/hooks/useEffectiveValues.ts`) — single memoized hook consumed by every page. Signature: `useEffectiveValues(activities, today): Map<string, EffectiveValue>`. `EffectiveValue = { pct, bs, bf, rs, rf, status }`. One call per page; no per-row calls to `getEffectivePct` / `getEffectiveDates` / `getEffectiveStatus` directly. Gantt uses the map's date fields for timeline bars; real→baseline fallback (`ev.rs ?? ev.bs`) is presentation-only at render time (model stays null-honest). Dashboard page-level `groupState` helpers apply "worst wins" to N3/N4 synthetic header rows.
 
-**N4 effective values** — `getN4Effective(n4, all)` returns `{ bs, bf, rs, rf, pct }` for an N4: if it has N5/N6 descendants (matched by shared `n1`/`n2`/`n3` + `n4 === parent.name`), values are rolled up from descendants; otherwise the N4's own DB values are used.
+**Bug fix (this wave):** `Activity` interface was missing `n6: string` field — added. DB column exists; parser always wrote it; interface omission caused silent type gaps.
 
 ### `src/lib/riskColors.ts`
 
@@ -854,7 +853,7 @@ In wave prompts, "keep intact" means **DO NOT touch those files/features**. Fail
 ### Data integrity
 
 - `pct` and `pct_prev` stored as **0-100** — do NOT multiply by 100
-- KPI calculations always based on `level === 4` activities only (N5/N6 are detail records)
+- KPI calculations always based on `level === 4` activities only (N5/N6 are detail records); each N4 contributes its EFFECTIVE pct/status (see rollup.ts Unifying principle)
 - `Owner` / `Sponsor` (`Responsável` / `Patrocinador`) are on `planos` table, not `activities` (Wave 8d dropped legacy `activities.owner` / `sponsor`)
 - Plan selectors use `usePlanos` hook (not DISTINCT from activities)
 - Invoice status must be one of the 5 canonical states (DB CHECK enforces)

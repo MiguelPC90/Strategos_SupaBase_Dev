@@ -7,30 +7,34 @@ import KpiCard from '../../components/KpiCard/KpiCard'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
-import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import { useFilters } from '../../context/FilterContext'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useEixos } from '../../hooks/useEixos'
 import { usePermissions } from '../../hooks/usePermissions'
+import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
 import type { Activity, Program } from '../../types/index'
-import type { PlanoThresholds } from '../../hooks/useThresholdsMap'
-import { leafPctPrev, leafStatus, computeRowState, rollupStatus, getThresholdAggregates, type RowState, type ThresholdBand } from '../../lib/rollup'
+import { leafPctPrev, computeRowState, type RowState } from '../../lib/rollup'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 const ALL_STATUS_KEYS: RowState[] = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
 
 // ── Status helpers ─────────────────────────────────────────────
-type StatusCls = 'concluida' | 'em_dia' | 'em_risco' | 'em_atraso'
 type LevelView  = 'todos' | 'programa' | 'eixo' | 'plano' | 'macro' | 'actividade'
 
-function actStatus(a: Activity, tLeaves?: ThresholdBand): StatusCls {
-  const s = leafStatus(a, TODAY, tLeaves)
-  if (s === 'Concluída') return 'concluida'
-  if (s === 'Em risco')  return 'em_risco'
-  if (s === 'Em atraso') return 'em_atraso'
-  return 'em_dia'
+function groupState(n4leaves: Activity[], eff: Map<string, EffectiveValue>): RowState {
+  if (n4leaves.length === 0) return 'Em dia'
+  const statuses = n4leaves.map(a => eff.get(a.id)?.status ?? 'Em dia')
+  if (statuses.every(s => s === 'Concluída')) return 'Concluída'
+  if (statuses.some(s => s === 'Em atraso'))  return 'Em atraso'
+  if (statuses.some(s => s === 'Em risco'))   return 'Em risco'
+  return 'Em dia'
+}
+
+function groupPct(n4leaves: Activity[], eff: Map<string, EffectiveValue>): number {
+  if (n4leaves.length === 0) return 0
+  return n4leaves.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / n4leaves.length
 }
 
 const STATE_PILL_CLASS: Record<RowState, string> = {
@@ -66,21 +70,17 @@ interface Stats {
   latest_end: string | null
 }
 
-function computeStats(
-  acts: Activity[],
-  thresholdsMap?: Map<string, PlanoThresholds>,
-): Stats {
+function computeStats(acts: Activity[], eff: Map<string, EffectiveValue>): Stats {
   const total = acts.length
   let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0, sumPct = 0, sumPrev = 0
   let latest_end: string | null = null
   for (const a of acts) {
-    const tLeaves = thresholdsMap?.get(a.plano_id ?? '')?.leaves
-    const s = actStatus(a, tLeaves)
-    if (s === 'concluida') concluidas++
-    else if (s === 'em_dia') em_dia++
-    else if (s === 'em_risco') em_risco++
-    else em_atraso++
-    sumPct  += a.pct
+    const status = eff.get(a.id)?.status ?? 'Em dia'
+    if (status === 'Concluída') concluidas++
+    else if (status === 'Em dia')    em_dia++
+    else if (status === 'Em risco')  em_risco++
+    else                             em_atraso++
+    sumPct  += eff.get(a.id)?.pct ?? a.pct
     sumPrev += leafPctPrev(a, TODAY)
     const end = a.rf ?? a.bf
     if (end && (!latest_end || end > latest_end)) latest_end = end
@@ -332,12 +332,13 @@ export default function Actividades() {
     cutoffDate: filters.cutoffDate,
   })
   const { programs } = usePrograms()
-  const thresholdsMap = useThresholdsMap()
   const { dependencies } = useActivityDependencies()
   const { planos } = usePlanos(filters.programIds[0])
   const { eixos } = useEixos(filters.programIds[0])
   const { hasAccess } = usePermissions()
   const multiProg = programs.length > 1
+
+  const eff = useEffectiveValues(activities, TODAY)
 
   const programSortMap = useMemo(
     () => new Map(programs.map(p => [p.id, p.sort_order] as [string, number])),
@@ -384,10 +385,9 @@ export default function Actividades() {
     if (statusFilter.size === ALL_STATUS_KEYS.length) return searchFilteredActs
     return searchFilteredActs.filter(a => {
       if (a.level < 4) return true
-      const tLeaves = thresholdsMap.get(a.plano_id ?? '')?.leaves
-      return statusFilter.has(leafStatus(a, TODAY, tLeaves) as RowState)
+      return statusFilter.has(eff.get(a.id)?.status ?? 'Em dia')
     })
-  }, [searchFilteredActs, statusFilter, thresholdsMap])
+  }, [searchFilteredActs, statusFilter, eff])
 
   const sortedActivities = useMemo(() => {
     return [...finalActs].sort((a, b) => {
@@ -410,7 +410,10 @@ export default function Actividades() {
     () => multiProg ? buildProgramTree(sortedActivities, programs) : null,
     [sortedActivities, programs, multiProg]
   )
-  const summary  = useMemo(() => computeStats(finalActs.filter(a => a.level === 4), thresholdsMap), [finalActs, thresholdsMap])
+  const summary  = useMemo(
+    () => computeStats(finalActs.filter(a => a.level === 4), eff),
+    [finalActs, eff],
+  )
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
@@ -461,8 +464,8 @@ export default function Actividades() {
       const n1key    = `n1:${n1g.n1}`
       const n1col    = collapsed.has(n1key)
       const n1leaves = n1g.allActs.filter(a => a.level === 4)
-      const n1stats  = computeStats(n1leaves, thresholdsMap)
-      const n1state  = rollupStatus(n1leaves, TODAY, getThresholdAggregates())
+      const n1stats  = computeStats(n1leaves, eff)
+      const n1state  = groupState(n1leaves, eff)
 
       rows.push(
         <tr key={n1key} className="act-row-n1">
@@ -478,7 +481,7 @@ export default function Actividades() {
             <span className={`status-pill ${STATE_PILL_CLASS[n1state]}`}>{STATE_LABEL[n1state]}</span>
           </td>
           <CdaCell {...n1stats} />
-          <td className="act-td-c"><DualBar exec={n1stats.exec} execObj={n1stats.exec_obj} /></td>
+          <td className="act-td-c"><DualBar exec={groupPct(n1leaves, eff)} execObj={n1stats.exec_obj} /></td>
           <DeadlineCell bf={n1stats.latest_end} />
         </tr>
       )
@@ -489,8 +492,8 @@ export default function Actividades() {
         const n2key    = `n2:${n1g.n1}:${n2g.n2}`
         const n2col    = collapsed.has(n2key)
         const n2leaves = n2g.allActs.filter(a => a.level === 4)
-        const n2stats  = computeStats(n2leaves, thresholdsMap)
-        const n2state  = rollupStatus(n2leaves, TODAY, getThresholdAggregates())
+        const n2stats  = computeStats(n2leaves, eff)
+        const n2state  = groupState(n2leaves, eff)
 
         rows.push(
           <tr key={n2key} className="act-row-n2">
@@ -506,7 +509,7 @@ export default function Actividades() {
               <span className={`status-pill ${STATE_PILL_CLASS[n2state]}`}>{STATE_LABEL[n2state]}</span>
             </td>
             <CdaCell {...n2stats} />
-            <td className="act-td-c"><DualBar exec={n2stats.exec} execObj={n2stats.exec_obj} /></td>
+            <td className="act-td-c"><DualBar exec={groupPct(n2leaves, eff)} execObj={n2stats.exec_obj} /></td>
             <DeadlineCell bf={n2stats.latest_end} />
           </tr>
         )
@@ -517,7 +520,7 @@ export default function Actividades() {
           if (!n3g.n3) {
             for (const a of n3g.acts) {
               const pctPrev = leafPctPrev(a, TODAY)
-              const ast     = leafStatus(a, TODAY, thresholdsMap.get(a.plano_id ?? '')?.leaves) as RowState
+              const ast     = eff.get(a.id)?.status ?? 'Em dia'
               rows.push(
                 <tr key={a.id} className="act-row-n4">
                   <td>
@@ -534,7 +537,7 @@ export default function Actividades() {
                     <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
                   </td>
                   <td className="act-td-c" />
-                  <td className="act-td-c"><DualBar exec={a.pct} execObj={pctPrev} /></td>
+                  <td className="act-td-c"><DualBar exec={eff.get(a.id)?.pct ?? a.pct} execObj={pctPrev} /></td>
                   <DeadlineCell bf={a.bf ?? a.finish ?? null} rf={a.rf ?? null} />
                 </tr>
               )
@@ -548,7 +551,7 @@ export default function Actividades() {
           if (!n3HasChildren) {
             for (const a of n3g.acts) {
               const pctPrev = leafPctPrev(a, TODAY)
-              const ast     = leafStatus(a, TODAY, thresholdsMap.get(a.plano_id ?? '')?.leaves) as RowState
+              const ast     = eff.get(a.id)?.status ?? 'Em dia'
               rows.push(
                 <tr key={a.id} className="act-row-n4">
                   <td>
@@ -565,7 +568,7 @@ export default function Actividades() {
                     <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
                   </td>
                   <td className="act-td-c" />
-                  <td className="act-td-c"><DualBar exec={a.pct} execObj={pctPrev} /></td>
+                  <td className="act-td-c"><DualBar exec={eff.get(a.id)?.pct ?? a.pct} execObj={pctPrev} /></td>
                   <DeadlineCell bf={a.bf ?? a.finish ?? null} rf={a.rf ?? null} />
                 </tr>
               )
@@ -576,8 +579,8 @@ export default function Actividades() {
           const n3key    = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
           const n3col    = collapsed.has(n3key)
           const n3leaves = n3g.acts.filter(a => a.level === 4)
-          const n3stats  = computeStats(n3leaves, thresholdsMap)
-          const n3state  = rollupStatus(n3leaves, TODAY, getThresholdAggregates())
+          const n3stats  = computeStats(n3leaves, eff)
+          const n3state  = groupState(n3leaves, eff)
 
           rows.push(
             <tr key={n3key} className="act-row-n3">
@@ -593,7 +596,7 @@ export default function Actividades() {
                 <span className={`status-pill ${STATE_PILL_CLASS[n3state]}`}>{STATE_LABEL[n3state]}</span>
               </td>
               <CdaCell {...n3stats} />
-              <td className="act-td-c"><DualBar exec={n3stats.exec} execObj={n3stats.exec_obj} /></td>
+              <td className="act-td-c"><DualBar exec={groupPct(n3leaves, eff)} execObj={n3stats.exec_obj} /></td>
               <DeadlineCell bf={n3stats.latest_end} />
             </tr>
           )
@@ -602,7 +605,7 @@ export default function Actividades() {
 
           for (const a of n3ChildLeaves) {
             const pctPrev = leafPctPrev(a, TODAY)
-            const ast     = leafStatus(a, TODAY, thresholdsMap.get(a.plano_id ?? '')?.leaves) as RowState
+            const ast     = eff.get(a.id)?.status ?? 'Em dia'
             rows.push(
               <tr key={a.id} className="act-row-n4">
                 <td>
@@ -619,7 +622,7 @@ export default function Actividades() {
                   <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
                 </td>
                 <td className="act-td-c" />
-                <td className="act-td-c"><DualBar exec={a.pct} execObj={pctPrev} /></td>
+                <td className="act-td-c"><DualBar exec={eff.get(a.id)?.pct ?? a.pct} execObj={pctPrev} /></td>
                 <DeadlineCell bf={a.bf ?? a.finish ?? null} rf={a.rf ?? null} />
               </tr>
             )
@@ -634,8 +637,8 @@ export default function Actividades() {
       const n0key    = `n0:${n0g.progId}`
       const n0col    = collapsed.has(n0key)
       const n0leaves = n0g.allActs.filter(a => a.level === 4)
-      const n0stats  = computeStats(n0leaves)
-      const n0state  = rollupStatus(n0leaves, TODAY, getThresholdAggregates())
+      const n0stats  = computeStats(n0leaves, eff)
+      const n0state  = groupState(n0leaves, eff)
 
       rows.push(
         <tr key={n0key} className="act-row-n0">
@@ -651,7 +654,7 @@ export default function Actividades() {
             <span className={`status-pill ${STATE_PILL_CLASS[n0state]}`}>{STATE_LABEL[n0state]}</span>
           </td>
           <CdaCell {...n0stats} />
-          <td className="act-td-c"><DualBar exec={n0stats.exec} execObj={n0stats.exec_obj} /></td>
+          <td className="act-td-c"><DualBar exec={groupPct(n0leaves, eff)} execObj={n0stats.exec_obj} /></td>
           <DeadlineCell bf={n0stats.latest_end} />
         </tr>
       )

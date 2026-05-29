@@ -26,8 +26,8 @@ import { supabase } from '../../lib/supabase'
 import { generateAlerts } from '../../lib/alerts'
 import type { Alert, AlertRule } from '../../lib/alerts'
 import type { Activity, Program, Eixo, Plano } from '../../types/index'
-import { leafPctPrev, leafStatus, computeRowState, rollupStatus, rollupDateRange, type RowState, type ThresholdBand } from '../../lib/rollup'
-import { buildThresholdsMap, type PlanoThresholds } from '../../hooks/useThresholdsMap'
+import { leafPctPrev, computeRowState, rollupDateRange, type RowState } from '../../lib/rollup'
+import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
 import { colors, statusColor } from '../../lib/tokens'
 
 const TODAY = new Date().toISOString().slice(0, 10)
@@ -72,34 +72,41 @@ interface Metrics {
   exec_obj: number
 }
 
+type EffectiveMap = Map<string, EffectiveValue>
+
+function groupState(leaves: Activity[], eff: EffectiveMap): RowState {
+  if (leaves.length === 0) return 'Em dia'
+  const statuses = leaves.map(a => eff.get(a.id)?.status ?? 'Em dia')
+  if (statuses.every(s => s === 'Concluída')) return 'Concluída'
+  if (statuses.some(s => s === 'Em atraso'))  return 'Em atraso'
+  if (statuses.some(s => s === 'Em risco'))   return 'Em risco'
+  return 'Em dia'
+}
+
 function classify(
   a: Activity,
-  tLeaves?: ThresholdBand,
+  effectiveMap?: EffectiveMap,
 ): 'concluida' | 'em_dia' | 'em_risco' | 'em_atraso' {
-  const s = leafStatus(a, TODAY, tLeaves)
+  const s = effectiveMap?.get(a.id)?.status ?? 'Em dia'
   if (s === 'Concluída') return 'concluida'
   if (s === 'Em risco')  return 'em_risco'
   if (s === 'Em atraso') return 'em_atraso'
   return 'em_dia'
 }
 
-function calcMetrics(
-  acts: Activity[],
-  thresholdsMap?: Map<string, PlanoThresholds>,
-): Metrics {
+function calcMetrics(acts: Activity[], effectiveMap?: EffectiveMap): Metrics {
   const total = acts.length
   if (total === 0) {
     return { total: 0, concluidas: 0, em_dia: 0, em_risco: 0, em_atraso: 0, grau_exec: 0, exec_obj: 0 }
   }
   let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0, sumPct = 0, sumPrev = 0
   for (const a of acts) {
-    const tLeaves = thresholdsMap?.get(a.plano_id ?? '')?.leaves
-    const cls = classify(a, tLeaves)
+    const cls = classify(a, effectiveMap)
     if (cls === 'concluida') concluidas++
     else if (cls === 'em_dia') em_dia++
     else if (cls === 'em_risco') em_risco++
     else em_atraso++
-    sumPct  += a.pct
+    sumPct  += effectiveMap?.get(a.id)?.pct ?? a.pct
     sumPrev += leafPctPrev(a, TODAY)
   }
   return {
@@ -164,12 +171,11 @@ function truncate(s: string, n: number): string {
 
 function barCounts(
   acts: Activity[],
-  thresholdsMap?: Map<string, PlanoThresholds>,
+  effectiveMap?: EffectiveMap,
 ): { concluidas: number; em_dia: number; em_risco: number; em_atraso: number } {
   let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0
   for (const a of acts) {
-    const tLeaves = thresholdsMap?.get(a.plano_id ?? '')?.leaves
-    const cls = classify(a, tLeaves)
+    const cls = classify(a, effectiveMap)
     if (cls === 'concluida') concluidas++
     else if (cls === 'em_dia') em_dia++
     else if (cls === 'em_risco') em_risco++
@@ -258,7 +264,7 @@ function buildRow(
   m: Metrics,
   isParent: boolean,
   leaves: Activity[],
-  band?: ThresholdBand,
+  eff: EffectiveMap,
 ): Record<string, unknown> {
   const concGeral = safeDiv(m.concluidas, m.total) * 100
   const concData  = safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100
@@ -268,7 +274,7 @@ function buildRow(
   return {
     _isParent: isParent,
     nome,
-    _estado: m.total > 0 ? rollupStatus(leaves, TODAY, band) : null,
+    _estado: m.total > 0 ? groupState(leaves, eff) : null,
     total:      m.total,
     concluidas: m.concluidas,
     em_dia:     m.em_dia,
@@ -474,11 +480,11 @@ interface BarChartCardProps {
   leaves: Activity[]
   programs: Program[]
   allEixos: Eixo[]
-  thresholdsMap: Map<string, PlanoThresholds>
+  effectiveMap: EffectiveMap
   labels: ProgramLabels
 }
 
-function BarChartCard({ leaves, programs, allEixos, thresholdsMap, labels }: BarChartCardProps) {
+function BarChartCard({ leaves, programs, allEixos, effectiveMap, labels }: BarChartCardProps) {
   const [chartChip, setChartChip] = useState<'eixo' | 'programa'>('eixo')
   const chartDataRef  = useRef<BarEntry[]>([])
   const xCoordsRef    = useRef<Record<number, number>>({})
@@ -486,7 +492,7 @@ function BarChartCard({ leaves, programs, allEixos, thresholdsMap, labels }: Bar
   const chartDataEixo = useMemo((): BarEntry[] => {
     if (programs.length === 0) {
       return Array.from(groupBy(leaves, a => a.n1 || '(sem eixo)').entries())
-        .map(([n1, acts]) => ({ name: n1, ...barCounts(acts, thresholdsMap) }))
+        .map(([n1, acts]) => ({ name: n1, ...barCounts(acts, effectiveMap) }))
     }
     const sortedProgs = programs.slice().sort((a, b) => a.sort_order - b.sort_order)
     const progsWithData = sortedProgs.filter(p => leaves.some(a => a.program_id === p.id))
@@ -504,7 +510,7 @@ function BarChartCard({ leaves, programs, allEixos, thresholdsMap, labels }: Bar
       const pushEntry = (name: string, acts: Activity[]) => {
         const isFirstOfProg = prog.id !== lastProgId
         if (isFirstOfProg) lastProgId = prog.id
-        result.push({ name, ...barCounts(acts, thresholdsMap), program: progName, isFirstOfProg })
+        result.push({ name, ...barCounts(acts, effectiveMap), program: progName, isFirstOfProg })
       }
       if (progEixos.length > 0) {
         const seen = new Set<string>()
@@ -524,7 +530,7 @@ function BarChartCard({ leaves, programs, allEixos, thresholdsMap, labels }: Bar
       }
     }
     return result
-  }, [leaves, programs, allEixos, thresholdsMap])
+  }, [leaves, programs, allEixos, effectiveMap])
 
   const chartDataProg = useMemo((): BarEntry[] =>
     programs
@@ -533,10 +539,10 @@ function BarChartCard({ leaves, programs, allEixos, thresholdsMap, labels }: Bar
       .map(prog => {
         const progLeaves = leaves.filter(a => a.program_id === prog.id)
         if (progLeaves.length === 0) return null
-        return { name: prog.name, ...barCounts(progLeaves, thresholdsMap) }
+        return { name: prog.name, ...barCounts(progLeaves, effectiveMap) }
       })
       .filter((e): e is BarEntry => e !== null),
-  [leaves, programs, thresholdsMap])
+  [leaves, programs, effectiveMap])
 
   chartDataRef.current = chartDataEixo
   xCoordsRef.current   = {}
@@ -677,11 +683,11 @@ interface DetailTableCardProps {
   allPlanos: Plano[]
   totalsRow: Record<string, unknown>
   onRowClick: (row: Record<string, unknown>) => void
-  thresholdsMap: Map<string, PlanoThresholds>
+  effectiveMap: EffectiveMap
   labels: ProgramLabels
 }
 
-function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onRowClick, thresholdsMap, labels }: DetailTableCardProps) {
+function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onRowClick, effectiveMap, labels }: DetailTableCardProps) {
   const [tableChip, setTableChip] = useState<'programa' | 'eixo' | 'plano'>('eixo')
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -699,7 +705,7 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
         .map(prog => {
           const progLeaves = leaves.filter(a => a.program_id === prog.id)
           if (progLeaves.length === 0) return null
-          return { ...buildRow(prog.name, calcMetrics(progLeaves, thresholdsMap), false, progLeaves), _prog_id: prog.id } as Record<string, unknown>
+          return { ...buildRow(prog.name, calcMetrics(progLeaves, effectiveMap), false, progLeaves, effectiveMap), _prog_id: prog.id } as Record<string, unknown>
         })
         .filter((r): r is Record<string, unknown> => r !== null)
     }
@@ -730,9 +736,9 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
       for (const prog of sortedProgs) {
         const progLeaves = leaves.filter(a => a.program_id === prog.id)
         if (progLeaves.length === 0) continue
-        rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, thresholdsMap), false, progLeaves), _prog_id: prog.id, _isProgHeader: true })
+        rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, effectiveMap), false, progLeaves, effectiveMap), _prog_id: prog.id, _isProgHeader: true })
         for (const { name, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
-          rows.push({ ...buildRow(name, calcMetrics(eixoLeaves, thresholdsMap), false, eixoLeaves), _n1: name, _prog_id: prog.id })
+          rows.push({ ...buildRow(name, calcMetrics(eixoLeaves, effectiveMap), false, eixoLeaves, effectiveMap), _n1: name, _prog_id: prog.id })
         }
       }
       return rows
@@ -742,9 +748,9 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
     for (const prog of sortedProgs) {
       const progLeaves = leaves.filter(a => a.program_id === prog.id)
       if (progLeaves.length === 0) continue
-      rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, thresholdsMap), false, progLeaves), _prog_id: prog.id, _isProgHeader: true })
+      rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, effectiveMap), false, progLeaves, effectiveMap), _prog_id: prog.id, _isProgHeader: true })
       for (const { name: eixoName, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
-        rows.push({ ...buildRow(eixoName, calcMetrics(eixoLeaves, thresholdsMap), true, eixoLeaves), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
+        rows.push({ ...buildRow(eixoName, calcMetrics(eixoLeaves, effectiveMap), true, eixoLeaves, effectiveMap), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
         const byPlano = groupBy(eixoLeaves, a => a.n2 || '(sem plano)')
         const eixoPlanos = allPlanos
           .filter(p => p.program_id === prog.id && p.eixo?.name === eixoName)
@@ -754,17 +760,17 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
           const acts = byPlano.get(plano.name)
           if (!acts) continue
           seen.add(plano.name)
-          const planoBand = thresholdsMap.get(plano.id)?.aggregates
-          rows.push({ ...buildRow(plano.name, calcMetrics(acts, thresholdsMap), false, acts, planoBand), _n1: eixoName, _n2: plano.name, _indent: 2 })
+          rows.push({ ...buildRow(plano.name, calcMetrics(acts, effectiveMap), false, acts, effectiveMap), _n1: eixoName, _n2: plano.name, _indent: 2 })
         }
         for (const [n2, acts] of byPlano) {
           if (seen.has(n2)) continue
-          rows.push({ ...buildRow(n2, calcMetrics(acts, thresholdsMap), false, acts), _n1: eixoName, _n2: n2, _indent: 2 })
+          rows.push({ ...buildRow(n2, calcMetrics(acts, effectiveMap), false, acts, effectiveMap), _n1: eixoName, _n2: n2, _indent: 2 })
         }
       }
     }
     return rows
-  }, [tableChip, leaves, programs, allEixos, allPlanos, thresholdsMap])
+  }, [tableChip, leaves, programs, allEixos, allPlanos, effectiveMap])
+
 
   const sortedTableRows = useMemo(
     () => sortKey ? sortHierarchically(tableRows, sortKey, sortDir) : tableRows,
@@ -836,10 +842,9 @@ export default function Dashboard() {
   const snapshotProgramId                  = filters.programIds[0]
   const { snapshots }                      = useSnapshots(snapshotProgramId)
 
-  const thresholdsMap = useMemo(
-    () => buildThresholdsMap(programs, allPlanos),
-    [programs, allPlanos],
-  )
+  // Precompute effective pct + status for every activity once.
+  // All KPI loops and table rows read from this map: O(n×depth) once, O(1) per lookup.
+  const effectiveMap = useEffectiveValues(activities, TODAY)
 
   // Apply global filters then restrict to leaf level (level 4)
   const filtered = useMemo(
@@ -861,7 +866,7 @@ export default function Dashboard() {
     [allPlanos, accessiblePlanIds],
   )
 
-  const m = useMemo(() => calcMetrics(accessibleLeaves, thresholdsMap), [accessibleLeaves, thresholdsMap])
+  const m = useMemo(() => calcMetrics(accessibleLeaves, effectiveMap), [accessibleLeaves, effectiveMap])
 
   // ── Snapshot references ──────────────────────────────────────
   const currentSnapshot = useMemo(
@@ -1040,7 +1045,7 @@ export default function Dashboard() {
     return {
       _isTotals: true,
       nome:      'TOTAL',
-      _estado:   m.total > 0 ? rollupStatus(accessibleLeaves, TODAY) : null,
+      _estado:   m.total > 0 ? groupState(accessibleLeaves, effectiveMap) : null,
       total:      m.total,
       concluidas: m.concluidas,
       em_dia:     m.em_dia,
@@ -1054,7 +1059,7 @@ export default function Dashboard() {
         ? safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100 : null,
       cd_obj:     100,
     }
-  }, [m])
+  }, [m, accessibleLeaves, effectiveMap])
 
   // ── Row click → navigate to Actividades with appropriate filter ─
   function handleRowClick(row: Record<string, unknown>) {
@@ -1131,7 +1136,7 @@ export default function Dashboard() {
       {/* ── Row 2: Charts ─────────────────────────────────────── */}
       <div className="dashboard-charts-grid">
 
-        <BarChartCard leaves={accessibleLeaves} programs={programs} allEixos={allEixos} thresholdsMap={thresholdsMap} labels={labels} />
+        <BarChartCard leaves={accessibleLeaves} programs={programs} allEixos={allEixos} effectiveMap={effectiveMap} labels={labels} />
 
         <Card title="Estado Global">
           {m.total === 0 ? (
@@ -1264,7 +1269,7 @@ export default function Dashboard() {
         allPlanos={visiblePlanos}
         totalsRow={totalsRow}
         onRowClick={handleRowClick}
-        thresholdsMap={thresholdsMap}
+        effectiveMap={effectiveMap}
         labels={labels}
       />
     </>

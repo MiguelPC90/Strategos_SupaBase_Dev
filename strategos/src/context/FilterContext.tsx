@@ -1,10 +1,8 @@
 import { createContext, useCallback, useContext, useMemo, useState, useEffect, type ReactNode } from 'react'
 import { usePlanos } from '../hooks/usePlanos'
 import { useEixos } from '../hooks/useEixos'
-import { usePrograms } from '../hooks/usePrograms'
 import { usePeople } from '../hooks/usePeople'
-import { buildThresholdsMap } from '../hooks/useThresholdsMap'
-import { leafStatus } from '../lib/rollup'
+import { getEffectiveStatus } from '../lib/rollup'
 import type { Activity } from '../types/index'
 
 // ── State shape ───────────────────────────────────────────────
@@ -72,13 +70,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
 
   const { eixos: allEixos }     = useEixos()
   const { planos: allPlanos }   = usePlanos()
-  const { programs: allPrograms } = usePrograms()
   const { people }              = usePeople()
-
-  const thresholdsMap = useMemo(
-    () => buildThresholdsMap(allPrograms, allPlanos),
-    [allPrograms, allPlanos],
-  )
 
   const personIdToName = useMemo(
     () => new Map(people.map(p => [p.id, p.name])),
@@ -181,13 +173,12 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       if (sponsorPlanoIds && !sponsorPlanoIds.has(a.plano_id ?? ''))               return false
 
       if (statuses.length && a.level >= 4) {
-        const tLeaves = thresholdsMap.get(a.plano_id ?? '')?.leaves
-        if (!statuses.includes(leafStatus(a, today, tLeaves))) return false
+        if (!statuses.includes(getEffectiveStatus(a, activities, today))) return false
       }
 
       return true
     })
-  }, [filters, allPlanos, thresholdsMap])
+  }, [filters, allPlanos])
 
   return (
     <FilterContext.Provider value={{ filters, setFilter, resetFilters, getFilteredActivities, ownerOptions, sponsorOptions, personIdToName }}>

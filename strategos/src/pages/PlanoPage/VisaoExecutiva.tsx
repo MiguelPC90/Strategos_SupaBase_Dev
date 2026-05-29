@@ -9,7 +9,8 @@ import { useFinancials } from '../../hooks/useFinancials'
 import { useSnapshots } from '../../hooks/useSnapshots'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useDefaultCurrency } from '../../hooks/useDefaultCurrency'
-import { rollupPct, rollupPctPrev, leafStatus } from '../../lib/rollup'
+import { rollupPctPrev, leafPctPrev } from '../../lib/rollup'
+import { useEffectiveValues } from '../../hooks/useEffectiveValues'
 import { DEFAULT_THRESHOLDS } from '../../lib/riskColors'
 import type { Activity } from '../../types/index'
 
@@ -53,9 +54,11 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
     [activities, planoId],
   )
 
+  const eff = useEffectiveValues(activities, today)
+
   // ── Activity status counts ────────────────────────────────────
   const actSummary = useMemo(() => {
-    const statuses = leaves.map(a => leafStatus(a, today))
+    const statuses = leaves.map(a => eff.get(a.id)?.status ?? 'Em dia')
     return {
       done:    statuses.filter(s => s === 'Concluída').length,
       ontrack: statuses.filter(s => s === 'Em dia').length,
@@ -63,10 +66,13 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
       late:    statuses.filter(s => s === 'Em atraso').length,
       total:   leaves.length,
     }
-  }, [leaves, today])
+  }, [leaves, eff])
 
   // ── KPI calculations ─────────────────────────────────────────
-  const execPct    = useMemo(() => rollupPct(leaves),            [leaves])
+  const execPct = useMemo(
+    () => leaves.length === 0 ? 0 : leaves.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / leaves.length,
+    [leaves, eff],
+  )
   const execTarget = useMemo(() => rollupPctPrev(leaves, today), [leaves, today])
   const totalN     = leaves.length
 
@@ -136,8 +142,8 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
   const top5: LeafWithMeta[] = useMemo(() => {
     const withMeta: LeafWithMeta[] = leaves.map(a => ({
       ...a,
-      _status: leafStatus(a, today),
-      _gap:    a.pct_prev - a.pct,
+      _status: eff.get(a.id)?.status ?? 'Em dia',
+      _gap:    leafPctPrev(a, today) - (eff.get(a.id)?.pct ?? a.pct),
     }))
     const delayed  = withMeta.filter(a => a._status === 'Em atraso').sort((a, b) => b._gap - a._gap)
     const atRisk   = withMeta.filter(a => a._status === 'Em risco').sort((a, b) => b._gap - a._gap)
@@ -145,7 +151,7 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
       .filter(a => a._status === 'Em dia' && a.bf != null)
       .sort((a, b) => (a.bf ?? '').localeCompare(b.bf ?? ''))
     return [...delayed, ...atRisk, ...upcoming].slice(0, 5)
-  }, [leaves, today])
+  }, [leaves, eff, today])
 
   // ── Finance ──────────────────────────────────────────────────
   const showCosts = canViewCosts('gestao-financeira', programId ?? undefined, planoId)

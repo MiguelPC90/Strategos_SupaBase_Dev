@@ -7,10 +7,10 @@ import Card from '../../components/Card/Card'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
-import { useThresholdsMap } from '../../hooks/useThresholdsMap'
 import { useFilters } from '../../context/FilterContext'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
-import { rollupPct, leafPctPrev, rollupPctPrev, leafStatus, rollupStatus, rollupDateRange, rollupRealDateRange, getN4Effective, type RowState, type ThresholdBand } from '../../lib/rollup'
+import { leafPctPrev, rollupPctPrev, type RowState } from '../../lib/rollup'
+import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
 import type { Activity, Program } from '../../types/index'
 import type { DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
@@ -36,12 +36,18 @@ const STATE_FILL: Record<RowState, string> = {
   'Em risco': 'var(--status-risk)', 'Em atraso': 'var(--status-late)',
 }
 
-function rowStateForAct(a: Activity, tLeaves?: ThresholdBand): RowState {
-  return leafStatus(a, TODAY, tLeaves) as RowState
+function groupState(n4leaves: Activity[], eff: Map<string, EffectiveValue>): RowState {
+  if (n4leaves.length === 0) return 'Em dia'
+  const statuses = n4leaves.map(a => eff.get(a.id)?.status ?? 'Em dia')
+  if (statuses.every(s => s === 'Concluída')) return 'Concluída'
+  if (statuses.some(s => s === 'Em atraso'))  return 'Em atraso'
+  if (statuses.some(s => s === 'Em risco'))   return 'Em risco'
+  return 'Em dia'
 }
-function rowStateForGroup(acts: Activity[]): RowState {
-  const leaves = acts.filter(a => a.level === 4)
-  return rollupStatus(leaves, TODAY) as RowState
+
+function groupPct(n4leaves: Activity[], eff: Map<string, EffectiveValue>): number {
+  if (n4leaves.length === 0) return 0
+  return n4leaves.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / n4leaves.length
 }
 
 const PILL_CLASS: Record<RowState, string> = {
@@ -300,15 +306,19 @@ function computeDateRange(activities: Activity[]): { rangeStart: Date; rangeEnd:
   return { rangeStart: addMonths(new Date(minT), -1), rangeEnd: addMonths(new Date(maxT), 1) }
 }
 
-function groupDateRange(acts: Activity[], allActivities: Activity[]) {
+function groupDateRange(acts: Activity[], eff: Map<string, EffectiveValue>) {
   const n4s = acts.filter(a => a.level === 4)
-  const effective = n4s.map(n4 => {
-    const eff = getN4Effective(n4, allActivities)
-    return { ...n4, bs: eff.bs, bf: eff.bf, rs: eff.rs, rf: eff.rf }
-  })
-  const { bs, bf } = rollupDateRange(effective)
-  const { rs, rf } = rollupRealDateRange(effective)
-  return { bs, bf, rs, rf }
+  let minBs: string | null = null, maxBf: string | null = null
+  let minRs: string | null = null, maxRf: string | null = null
+  for (const n4 of n4s) {
+    const ev = eff.get(n4.id)
+    if (!ev) continue
+    if (ev.bs && (!minBs || ev.bs < minBs)) minBs = ev.bs
+    if (ev.bf && (!maxBf || ev.bf > maxBf)) maxBf = ev.bf
+    if (ev.rs && (!minRs || ev.rs < minRs)) minRs = ev.rs
+    if (ev.rf && (!maxRf || ev.rf > maxRf)) maxRf = ev.rf
+  }
+  return { bs: minBs, bf: maxBf, rs: minRs, rf: maxRf }
 }
 
 function fmt(d: string | null): string {
@@ -490,11 +500,12 @@ export default function Gantt() {
   })
   const { programs } = usePrograms()
   const { dependencies } = useActivityDependencies()
-  const thresholdsMap = useThresholdsMap()
   const { planos } = usePlanos(filters.programIds[0])
   const { eixos } = useEixos(filters.programIds[0])
   const { hasAccess } = usePermissions()
   const multiProg = programs.length > 1
+
+  const eff = useEffectiveValues(activities, TODAY)
 
   const programSortMap = useMemo(
     () => new Map(programs.map(p => [p.id, p.sort_order] as [string, number])),
@@ -535,9 +546,9 @@ export default function Gantt() {
     if (statusFilter.size === 4) return searchFilteredActs
     return searchFilteredActs.filter(a => {
       if (a.level < 4) return true
-      return statusFilter.has(rowStateForAct(a, thresholdsMap.get(a.plano_id ?? '')?.leaves))
+      return statusFilter.has(eff.get(a.id)?.status ?? 'Em dia')
     })
-  }, [searchFilteredActs, statusFilter, thresholdsMap])
+  }, [searchFilteredActs, statusFilter, eff])
 
   const sortedActivities = useMemo(() => {
     return [...finalActs].sort((a, b) => {
@@ -629,15 +640,15 @@ export default function Gantt() {
   ): JSX.Element {
     let onEnter: ((e: React.MouseEvent) => void) | null = null
     if (act) {
+      const ev = eff.get(act.id)
       onEnter = (e: React.MouseEvent) => {
-        const tooltipDates = act.level === 4
-          ? (() => { const e2 = getN4Effective(act, activities); return { bs: e2.bs, bf: e2.bf, rs: e2.rs, rf: e2.rf, pct: e2.pct } })()
-          : { bs: act.bs, bf: act.bf, rs: act.rs, rf: act.rf, pct: act.pct }
         setTooltip({
           name: act.name,
-          bs: tooltipDates.bs, bf: tooltipDates.bf, rs: tooltipDates.rs, rf: tooltipDates.rf,
-          pct: tooltipDates.pct, pct_prev: leafPctPrev(act, TODAY),
-          rowState: rowStateForAct(act, thresholdsMap.get(act.plano_id ?? '')?.leaves),
+          bs: ev?.bs ?? null, bf: ev?.bf ?? null,
+          rs: ev?.rs ?? null, rf: ev?.rf ?? null,
+          pct:      ev?.pct ?? act.pct,
+          pct_prev: leafPctPrev(act, TODAY),
+          rowState: ev?.status ?? 'Em dia',
           childCount: null,
           x: e.clientX, y: e.clientY,
         })
@@ -646,7 +657,7 @@ export default function Gantt() {
       const { name, leaves } = tooltipGroup
       onEnter = (e: React.MouseEvent) => setTooltip({
         name, bs, bf, rs, rf,
-        pct: Math.round(rollupPct(leaves)),
+        pct:      Math.round(groupPct(leaves, eff)),
         pct_prev: rollupPctPrev(leaves, TODAY),
         rowState: status,
         childCount: leaves.length,
@@ -696,8 +707,9 @@ export default function Gantt() {
     for (const n1g of n1groups) {
       const n1key = `n1:${n1g.n1}`
       const n1col = collapsed.has(n1key)
-      const n1st  = rowStateForGroup(n1g.allActs)
-      const n1dr  = groupDateRange(n1g.allActs, activities)
+      const n1leaves = n1g.allActs.filter(a => a.level === 4)
+      const n1st  = groupState(n1leaves, eff)
+      const n1dr  = groupDateRange(n1g.allActs, eff)
       const showLabel = firstRow; firstRow = false
 
       rows.push(
@@ -711,11 +723,11 @@ export default function Gantt() {
                 </div>
               </div>
               <div className="gantt-sticky-status"><StatusPill state={n1st} /></div>
-              <div className="gantt-sticky-exec">{Math.round(rollupPct(n1g.allActs.filter(a => a.level === 4)))}%</div>
+              <div className="gantt-sticky-exec">{Math.round(groupPct(n1leaves, eff))}%</div>
             </div>
           </td>
-          {makeTimeline(n1dr.bs, n1dr.bf, n1dr.rs, n1dr.rf, n1st, null, showLabel,
-            { name: n1g.n1, leaves: n1g.allActs.filter(a => a.level === 4) })}
+          {makeTimeline(n1dr.bs, n1dr.bf, n1dr.rs ?? n1dr.bs, n1dr.rf ?? n1dr.bf, n1st, null, showLabel,
+            { name: n1g.n1, leaves: n1leaves })}
           <td className="gantt-filler-td" />
         </tr>
       )
@@ -725,8 +737,9 @@ export default function Gantt() {
       for (const n2g of n1g.n2groups) {
         const n2key = `n2:${n1g.n1}:${n2g.n2}`
         const n2col = collapsed.has(n2key)
-        const n2st  = rowStateForGroup(n2g.allActs)
-        const n2dr  = groupDateRange(n2g.allActs, activities)
+        const n2leaves = n2g.allActs.filter(a => a.level === 4)
+        const n2st  = groupState(n2leaves, eff)
+        const n2dr  = groupDateRange(n2g.allActs, eff)
 
         rows.push(
           <tr key={n2key} className="gantt-row-n2">
@@ -739,11 +752,11 @@ export default function Gantt() {
                   </div>
                 </div>
                 <div className="gantt-sticky-status"><StatusPill state={n2st} /></div>
-                <div className="gantt-sticky-exec">{Math.round(rollupPct(n2g.allActs.filter(a => a.level === 4)))}%</div>
+                <div className="gantt-sticky-exec">{Math.round(groupPct(n2leaves, eff))}%</div>
               </div>
             </td>
-            {makeTimeline(n2dr.bs, n2dr.bf, n2dr.rs, n2dr.rf, n2st, null, false,
-              { name: n2g.n2, leaves: n2g.allActs.filter(a => a.level === 4) })}
+            {makeTimeline(n2dr.bs, n2dr.bf, n2dr.rs ?? n2dr.bs, n2dr.rf ?? n2dr.bf, n2st, null, false,
+              { name: n2g.n2, leaves: n2leaves })}
             <td className="gantt-filler-td" />
           </tr>
         )
@@ -754,7 +767,8 @@ export default function Gantt() {
           // ── No N3 name: render all acts directly as leaf rows ──
           if (!n3g.n3) {
             for (const a of n3g.acts) {
-              const ast = rowStateForAct(a, thresholdsMap.get(a.plano_id ?? '')?.leaves)
+              const ev  = eff.get(a.id)
+              const ast = ev?.status ?? 'Em dia'
               rows.push(
                 <tr key={a.id} className="gantt-row-n4">
                   <td className="gantt-sticky">
@@ -765,14 +779,14 @@ export default function Gantt() {
                         </div>
                       </div>
                       <div className="gantt-sticky-status"><StatusPill state={ast} /></div>
-                      <div className="gantt-sticky-exec">{a.pct}%</div>
+                      <div className="gantt-sticky-exec">{Math.round(ev?.pct ?? a.pct)}%</div>
                     </div>
                   </td>
-                  {(() => { const eff = getN4Effective(a, activities); return makeTimeline(eff.bs, eff.bf, eff.rs, eff.rf, ast, a) })()}
+                  {makeTimeline(ev?.bs ?? null, ev?.bf ?? null, ev?.rs ?? ev?.bs ?? null, ev?.rf ?? ev?.bf ?? null, ast, a)}
                   <td className="gantt-filler-td" />
                 </tr>
               )
-              visibleActs.push({ id: a.id, rowIndex: rowIdx, bs: a.bs, bf: a.bf })
+              visibleActs.push({ id: a.id, rowIndex: rowIdx, bs: ev?.bs ?? a.bs, bf: ev?.bf ?? a.bf })
               rowIdx++
             }
             continue
@@ -786,7 +800,8 @@ export default function Gantt() {
             // N3 has no children — render only the level-3 representative as a single leaf row
             const rep = n3g.acts.find(a => a.level === 3)
             if (!rep) continue
-            const ast = rowStateForAct(rep, thresholdsMap.get(rep.plano_id ?? '')?.leaves)
+            const ev  = eff.get(rep.id)
+            const ast = ev?.status ?? 'Em dia'
             rows.push(
               <tr key={rep.id} className="gantt-row-n4">
                 <td className="gantt-sticky">
@@ -797,14 +812,14 @@ export default function Gantt() {
                       </div>
                     </div>
                     <div className="gantt-sticky-status"><StatusPill state={ast} /></div>
-                    <div className="gantt-sticky-exec">{rep.pct}%</div>
+                    <div className="gantt-sticky-exec">{Math.round(ev?.pct ?? rep.pct)}%</div>
                   </div>
                 </td>
-                {makeTimeline(rep.bs, rep.bf, rep.rs, rep.rf, ast, rep)}
+                {makeTimeline(ev?.bs ?? null, ev?.bf ?? null, ev?.rs ?? ev?.bs ?? null, ev?.rf ?? ev?.bf ?? null, ast, rep)}
                 <td className="gantt-filler-td" />
               </tr>
             )
-            visibleActs.push({ id: rep.id, rowIndex: rowIdx, bs: rep.bs, bf: rep.bf })
+            visibleActs.push({ id: rep.id, rowIndex: rowIdx, bs: ev?.bs ?? rep.bs, bf: ev?.bf ?? rep.bf })
             rowIdx++
             continue
           }
@@ -812,8 +827,9 @@ export default function Gantt() {
           // ── Has real children: render collapsible N3 header + children only ──
           const n3key = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
           const n3col = collapsed.has(n3key)
-          const n3st  = rowStateForGroup(n3ChildLeaves)
-          const n3dr  = groupDateRange(n3ChildLeaves, activities)
+          const n3leaves = n3ChildLeaves.filter(a => a.level === 4)
+          const n3st  = groupState(n3leaves, eff)
+          const n3dr  = groupDateRange(n3ChildLeaves, eff)
 
           rows.push(
             <tr key={n3key} className="gantt-row-n3">
@@ -826,11 +842,11 @@ export default function Gantt() {
                     </div>
                   </div>
                   <div className="gantt-sticky-status"><StatusPill state={n3st} /></div>
-                  <div className="gantt-sticky-exec">{Math.round(rollupPct(n3ChildLeaves.filter(a => a.level === 4)))}%</div>
+                  <div className="gantt-sticky-exec">{Math.round(groupPct(n3leaves, eff))}%</div>
                 </div>
               </td>
-              {makeTimeline(n3dr.bs, n3dr.bf, n3dr.rs, n3dr.rf, n3st, null, false,
-                { name: n3g.n3, leaves: n3ChildLeaves.filter(a => a.level === 4) })}
+              {makeTimeline(n3dr.bs, n3dr.bf, n3dr.rs ?? n3dr.bs, n3dr.rf ?? n3dr.bf, n3st, null, false,
+                { name: n3g.n3, leaves: n3leaves })}
               <td className="gantt-filler-td" />
             </tr>
           )
@@ -839,7 +855,8 @@ export default function Gantt() {
 
           // Render only the real children — the N3 representative is excluded to avoid duplicates
           for (const a of n3ChildLeaves) {
-            const ast = rowStateForAct(a, thresholdsMap.get(a.plano_id ?? '')?.leaves)
+            const ev  = eff.get(a.id)
+            const ast = ev?.status ?? 'Em dia'
             rows.push(
               <tr key={a.id} className="gantt-row-n4">
                 <td className="gantt-sticky">
@@ -850,14 +867,14 @@ export default function Gantt() {
                       </div>
                     </div>
                     <div className="gantt-sticky-status"><StatusPill state={ast} /></div>
-                    <div className="gantt-sticky-exec">{a.pct}%</div>
+                    <div className="gantt-sticky-exec">{Math.round(ev?.pct ?? a.pct)}%</div>
                   </div>
                 </td>
-                {(() => { const eff = getN4Effective(a, activities); return makeTimeline(eff.bs, eff.bf, eff.rs, eff.rf, ast, a) })()}
+                {makeTimeline(ev?.bs ?? null, ev?.bf ?? null, ev?.rs ?? ev?.bs ?? null, ev?.rf ?? ev?.bf ?? null, ast, a)}
                 <td className="gantt-filler-td" />
               </tr>
             )
-            visibleActs.push({ id: a.id, rowIndex: rowIdx, bs: a.bs, bf: a.bf })
+            visibleActs.push({ id: a.id, rowIndex: rowIdx, bs: ev?.bs ?? a.bs, bf: ev?.bf ?? a.bf })
             rowIdx++
           }
         }
@@ -870,8 +887,9 @@ export default function Gantt() {
     for (const n0g of n0tree) {
       const n0key = `n0:${n0g.progId}`
       const n0col = collapsed.has(n0key)
-      const n0st  = rowStateForGroup(n0g.allActs)
-      const n0dr  = groupDateRange(n0g.allActs, activities)
+      const n0leaves = n0g.allActs.filter(a => a.level === 4)
+      const n0st  = groupState(n0leaves, eff)
+      const n0dr  = groupDateRange(n0g.allActs, eff)
       const showLabel = firstRow; firstRow = false
 
       rows.push(
@@ -885,11 +903,11 @@ export default function Gantt() {
                 </div>
               </div>
               <div className="gantt-sticky-status"><StatusPill state={n0st} /></div>
-              <div className="gantt-sticky-exec">{Math.round(rollupPct(n0g.allActs.filter(a => a.level === 4)))}%</div>
+              <div className="gantt-sticky-exec">{Math.round(groupPct(n0leaves, eff))}%</div>
             </div>
           </td>
-          {makeTimeline(n0dr.bs, n0dr.bf, n0dr.rs, n0dr.rf, n0st, null, showLabel,
-            { name: n0g.progName, leaves: n0g.allActs.filter(a => a.level === 4) })}
+          {makeTimeline(n0dr.bs, n0dr.bf, n0dr.rs ?? n0dr.bs, n0dr.rf ?? n0dr.bf, n0st, null, showLabel,
+            { name: n0g.progName, leaves: n0leaves })}
           <td className="gantt-filler-td" />
         </tr>
       )
