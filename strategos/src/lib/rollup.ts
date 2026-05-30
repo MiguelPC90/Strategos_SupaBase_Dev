@@ -163,6 +163,29 @@ export function getDescendantLeaves(activity: Activity, all: Activity[]): Activi
   return children.flatMap(c => getDescendantLeaves(c, all))
 }
 
+/** True when the activity (or any descendant leaf) has baseline dates. */
+function hasDatedLeaf(activity: Activity, all: Activity[]): boolean {
+  const children = getDirectChildren(activity, all)
+  if (children.length === 0) return !!(activity.bs && (activity.bf ?? activity.finish))
+  return children.some(c => hasDatedLeaf(c, all))
+}
+
+/**
+ * Recursive effective target pct (0-100) for any activity.
+ * Leaf → leafPctPrev (date-derived or stored pct_prev).
+ * Has children → average getEffectiveTarget over children that have dated leaves;
+ *   dateless branches are excluded; returns 0 if no dated branch exists.
+ * Mirrors getEffectivePct's recursion so the two are always comparable.
+ */
+export function getEffectiveTarget(activity: Activity, all: Activity[], today: string): number {
+  const children = getDirectChildren(activity, all)
+  if (children.length === 0) return leafPctPrev(activity, today)
+  const contributing = children.filter(c => hasDatedLeaf(c, all))
+  if (contributing.length === 0) return 0
+  const sum = contributing.reduce((s, c) => s + getEffectiveTarget(c, all, today), 0)
+  return sum / contributing.length
+}
+
 /**
  * Effective baseline and real dates for any activity in the hierarchy.
  * Leaf → own stored dates.
@@ -208,12 +231,9 @@ export function getEffectiveStatus(
     bf     = activity.bf ?? activity.finish
     target = leafPctPrev(activity, today)
   } else {
-    pct = getEffectivePct(activity, all)
-    bf  = getEffectiveDates(activity, all).bf
-    const withDates = leaves.filter(l => l.bs && (l.bf ?? l.finish))
-    target = withDates.length > 0
-      ? withDates.reduce((s, l) => s + leafPctPrev(l, today), 0) / withDates.length
-      : 0
+    pct    = getEffectivePct(activity, all)
+    bf     = getEffectiveDates(activity, all).bf
+    target = getEffectiveTarget(activity, all, today)
   }
 
   // Step 1 — Concluída
@@ -228,3 +248,36 @@ export function getEffectiveStatus(
   return statusFromDelta(target - pct, band)
 }
 
+/**
+ * Aggregate status for a virtual group row (N0-N4) that has no Activity object.
+ * Uses the AGGREGATES or LEAVES band based on level (≥3 → LEAVES, <3 → AGGREGATES).
+ * n4Leaves: the N4-level activities belonging to this group.
+ * all: the full activity array for the page (needed to resolve N5/N6 descendants).
+ */
+export function getGroupStatus(
+  n4Leaves: Activity[],
+  all: Activity[],
+  today: string,
+  level: number,
+): RowState {
+  if (n4Leaves.length === 0) return 'Em dia'
+  const band = level >= 3 ? THRESHOLD_LEAVES : THRESHOLD_AGGREGATES
+
+  const pct = n4Leaves.reduce((s, n4) => s + getEffectivePct(n4, all), 0) / n4Leaves.length
+
+  let bf: string | null = null
+  for (const n4 of n4Leaves) {
+    const d = getEffectiveDates(n4, all).bf
+    if (d && (!bf || d > bf)) bf = d
+  }
+
+  const contributing = n4Leaves.filter(n4 => hasDatedLeaf(n4, all))
+  const target = contributing.length > 0
+    ? contributing.reduce((s, n4) => s + getEffectiveTarget(n4, all, today), 0) / contributing.length
+    : 0
+
+  const allLeaves = n4Leaves.flatMap(n4 => getDescendantLeaves(n4, all))
+  if (allLeaves.length > 0 && allLeaves.every(l => l.pct >= 100)) return 'Concluída'
+  if (bf && today > bf && pct < 100) return 'Em atraso'
+  return statusFromDelta(target - pct, band)
+}

@@ -17,8 +17,8 @@ import GestaoRecursos from '../GestaoRecursos/GestaoRecursos'
 import GestaoFinanceira from '../GestaoFinanceira/GestaoFinanceira'
 import GestaoIniciativas from '../GestaoIniciativas/GestaoIniciativas'
 import NovoPlanoModal from '../../components/NovoPlanoModal/NovoPlanoModal'
-import { rollupPctPrev, rollupDateRange, type RowState } from '../../lib/rollup'
-import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
+import { rollupPctPrev, rollupDateRange, getGroupStatus } from '../../lib/rollup'
+import { useEffectiveValues } from '../../hooks/useEffectiveValues'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { resolveOwnerNames, resolveSponsorNames } from '../../lib/owners'
 import { statusColor } from '../../lib/tokens'
@@ -72,18 +72,9 @@ export default function PlanoPage() {
   const planLeaves = useMemo(() => planActivities.filter(a => a.level === 4), [planActivities])
   const eff = useEffectiveValues(planActivities, today)
 
-  function groupState(leaves: typeof planLeaves, effMap: Map<string, EffectiveValue>): RowState {
-    if (leaves.length === 0) return 'Em dia'
-    const statuses = leaves.map(a => effMap.get(a.id)?.status ?? 'Em dia')
-    if (statuses.every(s => s === 'Concluída')) return 'Concluída'
-    if (statuses.some(s => s === 'Em atraso'))  return 'Em atraso'
-    if (statuses.some(s => s === 'Em risco'))   return 'Em risco'
-    return 'Em dia'
-  }
-
   const planoStatus = useMemo(
-    () => groupState(planLeaves, eff),
-    [planLeaves, eff],
+    () => getGroupStatus(planLeaves, planActivities, today, 2),
+    [planLeaves, planActivities, today],
   )
 
   const execMedia    = useMemo(

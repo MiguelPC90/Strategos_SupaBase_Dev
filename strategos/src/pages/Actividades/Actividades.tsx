@@ -15,22 +15,13 @@ import { useEixos } from '../../hooks/useEixos'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
 import type { Activity, Program } from '../../types/index'
-import { leafPctPrev, computeRowState, type RowState } from '../../lib/rollup'
+import { leafPctPrev, computeRowState, getGroupStatus, type RowState } from '../../lib/rollup'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 const ALL_STATUS_KEYS: RowState[] = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
 
 // ── Status helpers ─────────────────────────────────────────────
 type LevelView  = 'todos' | 'programa' | 'eixo' | 'plano' | 'macro' | 'actividade'
-
-function groupState(n4leaves: Activity[], eff: Map<string, EffectiveValue>): RowState {
-  if (n4leaves.length === 0) return 'Em dia'
-  const statuses = n4leaves.map(a => eff.get(a.id)?.status ?? 'Em dia')
-  if (statuses.every(s => s === 'Concluída')) return 'Concluída'
-  if (statuses.some(s => s === 'Em atraso'))  return 'Em atraso'
-  if (statuses.some(s => s === 'Em risco'))   return 'Em risco'
-  return 'Em dia'
-}
 
 function groupPct(n4leaves: Activity[], eff: Map<string, EffectiveValue>): number {
   if (n4leaves.length === 0) return 0
@@ -465,7 +456,7 @@ export default function Actividades() {
       const n1col    = collapsed.has(n1key)
       const n1leaves = n1g.allActs.filter(a => a.level === 4)
       const n1stats  = computeStats(n1leaves, eff)
-      const n1state  = groupState(n1leaves, eff)
+      const n1state  = getGroupStatus(n1leaves, activities, TODAY, 1)
 
       rows.push(
         <tr key={n1key} className="act-row-n1">
@@ -493,7 +484,7 @@ export default function Actividades() {
         const n2col    = collapsed.has(n2key)
         const n2leaves = n2g.allActs.filter(a => a.level === 4)
         const n2stats  = computeStats(n2leaves, eff)
-        const n2state  = groupState(n2leaves, eff)
+        const n2state  = getGroupStatus(n2leaves, activities, TODAY, 2)
 
         rows.push(
           <tr key={n2key} className="act-row-n2">
@@ -580,7 +571,7 @@ export default function Actividades() {
           const n3col    = collapsed.has(n3key)
           const n3leaves = n3g.acts.filter(a => a.level === 4)
           const n3stats  = computeStats(n3leaves, eff)
-          const n3state  = groupState(n3leaves, eff)
+          const n3state  = getGroupStatus(n3leaves, activities, TODAY, 3)
 
           rows.push(
             <tr key={n3key} className="act-row-n3">
@@ -638,7 +629,7 @@ export default function Actividades() {
       const n0col    = collapsed.has(n0key)
       const n0leaves = n0g.allActs.filter(a => a.level === 4)
       const n0stats  = computeStats(n0leaves, eff)
-      const n0state  = groupState(n0leaves, eff)
+      const n0state  = getGroupStatus(n0leaves, activities, TODAY, 0)
 
       rows.push(
         <tr key={n0key} className="act-row-n0">

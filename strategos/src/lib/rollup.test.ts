@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getDirectChildren, getEffectivePct, rollupEffectivePct, getDescendantLeaves, getEffectiveStatus, getEffectiveDates } from './rollup'
+import { getDirectChildren, getEffectivePct, rollupEffectivePct, getDescendantLeaves, getEffectiveStatus, getEffectiveDates, getEffectiveTarget, getGroupStatus } from './rollup'
 import type { Activity } from '../types/index'
 
 // ── Minimal activity factory ───────────────────────────────────
@@ -259,5 +259,126 @@ describe('getEffectiveStatus (unified model)', () => {
   it('100% with deadline already passed → still Concluída (Step 1 wins before deadline check)', () => {
     const a = mkAct({ id: 'a', level: 4, name: 'Act', n3: 'M', n4: 'Act', pct: 100, bf: '2020-01-01' })
     expect(getEffectiveStatus(a, [a], TODAY)).toBe('Concluída')
+  })
+
+  // Test 10 — regression: getEffectiveStatus uses recursive target, not flat average
+  it('uses recursive target not flat average (unbalanced tree)', () => {
+    // N4 → N5a (1 N6: target=100) and N5b (2 N6s: target=0 and 100)
+    // Recursive target: avg(100, avg(0,100)) = avg(100, 50) = 75
+    // Flat (old) target: avg(100, 0, 100) / 3 = 66.67
+    // effective pct: N5a→N6a(pct=30)=30, N5b→avg(N6c=100,N6d=100)=100, N4=avg(30,100)=65
+    // delta_recursive = 75 - 65 = 10 → LEAVES high=10: Em risco
+    // delta_flat      = 66.67 - 65 = 1.67 → LEAVES low=5: would be Em dia
+    const n4p = mkAct({ id: 'n4p', level: 4, name: 'Act', n3: 'M', n4: 'Act', pct: 0 })
+    const n5a = mkAct({ id: 'n5a', level: 5, name: 'SA', n3: 'M', n4: 'Act', n5: 'SA', pct: 0 })
+    const n5b = mkAct({ id: 'n5b', level: 5, name: 'SB', n3: 'M', n4: 'Act', n5: 'SB', pct: 0 })
+    const n6a = mkAct({ id: 'n6a', level: 6, name: 'D1', n3: 'M', n4: 'Act', n5: 'SA', n6: 'D1',
+      pct: 30, bs: '2026-01-01', bf: TODAY })                  // target = 100
+    const n6c = mkAct({ id: 'n6c', level: 6, name: 'D2', n3: 'M', n4: 'Act', n5: 'SB', n6: 'D2',
+      pct: 100, bs: '2026-07-01', bf: '2026-12-31' })          // target = 0  (bs in future)
+    const n6d = mkAct({ id: 'n6d', level: 6, name: 'D3', n3: 'M', n4: 'Act', n5: 'SB', n6: 'D3',
+      pct: 100, bs: '2026-01-01', bf: TODAY })                  // target = 100
+    const all = [n4p, n5a, n5b, n6a, n6c, n6d]
+    // effective bf = max(N6a.bf=TODAY, N6c.bf='2026-12-31', N6d.bf=TODAY) = '2026-12-31' → future
+    expect(getEffectiveStatus(n4p, all, TODAY)).toBe('Em risco')
+  })
+})
+
+// ── getEffectiveTarget ────────────────────────────────────────
+
+describe('getEffectiveTarget', () => {
+  // Test 1 — leaf with future bs → leafPctPrev = 0
+  it('leaf with future bs returns 0 (= leafPctPrev)', () => {
+    const leaf = mkAct({ id: 'l', level: 4, name: 'Act', n3: 'M', n4: 'Act',
+      pct: 80, bs: '2026-07-01', bf: '2026-12-31' })
+    expect(getEffectiveTarget(leaf, [leaf], TODAY)).toBe(0)
+  })
+
+  // Test 2 — unbalanced tree: recursive (75) ≠ flat average (66.67)
+  it('unbalanced tree: recursive result differs from flat average', () => {
+    // N4 → N5a (1 N6: bf=TODAY → target=100)
+    //      N5b (2 N6s: bf=TODAY → target=100, bs future → target=0)
+    // Recursive: avg(target(N5a)=100, target(N5b)=avg(100,0)=50) = 75
+    // Flat: avg(100, 100, 0) / 3 = 66.67
+    const n4p = mkAct({ id: 'n4p', level: 4, name: 'Act', n3: 'M', n4: 'Act' })
+    const n5a = mkAct({ id: 'n5a', level: 5, name: 'SA', n3: 'M', n4: 'Act', n5: 'SA' })
+    const n5b = mkAct({ id: 'n5b', level: 5, name: 'SB', n3: 'M', n4: 'Act', n5: 'SB' })
+    const n6a = mkAct({ id: 'n6a', level: 6, name: 'D1', n3: 'M', n4: 'Act', n5: 'SA', n6: 'D1',
+      bs: '2026-01-01', bf: TODAY })                   // target = 100
+    const n6c = mkAct({ id: 'n6c', level: 6, name: 'D2', n3: 'M', n4: 'Act', n5: 'SB', n6: 'D2',
+      bs: '2026-01-01', bf: TODAY })                   // target = 100
+    const n6d = mkAct({ id: 'n6d', level: 6, name: 'D3', n3: 'M', n4: 'Act', n5: 'SB', n6: 'D3',
+      bs: '2026-07-01', bf: '2026-12-31' })            // target = 0 (bs in future)
+    const all = [n4p, n5a, n5b, n6a, n6c, n6d]
+    expect(getEffectiveTarget(n4p, all, TODAY)).toBe(75)
+  })
+
+  // Test 3 — dateless branch excluded: only dated N5 contributes
+  it('dateless branch is excluded; only dated branch contributes', () => {
+    const n4p = mkAct({ id: 'n4p', level: 4, name: 'Act', n3: 'M', n4: 'Act' })
+    const n5d = mkAct({ id: 'n5d', level: 5, name: 'SD', n3: 'M', n4: 'Act', n5: 'SD',
+      bs: '2026-01-01', bf: TODAY })                   // dated → target = 100
+    const n5u = mkAct({ id: 'n5u', level: 5, name: 'SU', n3: 'M', n4: 'Act', n5: 'SU',
+      pct_prev: 50 })                                  // no dates → excluded
+    expect(getEffectiveTarget(n4p, [n4p, n5d, n5u], TODAY)).toBe(100)
+  })
+})
+
+// ── getGroupStatus ────────────────────────────────────────────
+
+describe('getGroupStatus', () => {
+  // Test 4 — all descendants at 100 → Concluída
+  it('all N4 leaves at 100 → Concluída', () => {
+    const n4a = mkAct({ id: 'n4a', level: 4, name: 'A', n3: 'M', n4: 'A', pct: 100 })
+    const n4b = mkAct({ id: 'n4b', level: 4, name: 'B', n3: 'M', n4: 'B', pct: 100 })
+    expect(getGroupStatus([n4a, n4b], [n4a, n4b], TODAY, 2)).toBe('Concluída')
+  })
+
+  // Test 5 — group effective bf past + pct < 100 → Em atraso
+  it('all N4 leaves past deadline and pct < 100 → Em atraso', () => {
+    const n4a = mkAct({ id: 'n4a', level: 4, name: 'A', n3: 'M', n4: 'A',
+      pct: 50, bs: '2020-01-01', bf: '2022-01-01' })   // past
+    const n4b = mkAct({ id: 'n4b', level: 4, name: 'B', n3: 'M', n4: 'B',
+      pct: 50, bs: '2020-01-01', bf: '2023-06-01' })   // past (max of the two)
+    // group bf = max('2022-01-01', '2023-06-01') = '2023-06-01' < TODAY → Em atraso
+    expect(getGroupStatus([n4a, n4b], [n4a, n4b], TODAY, 2)).toBe('Em atraso')
+  })
+
+  // Test 6 — one past bf, another future bf → group bf = max (future) → deadline not missed
+  it('one N4 past deadline, another future → group max-bf is future → no deadline miss', () => {
+    const n4a = mkAct({ id: 'n4a', level: 4, name: 'A', n3: 'M', n4: 'A',
+      pct: 100, bs: '2020-01-01', bf: '2021-01-01' })  // past deadline but done (pct=100)
+    const n4b = mkAct({ id: 'n4b', level: 4, name: 'B', n3: 'M', n4: 'B',
+      pct: 90, bs: '2029-01-01', bf: '2030-01-01' })   // far future → target = 0
+    // group bf = max('2021-01-01','2030-01-01') = '2030-01-01' → future → Step 2 does not fire
+    // pct = avg(100,90)=95, target=avg(100,0)=50, delta=50-95=-45 ≤ 15 → Em dia
+    expect(getGroupStatus([n4a, n4b], [n4a, n4b], TODAY, 0)).toBe('Em dia')
+  })
+
+  // Test 7 — healthy group is Em dia even when one N4 is individually Em atraso (proves worst-wins gone)
+  it('healthy group Em dia despite one N4 being Em atraso individually under LEAVES band', () => {
+    // n4a: pct=80, target=100, delta=20 → LEAVES high=10: individually Em atraso
+    // n4b: pct=95, target=100, delta=5  → LEAVES low=5:  individually Em dia
+    // group (level=2, AGGREGATES band): pct=87.5, target=100, delta=12.5 ≤ low=15 → Em dia
+    // old groupState (worst-wins): n4a is Em atraso → returned Em atraso
+    const n4a = mkAct({ id: 'n4a', level: 4, name: 'A', n3: 'M', n4: 'A',
+      pct: 80, bs: '2026-01-01', bf: TODAY })
+    const n4b = mkAct({ id: 'n4b', level: 4, name: 'B', n3: 'M', n4: 'B',
+      pct: 95, bs: '2026-01-01', bf: TODAY })
+    expect(getGroupStatus([n4a, n4b], [n4a, n4b], TODAY, 2)).toBe('Em dia')
+  })
+
+  // Test 8 — band by level: same delta → different status at level 3 vs level 2
+  it('same delta → Em atraso at level 3 (LEAVES band) and Em dia at level 2 (AGGREGATES band)', () => {
+    // delta = 12: LEAVES high=10 → 12>10 → Em atraso; AGGREGATES low=15 → 12≤15 → Em dia
+    const n4a = mkAct({ id: 'n4a', level: 4, name: 'A', n3: 'M', n4: 'A',
+      pct: 88, bs: '2026-01-01', bf: TODAY })          // target=100, delta=12
+    expect(getGroupStatus([n4a], [n4a], TODAY, 3)).toBe('Em atraso')
+    expect(getGroupStatus([n4a], [n4a], TODAY, 2)).toBe('Em dia')
+  })
+
+  // Test 9 — empty n4Leaves → Em dia
+  it('empty n4Leaves returns Em dia', () => {
+    expect(getGroupStatus([], [], TODAY, 2)).toBe('Em dia')
   })
 })

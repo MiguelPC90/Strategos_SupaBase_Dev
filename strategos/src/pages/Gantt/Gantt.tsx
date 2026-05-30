@@ -9,7 +9,7 @@ import { useActivities } from '../../hooks/useActivities'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
-import { leafPctPrev, rollupPctPrev, type RowState } from '../../lib/rollup'
+import { leafPctPrev, rollupPctPrev, getGroupStatus, type RowState } from '../../lib/rollup'
 import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
 import type { Activity, Program } from '../../types/index'
 import type { DependencyType } from '../../types/index'
@@ -34,15 +34,6 @@ const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set'
 const STATE_FILL: Record<RowState, string> = {
   'Concluída': 'var(--status-done)', 'Em dia': 'var(--status-ontrack)',
   'Em risco': 'var(--status-risk)', 'Em atraso': 'var(--status-late)',
-}
-
-function groupState(n4leaves: Activity[], eff: Map<string, EffectiveValue>): RowState {
-  if (n4leaves.length === 0) return 'Em dia'
-  const statuses = n4leaves.map(a => eff.get(a.id)?.status ?? 'Em dia')
-  if (statuses.every(s => s === 'Concluída')) return 'Concluída'
-  if (statuses.some(s => s === 'Em atraso'))  return 'Em atraso'
-  if (statuses.some(s => s === 'Em risco'))   return 'Em risco'
-  return 'Em dia'
 }
 
 function groupPct(n4leaves: Activity[], eff: Map<string, EffectiveValue>): number {
@@ -708,7 +699,7 @@ export default function Gantt() {
       const n1key = `n1:${n1g.n1}`
       const n1col = collapsed.has(n1key)
       const n1leaves = n1g.allActs.filter(a => a.level === 4)
-      const n1st  = groupState(n1leaves, eff)
+      const n1st  = getGroupStatus(n1leaves, activities, TODAY, 1)
       const n1dr  = groupDateRange(n1g.allActs, eff)
       const showLabel = firstRow; firstRow = false
 
@@ -738,7 +729,7 @@ export default function Gantt() {
         const n2key = `n2:${n1g.n1}:${n2g.n2}`
         const n2col = collapsed.has(n2key)
         const n2leaves = n2g.allActs.filter(a => a.level === 4)
-        const n2st  = groupState(n2leaves, eff)
+        const n2st  = getGroupStatus(n2leaves, activities, TODAY, 2)
         const n2dr  = groupDateRange(n2g.allActs, eff)
 
         rows.push(
@@ -828,7 +819,7 @@ export default function Gantt() {
           const n3key = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
           const n3col = collapsed.has(n3key)
           const n3leaves = n3ChildLeaves.filter(a => a.level === 4)
-          const n3st  = groupState(n3leaves, eff)
+          const n3st  = getGroupStatus(n3leaves, activities, TODAY, 3)
           const n3dr  = groupDateRange(n3ChildLeaves, eff)
 
           rows.push(
@@ -888,7 +879,7 @@ export default function Gantt() {
       const n0key = `n0:${n0g.progId}`
       const n0col = collapsed.has(n0key)
       const n0leaves = n0g.allActs.filter(a => a.level === 4)
-      const n0st  = groupState(n0leaves, eff)
+      const n0st  = getGroupStatus(n0leaves, activities, TODAY, 0)
       const n0dr  = groupDateRange(n0g.allActs, eff)
       const showLabel = firstRow; firstRow = false
 

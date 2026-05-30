@@ -289,7 +289,7 @@ Two independent bands are loaded from `app_config` at startup (via `setThreshold
 |Aggregates|15 pp|25 pp |N0-N3 levels (`Programa` / `Eixo` / `Plano` / `Macro-actividade`)|
 |Leaves    |5 pp |10 pp |N4-N6 levels (`Actividade` / `Sub-actividade` / `Detalhe`)       |
 
-**Exports:** `setThresholds(aggregates, leaves)`, `getThresholdAggregates()`, `getThresholdLeaves()`, `leafPctPrev(activity, today)`, `rollupPctPrev(leaves, today)`, `computeRowState(actual, target, band?)`, `rollupDateRange(activities)`, `rollupRealDateRange(activities)`, `getDirectChildren(activity, all)`, `getEffectivePct(activity, all)`, `rollupEffectivePct(leaves, all)`, `getDescendantLeaves(activity, all)`, `getEffectiveDates(activity, all)`, `getEffectiveStatus(activity, all, today)`.
+**Exports:** `setThresholds(aggregates, leaves)`, `getThresholdAggregates()`, `getThresholdLeaves()`, `leafPctPrev(activity, today)`, `rollupPctPrev(leaves, today)`, `computeRowState(actual, target, band?)`, `rollupDateRange(activities)`, `rollupRealDateRange(activities)`, `getDirectChildren(activity, all)`, `getEffectivePct(activity, all)`, `rollupEffectivePct(leaves, all)`, `getDescendantLeaves(activity, all)`, `getEffectiveDates(activity, all)`, `getEffectiveTarget(activity, all, today)`, `getEffectiveStatus(activity, all, today)`, `getGroupStatus(n4Leaves, all, today, level)`.
 
 **`leafPctPrev(activity, today)`** — date-based expected % for a single activity (0-100). Linear interpolation between `bs` (baseline start) and `bf` (baseline finish). `today <= bs` → 0, `today >= bf` → 100, else linear. Falls back to stored `pct_prev` when baseline dates are missing.
 
@@ -301,12 +301,16 @@ Two independent bands are loaded from `app_config` at startup (via `setThreshold
 
 **`getEffectiveDates(activity, all)`** — returns `{ bs, bf, rs, rf }`. Leaf (no direct children) returns its own stored dates. With children, `bs`/`bf` roll up as min/max over all descendant leaves; `rs`/`rf` roll up similarly but remain `null` when no descendant has real-date data (no baseline fallback — model stays null-honest).
 
+**`getEffectiveTarget(activity, all, today)`** — recursive expected % (0-100) that mirrors `getEffectivePct`'s tree traversal. Leaf → `leafPctPrev`. Has children → average `getEffectiveTarget` over children that have at least one dated leaf (`hasDatedLeaf`); dateless branches are excluded (avoids polluting the average with activities that have no schedule data). Returns 0 if no dated branch exists. Used by both `getEffectiveStatus` and `getGroupStatus` for Step 3.
+
 **`getEffectiveStatus(activity, all, today)`** — unified 3-step status for any activity at any level. Band is chosen automatically by `activity.level` (N0-N2 → aggregates band, N3-N6 → leaves band). Resolution order:
 1. **Concluída** — leaf `pct >= 100`, OR (for aggregates) every descendant leaf has `pct >= 100`
 2. **Em atraso** — effective `bf` is in the past and effective `pct < 100`
-3. **Delta vs band** — `target − pct` compared to the band's `low`/`high` thresholds → `"Em dia"` / `"Em risco"` / `"Em atraso"`. Target excludes dateless leaves (avoids polluting the average with activities that have no schedule data).
+3. **Delta vs band** — `getEffectiveTarget(activity, all, today) − effectivePct` compared to band thresholds. Target is now recursive (matches `getEffectivePct`'s tree structure) — unbalanced hierarchies give correct per-branch averages, not a flattened leaf count.
 
-**`useEffectiveValues` hook** (`src/hooks/useEffectiveValues.ts`) — single memoized hook consumed by every page. Signature: `useEffectiveValues(activities, today): Map<string, EffectiveValue>`. `EffectiveValue = { pct, bs, bf, rs, rf, status }`. One call per page; no per-row calls to `getEffectivePct` / `getEffectiveDates` / `getEffectiveStatus` directly. Gantt uses the map's date fields for timeline bars; real→baseline fallback (`ev.rs ?? ev.bs`) is presentation-only at render time (model stays null-honest). Dashboard page-level `groupState` helpers apply "worst wins" to N3/N4 synthetic header rows.
+**`getGroupStatus(n4Leaves, all, today, level)`** — aggregate status for virtual group rows (N0-N4) that have no `Activity` object. Replaces the old per-page `groupState` worst-wins pattern. `n4Leaves`: the N4-level activities belonging to this group. `all`: full activities array for descendant resolution. `level`: determines the band (`>= 3` → leaves, `< 3` → aggregates). Same 3-step resolution as `getEffectiveStatus`: Concluída → deadline miss → delta vs band. Group pct and target are both averaged over `n4Leaves`, each of which may itself roll up further N5/N6 children via `getEffectivePct` / `getEffectiveTarget`.
+
+**`useEffectiveValues` hook** (`src/hooks/useEffectiveValues.ts`) — single memoized hook consumed by every page. Signature: `useEffectiveValues(activities, today): Map<string, EffectiveValue>`. `EffectiveValue = { pct, bs, bf, rs, rf, status }`. One call per page; no per-row calls to `getEffectivePct` / `getEffectiveDates` / `getEffectiveStatus` directly. Gantt uses the map's date fields for timeline bars; real→baseline fallback (`ev.rs ?? ev.bs`) is presentation-only at render time (model stays null-honest). Aggregate (group) row status uses `getGroupStatus` from rollup — not per-leaf worst-wins.
 
 **Bug fix (this wave):** `Activity` interface was missing `n6: string` field — added. DB column exists; parser always wrote it; interface omission caused silent type gaps.
 

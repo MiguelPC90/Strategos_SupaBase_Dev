@@ -14,7 +14,7 @@ import { useEixos } from '../../hooks/useEixos'
 import { useProgramLabels, type ProgramLabels } from '../../hooks/useProgramLabels'
 import { usePlanos } from '../../hooks/usePlanos'
 import { supabase } from '../../lib/supabase'
-import { rollupPctPrev, rollupDateRange, leafPctPrev, type RowState } from '../../lib/rollup'
+import { rollupPctPrev, rollupDateRange, leafPctPrev, getGroupStatus } from '../../lib/rollup'
 import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
 import type { Activity, ActivityDependency, DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
@@ -41,15 +41,6 @@ function fmtDate(iso: string | null): string {
 
 const TODAY = new Date().toISOString().slice(0, 10)
 const DEP_TYPE_TOOLTIP = 'FS: Fim → Início · SS: Início → Início · FF: Fim → Fim · SF: Início → Fim'
-
-function groupState(leaves: Activity[], eff: Map<string, EffectiveValue>): RowState {
-  if (leaves.length === 0) return 'Em dia'
-  const statuses = leaves.map(a => eff.get(a.id)?.status ?? 'Em dia')
-  if (statuses.every(s => s === 'Concluída')) return 'Concluída'
-  if (statuses.some(s => s === 'Em atraso'))  return 'Em atraso'
-  if (statuses.some(s => s === 'Em risco'))   return 'Em risco'
-  return 'Em dia'
-}
 
 function groupPct(leaves: Activity[], eff: Map<string, EffectiveValue>): number {
   if (leaves.length === 0) return 0
@@ -1150,7 +1141,7 @@ export default function GestaoIniciativas({
         const n3col = collapsed.has(n3g.key)
         const n3leaves = n3g.all.filter(a => a.level === 4)
         const n3pct = groupPct(n3leaves, eff); const n3prev = rollupPctPrev(n3leaves, TODAY)
-        const n3st  = groupState(n3leaves, eff); const n3dr = rollupDateRange(n3leaves)
+        const n3st  = getGroupStatus(n3leaves, localActs, TODAY, 3); const n3dr = rollupDateRange(n3leaves)
         const n3Rep  = n3g.all.find(a => a.level === 3)
         const n3Sibs = n3Rep
           ? localActs.filter(a => a.level === 3 && a.n1 === n3Rep.n1 && a.n2 === n3Rep.n2)
@@ -1206,7 +1197,7 @@ export default function GestaoIniciativas({
           const n4col = collapsed.has(n4g.key)
           const n4leaves = n4g.all.filter(a => a.level === 4)
           const n4pct = groupPct(n4leaves, eff); const n4prev = rollupPctPrev(n4leaves, TODAY)
-          const n4st  = groupState(n4leaves, eff); const n4dr = rollupDateRange(n4leaves)
+          const n4st  = getGroupStatus(n4leaves, localActs, TODAY, 4); const n4dr = rollupDateRange(n4leaves)
           const n4Rep  = n4g.all.find(a => a.level === 4)
           const n4Sibs = n4Rep
             ? localActs.filter(a => a.level === 4 && a.n1 === n4Rep.n1 && a.n2 === n4Rep.n2 && a.n3 === n4Rep.n3)

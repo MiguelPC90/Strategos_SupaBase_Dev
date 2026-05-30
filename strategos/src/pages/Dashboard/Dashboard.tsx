@@ -26,7 +26,7 @@ import { supabase } from '../../lib/supabase'
 import { generateAlerts } from '../../lib/alerts'
 import type { Alert, AlertRule } from '../../lib/alerts'
 import type { Activity, Program, Eixo, Plano } from '../../types/index'
-import { leafPctPrev, computeRowState, rollupDateRange, type RowState } from '../../lib/rollup'
+import { leafPctPrev, computeRowState, rollupDateRange, getGroupStatus, type RowState } from '../../lib/rollup'
 import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
 import { colors, statusColor } from '../../lib/tokens'
 
@@ -73,15 +73,6 @@ interface Metrics {
 }
 
 type EffectiveMap = Map<string, EffectiveValue>
-
-function groupState(leaves: Activity[], eff: EffectiveMap): RowState {
-  if (leaves.length === 0) return 'Em dia'
-  const statuses = leaves.map(a => eff.get(a.id)?.status ?? 'Em dia')
-  if (statuses.every(s => s === 'Concluída')) return 'Concluída'
-  if (statuses.some(s => s === 'Em atraso'))  return 'Em atraso'
-  if (statuses.some(s => s === 'Em risco'))   return 'Em risco'
-  return 'Em dia'
-}
 
 function classify(
   a: Activity,
@@ -264,7 +255,8 @@ function buildRow(
   m: Metrics,
   isParent: boolean,
   leaves: Activity[],
-  eff: EffectiveMap,
+  all: Activity[],
+  level: number,
 ): Record<string, unknown> {
   const concGeral = safeDiv(m.concluidas, m.total) * 100
   const concData  = safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100
@@ -274,7 +266,7 @@ function buildRow(
   return {
     _isParent: isParent,
     nome,
-    _estado: m.total > 0 ? groupState(leaves, eff) : null,
+    _estado: m.total > 0 ? getGroupStatus(leaves, all, TODAY, level) : null,
     total:      m.total,
     concluidas: m.concluidas,
     em_dia:     m.em_dia,
@@ -685,9 +677,10 @@ interface DetailTableCardProps {
   onRowClick: (row: Record<string, unknown>) => void
   effectiveMap: EffectiveMap
   labels: ProgramLabels
+  all: Activity[]
 }
 
-function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onRowClick, effectiveMap, labels }: DetailTableCardProps) {
+function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onRowClick, effectiveMap, labels, all }: DetailTableCardProps) {
   const [tableChip, setTableChip] = useState<'programa' | 'eixo' | 'plano'>('eixo')
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -705,7 +698,7 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
         .map(prog => {
           const progLeaves = leaves.filter(a => a.program_id === prog.id)
           if (progLeaves.length === 0) return null
-          return { ...buildRow(prog.name, calcMetrics(progLeaves, effectiveMap), false, progLeaves, effectiveMap), _prog_id: prog.id } as Record<string, unknown>
+          return { ...buildRow(prog.name, calcMetrics(progLeaves, effectiveMap), false, progLeaves, all, 0), _prog_id: prog.id } as Record<string, unknown>
         })
         .filter((r): r is Record<string, unknown> => r !== null)
     }
@@ -736,9 +729,9 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
       for (const prog of sortedProgs) {
         const progLeaves = leaves.filter(a => a.program_id === prog.id)
         if (progLeaves.length === 0) continue
-        rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, effectiveMap), false, progLeaves, effectiveMap), _prog_id: prog.id, _isProgHeader: true })
+        rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, effectiveMap), false, progLeaves, all, 0), _prog_id: prog.id, _isProgHeader: true })
         for (const { name, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
-          rows.push({ ...buildRow(name, calcMetrics(eixoLeaves, effectiveMap), false, eixoLeaves, effectiveMap), _n1: name, _prog_id: prog.id })
+          rows.push({ ...buildRow(name, calcMetrics(eixoLeaves, effectiveMap), false, eixoLeaves, all, 1), _n1: name, _prog_id: prog.id })
         }
       }
       return rows
@@ -748,9 +741,9 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
     for (const prog of sortedProgs) {
       const progLeaves = leaves.filter(a => a.program_id === prog.id)
       if (progLeaves.length === 0) continue
-      rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, effectiveMap), false, progLeaves, effectiveMap), _prog_id: prog.id, _isProgHeader: true })
+      rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, effectiveMap), false, progLeaves, all, 0), _prog_id: prog.id, _isProgHeader: true })
       for (const { name: eixoName, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
-        rows.push({ ...buildRow(eixoName, calcMetrics(eixoLeaves, effectiveMap), true, eixoLeaves, effectiveMap), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
+        rows.push({ ...buildRow(eixoName, calcMetrics(eixoLeaves, effectiveMap), true, eixoLeaves, all, 1), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
         const byPlano = groupBy(eixoLeaves, a => a.n2 || '(sem plano)')
         const eixoPlanos = allPlanos
           .filter(p => p.program_id === prog.id && p.eixo?.name === eixoName)
@@ -760,16 +753,16 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
           const acts = byPlano.get(plano.name)
           if (!acts) continue
           seen.add(plano.name)
-          rows.push({ ...buildRow(plano.name, calcMetrics(acts, effectiveMap), false, acts, effectiveMap), _n1: eixoName, _n2: plano.name, _indent: 2 })
+          rows.push({ ...buildRow(plano.name, calcMetrics(acts, effectiveMap), false, acts, all, 2), _n1: eixoName, _n2: plano.name, _indent: 2 })
         }
         for (const [n2, acts] of byPlano) {
           if (seen.has(n2)) continue
-          rows.push({ ...buildRow(n2, calcMetrics(acts, effectiveMap), false, acts, effectiveMap), _n1: eixoName, _n2: n2, _indent: 2 })
+          rows.push({ ...buildRow(n2, calcMetrics(acts, effectiveMap), false, acts, all, 2), _n1: eixoName, _n2: n2, _indent: 2 })
         }
       }
     }
     return rows
-  }, [tableChip, leaves, programs, allEixos, allPlanos, effectiveMap])
+  }, [tableChip, leaves, programs, allEixos, allPlanos, effectiveMap, all])
 
 
   const sortedTableRows = useMemo(
@@ -1045,7 +1038,7 @@ export default function Dashboard() {
     return {
       _isTotals: true,
       nome:      'TOTAL',
-      _estado:   m.total > 0 ? groupState(accessibleLeaves, effectiveMap) : null,
+      _estado:   m.total > 0 ? getGroupStatus(accessibleLeaves, activities, TODAY, 0) : null,
       total:      m.total,
       concluidas: m.concluidas,
       em_dia:     m.em_dia,
@@ -1059,7 +1052,7 @@ export default function Dashboard() {
         ? safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100 : null,
       cd_obj:     100,
     }
-  }, [m, accessibleLeaves, effectiveMap])
+  }, [m, accessibleLeaves, activities])
 
   // ── Row click → navigate to Actividades with appropriate filter ─
   function handleRowClick(row: Record<string, unknown>) {
@@ -1271,6 +1264,7 @@ export default function Dashboard() {
         onRowClick={handleRowClick}
         effectiveMap={effectiveMap}
         labels={labels}
+        all={activities}
       />
     </>
   )
