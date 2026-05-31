@@ -180,8 +180,13 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     })
   }, [filters, allPlanos])
 
+  const ctxValue = useMemo(
+    () => ({ filters, setFilter, resetFilters, getFilteredActivities, ownerOptions, sponsorOptions, personIdToName }),
+    [filters, setFilter, resetFilters, getFilteredActivities, ownerOptions, sponsorOptions, personIdToName],
+  )
+
   return (
-    <FilterContext.Provider value={{ filters, setFilter, resetFilters, getFilteredActivities, ownerOptions, sponsorOptions, personIdToName }}>
+    <FilterContext.Provider value={ctxValue}>
       {children}
     </FilterContext.Provider>
   )

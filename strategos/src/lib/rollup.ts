@@ -281,3 +281,152 @@ export function getGroupStatus(
   if (bf && today > bf && pct < 100) return 'Em atraso'
   return statusFromDelta(target - pct, band)
 }
+
+// ── Bottom-up effective computation ─────────────────────────────
+
+/** Fully-computed effective values for one activity (from computeEffectiveMap). */
+export interface EffectiveRecord {
+  pct: number
+  target: number
+  bs: string | null
+  /** Leaf = own bf (no finish fallback). Parent = max of descendant-leaf (bf ?? finish). */
+  bf: string | null
+  rs: string | null
+  rf: string | null
+  /** True when every descendant leaf has pct >= 100. */
+  allAt100: boolean
+  /** True when the activity or any descendant leaf has baseline dates. */
+  hasDatedLeaf: boolean
+  status: RowState
+}
+
+function actKeyOf(a: Activity): string {
+  switch (a.level) {
+    case 3: return `3|${a.n1}|${a.n2}|${a.n3}`
+    case 4: return `4|${a.n1}|${a.n2}|${a.n3}|${a.n4}`
+    case 5: return `5|${a.n1}|${a.n2}|${a.n3}|${a.n4}|${a.n5}`
+    case 6: return `6|${a.n1}|${a.n2}|${a.n3}|${a.n4}|${a.n5}|${a.n6}`
+    default: return `${a.level}|${a.id}`
+  }
+}
+
+function parentKeyOf(a: Activity): string | null {
+  switch (a.level) {
+    case 4: return `3|${a.n1}|${a.n2}|${a.n3}`
+    case 5: return `4|${a.n1}|${a.n2}|${a.n3}|${a.n4}`
+    case 6: return `5|${a.n1}|${a.n2}|${a.n3}|${a.n4}|${a.n5}`
+    default: return null
+  }
+}
+
+function status3step(
+  level: number,
+  pct: number,
+  bfDeadline: string | null,
+  target: number,
+  allAt100: boolean,
+  today: string,
+): RowState {
+  const band = level >= 3 ? THRESHOLD_LEAVES : THRESHOLD_AGGREGATES
+  if (allAt100) return 'Concluída'
+  if (bfDeadline && today > bfDeadline && pct < 100) return 'Em atraso'
+  return statusFromDelta(target - pct, band)
+}
+
+/**
+ * Single bottom-up O(n log n) pass: computes effective pct, target, dates, and
+ * status for every activity. Semantically identical to calling getEffectivePct +
+ * getEffectiveDates + getEffectiveTarget + getEffectiveStatus per activity.
+ */
+export function computeEffectiveMap(
+  activities: Activity[],
+  today: string,
+): Map<string, EffectiveRecord> {
+  // Step 1: build parent→children index in O(n)
+  const childrenByParentKey = new Map<string, Activity[]>()
+  for (const a of activities) {
+    const pk = parentKeyOf(a)
+    if (pk === null) continue
+    let arr = childrenByParentKey.get(pk)
+    if (!arr) { arr = []; childrenByParentKey.set(pk, arr) }
+    arr.push(a)
+  }
+
+  // Step 2: process level DESC (6→3) so every child is in byKey before its parent
+  const byKey = new Map<string, { rec: EffectiveRecord; bfProp: string | null }>()
+  const sorted = activities.slice().sort((a, b) => b.level - a.level)
+
+  for (const a of sorted) {
+    if (a.level < 3 || a.level > 6) continue
+
+    const myKey    = actKeyOf(a)
+    const children = childrenByParentKey.get(myKey) ?? []
+
+    if (children.length === 0) {
+      // ── Leaf ──────────────────────────────────────────────────────────────
+      const bfProp = a.bf ?? a.finish          // deadline bf (matches getEffectiveStatus + rollupDateRange)
+      const hdl    = !!(a.bs && bfProp)        // matches hasDatedLeaf leaf case
+      const target = leafPctPrev(a, today)
+      byKey.set(myKey, {
+        bfProp,
+        rec: {
+          pct: a.pct,
+          target,
+          bs: a.bs,
+          bf: a.bf,                            // display bf: no finish fallback (matches getEffectiveDates leaf)
+          rs: a.rs,
+          rf: a.rf,
+          allAt100:     a.pct >= 100,
+          hasDatedLeaf: hdl,
+          status: status3step(a.level, a.pct, bfProp, target, a.pct >= 100, today),
+        },
+      })
+    } else {
+      // ── Aggregate ────────────────────────────────────────────────────────
+      const ce  = children.map(c => byKey.get(actKeyOf(c))!)
+      const pct = ce.reduce((s, e) => s + e.rec.pct, 0) / ce.length
+
+      let bs: string | null     = null
+      let bfProp: string | null = null
+      let rs: string | null     = null
+      let rf: string | null     = null
+      for (const e of ce) {
+        const r = e.rec
+        if (r.bs        && (!bs     || r.bs     < bs))     bs     = r.bs
+        if (e.bfProp    && (!bfProp || e.bfProp > bfProp)) bfProp = e.bfProp
+        if (r.rs        && (!rs     || r.rs     < rs))     rs     = r.rs
+        if (r.rf        && (!rf     || r.rf     > rf))     rf     = r.rf
+      }
+
+      const dated        = ce.filter(e => e.rec.hasDatedLeaf)
+      const target       = dated.length > 0
+        ? dated.reduce((s, e) => s + e.rec.target, 0) / dated.length
+        : 0
+      const allAt100     = ce.every(e => e.rec.allAt100)
+      const hasDatedLeaf = ce.some(e => e.rec.hasDatedLeaf)
+
+      byKey.set(myKey, {
+        bfProp,
+        rec: {
+          pct,
+          target,
+          bs,
+          bf: bfProp,   // parent display bf = propagated (includes leaf finish fallback via bfProp)
+          rs,
+          rf,
+          allAt100,
+          hasDatedLeaf,
+          status: status3step(a.level, pct, bfProp, target, allAt100, today),
+        },
+      })
+    }
+  }
+
+  // Step 3: project structural-key map → activity-id map
+  const result = new Map<string, EffectiveRecord>()
+  for (const a of activities) {
+    const entry = byKey.get(actKeyOf(a))
+    if (entry) result.set(a.id, entry.rec)
+  }
+  return result
+}

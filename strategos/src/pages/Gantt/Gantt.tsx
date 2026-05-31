@@ -563,6 +563,29 @@ export default function Gantt() {
     [sortedActivities, programs, multiProg]
   )
 
+  const groupStatusMap = useMemo(() => {
+    const m = new Map<string, RowState>()
+    const allN1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
+    if (n0tree) {
+      for (const n0g of n0tree) {
+        m.set(`n0:${n0g.progId}`, getGroupStatus(n0g.allActs.filter(a => a.level === 4), activities, TODAY, 0))
+      }
+    }
+    for (const n1g of allN1groups) {
+      m.set(`n1:${n1g.n1}`, getGroupStatus(n1g.allActs.filter(a => a.level === 4), activities, TODAY, 1))
+      for (const n2g of n1g.n2groups) {
+        m.set(`n2:${n1g.n1}:${n2g.n2}`, getGroupStatus(n2g.allActs.filter(a => a.level === 4), activities, TODAY, 2))
+        for (const n3g of n2g.n3groups) {
+          if (n3g.n3) {
+            const n3children = n3g.acts.filter(a => a.level !== 3)
+            m.set(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`, getGroupStatus(n3children.filter(a => a.level === 4), activities, TODAY, 3))
+          }
+        }
+      }
+    }
+    return m
+  }, [n0tree, tree, activities])
+
   const [scale, setScale]         = useState<Scale>('Mês')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [tooltip, setTooltip]     = useState<TooltipState | null>(null)
@@ -699,7 +722,7 @@ export default function Gantt() {
       const n1key = `n1:${n1g.n1}`
       const n1col = collapsed.has(n1key)
       const n1leaves = n1g.allActs.filter(a => a.level === 4)
-      const n1st  = getGroupStatus(n1leaves, activities, TODAY, 1)
+      const n1st  = groupStatusMap.get(n1key) ?? 'Em dia'
       const n1dr  = groupDateRange(n1g.allActs, eff)
       const showLabel = firstRow; firstRow = false
 
@@ -729,7 +752,7 @@ export default function Gantt() {
         const n2key = `n2:${n1g.n1}:${n2g.n2}`
         const n2col = collapsed.has(n2key)
         const n2leaves = n2g.allActs.filter(a => a.level === 4)
-        const n2st  = getGroupStatus(n2leaves, activities, TODAY, 2)
+        const n2st  = groupStatusMap.get(n2key) ?? 'Em dia'
         const n2dr  = groupDateRange(n2g.allActs, eff)
 
         rows.push(
@@ -819,7 +842,7 @@ export default function Gantt() {
           const n3key = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
           const n3col = collapsed.has(n3key)
           const n3leaves = n3ChildLeaves.filter(a => a.level === 4)
-          const n3st  = getGroupStatus(n3leaves, activities, TODAY, 3)
+          const n3st  = groupStatusMap.get(n3key) ?? 'Em dia'
           const n3dr  = groupDateRange(n3ChildLeaves, eff)
 
           rows.push(
@@ -879,7 +902,7 @@ export default function Gantt() {
       const n0key = `n0:${n0g.progId}`
       const n0col = collapsed.has(n0key)
       const n0leaves = n0g.allActs.filter(a => a.level === 4)
-      const n0st  = getGroupStatus(n0leaves, activities, TODAY, 0)
+      const n0st  = groupStatusMap.get(n0key) ?? 'Em dia'
       const n0dr  = groupDateRange(n0g.allActs, eff)
       const showLabel = firstRow; firstRow = false
 

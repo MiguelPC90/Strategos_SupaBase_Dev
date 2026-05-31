@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getDirectChildren, getEffectivePct, rollupEffectivePct, getDescendantLeaves, getEffectiveStatus, getEffectiveDates, getEffectiveTarget, getGroupStatus } from './rollup'
+import { getDirectChildren, getEffectivePct, rollupEffectivePct, getDescendantLeaves, getEffectiveStatus, getEffectiveDates, getEffectiveTarget, getGroupStatus, computeEffectiveMap } from './rollup'
 import type { Activity } from '../types/index'
 
 // ── Minimal activity factory ───────────────────────────────────
@@ -380,5 +380,91 @@ describe('getGroupStatus', () => {
   // Test 9 — empty n4Leaves → Em dia
   it('empty n4Leaves returns Em dia', () => {
     expect(getGroupStatus([], [], TODAY, 2)).toBe('Em dia')
+  })
+})
+
+// ── computeEffectiveMap parity ────────────────────────────────
+// Multi-level fixture: N4→N5, N4→N5→N6, leaf-only N4, finish-only deadline
+// Verifies that the bottom-up single pass produces identical output to
+// calling getEffectivePct + getEffectiveDates + getEffectiveTarget + getEffectiveStatus
+// individually for every activity.
+
+describe('computeEffectiveMap parity', () => {
+  const D = TODAY  // '2026-05-28'
+
+  // N4 "Done": two N5 leaves each at 100% → Concluída
+  const p4Done = mkAct({ id: 'p4Done', level: 4, name: 'Done', n3: 'R', n4: 'Done', pct: 0 })
+  const p5D1   = mkAct({ id: 'p5D1',  level: 5, name: 'D1',   n3: 'R', n4: 'Done', n5: 'D1', pct: 100, bs: '2026-01-01', bf: D })
+  const p5D2   = mkAct({ id: 'p5D2',  level: 5, name: 'D2',   n3: 'R', n4: 'Done', n5: 'D2', pct: 100, bs: '2026-01-01', bf: D })
+
+  // N4 "Late": one N5 leaf past deadline → Em atraso
+  const p4Late = mkAct({ id: 'p4Late', level: 4, name: 'Late', n3: 'R', n4: 'Late', pct: 0 })
+  const p5L1   = mkAct({ id: 'p5L1',  level: 5, name: 'L1',   n3: 'R', n4: 'Late', n5: 'L1', pct: 50, bs: '2020-01-01', bf: '2022-01-01' })
+
+  // N4 "Deep": N4 → N5 → two N6 leaves (unbalanced targets)
+  const p4Deep = mkAct({ id: 'p4Deep', level: 4, name: 'Deep', n3: 'R', n4: 'Deep', pct: 0 })
+  const p5DS   = mkAct({ id: 'p5DS',   level: 5, name: 'DS',   n3: 'R', n4: 'Deep', n5: 'DS', pct: 0 })
+  const p6G1   = mkAct({ id: 'p6G1',   level: 6, name: 'G1',   n3: 'R', n4: 'Deep', n5: 'DS', n6: 'G1', pct: 30, bs: '2026-01-01', bf: D })
+  const p6G2   = mkAct({ id: 'p6G2',   level: 6, name: 'G2',   n3: 'R', n4: 'Deep', n5: 'DS', n6: 'G2', pct: 70, bs: '2026-07-01', bf: '2026-12-31' })
+
+  // N4 "Fin": leaf with finish set but bf null (tests bfProp/finish-fallback path)
+  const p4Fin  = mkAct({ id: 'p4Fin',  level: 4, name: 'Fin',  n3: 'R', n4: 'Fin',  pct: 40, bs: '2021-01-01', finish: '2022-01-01' })
+
+  const all = [p4Done, p5D1, p5D2, p4Late, p5L1, p4Deep, p5DS, p6G1, p6G2, p4Fin]
+  const ε   = 1e-9
+
+  it('pct matches getEffectivePct for every activity', () => {
+    const m = computeEffectiveMap(all, D)
+    for (const a of all) {
+      expect(Math.abs(m.get(a.id)!.pct - getEffectivePct(a, all))).toBeLessThan(ε)
+    }
+  })
+
+  it('dates match getEffectiveDates for every activity', () => {
+    const m = computeEffectiveMap(all, D)
+    for (const a of all) {
+      const exp = getEffectiveDates(a, all)
+      const act = m.get(a.id)!
+      expect(act.bs).toBe(exp.bs)
+      expect(act.bf).toBe(exp.bf)
+      expect(act.rs).toBe(exp.rs)
+      expect(act.rf).toBe(exp.rf)
+    }
+  })
+
+  it('target matches getEffectiveTarget for every activity', () => {
+    const m = computeEffectiveMap(all, D)
+    for (const a of all) {
+      expect(Math.abs(m.get(a.id)!.target - getEffectiveTarget(a, all, D))).toBeLessThan(ε)
+    }
+  })
+
+  it('status matches getEffectiveStatus for every activity', () => {
+    const m = computeEffectiveMap(all, D)
+    for (const a of all) {
+      expect(m.get(a.id)!.status).toBe(getEffectiveStatus(a, all, D))
+    }
+  })
+
+  it('finish-only leaf: display bf is null but status is Em atraso', () => {
+    const m = computeEffectiveMap(all, D)
+    expect(m.get(p4Fin.id)!.bf).toBeNull()                    // display bf = a.bf = null
+    expect(m.get(p4Fin.id)!.status).toBe('Em atraso')         // finish-fallback deadline fires
+    expect(m.get(p4Fin.id)!.status).toBe(getEffectiveStatus(p4Fin, all, D))
+  })
+
+  it('allAt100 propagates: Done subtree true, Late/Deep/Fin false', () => {
+    const m = computeEffectiveMap(all, D)
+    expect(m.get(p4Done.id)!.allAt100).toBe(true)
+    expect(m.get(p4Late.id)!.allAt100).toBe(false)
+    expect(m.get(p4Deep.id)!.allAt100).toBe(false)
+    expect(m.get(p4Fin.id)!.allAt100).toBe(false)
+  })
+
+  it('getGroupStatus sanity: N4-leaf group status is consistent with individual statuses', () => {
+    const n4Leaves = all.filter(a => a.level === 4)
+    const gs = getGroupStatus(n4Leaves, all, D, 2)
+    // p4Late has past deadline with pct<100 → group should be Em atraso at any band
+    expect(gs).toBe('Em atraso')
   })
 })

@@ -406,6 +406,28 @@ export default function Actividades() {
     [finalActs, eff],
   )
 
+  const groupStatusMap = useMemo(() => {
+    const m = new Map<string, RowState>()
+    const allN1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
+    if (n0tree) {
+      for (const n0g of n0tree) {
+        m.set(`n0:${n0g.progId}`, getGroupStatus(n0g.allActs.filter(a => a.level === 4), activities, TODAY, 0))
+      }
+    }
+    for (const n1g of allN1groups) {
+      m.set(`n1:${n1g.n1}`, getGroupStatus(n1g.allActs.filter(a => a.level === 4), activities, TODAY, 1))
+      for (const n2g of n1g.n2groups) {
+        m.set(`n2:${n1g.n1}:${n2g.n2}`, getGroupStatus(n2g.allActs.filter(a => a.level === 4), activities, TODAY, 2))
+        for (const n3g of n2g.n3groups) {
+          if (n3g.n3) {
+            m.set(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`, getGroupStatus(n3g.acts.filter(a => a.level === 4), activities, TODAY, 3))
+          }
+        }
+      }
+    }
+    return m
+  }, [n0tree, tree, activities])
+
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   // Auto-expand while search is active
@@ -456,7 +478,7 @@ export default function Actividades() {
       const n1col    = collapsed.has(n1key)
       const n1leaves = n1g.allActs.filter(a => a.level === 4)
       const n1stats  = computeStats(n1leaves, eff)
-      const n1state  = getGroupStatus(n1leaves, activities, TODAY, 1)
+      const n1state  = groupStatusMap.get(n1key) ?? 'Em dia'
 
       rows.push(
         <tr key={n1key} className="act-row-n1">
@@ -484,7 +506,7 @@ export default function Actividades() {
         const n2col    = collapsed.has(n2key)
         const n2leaves = n2g.allActs.filter(a => a.level === 4)
         const n2stats  = computeStats(n2leaves, eff)
-        const n2state  = getGroupStatus(n2leaves, activities, TODAY, 2)
+        const n2state  = groupStatusMap.get(n2key) ?? 'Em dia'
 
         rows.push(
           <tr key={n2key} className="act-row-n2">
@@ -571,7 +593,7 @@ export default function Actividades() {
           const n3col    = collapsed.has(n3key)
           const n3leaves = n3g.acts.filter(a => a.level === 4)
           const n3stats  = computeStats(n3leaves, eff)
-          const n3state  = getGroupStatus(n3leaves, activities, TODAY, 3)
+          const n3state  = groupStatusMap.get(n3key) ?? 'Em dia'
 
           rows.push(
             <tr key={n3key} className="act-row-n3">
@@ -629,7 +651,7 @@ export default function Actividades() {
       const n0col    = collapsed.has(n0key)
       const n0leaves = n0g.allActs.filter(a => a.level === 4)
       const n0stats  = computeStats(n0leaves, eff)
-      const n0state  = getGroupStatus(n0leaves, activities, TODAY, 0)
+      const n0state  = groupStatusMap.get(n0key) ?? 'Em dia'
 
       rows.push(
         <tr key={n0key} className="act-row-n0">
