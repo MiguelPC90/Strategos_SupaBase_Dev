@@ -1,5 +1,5 @@
 import './Gantt.css'
-import { useState, useMemo, useCallback, useRef, useLayoutEffect, useEffect, type ReactNode } from 'react'
+import { memo, useState, useMemo, useCallback, useRef, useLayoutEffect, useEffect, type ReactNode } from 'react'
 import type { JSX } from 'react'
 import { ChevronDown, ChevronRight, X, CheckCircle2, CircleDot, AlertCircle, XCircle } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
@@ -46,9 +46,9 @@ const PILL_CLASS: Record<RowState, string> = {
   'Concluída': 'done', 'Em dia': 'ontrack', 'Em risco': 'risk', 'Em atraso': 'late',
 }
 
-function StatusPill({ state }: { state: RowState }) {
+const StatusPill = memo(function StatusPill({ state }: { state: RowState }) {
   return <span className={`status-pill ${PILL_CLASS[state]}`}>{state}</span>
-}
+})
 
 function highlightMatch(text: string, query: string): ReactNode {
   if (!query.trim()) return text
@@ -325,8 +325,10 @@ const STICKY_W = COL_NAME + COL_STATUS + COL_EXEC  // 420px left fixed columns
 const HEADER_H = 29          // approximate thead height (7px padding × 2 + 15px text)
 
 // ── Dependency arrow types ─────────────────────────────────────
-interface RowInfo { id: string; rowIndex: number; bs: string | null; bf: string | null }
-interface Arrow   { id: string; fromX: number; fromY: number; toX: number; toY: number; depType: DependencyType }
+interface RowInfo  { id: string; rowIndex: number; bs: string | null; bf: string | null }
+interface Arrow    { id: string; fromX: number; fromY: number; toX: number; toY: number; depType: DependencyType }
+interface GroupData { status: RowState; bs: string | null; bf: string | null; rs: string | null; rf: string | null; pct: number }
+const EMPTY_GROUP_DATA: GroupData = { status: 'Em dia', bs: null, bf: null, rs: null, rf: null, pct: 0 }
 
 // ── ArrowPath ─────────────────────────────────────────────────
 function ArrowPath({ arrow }: { arrow: Arrow }) {
@@ -461,7 +463,9 @@ interface BarProps {
   status: RowState
 }
 
-function GanttBar({ start, end, rangeStart, totalMs, variant, lane, status }: BarProps) {
+// rangeStart is a Date — its reference changes when the date range recomputes, so GanttBar
+// re-renders on range changes even with memo. That's correct behaviour.
+const GanttBar = memo(function GanttBar({ start, end, rangeStart, totalMs, variant, lane, status }: BarProps) {
   if (!start || !end || totalMs <= 0) return null
   const s = new Date(start).getTime()
   const e = new Date(end).getTime()
@@ -480,7 +484,7 @@ function GanttBar({ start, end, rangeStart, totalMs, variant, lane, status }: Ba
       style={{ left: `${leftPct}%`, width: `${widthPct}%`, background: bg }}
     />
   )
-}
+})
 
 // ── Main component ─────────────────────────────────────────────
 export default function Gantt() {
@@ -565,28 +569,35 @@ export default function Gantt() {
     [sortedActivities, programs, multiProg]
   )
 
-  const groupStatusMap = useMemo(() => {
-    const m = new Map<string, RowState>()
+  const groupDataMap = useMemo(() => {
+    const m = new Map<string, GroupData>()
     const allN1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
+
+    const entry = (leaves4: Activity[], allActs: Activity[], level: number): GroupData => {
+      const status = getGroupStatus(leaves4, activities, TODAY, level)
+      const dr = groupDateRange(allActs, eff)
+      return { status, bs: dr.bs, bf: dr.bf, rs: dr.rs, rf: dr.rf, pct: groupPct(leaves4, eff) }
+    }
+
     if (n0tree) {
       for (const n0g of n0tree) {
-        m.set(`n0:${n0g.progId}`, getGroupStatus(n0g.allActs.filter(a => a.level === 4), activities, TODAY, 0))
+        m.set(`n0:${n0g.progId}`, entry(n0g.allActs.filter(a => a.level === 4), n0g.allActs, 0))
       }
     }
     for (const n1g of allN1groups) {
-      m.set(`n1:${n1g.n1}`, getGroupStatus(n1g.allActs.filter(a => a.level === 4), activities, TODAY, 1))
+      m.set(`n1:${n1g.n1}`, entry(n1g.allActs.filter(a => a.level === 4), n1g.allActs, 1))
       for (const n2g of n1g.n2groups) {
-        m.set(`n2:${n1g.n1}:${n2g.n2}`, getGroupStatus(n2g.allActs.filter(a => a.level === 4), activities, TODAY, 2))
+        m.set(`n2:${n1g.n1}:${n2g.n2}`, entry(n2g.allActs.filter(a => a.level === 4), n2g.allActs, 2))
         for (const n3g of n2g.n3groups) {
           if (n3g.n3) {
-            const n3children = n3g.acts.filter(a => a.level !== 3)
-            m.set(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`, getGroupStatus(n3children.filter(a => a.level === 4), activities, TODAY, 3))
+            const n3ch = n3g.acts.filter(a => a.level !== 3)
+            m.set(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`, entry(n3ch.filter(a => a.level === 4), n3ch, 3))
           }
         }
       }
     }
     return m
-  }, [n0tree, tree, activities])
+  }, [n0tree, tree, activities, eff])
 
   const [scale, setScale]         = useState<Scale>('Mês')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -644,6 +655,84 @@ export default function Gantt() {
   const colW        = COL_WIDTH[scale]
   const nPeriodCols = Math.max(periods.length, 1)
   const timelineW   = nPeriodCols * colW
+
+  // ── Memoised row-index map (keyed on tree + collapse + eff) ───────────────
+  const rowInfoMap = useMemo(() => {
+    const m = new Map<string, RowInfo>()
+    let idx = 0
+
+    const visitN1Rows = (n1groups: N1Group[]) => {
+      for (const n1g of n1groups) {
+        idx++ // N1 header row
+        if (collapsed.has(`n1:${n1g.n1}`)) continue
+        for (const n2g of n1g.n2groups) {
+          idx++ // N2 header row
+          if (collapsed.has(`n2:${n1g.n1}:${n2g.n2}`)) continue
+          for (const n3g of n2g.n3groups) {
+            if (!n3g.n3) {
+              for (const a of n3g.acts) {
+                const ev = eff.get(a.id)
+                m.set(a.id, { id: a.id, rowIndex: idx, bs: ev?.bs ?? a.bs, bf: ev?.bf ?? a.bf })
+                idx++
+              }
+              continue
+            }
+            const n3ch = n3g.acts.filter(a => a.level !== 3)
+            if (n3ch.length === 0) {
+              const rep = n3g.acts.find(a => a.level === 3)
+              if (rep) {
+                const ev = eff.get(rep.id)
+                m.set(rep.id, { id: rep.id, rowIndex: idx, bs: ev?.bs ?? rep.bs, bf: ev?.bf ?? rep.bf })
+                idx++
+              }
+              continue
+            }
+            idx++ // N3 header row
+            if (collapsed.has(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`)) continue
+            for (const a of n3ch) {
+              const ev = eff.get(a.id)
+              m.set(a.id, { id: a.id, rowIndex: idx, bs: ev?.bs ?? a.bs, bf: ev?.bf ?? a.bf })
+              idx++
+            }
+          }
+        }
+      }
+    }
+
+    if (n0tree) {
+      for (const n0g of n0tree) {
+        idx++ // N0 header row
+        if (!collapsed.has(`n0:${n0g.progId}`)) visitN1Rows(n0g.n1groups)
+      }
+    } else {
+      visitN1Rows(tree)
+    }
+    return m
+  }, [n0tree, tree, collapsed, eff])
+
+  // ── Memoised dependency arrows ─────────────────────────────────
+  const arrows = useMemo((): Arrow[] => {
+    if (totalMs <= 0) return []
+    const result: Arrow[] = []
+    for (const dep of dependencies) {
+      const pred = rowInfoMap.get(dep.predecessor_id)
+      const suc  = rowInfoMap.get(dep.successor_id)
+      if (!pred || !suc) continue
+      const fromDateStr = dep.dep_type === 'FS' || dep.dep_type === 'FF' ? pred.bf : pred.bs
+      const toDateStr   = dep.dep_type === 'FS' || dep.dep_type === 'SS' ? suc.bs  : suc.bf
+      if (!fromDateStr || !toDateStr) continue
+      const ms = rangeStart.getTime()
+      result.push({
+        id: dep.id,
+        fromX: ((new Date(fromDateStr).getTime() - ms) / totalMs) * timelineW,
+        fromY: pred.rowIndex * ROW_H + ROW_H / 2,
+        toX:   ((new Date(toDateStr).getTime()   - ms) / totalMs) * timelineW,
+        toY:   suc.rowIndex  * ROW_H + ROW_H / 2,
+        depType: dep.dep_type,
+      })
+    }
+    return result
+  }, [rowInfoMap, dependencies, rangeStart, totalMs, timelineW])
 
   // ── Timeline cell factory ──────────────────────────────────────
   function makeTimeline(
@@ -713,8 +802,6 @@ export default function Gantt() {
 
   // ── Build rows ─────────────────────────────────────────────────
   const rows: JSX.Element[] = []
-  const visibleActs: RowInfo[] = []
-  let rowIdx = 0
   let firstRow = true
 
   // Inner helper — pushes N1/N2/N3/N4 rows into `rows`.
@@ -724,8 +811,7 @@ export default function Gantt() {
       const n1key = `n1:${n1g.n1}`
       const n1col = collapsed.has(n1key)
       const n1leaves = n1g.allActs.filter(a => a.level === 4)
-      const n1st  = groupStatusMap.get(n1key) ?? 'Em dia'
-      const n1dr  = groupDateRange(n1g.allActs, eff)
+      const n1d  = groupDataMap.get(n1key) ?? EMPTY_GROUP_DATA
       const showLabel = firstRow; firstRow = false
 
       rows.push(
@@ -738,24 +824,22 @@ export default function Gantt() {
                   <span className="gantt-name-n1" title={n1g.n1}>{highlightMatch(n1g.n1, searchQuery)}</span>
                 </div>
               </div>
-              <div className="gantt-sticky-status"><StatusPill state={n1st} /></div>
-              <div className="gantt-sticky-exec">{Math.round(groupPct(n1leaves, eff))}%</div>
+              <div className="gantt-sticky-status"><StatusPill state={n1d.status} /></div>
+              <div className="gantt-sticky-exec">{Math.round(n1d.pct)}%</div>
             </div>
           </td>
-          {makeTimeline(n1dr.bs, n1dr.bf, n1dr.rs ?? n1dr.bs, n1dr.rf ?? n1dr.bf, n1st, null, showLabel,
+          {makeTimeline(n1d.bs, n1d.bf, n1d.rs ?? n1d.bs, n1d.rf ?? n1d.bf, n1d.status, null, showLabel,
             { name: n1g.n1, leaves: n1leaves })}
           <td className="gantt-filler-td" />
         </tr>
       )
-      rowIdx++
       if (n1col) continue
 
       for (const n2g of n1g.n2groups) {
         const n2key = `n2:${n1g.n1}:${n2g.n2}`
         const n2col = collapsed.has(n2key)
         const n2leaves = n2g.allActs.filter(a => a.level === 4)
-        const n2st  = groupStatusMap.get(n2key) ?? 'Em dia'
-        const n2dr  = groupDateRange(n2g.allActs, eff)
+        const n2d  = groupDataMap.get(n2key) ?? EMPTY_GROUP_DATA
 
         rows.push(
           <tr key={n2key} className="gantt-row-n2">
@@ -767,16 +851,15 @@ export default function Gantt() {
                     <span className="gantt-name-n2" title={n2g.n2}>{highlightMatch(n2g.n2, searchQuery)}</span>
                   </div>
                 </div>
-                <div className="gantt-sticky-status"><StatusPill state={n2st} /></div>
-                <div className="gantt-sticky-exec">{Math.round(groupPct(n2leaves, eff))}%</div>
+                <div className="gantt-sticky-status"><StatusPill state={n2d.status} /></div>
+                <div className="gantt-sticky-exec">{Math.round(n2d.pct)}%</div>
               </div>
             </td>
-            {makeTimeline(n2dr.bs, n2dr.bf, n2dr.rs ?? n2dr.bs, n2dr.rf ?? n2dr.bf, n2st, null, false,
+            {makeTimeline(n2d.bs, n2d.bf, n2d.rs ?? n2d.bs, n2d.rf ?? n2d.bf, n2d.status, null, false,
               { name: n2g.n2, leaves: n2leaves })}
             <td className="gantt-filler-td" />
           </tr>
         )
-        rowIdx++
         if (n2col) continue
 
         for (const n3g of n2g.n3groups) {
@@ -802,8 +885,6 @@ export default function Gantt() {
                   <td className="gantt-filler-td" />
                 </tr>
               )
-              visibleActs.push({ id: a.id, rowIndex: rowIdx, bs: ev?.bs ?? a.bs, bf: ev?.bf ?? a.bf })
-              rowIdx++
             }
             continue
           }
@@ -835,8 +916,6 @@ export default function Gantt() {
                 <td className="gantt-filler-td" />
               </tr>
             )
-            visibleActs.push({ id: rep.id, rowIndex: rowIdx, bs: ev?.bs ?? rep.bs, bf: ev?.bf ?? rep.bf })
-            rowIdx++
             continue
           }
 
@@ -844,8 +923,7 @@ export default function Gantt() {
           const n3key = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
           const n3col = collapsed.has(n3key)
           const n3leaves = n3ChildLeaves.filter(a => a.level === 4)
-          const n3st  = groupStatusMap.get(n3key) ?? 'Em dia'
-          const n3dr  = groupDateRange(n3ChildLeaves, eff)
+          const n3d  = groupDataMap.get(n3key) ?? EMPTY_GROUP_DATA
 
           rows.push(
             <tr key={n3key} className="gantt-row-n3">
@@ -857,16 +935,15 @@ export default function Gantt() {
                       <span className="gantt-name-n3" title={n3g.n3}>{highlightMatch(n3g.n3, searchQuery)}</span>
                     </div>
                   </div>
-                  <div className="gantt-sticky-status"><StatusPill state={n3st} /></div>
-                  <div className="gantt-sticky-exec">{Math.round(groupPct(n3leaves, eff))}%</div>
+                  <div className="gantt-sticky-status"><StatusPill state={n3d.status} /></div>
+                  <div className="gantt-sticky-exec">{Math.round(n3d.pct)}%</div>
                 </div>
               </td>
-              {makeTimeline(n3dr.bs, n3dr.bf, n3dr.rs ?? n3dr.bs, n3dr.rf ?? n3dr.bf, n3st, null, false,
+              {makeTimeline(n3d.bs, n3d.bf, n3d.rs ?? n3d.bs, n3d.rf ?? n3d.bf, n3d.status, null, false,
                 { name: n3g.n3, leaves: n3leaves })}
               <td className="gantt-filler-td" />
             </tr>
           )
-          rowIdx++
           if (n3col) continue
 
           // Render only the real children — the N3 representative is excluded to avoid duplicates
@@ -890,8 +967,6 @@ export default function Gantt() {
                 <td className="gantt-filler-td" />
               </tr>
             )
-            visibleActs.push({ id: a.id, rowIndex: rowIdx, bs: ev?.bs ?? a.bs, bf: ev?.bf ?? a.bf })
-            rowIdx++
           }
         }
       }
@@ -904,8 +979,7 @@ export default function Gantt() {
       const n0key = `n0:${n0g.progId}`
       const n0col = collapsed.has(n0key)
       const n0leaves = n0g.allActs.filter(a => a.level === 4)
-      const n0st  = groupStatusMap.get(n0key) ?? 'Em dia'
-      const n0dr  = groupDateRange(n0g.allActs, eff)
+      const n0d  = groupDataMap.get(n0key) ?? EMPTY_GROUP_DATA
       const showLabel = firstRow; firstRow = false
 
       rows.push(
@@ -918,44 +992,21 @@ export default function Gantt() {
                   <span className="gantt-name-n0" title={n0g.progName}>{highlightMatch(n0g.progName, searchQuery)}</span>
                 </div>
               </div>
-              <div className="gantt-sticky-status"><StatusPill state={n0st} /></div>
-              <div className="gantt-sticky-exec">{Math.round(groupPct(n0leaves, eff))}%</div>
+              <div className="gantt-sticky-status"><StatusPill state={n0d.status} /></div>
+              <div className="gantt-sticky-exec">{Math.round(n0d.pct)}%</div>
             </div>
           </td>
-          {makeTimeline(n0dr.bs, n0dr.bf, n0dr.rs ?? n0dr.bs, n0dr.rf ?? n0dr.bf, n0st, null, showLabel,
+          {makeTimeline(n0d.bs, n0d.bf, n0d.rs ?? n0d.bs, n0d.rf ?? n0d.bf, n0d.status, null, showLabel,
             { name: n0g.progName, leaves: n0leaves })}
           <td className="gantt-filler-td" />
         </tr>
       )
-      rowIdx++
 
       if (!n0col) renderN1Rows(n0g.n1groups, 16)
     }
   } else {
     // Single program (or no programs): existing behaviour, no N0 header
     renderN1Rows(tree, 4)
-  }
-
-  // ── Dependency arrows ──────────────────────────────────────────
-  const xForDate = (d: string | null): number => {
-    if (!d || totalMs <= 0) return 0
-    return ((new Date(d).getTime() - rangeStart.getTime()) / totalMs) * timelineW
-  }
-
-  const rowsByActId = new Map(visibleActs.map(r => [r.id, r]))
-  const arrows: Arrow[] = []
-  for (const dep of dependencies) {
-    const pred = rowsByActId.get(dep.predecessor_id)
-    const suc  = rowsByActId.get(dep.successor_id)
-    if (!pred || !suc) continue
-    const fromDateStr = dep.dep_type === 'FS' || dep.dep_type === 'FF' ? pred.bf : pred.bs
-    const toDateStr   = dep.dep_type === 'FS' || dep.dep_type === 'SS' ? suc.bs  : suc.bf
-    if (!fromDateStr || !toDateStr) continue
-    const fromX = xForDate(fromDateStr)
-    const toX   = xForDate(toDateStr)
-    const fromY = pred.rowIndex * ROW_H + ROW_H / 2
-    const toY   = suc.rowIndex  * ROW_H + ROW_H / 2
-    arrows.push({ id: dep.id, fromX, fromY, toX, toY, depType: dep.dep_type })
   }
 
   return (
@@ -1104,7 +1155,7 @@ export default function Gantt() {
                     top: HEADER_H,
                     left: STICKY_W,
                     width: timelineW,
-                    height: rowIdx * ROW_H,
+                    height: rows.length * ROW_H,
                     pointerEvents: 'none',
                     zIndex: 4,
                     overflow: 'visible',

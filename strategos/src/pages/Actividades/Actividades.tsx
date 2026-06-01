@@ -1,5 +1,5 @@
 import './Actividades.css'
-import { useState, useMemo, useCallback, useRef, useEffect, type ReactNode } from 'react'
+import { memo, useState, useMemo, useCallback, useRef, useEffect, type ReactNode } from 'react'
 import { Link2, ChevronDown, ChevronRight, X, Check, CheckCircle2, CircleDot, AlertCircle, XCircle } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
@@ -255,7 +255,7 @@ function StatusFilterDropdown({ filter, setFilter }: StatusFilterDropdownProps) 
 }
 
 // ── Sub-components ─────────────────────────────────────────────
-function DualBar({ exec, execObj }: { exec: number; execObj: number }) {
+const DualBar = memo(function DualBar({ exec, execObj }: { exec: number; execObj: number }) {
   const state = computeRowState(exec, execObj)
   const fillColor = STATE_FILL[state]
   const r = Math.min(100, Math.max(0, exec))
@@ -271,9 +271,9 @@ function DualBar({ exec, execObj }: { exec: number; execObj: number }) {
       </span>
     </div>
   )
-}
+})
 
-function DeadlineCell({ bf, rf }: { bf: string | null; rf?: string | null }) {
+const DeadlineCell = memo(function DeadlineCell({ bf, rf }: { bf: string | null; rf?: string | null }) {
   const fmt = (d: string) => {
     const parts = d.split('-')
     return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : d
@@ -288,9 +288,9 @@ function DeadlineCell({ bf, rf }: { bf: string | null; rf?: string | null }) {
     )
   }
   return <td className={`act-td-c act-deadline${bf && bf < TODAY ? ' late' : ''}`}>{bf ? fmt(bf) : '—'}</td>
-}
+})
 
-function CdaCell({ concluidas, em_dia, em_risco, em_atraso }: { concluidas: number; em_dia: number; em_risco: number; em_atraso: number }) {
+const CdaCell = memo(function CdaCell({ concluidas, em_dia, em_risco, em_atraso }: { concluidas: number; em_dia: number; em_risco: number; em_atraso: number }) {
   return (
     <td className="act-td-c act-td-cda">
       <div className="act-cda" title={`Concluídas: ${concluidas} · Em dia: ${em_dia} · Em risco: ${em_risco} · Em atraso: ${em_atraso}`}>
@@ -313,7 +313,7 @@ function CdaCell({ concluidas, em_dia, em_risco, em_atraso }: { concluidas: numb
       </div>
     </td>
   )
-}
+})
 
 // ── Main component ─────────────────────────────────────────────
 export default function Actividades() {
@@ -332,6 +332,11 @@ export default function Actividades() {
   const multiProg = programs.length > 1
 
   const eff = useEffectiveValues(activities, TODAY)
+
+  const pctPrevMap = useMemo(
+    () => new Map(activities.map(a => [a.id, leafPctPrev(a, TODAY)])),
+    [activities],
+  )
 
   const programSortMap = useMemo(
     () => new Map(programs.map(p => [p.id, p.sort_order] as [string, number])),
@@ -534,7 +539,7 @@ export default function Actividades() {
         for (const n3g of n2g.n3groups) {
           if (!n3g.n3) {
             for (const a of n3g.acts) {
-              const pctPrev = leafPctPrev(a, TODAY)
+              const pctPrev = pctPrevMap.get(a.id) ?? 0
               const ast     = eff.get(a.id)?.status ?? 'Em dia'
               rows.push(
                 <tr key={a.id} className="act-row-n4">
@@ -565,7 +570,7 @@ export default function Actividades() {
 
           if (!n3HasChildren) {
             for (const a of n3g.acts) {
-              const pctPrev = leafPctPrev(a, TODAY)
+              const pctPrev = pctPrevMap.get(a.id) ?? 0
               const ast     = eff.get(a.id)?.status ?? 'Em dia'
               rows.push(
                 <tr key={a.id} className="act-row-n4">
@@ -619,7 +624,7 @@ export default function Actividades() {
           if (n3col) continue
 
           for (const a of n3ChildLeaves) {
-            const pctPrev = leafPctPrev(a, TODAY)
+            const pctPrev = pctPrevMap.get(a.id) ?? 0
             const ast     = eff.get(a.id)?.status ?? 'Em dia'
             rows.push(
               <tr key={a.id} className="act-row-n4">
