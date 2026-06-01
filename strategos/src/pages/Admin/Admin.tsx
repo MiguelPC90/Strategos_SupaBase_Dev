@@ -371,6 +371,7 @@ function AdminProgramas() {
     void qc.invalidateQueries({ queryKey: ['programs'] })
     void qc.invalidateQueries({ queryKey: ['eixos'] })
     void qc.invalidateQueries({ queryKey: ['planos'] })
+    void qc.invalidateQueries({ queryKey: ['activities'] })
   }
 
   useEffect(() => { void loadAll() }, [])

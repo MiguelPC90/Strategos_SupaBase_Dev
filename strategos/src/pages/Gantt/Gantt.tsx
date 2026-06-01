@@ -6,6 +6,7 @@ import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { useActivities } from '../../hooks/useActivities'
+import { applyStatusCutoff } from '../../lib/activityUtils'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
@@ -485,10 +486,11 @@ function GanttBar({ start, end, rangeStart, totalMs, variant, lane, status }: Ba
 export default function Gantt() {
   const { filters, getFilteredActivities } = useFilters()
   const labels = useProgramLabels(filters.programIds.length === 1 ? filters.programIds[0] : null)
-  const { activities, loading } = useActivities({
-    program_id: filters.programIds[0],
-    cutoffDate: filters.cutoffDate,
-  })
+  const { activities: rawActivities, loading } = useActivities({ program_id: filters.programIds[0] })
+  const activities = useMemo(
+    () => filters.cutoffDate ? rawActivities.map(a => applyStatusCutoff(a, filters.cutoffDate!)) : rawActivities,
+    [rawActivities, filters.cutoffDate],
+  )
   const { programs } = usePrograms()
   const { dependencies } = useActivityDependencies()
   const { planos } = usePlanos(filters.programIds[0])

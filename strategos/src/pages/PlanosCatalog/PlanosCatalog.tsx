@@ -1,5 +1,6 @@
 import './PlanosCatalog.css'
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { Star, LayoutList, LayoutGrid, Plus, MoreHorizontal } from 'lucide-react'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -117,6 +118,7 @@ function PlanoRowMenu({ planoId, openId, onOpen, onEdit, onDuplicate }: PlanoRow
 }
 
 export default function PlanosCatalog() {
+  const qc = useQueryClient()
   const { planos, loading, refetch } = usePlanos()
   const { programs } = usePrograms()
   const { people } = usePeople()
@@ -369,6 +371,7 @@ export default function PlanosCatalog() {
   const handleDuplicated = (newPlanoId: string) => {
     setDuplicateOpen(false)
     setDuplicateSource(null)
+    void qc.invalidateQueries({ queryKey: ['activities'] })
     navigate(`/planos/${newPlanoId}`)
   }
 
@@ -598,7 +601,7 @@ export default function PlanosCatalog() {
       <NovoPlanoModal
         isOpen={newPlanoOpen}
         onClose={() => setNewPlanoOpen(false)}
-        onSaved={() => refetch()}
+        onSaved={() => { refetch(); void qc.invalidateQueries({ queryKey: ['activities'] }) }}
         programId={programs.find(p => progFilter.includes(p.name))?.id ?? null}
         defaultEixoId={
           eixoFilter.length > 0
@@ -609,7 +612,7 @@ export default function PlanosCatalog() {
       <NovoPlanoModal
         isOpen={editPlano !== null}
         onClose={() => setEditPlano(null)}
-        onSaved={() => { refetch(); setEditPlano(null) }}
+        onSaved={() => { refetch(); void qc.invalidateQueries({ queryKey: ['activities'] }); setEditPlano(null) }}
         planoToEdit={editPlano}
         programId={editPlano?.program_id ?? null}
       />

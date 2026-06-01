@@ -15,6 +15,7 @@ import Card from '../../components/Card/Card'
 import Table, { type Column } from '../../components/Table/Table'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { useActivities } from '../../hooks/useActivities'
+import { applyStatusCutoff } from '../../lib/activityUtils'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
@@ -828,7 +829,11 @@ export default function Dashboard() {
   const { filters, setFilter, getFilteredActivities } = useFilters()
   const labels = useProgramLabels(filters.programIds.length === 1 ? filters.programIds[0] : null)
   const { hasAccess }                      = usePermissions()
-  const { activities, loading }            = useActivities({ cutoffDate: filters.cutoffDate })
+  const { activities: rawActivities, loading } = useActivities({})
+  const activities = useMemo(
+    () => filters.cutoffDate ? rawActivities.map(a => applyStatusCutoff(a, filters.cutoffDate!)) : rawActivities,
+    [rawActivities, filters.cutoffDate],
+  )
   const { programs }                       = usePrograms()
   const { eixos: allEixos }                = useEixos()
   const { planos: allPlanos }              = usePlanos()
