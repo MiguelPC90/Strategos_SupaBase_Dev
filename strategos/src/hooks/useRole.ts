@@ -1,6 +1,4 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { useAuth } from './useAuth'
+import { useProfile } from '../context/ProfileContext'
 
 type Role = 'admin' | 'program_manager' | 'editor' | 'sponsor' | 'stakeholder'
 
@@ -30,32 +28,17 @@ interface UseRoleResult {
 }
 
 export function useRole(): UseRoleResult {
-  const { user } = useAuth()
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { profile: profileData, loading } = useProfile()
 
-  useEffect(() => {
-    if (!user) {
-      setProfile(null)
-      setLoading(false)
-      return
-    }
-
-    setLoading(true)
-    supabase
-      .from('profiles')
-      .select('id, email, full_name, role, avatar_url')
-      .eq('id', user.id)
-      .single()
-      .then(({ data, error }) => {
-        if (error || !data) {
-          setProfile(null)
-        } else {
-          setProfile(data as Profile)
-        }
-        setLoading(false)
-      })
-  }, [user])
+  const profile: Profile | null = profileData
+    ? {
+        id:         profileData.id,
+        email:      profileData.email,
+        full_name:  profileData.fullName || null,
+        role:       profileData.role as Role,
+        avatar_url: null,
+      }
+    : null
 
   const role = profile?.role ?? null
   const canPotentiallyEdit = ['admin', 'program_manager', 'editor'].includes(role ?? '')
@@ -63,13 +46,13 @@ export function useRole(): UseRoleResult {
   return {
     profile,
     role,
-    isAdmin: role === 'admin',
+    isAdmin:          role === 'admin',
     isProgramManager: role === 'program_manager',
-    isEditor: role === 'editor',
-    isGestor: role === 'editor',
-    isSponsor: role === 'sponsor',
-    isStakeholder: role === 'stakeholder',
-    isViewer: !canPotentiallyEdit && role !== null,
+    isEditor:         role === 'editor',
+    isGestor:         role === 'editor',
+    isSponsor:        role === 'sponsor',
+    isStakeholder:    role === 'stakeholder',
+    isViewer:         !canPotentiallyEdit && role !== null,
     canPotentiallyEdit,
     loading,
   }

@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { UserPermission } from '../types/index'
@@ -20,21 +20,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [permissions, setPermissions] = useState<UserPermission[]>([])
+  const prevUserIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    // Hydrate from existing session immediately
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s)
-      setUser(s?.user ?? null)
+    function applySession(s: Session | null) {
+      const newId = s?.user?.id ?? null
+      if (newId !== prevUserIdRef.current) {
+        prevUserIdRef.current = newId
+        setSession(s)
+        setUser(s?.user ?? null)
+      }
       setLoading(false)
-    })
+    }
 
-    // Keep in sync with all subsequent auth events
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s)
-      setUser(s?.user ?? null)
-      setLoading(false)
-    })
+    supabase.auth.getSession().then(({ data: { session: s } }) => applySession(s))
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => applySession(s))
 
     return () => subscription.unsubscribe()
   }, [])
