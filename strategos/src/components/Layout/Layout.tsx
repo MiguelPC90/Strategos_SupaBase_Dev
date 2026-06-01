@@ -11,7 +11,7 @@ import { ToastList } from '../Toast/Toast'
 import { usePrograms } from '../../hooks/usePrograms'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useFavorites } from '../../hooks/useFavorites'
-import { supabase } from '../../lib/supabase'
+import { useAppConfig } from '../../hooks/useAppConfig'
 import { setThresholds } from '../../lib/rollup'
 import type { PageKey } from '../../types/index'
 import Breadcrumb from '../Breadcrumb/Breadcrumb'
@@ -194,37 +194,20 @@ export default function Layout() {
   const profileRef = useRef<HTMLDivElement>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
 
-  const [configLoaded, setConfigLoaded] = useState(false)
+  const { config: appConfig, loading: configLoading } = useAppConfig()
+  const configLoaded = !configLoading
 
   useEffect(() => {
-    let cancelled = false
-    supabase
-      .from('app_config')
-      .select('config_key,data')
-      .in('config_key', [
-        'status_delay_threshold_aggregates_low',  'status_delay_threshold_aggregates_high',
-        'status_delay_threshold_leaves_low',       'status_delay_threshold_leaves_high',
-      ])
-      .then(({ data }) => {
-        if (cancelled) return
-        if (data) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const map: Record<string, string> = {}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          for (const row of data as any[]) map[row.config_key] = row.data ?? ''
-          const aggLow   = parseInt(map['status_delay_threshold_aggregates_low']  ?? '15') || 15
-          const aggHigh  = parseInt(map['status_delay_threshold_aggregates_high'] ?? '25') || 25
-          const leafLow  = parseInt(map['status_delay_threshold_leaves_low']      ?? '5')  || 5
-          const leafHigh = parseInt(map['status_delay_threshold_leaves_high']     ?? '10') || 10
-          setThresholds(
-            { low: aggLow,  high: aggHigh },
-            { low: leafLow, high: leafHigh },
-          )
-        }
-        setConfigLoaded(true)
-      })
-    return () => { cancelled = true }
-  }, [])
+    if (configLoading) return
+    const aggLow   = parseInt(appConfig['status_delay_threshold_aggregates_low']  ?? '15') || 15
+    const aggHigh  = parseInt(appConfig['status_delay_threshold_aggregates_high'] ?? '25') || 25
+    const leafLow  = parseInt(appConfig['status_delay_threshold_leaves_low']      ?? '5')  || 5
+    const leafHigh = parseInt(appConfig['status_delay_threshold_leaves_high']     ?? '10') || 10
+    setThresholds(
+      { low: aggLow,  high: aggHigh },
+      { low: leafLow, high: leafHigh },
+    )
+  }, [appConfig, configLoading])
 
   useEffect(() => {
     function handle(e: MouseEvent) {

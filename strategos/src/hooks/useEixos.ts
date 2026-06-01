@@ -1,6 +1,17 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Eixo } from '../types/index'
+
+async function fetchEixos(program_id?: string): Promise<Eixo[]> {
+  let query = supabase
+    .from('eixos')
+    .select('*')
+    .order('sort_order', { ascending: true })
+  if (program_id) query = query.eq('program_id', program_id)
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  return (data ?? []) as Eixo[]
+}
 
 interface UseEixosResult {
   eixos: Eixo[]
@@ -10,34 +21,17 @@ interface UseEixosResult {
 }
 
 export function useEixos(program_id?: string): UseEixosResult {
-  const [eixos, setEixos]     = useState<Eixo[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState<string | null>(null)
-  const [tick, setTick]       = useState(0)
+  const qc = useQueryClient()
+  const key = program_id ? ['eixos', program_id] : ['eixos']
+  const { data, isLoading, error, refetch: rq } = useQuery({
+    queryKey: key,
+    queryFn: () => fetchEixos(program_id),
+  })
 
-  const refetch = useCallback(() => setTick(t => t + 1), [])
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-
-    let query = supabase
-      .from('eixos')
-      .select('*')
-      .order('sort_order', { ascending: true })
-
-    if (program_id) query = query.eq('program_id', program_id)
-
-    query.then(({ data, error: err }) => {
-      if (cancelled) return
-      if (err) setError(err.message)
-      else setEixos((data ?? []) as Eixo[])
-      setLoading(false)
-    })
-
-    return () => { cancelled = true }
-  }, [program_id, tick])
-
-  return { eixos, loading, error, refetch }
+  return {
+    eixos: data ?? [],
+    loading: isLoading,
+    error: error ? (error as Error).message : null,
+    refetch: () => { void qc.invalidateQueries({ queryKey: key }); void rq() },
+  }
 }

@@ -1,6 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Person } from '../types/index'
+
+async function fetchPeople(): Promise<Person[]> {
+  const { data, error } = await supabase
+    .from('people')
+    .select('*')
+    .order('name', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as Person[]
+}
 
 interface UsePeopleResult {
   people: Person[]
@@ -9,31 +18,14 @@ interface UsePeopleResult {
 }
 
 export function usePeople(): UsePeopleResult {
-  const [people, setPeople]   = useState<Person[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState<string | null>(null)
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['people'],
+    queryFn: fetchPeople,
+  })
 
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-
-    supabase
-      .from('people')
-      .select('*')
-      .order('name', { ascending: true })
-      .then(({ data, error: err }) => {
-        if (cancelled) return
-        if (err) {
-          setError(err.message)
-        } else {
-          setPeople((data ?? []) as Person[])
-        }
-        setLoading(false)
-      })
-
-    return () => { cancelled = true }
-  }, [])
-
-  return { people, loading, error }
+  return {
+    people: data ?? [],
+    loading: isLoading,
+    error: error ? (error as Error).message : null,
+  }
 }

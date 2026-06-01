@@ -1,6 +1,17 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Plano } from '../types/index'
+
+async function fetchPlanos(program_id?: string): Promise<Plano[]> {
+  let query = supabase
+    .from('planos')
+    .select('*, eixo:eixos(name, code)')
+    .order('sort_order', { ascending: true })
+  if (program_id) query = query.eq('program_id', program_id)
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  return (data ?? []) as unknown as Plano[]
+}
 
 interface UsePlanosResult {
   planos: Plano[]
@@ -10,34 +21,17 @@ interface UsePlanosResult {
 }
 
 export function usePlanos(program_id?: string): UsePlanosResult {
-  const [planos, setPlanos]   = useState<Plano[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState<string | null>(null)
-  const [tick, setTick]       = useState(0)
+  const qc = useQueryClient()
+  const key = program_id ? ['planos', program_id] : ['planos']
+  const { data, isLoading, error, refetch: rq } = useQuery({
+    queryKey: key,
+    queryFn: () => fetchPlanos(program_id),
+  })
 
-  const refetch = useCallback(() => setTick(t => t + 1), [])
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-
-    let query = supabase
-      .from('planos')
-      .select('*, eixo:eixos(name, code)')
-      .order('sort_order', { ascending: true })
-
-    if (program_id) query = query.eq('program_id', program_id)
-
-    query.then(({ data, error: err }) => {
-      if (cancelled) return
-      if (err) setError(err.message)
-      else setPlanos((data ?? []) as unknown as Plano[])
-      setLoading(false)
-    })
-
-    return () => { cancelled = true }
-  }, [program_id, tick])
-
-  return { planos, loading, error, refetch }
+  return {
+    planos: data ?? [],
+    loading: isLoading,
+    error: error ? (error as Error).message : null,
+    refetch: () => { void qc.invalidateQueries({ queryKey: key }); void rq() },
+  }
 }

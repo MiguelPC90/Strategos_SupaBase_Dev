@@ -1,6 +1,15 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { Program } from '../types/index'
+
+async function fetchPrograms(): Promise<Program[]> {
+  const { data, error } = await supabase
+    .from('programs')
+    .select('*')
+    .order('sort_order', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as Program[]
+}
 
 interface UseProgramsResult {
   programs: Program[]
@@ -10,34 +19,16 @@ interface UseProgramsResult {
 }
 
 export function usePrograms(): UseProgramsResult {
-  const [programs, setPrograms] = useState<Program[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [tick, setTick] = useState(0)
+  const qc = useQueryClient()
+  const { data, isLoading, error, refetch: rq } = useQuery({
+    queryKey: ['programs'],
+    queryFn: fetchPrograms,
+  })
 
-  const refetch = useCallback(() => setTick(t => t + 1), [])
-
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-
-    supabase
-      .from('programs')
-      .select('*')
-      .order('sort_order', { ascending: true })
-      .then(({ data, error: err }) => {
-        if (cancelled) return
-        if (err) {
-          setError(err.message)
-        } else {
-          setPrograms((data ?? []) as Program[])
-        }
-        setLoading(false)
-      })
-
-    return () => { cancelled = true }
-  }, [tick])
-
-  return { programs, loading, error, refetch }
+  return {
+    programs: data ?? [],
+    loading: isLoading,
+    error: error ? (error as Error).message : null,
+    refetch: () => { void qc.invalidateQueries({ queryKey: ['programs'] }); void rq() },
+  }
 }

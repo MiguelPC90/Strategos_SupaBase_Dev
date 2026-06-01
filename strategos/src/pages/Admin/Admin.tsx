@@ -1,5 +1,6 @@
 import './Admin.css'
 import { useState, useEffect, useRef, Fragment, type ChangeEvent } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Check, X, Pencil, Trash2, AlertCircle, FileText, Lock, Key, ChevronDown, ChevronRight, Info } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
 import { useBranding } from '../../context/BrandingContext'
@@ -337,6 +338,7 @@ function formatThresholdCell(inherited: boolean, ll: number, lh: number, al: num
 
 function AdminProgramas() {
   const { showToast } = useToast()
+  const qc = useQueryClient()
   const [programs, setPrograms] = useState<Program[]>([])
   const [eixos,    setEixos]    = useState<Eixo[]>([])
   const [planos,   setPlanos]   = useState<Plano[]>([])
@@ -366,6 +368,9 @@ function AdminProgramas() {
     setEixos((eixosRes.data ?? []) as Eixo[])
     setPlanos((planosRes.data ?? []) as unknown as Plano[])
     setLoading(false)
+    void qc.invalidateQueries({ queryKey: ['programs'] })
+    void qc.invalidateQueries({ queryKey: ['eixos'] })
+    void qc.invalidateQueries({ queryKey: ['planos'] })
   }
 
   useEffect(() => { void loadAll() }, [])
@@ -3072,6 +3077,7 @@ const SEVERITY_LABELS: Record<AlertSeverity, string> = {
 
 function AdminPlano() {
   const { showToast } = useToast()
+  const qc = useQueryClient()
   const [delayAggLow,  setDelayAggLow]  = useState(15)
   const [delayAggHigh, setDelayAggHigh] = useState(25)
   const [delayLvsLow,  setDelayLvsLow]  = useState(5)
@@ -3134,6 +3140,7 @@ function AdminPlano() {
       setErrorKey(key)
     } else {
       setSavedKey(key)
+      void qc.invalidateQueries({ queryKey: ['app_config'] })
       setTimeout(() => setSavedKey(prev => prev === key ? null : prev), 2300)
     }
   }
