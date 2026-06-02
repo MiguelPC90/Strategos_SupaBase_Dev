@@ -4,12 +4,15 @@ import { computeEffectiveMap } from '../lib/rollup'
 import type { RowState } from '../lib/rollup'
 
 export interface EffectiveValue {
-  pct:    number
-  bs:     string | null
-  bf:     string | null
-  rs:     string | null
-  rf:     string | null
-  status: RowState
+  pct:          number
+  target:       number
+  bs:           string | null
+  bf:           string | null
+  rs:           string | null
+  rf:           string | null
+  allAt100:     boolean
+  hasDatedLeaf: boolean
+  status:       RowState
 }
 
 export function useEffectiveValues(
@@ -20,7 +23,17 @@ export function useEffectiveValues(
     const full = computeEffectiveMap(activities, today)
     const map  = new Map<string, EffectiveValue>()
     for (const [id, r] of full) {
-      map.set(id, { pct: r.pct, bs: r.bs, bf: r.bf, rs: r.rs, rf: r.rf, status: r.status })
+      map.set(id, {
+        pct:          r.pct,
+        target:       r.target,
+        bs:           r.bs,
+        bf:           r.bf,
+        rs:           r.rs,
+        rf:           r.rf,
+        allAt100:     r.allAt100,
+        hasDatedLeaf: r.hasDatedLeaf,
+        status:       r.status,
+      })
     }
     return map
   }, [activities, today])

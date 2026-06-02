@@ -10,7 +10,7 @@ import { applyStatusCutoff } from '../../lib/activityUtils'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
-import { leafPctPrev, rollupPctPrev, getGroupStatus, type RowState } from '../../lib/rollup'
+import { leafPctPrev, rollupPctPrev, computeGroupStatusFromEff, type RowState } from '../../lib/rollup'
 import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
 import type { Activity, Program } from '../../types/index'
 import type { DependencyType } from '../../types/index'
@@ -574,7 +574,7 @@ export default function Gantt() {
     const allN1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
 
     const entry = (leaves4: Activity[], allActs: Activity[], level: number): GroupData => {
-      const status = getGroupStatus(leaves4, activities, TODAY, level)
+      const status = computeGroupStatusFromEff(leaves4, eff, level, TODAY)
       const dr = groupDateRange(allActs, eff)
       return { status, bs: dr.bs, bf: dr.bf, rs: dr.rs, rf: dr.rf, pct: groupPct(leaves4, eff) }
     }
@@ -597,7 +597,7 @@ export default function Gantt() {
       }
     }
     return m
-  }, [n0tree, tree, activities, eff])
+  }, [n0tree, tree, eff])
 
   const [scale, setScale]         = useState<Scale>('Mês')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())

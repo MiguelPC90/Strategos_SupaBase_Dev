@@ -14,7 +14,7 @@ import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 import { usePermissions } from '../../hooks/usePermissions'
 import { supabase } from '../../lib/supabase'
 import { useEffectiveValues } from '../../hooks/useEffectiveValues'
-import { getGroupStatus } from '../../lib/rollup'
+import { computeGroupStatusFromEff } from '../../lib/rollup'
 import { resolveOwnerNames, resolveSponsorNames } from '../../lib/owners'
 import { comparePlanos } from '../../lib/sort'
 import MultiSelect from '../../components/MultiSelect/MultiSelect'
@@ -212,7 +212,7 @@ export default function PlanosCatalog() {
   // ── Enrich planos with computed status + pct ──────────────────
   const enriched = useMemo(() => planos.map(plano => {
     const lv           = leavesByPlano.get(plano.id) ?? []
-    const status       = getGroupStatus(lv, leaves, today, 2)
+    const status       = computeGroupStatusFromEff(lv, eff, 2, today)
     const pct          = lv.length === 0 ? 0 : lv.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / lv.length
     const program      = plano.program_id ? programMap.get(plano.program_id) ?? null : null
     const ownerNames   = resolveOwnerNames(plano, peopleMap).join(', ') || null

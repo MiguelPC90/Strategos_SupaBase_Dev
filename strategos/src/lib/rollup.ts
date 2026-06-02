@@ -248,6 +248,43 @@ export function getEffectiveStatus(
   return statusFromDelta(target - pct, band)
 }
 
+/** Minimum shape needed by computeGroupStatusFromEff (structural — any superset is accepted). */
+interface EffLookup {
+  pct:          number
+  bf:           string | null
+  allAt100:     boolean
+  hasDatedLeaf: boolean
+  target:       number
+}
+
+/**
+ * O(n4Leaves) replacement for getGroupStatus. Reads from a pre-computed eff map
+ * instead of walking the full activities array. Semantically identical output.
+ * Pass the Map returned by useEffectiveValues (or computeEffectiveMap projected).
+ */
+export function computeGroupStatusFromEff(
+  n4Leaves: Activity[],
+  eff: Map<string, EffLookup>,
+  level: number,
+  today: string,
+): RowState {
+  if (n4Leaves.length === 0) return 'Em dia'
+  const band = level >= 3 ? THRESHOLD_LEAVES : THRESHOLD_AGGREGATES
+  if (n4Leaves.every(n4 => eff.get(n4.id)?.allAt100 ?? n4.pct >= 100)) return 'Concluída'
+  const pct = n4Leaves.reduce((s, n4) => s + (eff.get(n4.id)?.pct ?? n4.pct), 0) / n4Leaves.length
+  let bf: string | null = null
+  for (const n4 of n4Leaves) {
+    const d = eff.get(n4.id)?.bf ?? null
+    if (d && (!bf || d > bf)) bf = d
+  }
+  if (bf && today > bf && pct < 100) return 'Em atraso'
+  const contributing = n4Leaves.filter(n4 => eff.get(n4.id)?.hasDatedLeaf ?? false)
+  const target = contributing.length > 0
+    ? contributing.reduce((s, n4) => s + (eff.get(n4.id)?.target ?? 0), 0) / contributing.length
+    : 0
+  return statusFromDelta(target - pct, band)
+}
+
 /**
  * Aggregate status for a virtual group row (N0-N4) that has no Activity object.
  * Uses the AGGREGATES or LEAVES band based on level (≥3 → LEAVES, <3 → AGGREGATES).

@@ -17,7 +17,7 @@ import { useEixos } from '../../hooks/useEixos'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
 import type { Activity, Program } from '../../types/index'
-import { leafPctPrev, computeRowState, getGroupStatus, type RowState } from '../../lib/rollup'
+import { leafPctPrev, computeRowState, computeGroupStatusFromEff, type RowState } from '../../lib/rollup'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 const ALL_STATUS_KEYS: RowState[] = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
@@ -507,22 +507,22 @@ export default function Actividades() {
     const allN1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
     if (n0tree) {
       for (const n0g of n0tree) {
-        m.set(`n0:${n0g.progId}`, getGroupStatus(n0g.allActs.filter(a => a.level === 4), activities, TODAY, 0))
+        m.set(`n0:${n0g.progId}`, computeGroupStatusFromEff(n0g.allActs.filter(a => a.level === 4), eff, 0, TODAY))
       }
     }
     for (const n1g of allN1groups) {
-      m.set(`n1:${n1g.n1}`, getGroupStatus(n1g.allActs.filter(a => a.level === 4), activities, TODAY, 1))
+      m.set(`n1:${n1g.n1}`, computeGroupStatusFromEff(n1g.allActs.filter(a => a.level === 4), eff, 1, TODAY))
       for (const n2g of n1g.n2groups) {
-        m.set(`n2:${n1g.n1}:${n2g.n2}`, getGroupStatus(n2g.allActs.filter(a => a.level === 4), activities, TODAY, 2))
+        m.set(`n2:${n1g.n1}:${n2g.n2}`, computeGroupStatusFromEff(n2g.allActs.filter(a => a.level === 4), eff, 2, TODAY))
         for (const n3g of n2g.n3groups) {
           if (n3g.n3) {
-            m.set(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`, getGroupStatus(n3g.acts.filter(a => a.level === 4), activities, TODAY, 3))
+            m.set(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`, computeGroupStatusFromEff(n3g.acts.filter(a => a.level === 4), eff, 3, TODAY))
           }
         }
       }
     }
     return m
-  }, [n0tree, tree, activities])
+  }, [n0tree, tree, eff])
 
   const groupStatsMap = useMemo(() => {
     const m = new Map<string, { stats: Stats; pct: number }>()

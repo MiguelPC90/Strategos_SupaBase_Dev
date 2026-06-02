@@ -17,7 +17,7 @@ import GestaoRecursos from '../GestaoRecursos/GestaoRecursos'
 import GestaoFinanceira from '../GestaoFinanceira/GestaoFinanceira'
 import GestaoIniciativas from '../GestaoIniciativas/GestaoIniciativas'
 import NovoPlanoModal from '../../components/NovoPlanoModal/NovoPlanoModal'
-import { rollupPctPrev, rollupDateRange, getGroupStatus } from '../../lib/rollup'
+import { rollupPctPrev, rollupDateRange, computeGroupStatusFromEff } from '../../lib/rollup'
 import { useEffectiveValues } from '../../hooks/useEffectiveValues'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { resolveOwnerNames, resolveSponsorNames } from '../../lib/owners'
@@ -73,8 +73,8 @@ export default function PlanoPage() {
   const eff = useEffectiveValues(planActivities, today)
 
   const planoStatus = useMemo(
-    () => getGroupStatus(planLeaves, planActivities, today, 2),
-    [planLeaves, planActivities, today],
+    () => computeGroupStatusFromEff(planLeaves, eff, 2, today),
+    [planLeaves, eff, today],
   )
 
   const execMedia    = useMemo(

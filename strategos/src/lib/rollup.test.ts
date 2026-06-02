@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getDirectChildren, getEffectivePct, rollupEffectivePct, getDescendantLeaves, getEffectiveStatus, getEffectiveDates, getEffectiveTarget, getGroupStatus, computeEffectiveMap } from './rollup'
+import { getDirectChildren, getEffectivePct, rollupEffectivePct, getDescendantLeaves, getEffectiveStatus, getEffectiveDates, getEffectiveTarget, getGroupStatus, computeEffectiveMap, computeGroupStatusFromEff } from './rollup'
 import type { Activity } from '../types/index'
 
 // ── Minimal activity factory ───────────────────────────────────
@@ -466,5 +466,161 @@ describe('computeEffectiveMap parity', () => {
     const gs = getGroupStatus(n4Leaves, all, D, 2)
     // p4Late has past deadline with pct<100 → group should be Em atraso at any band
     expect(gs).toBe('Em atraso')
+  })
+})
+
+// ── computeGroupStatusFromEff parity ──────────────────────────
+// 14 scenarios asserting computeGroupStatusFromEff === getGroupStatus
+// for every combination of: Concluída / Em atraso (deadline) / delta-band / empty / mixed groups
+
+describe('computeGroupStatusFromEff parity', () => {
+  const D = TODAY
+
+  // Helper: project computeEffectiveMap → eff map for computeGroupStatusFromEff
+  function effFrom(acts: Activity[]) {
+    const full = computeEffectiveMap(acts, D)
+    return new Map(Array.from(full.entries()).map(([id, r]) => [id, {
+      pct: r.pct, target: r.target, bf: r.bf,
+      allAt100: r.allAt100, hasDatedLeaf: r.hasDatedLeaf,
+    }]))
+  }
+
+  // Scenario 1 — empty leaves → Em dia
+  it('empty leaves → Em dia', () => {
+    const eff = new Map()
+    expect(computeGroupStatusFromEff([], eff, 2, D)).toBe('Em dia')
+    expect(computeGroupStatusFromEff([], eff, 2, D)).toBe(getGroupStatus([], [], D, 2))
+  })
+
+  // Scenario 2 — single leaf at 100 (no children) → Concluída
+  it('single leaf pct=100 → Concluída', () => {
+    const a = mkAct({ id: 'p2', level: 4, name: 'A', n3: 'M', n4: 'A', pct: 100 })
+    const eff = effFrom([a])
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe('Concluída')
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe(getGroupStatus([a], [a], D, 2))
+  })
+
+  // Scenario 3 — N4 with N5 children all at 100 → Concluída
+  it('N4 with N5 children all 100 → Concluída', () => {
+    const a4 = mkAct({ id: 'c4', level: 4, name: 'P', n3: 'M', n4: 'P', pct: 0 })
+    const a5a = mkAct({ id: 'c5a', level: 5, name: 'C1', n3: 'M', n4: 'P', n5: 'C1', pct: 100 })
+    const a5b = mkAct({ id: 'c5b', level: 5, name: 'C2', n3: 'M', n4: 'P', n5: 'C2', pct: 100 })
+    const acts = [a4, a5a, a5b]
+    const eff = effFrom(acts)
+    expect(computeGroupStatusFromEff([a4], eff, 2, D)).toBe('Concluída')
+    expect(computeGroupStatusFromEff([a4], eff, 2, D)).toBe(getGroupStatus([a4], acts, D, 2))
+  })
+
+  // Scenario 4 — deadline in the past, pct<100 → Em atraso
+  it('past deadline → Em atraso', () => {
+    const a = mkAct({ id: 'p4', level: 4, name: 'A', n3: 'M', n4: 'A', pct: 50, bs: '2020-01-01', bf: '2022-01-01' })
+    const eff = effFrom([a])
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe('Em atraso')
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe(getGroupStatus([a], [a], D, 2))
+  })
+
+  // Scenario 5 — deadline today (not past) → should NOT be Em atraso from deadline
+  it('deadline == today → not deadline Em atraso', () => {
+    const a = mkAct({ id: 'p5', level: 4, name: 'A', n3: 'M', n4: 'A', pct: 50, bs: '2020-01-01', bf: D })
+    const eff = effFrom([a])
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe(getGroupStatus([a], [a], D, 2))
+  })
+
+  // Scenario 6 — delta <= low → Em dia (AGGREGATES band: low=15)
+  it('delta within AGGREGATES low → Em dia (level 2)', () => {
+    const a = mkAct({ id: 'p6', level: 4, name: 'A', n3: 'M', n4: 'A', pct: 90, bs: D, bf: '2030-12-31' })
+    // target = 0 (today=bs → 0), pct=90, delta = 0-90 = -90 ≤ 15 → Em dia
+    const eff = effFrom([a])
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe('Em dia')
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe(getGroupStatus([a], [a], D, 2))
+  })
+
+  // Scenario 7 — delta in (low, high] → Em risco (AGGREGATES band: low=15, high=25)
+  it('delta in AGGREGATES Em risco zone (level 2)', () => {
+    // delta=20: AGGREGATES low=15 < 20 ≤ high=25 → Em risco
+    const a = mkAct({ id: 'p7', level: 4, name: 'A', n3: 'M', n4: 'A', pct: 80, bs: '2026-01-01', bf: D })
+    // today==bf → target=100, delta=100-80=20
+    const eff = effFrom([a])
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe('Em risco')
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe(getGroupStatus([a], [a], D, 2))
+  })
+
+  // Scenario 8 — delta > high → Em atraso via delta (AGGREGATES band: high=25)
+  it('delta > AGGREGATES high → Em atraso via delta (level 2)', () => {
+    // delta=30: > high=25 → Em atraso
+    const a = mkAct({ id: 'p8', level: 4, name: 'A', n3: 'M', n4: 'A', pct: 70, bs: '2026-01-01', bf: D })
+    // target=100, delta=30
+    const eff = effFrom([a])
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe('Em atraso')
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe(getGroupStatus([a], [a], D, 2))
+  })
+
+  // Scenario 9 — LEAVES band (level ≥ 3): same delta → different status
+  it('same delta 12pp → Em atraso at level 3 (LEAVES), Em dia at level 2 (AGGREGATES)', () => {
+    const a = mkAct({ id: 'p9', level: 4, name: 'A', n3: 'M', n4: 'A', pct: 88, bs: '2026-01-01', bf: D })
+    // target=100, delta=12; LEAVES high=10 → Em atraso; AGGREGATES low=15 → Em dia
+    const eff = effFrom([a])
+    expect(computeGroupStatusFromEff([a], eff, 3, D)).toBe('Em atraso')
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe('Em dia')
+    expect(computeGroupStatusFromEff([a], eff, 3, D)).toBe(getGroupStatus([a], [a], D, 3))
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe(getGroupStatus([a], [a], D, 2))
+  })
+
+  // Scenario 10 — dateless leaf: hasDatedLeaf=false → target=0 → Em dia at any reasonable pct
+  it('dateless leaf → hasDatedLeaf false → target=0, status Em dia', () => {
+    const a = mkAct({ id: 'p10', level: 4, name: 'A', n3: 'M', n4: 'A', pct: 50 })
+    const eff = effFrom([a])
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe('Em dia')
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe(getGroupStatus([a], [a], D, 2))
+  })
+
+  // Scenario 11 — multiple leaves mixed: late + on-track → Em atraso dominates
+  it('mixed group: one late leaf → group Em atraso', () => {
+    const aLate = mkAct({ id: 'p11a', level: 4, name: 'A', n3: 'M', n4: 'A', pct: 50, bs: '2020-01-01', bf: '2022-01-01' })
+    const aOk   = mkAct({ id: 'p11b', level: 4, name: 'B', n3: 'M', n4: 'B', pct: 100 })
+    const acts  = [aLate, aOk]
+    const eff   = effFrom(acts)
+    expect(computeGroupStatusFromEff([aLate, aOk], eff, 2, D)).toBe('Em atraso')
+    expect(computeGroupStatusFromEff([aLate, aOk], eff, 2, D)).toBe(getGroupStatus([aLate, aOk], acts, D, 2))
+  })
+
+  // Scenario 12 — all leaves at 100 in a group → Concluída even with past deadline
+  it('all leaves at 100 → Concluída (deadline irrelevant)', () => {
+    const a = mkAct({ id: 'p12', level: 4, name: 'A', n3: 'M', n4: 'A', pct: 100, bf: '2022-01-01' })
+    const eff = effFrom([a])
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe('Concluída')
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe(getGroupStatus([a], [a], D, 2))
+  })
+
+  // Scenario 13 — finish-only deadline (bf=null, finish set): finish used as deadline
+  it('finish-only deadline: finish in past → Em atraso', () => {
+    const a = mkAct({ id: 'p13', level: 4, name: 'A', n3: 'M', n4: 'A', pct: 40, bs: '2021-01-01', finish: '2022-01-01' })
+    const acts = [a]
+    const eff  = effFrom(acts)
+    // getGroupStatus uses getEffectiveDates which uses bf??finish for parent bf propagation
+    // For a leaf N4, getEffectiveDates returns { bf: a.bf } = null (no finish fallback for display)
+    // so getGroupStatus sees bf=null → no deadline check → delta path
+    // computeGroupStatusFromEff also reads eff.bf which is a.bf=null → same behavior
+    expect(computeGroupStatusFromEff([a], eff, 2, D)).toBe(getGroupStatus([a], acts, D, 2))
+  })
+
+  // Scenario 14 — full eff map (all 4 N4 leaves from computeEffectiveMap parity fixture)
+  it('full fixture: computeGroupStatusFromEff matches getGroupStatus for all-leaves group', () => {
+    const p4Done = mkAct({ id: 'f4Done', level: 4, name: 'Done', n3: 'R', n4: 'Done', pct: 0 })
+    const p5D1   = mkAct({ id: 'f5D1',  level: 5, name: 'D1',   n3: 'R', n4: 'Done', n5: 'D1', pct: 100, bs: '2026-01-01', bf: D })
+    const p5D2   = mkAct({ id: 'f5D2',  level: 5, name: 'D2',   n3: 'R', n4: 'Done', n5: 'D2', pct: 100, bs: '2026-01-01', bf: D })
+    const p4Late = mkAct({ id: 'f4Late', level: 4, name: 'Late', n3: 'R', n4: 'Late', pct: 0 })
+    const p5L1   = mkAct({ id: 'f5L1',  level: 5, name: 'L1',   n3: 'R', n4: 'Late', n5: 'L1', pct: 50, bs: '2020-01-01', bf: '2022-01-01' })
+    const p4Deep = mkAct({ id: 'f4Deep', level: 4, name: 'Deep', n3: 'R', n4: 'Deep', pct: 0 })
+    const p5DS   = mkAct({ id: 'f5DS',   level: 5, name: 'DS',   n3: 'R', n4: 'Deep', n5: 'DS', pct: 0 })
+    const p6G1   = mkAct({ id: 'f6G1',   level: 6, name: 'G1',   n3: 'R', n4: 'Deep', n5: 'DS', n6: 'G1', pct: 30, bs: '2026-01-01', bf: D })
+    const p6G2   = mkAct({ id: 'f6G2',   level: 6, name: 'G2',   n3: 'R', n4: 'Deep', n5: 'DS', n6: 'G2', pct: 70, bs: '2026-07-01', bf: '2026-12-31' })
+    const p4Fin  = mkAct({ id: 'f4Fin',  level: 4, name: 'Fin',  n3: 'R', n4: 'Fin',  pct: 40, bs: '2021-01-01', finish: '2022-01-01' })
+    const acts   = [p4Done, p5D1, p5D2, p4Late, p5L1, p4Deep, p5DS, p6G1, p6G2, p4Fin]
+    const n4s    = [p4Done, p4Late, p4Deep, p4Fin]
+    const eff    = effFrom(acts)
+    for (const level of [0, 1, 2, 3, 4] as const) {
+      expect(computeGroupStatusFromEff(n4s, eff, level, D)).toBe(getGroupStatus(n4s, acts, D, level))
+    }
   })
 })
