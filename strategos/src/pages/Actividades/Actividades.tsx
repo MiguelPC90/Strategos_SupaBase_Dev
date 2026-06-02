@@ -1,5 +1,6 @@
 import './Actividades.css'
 import { memo, useState, useMemo, useCallback, useRef, useEffect, type ReactNode } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { Link2, ChevronDown, ChevronRight, X, Check, CheckCircle2, CircleDot, AlertCircle, XCircle } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
@@ -20,6 +21,7 @@ import { leafPctPrev, computeRowState, getGroupStatus, type RowState } from '../
 
 const TODAY = new Date().toISOString().slice(0, 10)
 const ALL_STATUS_KEYS: RowState[] = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
+const ROW_H = 47
 
 // ── Status helpers ─────────────────────────────────────────────
 type LevelView  = 'todos' | 'programa' | 'eixo' | 'plano' | 'macro' | 'actividade'
@@ -83,6 +85,11 @@ function computeStats(acts: Activity[], eff: Map<string, EffectiveValue>): Stats
     exec_obj: total > 0 ? sumPrev / total : 0,
     latest_end,
   }
+}
+
+const EMPTY_STATS: Stats = {
+  total: 0, concluidas: 0, em_dia: 0, em_risco: 0, em_atraso: 0,
+  exec: 0, exec_obj: 0, latest_end: null,
 }
 
 // ── Tree types ─────────────────────────────────────────────────
@@ -315,6 +322,88 @@ const CdaCell = memo(function CdaCell({ concluidas, em_dia, em_risco, em_atraso 
   )
 })
 
+// ── Flat row model ─────────────────────────────────────────────
+type FlatRow =
+  | {
+      kind: 'group'
+      level: 0 | 1 | 2 | 3
+      key: string
+      name: string
+      indent: number
+      state: RowState
+      stats: Stats
+      pct: number
+      isCollapsed: boolean
+    }
+  | {
+      kind: 'activity'
+      key: string
+      activity: Activity
+      indent: number
+      status: RowState
+      pct: number
+      pctPrev: number
+      depCount: number
+    }
+
+// ── Virtualizer row components ─────────────────────────────────
+interface GroupRowProps {
+  row: Extract<FlatRow, { kind: 'group' }>
+  toggle: (key: string) => void
+  searchQuery: string
+}
+
+const GroupRow = memo(function GroupRow({ row, toggle, searchQuery }: GroupRowProps) {
+  const { level, key, name, indent, state, stats, pct, isCollapsed } = row
+  return (
+    <tr className={`act-row-n${level}`}>
+      <td>
+        <div className="act-name-cell" style={{ paddingLeft: indent }}>
+          <button className="act-toggle" onClick={() => toggle(key)}>
+            {isCollapsed ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}
+          </button>
+          <span className={`act-name-n${level}`} title={name}>{highlightMatch(name, searchQuery)}</span>
+        </div>
+      </td>
+      <td className="act-td-c">
+        <span className={`status-pill ${STATE_PILL_CLASS[state]}`}>{STATE_LABEL[state]}</span>
+      </td>
+      <CdaCell {...stats} />
+      <td className="act-td-c"><DualBar exec={pct} execObj={stats.exec_obj} /></td>
+      <DeadlineCell bf={stats.latest_end} />
+    </tr>
+  )
+})
+
+interface ActivityRowProps {
+  row: Extract<FlatRow, { kind: 'activity' }>
+  searchQuery: string
+}
+
+const ActivityRow = memo(function ActivityRow({ row, searchQuery }: ActivityRowProps) {
+  const { activity: a, indent, status, pct, pctPrev, depCount } = row
+  return (
+    <tr className="act-row-n4">
+      <td>
+        <div className="act-name-cell" style={{ paddingLeft: indent }}>
+          <span className="act-name-n4" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
+          {depCount > 0 && (
+            <span className="act-dep-chip" title={depCount === 1 ? '1 dependência' : `${depCount} dependências`}>
+              <Link2 size={11} />{depCount}
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="act-td-c">
+        <span className={`status-pill ${STATE_PILL_CLASS[status]}`}>{STATE_LABEL[status]}</span>
+      </td>
+      <td className="act-td-c" />
+      <td className="act-td-c"><DualBar exec={pct} execObj={pctPrev} /></td>
+      <DeadlineCell bf={a.bf ?? a.finish ?? null} rf={a.rf ?? null} />
+    </tr>
+  )
+})
+
 // ── Main component ─────────────────────────────────────────────
 export default function Actividades() {
   const { filters, getFilteredActivities } = useFilters()
@@ -435,6 +524,32 @@ export default function Actividades() {
     return m
   }, [n0tree, tree, activities])
 
+  const groupStatsMap = useMemo(() => {
+    const m = new Map<string, { stats: Stats; pct: number }>()
+    const allN1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
+    if (n0tree) {
+      for (const n0g of n0tree) {
+        const leaves = n0g.allActs.filter(a => a.level === 4)
+        m.set(`n0:${n0g.progId}`, { stats: computeStats(leaves, eff), pct: groupPct(leaves, eff) })
+      }
+    }
+    for (const n1g of allN1groups) {
+      const n1leaves = n1g.allActs.filter(a => a.level === 4)
+      m.set(`n1:${n1g.n1}`, { stats: computeStats(n1leaves, eff), pct: groupPct(n1leaves, eff) })
+      for (const n2g of n1g.n2groups) {
+        const n2leaves = n2g.allActs.filter(a => a.level === 4)
+        m.set(`n2:${n1g.n1}:${n2g.n2}`, { stats: computeStats(n2leaves, eff), pct: groupPct(n2leaves, eff) })
+        for (const n3g of n2g.n3groups) {
+          if (n3g.n3) {
+            const n3leaves = n3g.acts.filter(a => a.level === 4)
+            m.set(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`, { stats: computeStats(n3leaves, eff), pct: groupPct(n3leaves, eff) })
+          }
+        }
+      }
+    }
+    return m
+  }, [n0tree, tree, eff])
+
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   // Auto-expand while search is active
@@ -477,213 +592,112 @@ export default function Actividades() {
     setCollapsed(buildLevelKeys(level, n0tree, tree))
   }, [n0tree, tree])
 
-  const rows: ReactNode[] = []
+  // ── Flat rows (virtualizer data model) ────────────────────────
+  const flatRows = useMemo(() => {
+    const rows: FlatRow[] = []
 
-  const renderN1Rows = (n1groups: N1Group[], n1Indent: number) => {
-    for (const n1g of n1groups) {
-      const n1key    = `n1:${n1g.n1}`
-      const n1col    = collapsed.has(n1key)
-      const n1leaves = n1g.allActs.filter(a => a.level === 4)
-      const n1stats  = computeStats(n1leaves, eff)
-      const n1state  = groupStatusMap.get(n1key) ?? 'Em dia'
+    const emitActivityRow = (a: Activity, indent: number) => {
+      rows.push({
+        kind: 'activity',
+        key: a.id,
+        activity: a,
+        indent,
+        status: eff.get(a.id)?.status ?? 'Em dia',
+        pct: eff.get(a.id)?.pct ?? a.pct,
+        pctPrev: pctPrevMap.get(a.id) ?? 0,
+        depCount: predecessorCounts.get(a.id) ?? 0,
+      })
+    }
 
-      rows.push(
-        <tr key={n1key} className="act-row-n1">
-          <td>
-            <div className="act-name-cell" style={{ paddingLeft: n1Indent }}>
-              <button className="act-toggle" onClick={() => toggle(n1key)}>
-                {n1col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}
-              </button>
-              <span className="act-name-n1" title={n1g.n1}>{highlightMatch(n1g.n1, searchQuery)}</span>
-            </div>
-          </td>
-          <td className="act-td-c">
-            <span className={`status-pill ${STATE_PILL_CLASS[n1state]}`}>{STATE_LABEL[n1state]}</span>
-          </td>
-          <CdaCell {...n1stats} />
-          <td className="act-td-c"><DualBar exec={groupPct(n1leaves, eff)} execObj={n1stats.exec_obj} /></td>
-          <DeadlineCell bf={n1stats.latest_end} />
-        </tr>
-      )
+    const emitN1Rows = (n1groups: N1Group[], n1Indent: number) => {
+      for (const n1g of n1groups) {
+        const n1key = `n1:${n1g.n1}`
+        const n1col = collapsed.has(n1key)
+        const n1gs  = groupStatsMap.get(n1key) ?? { stats: EMPTY_STATS, pct: 0 }
+        rows.push({
+          kind: 'group', level: 1, key: n1key, name: n1g.n1, indent: n1Indent,
+          state: groupStatusMap.get(n1key) ?? 'Em dia',
+          stats: n1gs.stats, pct: n1gs.pct, isCollapsed: n1col,
+        })
+        if (n1col) continue
 
-      if (n1col) continue
+        for (const n2g of n1g.n2groups) {
+          const n2key = `n2:${n1g.n1}:${n2g.n2}`
+          const n2col = collapsed.has(n2key)
+          const n2gs  = groupStatsMap.get(n2key) ?? { stats: EMPTY_STATS, pct: 0 }
+          rows.push({
+            kind: 'group', level: 2, key: n2key, name: n2g.n2, indent: n1Indent + 16,
+            state: groupStatusMap.get(n2key) ?? 'Em dia',
+            stats: n2gs.stats, pct: n2gs.pct, isCollapsed: n2col,
+          })
+          if (n2col) continue
 
-      for (const n2g of n1g.n2groups) {
-        const n2key    = `n2:${n1g.n1}:${n2g.n2}`
-        const n2col    = collapsed.has(n2key)
-        const n2leaves = n2g.allActs.filter(a => a.level === 4)
-        const n2stats  = computeStats(n2leaves, eff)
-        const n2state  = groupStatusMap.get(n2key) ?? 'Em dia'
-
-        rows.push(
-          <tr key={n2key} className="act-row-n2">
-            <td>
-              <div className="act-name-cell" style={{ paddingLeft: n1Indent + 16 }}>
-                <button className="act-toggle" onClick={() => toggle(n2key)}>
-                  {n2col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}
-                </button>
-                <span className="act-name-n2" title={n2g.n2}>{highlightMatch(n2g.n2, searchQuery)}</span>
-              </div>
-            </td>
-            <td className="act-td-c">
-              <span className={`status-pill ${STATE_PILL_CLASS[n2state]}`}>{STATE_LABEL[n2state]}</span>
-            </td>
-            <CdaCell {...n2stats} />
-            <td className="act-td-c"><DualBar exec={groupPct(n2leaves, eff)} execObj={n2stats.exec_obj} /></td>
-            <DeadlineCell bf={n2stats.latest_end} />
-          </tr>
-        )
-
-        if (n2col) continue
-
-        for (const n3g of n2g.n3groups) {
-          if (!n3g.n3) {
-            for (const a of n3g.acts) {
-              const pctPrev = pctPrevMap.get(a.id) ?? 0
-              const ast     = eff.get(a.id)?.status ?? 'Em dia'
-              rows.push(
-                <tr key={a.id} className="act-row-n4">
-                  <td>
-                    <div className="act-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
-                      <span className="act-name-n4" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
-                      {(predecessorCounts.get(a.id) ?? 0) > 0 && (
-                        <span className="act-dep-chip" title={predecessorCounts.get(a.id) === 1 ? '1 dependência' : `${predecessorCounts.get(a.id)} dependências`}>
-                          <Link2 size={11} />{predecessorCounts.get(a.id)}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="act-td-c">
-                    <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
-                  </td>
-                  <td className="act-td-c" />
-                  <td className="act-td-c"><DualBar exec={eff.get(a.id)?.pct ?? a.pct} execObj={pctPrev} /></td>
-                  <DeadlineCell bf={a.bf ?? a.finish ?? null} rf={a.rf ?? null} />
-                </tr>
-              )
+          for (const n3g of n2g.n3groups) {
+            // Case A: no n3 name → emit activities directly under n2
+            if (!n3g.n3) {
+              for (const a of n3g.acts) emitActivityRow(a, n1Indent + 32)
+              continue
             }
-            continue
-          }
 
-          const n3ChildLeaves = n3g.acts.filter(a => a.level !== 3)
-          const n3HasChildren = n3ChildLeaves.length > 0
+            const n3ChildLeaves = n3g.acts.filter(a => a.level !== 3)
+            const n3HasChildren = n3ChildLeaves.length > 0
 
-          if (!n3HasChildren) {
-            for (const a of n3g.acts) {
-              const pctPrev = pctPrevMap.get(a.id) ?? 0
-              const ast     = eff.get(a.id)?.status ?? 'Em dia'
-              rows.push(
-                <tr key={a.id} className="act-row-n4">
-                  <td>
-                    <div className="act-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
-                      <span className="act-name-n4" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
-                      {(predecessorCounts.get(a.id) ?? 0) > 0 && (
-                        <span className="act-dep-chip" title={predecessorCounts.get(a.id) === 1 ? '1 dependência' : `${predecessorCounts.get(a.id)} dependências`}>
-                          <Link2 size={11} />{predecessorCounts.get(a.id)}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="act-td-c">
-                    <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
-                  </td>
-                  <td className="act-td-c" />
-                  <td className="act-td-c"><DualBar exec={eff.get(a.id)?.pct ?? a.pct} execObj={pctPrev} /></td>
-                  <DeadlineCell bf={a.bf ?? a.finish ?? null} rf={a.rf ?? null} />
-                </tr>
-              )
+            // Case B: named n3 but no child leaves → emit activities directly under n2
+            if (!n3HasChildren) {
+              for (const a of n3g.acts) emitActivityRow(a, n1Indent + 32)
+              continue
             }
-            continue
-          }
 
-          const n3key    = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
-          const n3col    = collapsed.has(n3key)
-          const n3leaves = n3g.acts.filter(a => a.level === 4)
-          const n3stats  = computeStats(n3leaves, eff)
-          const n3state  = groupStatusMap.get(n3key) ?? 'Em dia'
+            // Case C: named n3 with children → emit n3 group row + children
+            const n3key = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
+            const n3col = collapsed.has(n3key)
+            const n3gs  = groupStatsMap.get(n3key) ?? { stats: EMPTY_STATS, pct: 0 }
+            rows.push({
+              kind: 'group', level: 3, key: n3key, name: n3g.n3, indent: n1Indent + 32,
+              state: groupStatusMap.get(n3key) ?? 'Em dia',
+              stats: n3gs.stats, pct: n3gs.pct, isCollapsed: n3col,
+            })
+            if (n3col) continue
 
-          rows.push(
-            <tr key={n3key} className="act-row-n3">
-              <td>
-                <div className="act-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
-                  <button className="act-toggle" onClick={() => toggle(n3key)}>
-                    {n3col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}
-                  </button>
-                  <span className="act-name-n3" title={n3g.n3}>{highlightMatch(n3g.n3, searchQuery)}</span>
-                </div>
-              </td>
-              <td className="act-td-c">
-                <span className={`status-pill ${STATE_PILL_CLASS[n3state]}`}>{STATE_LABEL[n3state]}</span>
-              </td>
-              <CdaCell {...n3stats} />
-              <td className="act-td-c"><DualBar exec={groupPct(n3leaves, eff)} execObj={n3stats.exec_obj} /></td>
-              <DeadlineCell bf={n3stats.latest_end} />
-            </tr>
-          )
-
-          if (n3col) continue
-
-          for (const a of n3ChildLeaves) {
-            const pctPrev = pctPrevMap.get(a.id) ?? 0
-            const ast     = eff.get(a.id)?.status ?? 'Em dia'
-            rows.push(
-              <tr key={a.id} className="act-row-n4">
-                <td>
-                  <div className="act-name-cell" style={{ paddingLeft: n1Indent + 48 }}>
-                    <span className="act-name-n4" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
-                    {(predecessorCounts.get(a.id) ?? 0) > 0 && (
-                      <span className="act-dep-chip" title={predecessorCounts.get(a.id) === 1 ? '1 dependência' : `${predecessorCounts.get(a.id)} dependências`}>
-                        <Link2 size={11} />{predecessorCounts.get(a.id)}
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="act-td-c">
-                  <span className={`status-pill ${STATE_PILL_CLASS[ast]}`}>{STATE_LABEL[ast]}</span>
-                </td>
-                <td className="act-td-c" />
-                <td className="act-td-c"><DualBar exec={eff.get(a.id)?.pct ?? a.pct} execObj={pctPrev} /></td>
-                <DeadlineCell bf={a.bf ?? a.finish ?? null} rf={a.rf ?? null} />
-              </tr>
-            )
+            for (const a of n3ChildLeaves) emitActivityRow(a, n1Indent + 48)
           }
         }
       }
     }
-  }
 
-  if (n0tree) {
-    for (const n0g of n0tree) {
-      const n0key    = `n0:${n0g.progId}`
-      const n0col    = collapsed.has(n0key)
-      const n0leaves = n0g.allActs.filter(a => a.level === 4)
-      const n0stats  = computeStats(n0leaves, eff)
-      const n0state  = groupStatusMap.get(n0key) ?? 'Em dia'
-
-      rows.push(
-        <tr key={n0key} className="act-row-n0">
-          <td>
-            <div className="act-name-cell" style={{ paddingLeft: 4 }}>
-              <button className="act-toggle" onClick={() => toggle(n0key)}>
-                {n0col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}
-              </button>
-              <span className="act-name-n0" title={n0g.progName}>{highlightMatch(n0g.progName, searchQuery)}</span>
-            </div>
-          </td>
-          <td className="act-td-c">
-            <span className={`status-pill ${STATE_PILL_CLASS[n0state]}`}>{STATE_LABEL[n0state]}</span>
-          </td>
-          <CdaCell {...n0stats} />
-          <td className="act-td-c"><DualBar exec={groupPct(n0leaves, eff)} execObj={n0stats.exec_obj} /></td>
-          <DeadlineCell bf={n0stats.latest_end} />
-        </tr>
-      )
-
-      if (!n0col) renderN1Rows(n0g.n1groups, 16)
+    if (n0tree) {
+      for (const n0g of n0tree) {
+        const n0key = `n0:${n0g.progId}`
+        const n0col = collapsed.has(n0key)
+        const n0gs  = groupStatsMap.get(n0key) ?? { stats: EMPTY_STATS, pct: 0 }
+        rows.push({
+          kind: 'group', level: 0, key: n0key, name: n0g.progName, indent: 4,
+          state: groupStatusMap.get(n0key) ?? 'Em dia',
+          stats: n0gs.stats, pct: n0gs.pct, isCollapsed: n0col,
+        })
+        if (!n0col) emitN1Rows(n0g.n1groups, 16)
+      }
+    } else {
+      emitN1Rows(tree, 4)
     }
-  } else {
-    renderN1Rows(tree, 4)
-  }
+
+    return rows
+  }, [n0tree, tree, collapsed, groupStatusMap, groupStatsMap, pctPrevMap, predecessorCounts, eff])
+
+  // ── Virtualizer ───────────────────────────────────────────────
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const rowVirtualizer = useVirtualizer({
+    count: flatRows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_H,
+    overscan: 10,
+  })
+
+  const virtualItems = rowVirtualizer.getVirtualItems()
+  const totalSize    = rowVirtualizer.getTotalSize()
+  const paddingTop    = virtualItems.length > 0 ? virtualItems[0].start : 0
+  const paddingBottom = virtualItems.length > 0 ? totalSize - virtualItems[virtualItems.length - 1].end : 0
 
   const filterInfo = filters.n1Values.length > 0
     ? `Filtrado por: ${filters.n1Values.join(', ')}`
@@ -773,7 +787,7 @@ export default function Actividades() {
             description="Selecciona um programa nos filtros para visualizar as actividades."
           />
         ) : (
-          <div className="act-scroll-box">
+          <div className="act-scroll-box" ref={scrollRef}>
             <table className="act-table" style={{ tableLayout: 'fixed', width: '100%' }}>
               <colgroup>
                 <col />
@@ -792,7 +806,7 @@ export default function Actividades() {
                 </tr>
               </thead>
               <tbody>
-                {rows.length === 0 ? (
+                {flatRows.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="act-empty">
                       {searchQuery.trim()
@@ -800,7 +814,26 @@ export default function Actividades() {
                         : 'Nenhuma actividade para os filtros seleccionados.'}
                     </td>
                   </tr>
-                ) : rows}
+                ) : (
+                  <>
+                    {paddingTop > 0 && (
+                      <tr style={{ height: paddingTop }}>
+                        <td colSpan={5} style={{ padding: 0, border: 'none' }} />
+                      </tr>
+                    )}
+                    {virtualItems.map(virtualRow => {
+                      const row = flatRows[virtualRow.index]
+                      return row.kind === 'group'
+                        ? <GroupRow key={row.key} row={row} toggle={toggle} searchQuery={searchQuery} />
+                        : <ActivityRow key={row.key} row={row} searchQuery={searchQuery} />
+                    })}
+                    {paddingBottom > 0 && (
+                      <tr style={{ height: paddingBottom }}>
+                        <td colSpan={5} style={{ padding: 0, border: 'none' }} />
+                      </tr>
+                    )}
+                  </>
+                )}
               </tbody>
             </table>
           </div>
