@@ -1,6 +1,6 @@
 import './Gantt.css'
-import { memo, useState, useMemo, useCallback, useRef, useLayoutEffect, useEffect, type ReactNode } from 'react'
-import type { JSX } from 'react'
+import { memo, useState, useMemo, useCallback, useRef, useLayoutEffect, useEffect, type ReactNode, type Dispatch, type SetStateAction } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { ChevronDown, ChevronRight, X, CheckCircle2, CircleDot, AlertCircle, XCircle } from 'lucide-react'
 import Spinner from '../../components/Spinner/Spinner'
 import Card from '../../components/Card/Card'
@@ -138,8 +138,6 @@ interface N1Group { n1: string; n2groups: N2Group[]; allActs: Activity[] }
 interface N0Group { progId: string; progName: string; n1groups: N1Group[]; allActs: Activity[] }
 
 // ── Level-view collapse key builder ───────────────────────────
-// Each level collapses exactly the rows AT that depth, making them the
-// visible leaf (folded ▶, no children rendered below).
 function buildLevelKeys(
   level: LevelView,
   n0tree: N0Group[] | null,
@@ -149,7 +147,6 @@ function buildLevelKeys(
   if (level === 'todos' || level === 'actividade') return keys
 
   if (level === 'programa') {
-    // Collapse N0 rows: program rows fold (▶), eixos not rendered
     if (n0tree) for (const n0g of n0tree) keys.add(`n0:${n0g.progId}`)
     return keys
   }
@@ -157,15 +154,12 @@ function buildLevelKeys(
   const n1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
 
   if (level === 'eixo') {
-    // Collapse N1 rows: eixo rows fold (▶), planos not rendered
     for (const n1g of n1groups) keys.add(`n1:${n1g.n1}`)
   } else if (level === 'plano') {
-    // Collapse N2 rows: plano rows fold (▶), macros not rendered
     for (const n1g of n1groups) {
       for (const n2g of n1g.n2groups) keys.add(`n2:${n1g.n1}:${n2g.n2}`)
     }
   } else if (level === 'macro') {
-    // Collapse N3 rows: macro rows fold (▶), activities not rendered
     for (const n1g of n1groups) {
       for (const n2g of n1g.n2groups) {
         for (const n3g of n2g.n3groups) { if (n3g.n3) keys.add(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`) }
@@ -262,7 +256,6 @@ function buildPeriods(rangeStart: Date, rangeEnd: Date, scale: Scale): Period[] 
       cur = addMonths(cur, 1)
     }
   } else if (scale === 'Semana') {
-    // Fix 2: show Monday date as DD/MM instead of week number
     let cur = startOfWeek(rangeStart)
     while (cur <= rangeEnd) {
       const dd = String(cur.getDate()).padStart(2, '0')
@@ -321,7 +314,7 @@ function fmt(d: string | null): string {
 
 // ── Dependency arrow constants ─────────────────────────────────
 const ROW_H    = 34          // matches .gantt-sticky-cell { height: 34px }
-const STICKY_W = COL_NAME + COL_STATUS + COL_EXEC  // 420px left fixed columns
+const STICKY_W = COL_NAME + COL_STATUS + COL_EXEC  // 436px left fixed columns
 const HEADER_H = 29          // approximate thead height (7px padding × 2 + 15px text)
 
 // ── Dependency arrow types ─────────────────────────────────────
@@ -373,7 +366,6 @@ interface TooltipState {
 function GanttTooltip({ tooltip }: { tooltip: TooltipState }) {
   const { name, bs, bf, rs, rf, pct, pct_prev, rowState, childCount, x, y } = tooltip
 
-  // Deviation: prefer rf−bf, fallback rs−bs
   let deviationDays: number | null = null
   if (rf && bf) {
     deviationDays = Math.round((new Date(rf).getTime() - new Date(bf).getTime()) / 86400000)
@@ -395,7 +387,6 @@ function GanttTooltip({ tooltip }: { tooltip: TooltipState }) {
     : pct < pct_prev ? 'delay-pos'
     : ''
 
-  // Auto-flip: render off-screen first (opacity 0), measure, then snap into place
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ left: x + 12, top: y + 12, opacity: 0 })
 
@@ -463,8 +454,6 @@ interface BarProps {
   status: RowState
 }
 
-// rangeStart is a Date — its reference changes when the date range recomputes, so GanttBar
-// re-renders on range changes even with memo. That's correct behaviour.
 const GanttBar = memo(function GanttBar({ start, end, rangeStart, totalMs, variant, lane, status }: BarProps) {
   if (!start || !end || totalMs <= 0) return null
   const s = new Date(start).getTime()
@@ -483,6 +472,174 @@ const GanttBar = memo(function GanttBar({ start, end, rangeStart, totalMs, varia
       className={`gantt-bar gantt-bar-${lane}`}
       style={{ left: `${leftPct}%`, width: `${widthPct}%`, background: bg }}
     />
+  )
+})
+
+// ── GanttFlatRow model ─────────────────────────────────────────
+type GanttFlatRow =
+  | {
+      kind: 'group'
+      key: string
+      rowClass: string
+      nameClass: string
+      label: string
+      indent: number
+      collapseKey: string
+      status: RowState
+      pct: number
+      bs: string | null
+      bf: string | null
+      rs: string | null   // gd.rs ?? gd.bs (baseline fallback already applied)
+      rf: string | null   // gd.rf ?? gd.bf
+      n4leaves: Activity[]
+    }
+  | {
+      kind: 'activity'
+      key: string
+      act: Activity
+      rowClass: string
+      nameClass: string
+      indent: number
+      status: RowState
+      pct: number
+      bs: string | null   // ev?.bs ?? null (null-honest; bars use bs directly)
+      bf: string | null   // ev?.bf ?? null
+      rs: string | null   // ev?.rs ?? null (bars use rs ?? bs for baseline fallback)
+      rf: string | null   // ev?.rf ?? null
+    }
+
+// ── GroupRow ───────────────────────────────────────────────────
+interface GroupRowProps {
+  row: Extract<GanttFlatRow, { kind: 'group' }>
+  isCollapsed: boolean
+  toggle: (key: string) => void
+  searchQuery: string
+  rangeStart: Date
+  totalMs: number
+  timelineW: number
+  nPeriodCols: number
+  periods: Period[]
+  todayPct: number
+  setTooltip: Dispatch<SetStateAction<TooltipState | null>>
+  isFirst: boolean
+}
+
+const GroupRow = memo(function GroupRow({
+  row, isCollapsed, toggle, searchQuery,
+  rangeStart, totalMs, timelineW, nPeriodCols, periods, todayPct,
+  setTooltip, isFirst,
+}: GroupRowProps) {
+  return (
+    <tr className={row.rowClass}>
+      <td className="gantt-sticky">
+        <div className="gantt-sticky-cell">
+          <div className="gantt-sticky-name">
+            <div className="gantt-name-cell" style={{ paddingLeft: row.indent }}>
+              <button className="gantt-toggle" onClick={() => toggle(row.collapseKey)}>
+                {isCollapsed
+                  ? <ChevronRight size={14} strokeWidth={1.5} />
+                  : <ChevronDown size={14} strokeWidth={1.5} />}
+              </button>
+              <span className={row.nameClass} title={row.label}>{highlightMatch(row.label, searchQuery)}</span>
+            </div>
+          </div>
+          <div className="gantt-sticky-status"><StatusPill state={row.status} /></div>
+          <div className="gantt-sticky-exec">{Math.round(row.pct)}%</div>
+        </div>
+      </td>
+      <td
+        className="gantt-tl-td gantt-tl-hoverable"
+        style={{ width: timelineW, minWidth: timelineW }}
+        colSpan={nPeriodCols}
+        onMouseEnter={(e) => setTooltip({
+          name: row.label,
+          bs: row.bs, bf: row.bf, rs: row.rs, rf: row.rf,
+          pct: Math.round(row.pct),
+          pct_prev: rollupPctPrev(row.n4leaves, TODAY),
+          rowState: row.status,
+          childCount: row.n4leaves.length,
+          x: e.clientX, y: e.clientY,
+        })}
+        onMouseMove={(e) => setTooltip(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null)}
+        onMouseLeave={() => setTooltip(null)}
+      >
+        {periods.map((_, i) => i > 0 && (
+          <div key={i} className="gantt-grid-line" style={{ left: `${(i / periods.length) * 100}%` }} />
+        ))}
+        {todayPct >= 0 && todayPct <= 100 && (
+          <div className="gantt-today-line" style={{ left: `${todayPct}%` }}>
+            {isFirst && <span className="gantt-today-label">Hoje</span>}
+          </div>
+        )}
+        <GanttBar start={row.bs} end={row.bf} rangeStart={rangeStart} totalMs={totalMs} variant="baseline" lane="top"    status={row.status} />
+        <GanttBar start={row.rs} end={row.rf} rangeStart={rangeStart} totalMs={totalMs} variant="real"     lane="bottom" status={row.status} />
+      </td>
+      <td className="gantt-filler-td" />
+    </tr>
+  )
+})
+
+// ── ActivityRow ────────────────────────────────────────────────
+interface ActivityRowProps {
+  row: Extract<GanttFlatRow, { kind: 'activity' }>
+  searchQuery: string
+  rangeStart: Date
+  totalMs: number
+  timelineW: number
+  nPeriodCols: number
+  periods: Period[]
+  todayPct: number
+  setTooltip: Dispatch<SetStateAction<TooltipState | null>>
+  isFirst: boolean
+}
+
+const ActivityRow = memo(function ActivityRow({
+  row, searchQuery,
+  rangeStart, totalMs, timelineW, nPeriodCols, periods, todayPct,
+  setTooltip, isFirst,
+}: ActivityRowProps) {
+  return (
+    <tr className={row.rowClass}>
+      <td className="gantt-sticky">
+        <div className="gantt-sticky-cell">
+          <div className="gantt-sticky-name">
+            <div className="gantt-name-cell" style={{ paddingLeft: row.indent }}>
+              <span className={row.nameClass} title={row.act.name}>{highlightMatch(row.act.name, searchQuery)}</span>
+            </div>
+          </div>
+          <div className="gantt-sticky-status"><StatusPill state={row.status} /></div>
+          <div className="gantt-sticky-exec">{Math.round(row.pct)}%</div>
+        </div>
+      </td>
+      <td
+        className="gantt-tl-td gantt-tl-hoverable"
+        style={{ width: timelineW, minWidth: timelineW }}
+        colSpan={nPeriodCols}
+        onMouseEnter={(e) => setTooltip({
+          name: row.act.name,
+          bs: row.bs, bf: row.bf, rs: row.rs, rf: row.rf,
+          pct: row.pct,
+          pct_prev: leafPctPrev(row.act, TODAY),
+          rowState: row.status,
+          childCount: null,
+          x: e.clientX, y: e.clientY,
+        })}
+        onMouseMove={(e) => setTooltip(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null)}
+        onMouseLeave={() => setTooltip(null)}
+      >
+        {periods.map((_, i) => i > 0 && (
+          <div key={i} className="gantt-grid-line" style={{ left: `${(i / periods.length) * 100}%` }} />
+        ))}
+        {todayPct >= 0 && todayPct <= 100 && (
+          <div className="gantt-today-line" style={{ left: `${todayPct}%` }}>
+            {isFirst && <span className="gantt-today-label">Hoje</span>}
+          </div>
+        )}
+        <GanttBar start={row.bs} end={row.bf} rangeStart={rangeStart} totalMs={totalMs} variant="baseline" lane="top"    status={row.status} />
+        <GanttBar start={row.rs ?? row.bs} end={row.rf ?? row.bf} rangeStart={rangeStart} totalMs={totalMs} variant="real" lane="bottom" status={row.status} />
+      </td>
+      <td className="gantt-filler-td" />
+    </tr>
   )
 })
 
@@ -656,43 +813,101 @@ export default function Gantt() {
   const nPeriodCols = Math.max(periods.length, 1)
   const timelineW   = nPeriodCols * colW
 
-  // ── Memoised row-index map (keyed on tree + collapse + eff) ───────────────
-  const rowInfoMap = useMemo(() => {
-    const m = new Map<string, RowInfo>()
-    let idx = 0
+  // ── Flat row model (replaces renderN1Rows + rows JSX array) ───
+  const flatRows = useMemo((): GanttFlatRow[] => {
+    const rows: GanttFlatRow[] = []
 
-    const visitN1Rows = (n1groups: N1Group[]) => {
+    const pushN1Rows = (n1groups: N1Group[], n1Indent: number) => {
       for (const n1g of n1groups) {
-        idx++ // N1 header row
-        if (collapsed.has(`n1:${n1g.n1}`)) continue
+        const n1key = `n1:${n1g.n1}`
+        const n1d   = groupDataMap.get(n1key) ?? EMPTY_GROUP_DATA
+        rows.push({
+          kind: 'group', key: n1key,
+          rowClass: 'gantt-row-n1', nameClass: 'gantt-name-n1',
+          label: n1g.n1, indent: n1Indent, collapseKey: n1key,
+          status: n1d.status, pct: n1d.pct,
+          bs: n1d.bs, bf: n1d.bf,
+          rs: n1d.rs ?? n1d.bs, rf: n1d.rf ?? n1d.bf,
+          n4leaves: n1g.allActs.filter(a => a.level === 4),
+        })
+        if (collapsed.has(n1key)) continue
+
         for (const n2g of n1g.n2groups) {
-          idx++ // N2 header row
-          if (collapsed.has(`n2:${n1g.n1}:${n2g.n2}`)) continue
+          const n2key = `n2:${n1g.n1}:${n2g.n2}`
+          const n2d   = groupDataMap.get(n2key) ?? EMPTY_GROUP_DATA
+          rows.push({
+            kind: 'group', key: n2key,
+            rowClass: 'gantt-row-n2', nameClass: 'gantt-name-n2',
+            label: n2g.n2, indent: n1Indent + 16, collapseKey: n2key,
+            status: n2d.status, pct: n2d.pct,
+            bs: n2d.bs, bf: n2d.bf,
+            rs: n2d.rs ?? n2d.bs, rf: n2d.rf ?? n2d.bf,
+            n4leaves: n2g.allActs.filter(a => a.level === 4),
+          })
+          if (collapsed.has(n2key)) continue
+
           for (const n3g of n2g.n3groups) {
+            // No N3 name: render all acts directly as leaf rows
             if (!n3g.n3) {
               for (const a of n3g.acts) {
                 const ev = eff.get(a.id)
-                m.set(a.id, { id: a.id, rowIndex: idx, bs: ev?.bs ?? a.bs, bf: ev?.bf ?? a.bf })
-                idx++
+                rows.push({
+                  kind: 'activity', key: a.id, act: a,
+                  rowClass: 'gantt-row-n4', nameClass: 'gantt-name-n4',
+                  indent: n1Indent + 32,
+                  status: ev?.status ?? 'Em dia', pct: ev?.pct ?? a.pct,
+                  bs: ev?.bs ?? null, bf: ev?.bf ?? null,
+                  rs: ev?.rs ?? null, rf: ev?.rf ?? null,
+                })
               }
               continue
             }
-            const n3ch = n3g.acts.filter(a => a.level !== 3)
-            if (n3ch.length === 0) {
+
+            const n3ChildLeaves = n3g.acts.filter(a => a.level !== 3)
+            const n3HasChildren = n3ChildLeaves.length > 0
+
+            if (!n3HasChildren) {
+              // N3 has no children — render level-3 rep as a single leaf row
               const rep = n3g.acts.find(a => a.level === 3)
               if (rep) {
                 const ev = eff.get(rep.id)
-                m.set(rep.id, { id: rep.id, rowIndex: idx, bs: ev?.bs ?? rep.bs, bf: ev?.bf ?? rep.bf })
-                idx++
+                rows.push({
+                  kind: 'activity', key: rep.id, act: rep,
+                  rowClass: 'gantt-row-n4', nameClass: 'gantt-name-n3',
+                  indent: n1Indent + 32,
+                  status: ev?.status ?? 'Em dia', pct: ev?.pct ?? rep.pct,
+                  bs: ev?.bs ?? null, bf: ev?.bf ?? null,
+                  rs: ev?.rs ?? null, rf: ev?.rf ?? null,
+                })
               }
               continue
             }
-            idx++ // N3 header row
-            if (collapsed.has(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`)) continue
-            for (const a of n3ch) {
+
+            // Has real children: collapsible N3 header + children
+            const n3key    = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
+            const n3d      = groupDataMap.get(n3key) ?? EMPTY_GROUP_DATA
+            const n3leaves = n3ChildLeaves.filter(a => a.level === 4)
+            rows.push({
+              kind: 'group', key: n3key,
+              rowClass: 'gantt-row-n3', nameClass: 'gantt-name-n3',
+              label: n3g.n3, indent: n1Indent + 32, collapseKey: n3key,
+              status: n3d.status, pct: n3d.pct,
+              bs: n3d.bs, bf: n3d.bf,
+              rs: n3d.rs ?? n3d.bs, rf: n3d.rf ?? n3d.bf,
+              n4leaves: n3leaves,
+            })
+            if (collapsed.has(n3key)) continue
+
+            for (const a of n3ChildLeaves) {
               const ev = eff.get(a.id)
-              m.set(a.id, { id: a.id, rowIndex: idx, bs: ev?.bs ?? a.bs, bf: ev?.bf ?? a.bf })
-              idx++
+              rows.push({
+                kind: 'activity', key: a.id, act: a,
+                rowClass: 'gantt-row-n4', nameClass: 'gantt-name-n4',
+                indent: n1Indent + 48,
+                status: ev?.status ?? 'Em dia', pct: ev?.pct ?? a.pct,
+                bs: ev?.bs ?? null, bf: ev?.bf ?? null,
+                rs: ev?.rs ?? null, rf: ev?.rf ?? null,
+              })
             }
           }
         }
@@ -701,22 +916,50 @@ export default function Gantt() {
 
     if (n0tree) {
       for (const n0g of n0tree) {
-        idx++ // N0 header row
-        if (!collapsed.has(`n0:${n0g.progId}`)) visitN1Rows(n0g.n1groups)
+        const n0key = `n0:${n0g.progId}`
+        const n0d   = groupDataMap.get(n0key) ?? EMPTY_GROUP_DATA
+        rows.push({
+          kind: 'group', key: n0key,
+          rowClass: 'gantt-row-n0', nameClass: 'gantt-name-n0',
+          label: n0g.progName, indent: 4, collapseKey: n0key,
+          status: n0d.status, pct: n0d.pct,
+          bs: n0d.bs, bf: n0d.bf,
+          rs: n0d.rs ?? n0d.bs, rf: n0d.rf ?? n0d.bf,
+          n4leaves: n0g.allActs.filter(a => a.level === 4),
+        })
+        if (!collapsed.has(n0key)) pushN1Rows(n0g.n1groups, 16)
       }
     } else {
-      visitN1Rows(tree)
+      pushN1Rows(tree, 4)
+    }
+
+    return rows
+  }, [n0tree, tree, collapsed, groupDataMap, eff])
+
+  // ── Arrow info map (replaces rowInfoMap) ──────────────────────
+  const arrowInfoMap = useMemo(() => {
+    const m = new Map<string, RowInfo>()
+    for (let i = 0; i < flatRows.length; i++) {
+      const r = flatRows[i]
+      if (r.kind === 'activity') {
+        m.set(r.act.id, {
+          id: r.act.id,
+          rowIndex: i,
+          bs: r.bs ?? r.act.bs,  // ev?.bs ?? a.bs — preserves stored fallback for arrow positioning
+          bf: r.bf ?? r.act.bf,
+        })
+      }
     }
     return m
-  }, [n0tree, tree, collapsed, eff])
+  }, [flatRows])
 
   // ── Memoised dependency arrows ─────────────────────────────────
   const arrows = useMemo((): Arrow[] => {
     if (totalMs <= 0) return []
     const result: Arrow[] = []
     for (const dep of dependencies) {
-      const pred = rowInfoMap.get(dep.predecessor_id)
-      const suc  = rowInfoMap.get(dep.successor_id)
+      const pred = arrowInfoMap.get(dep.predecessor_id)
+      const suc  = arrowInfoMap.get(dep.successor_id)
       if (!pred || !suc) continue
       const fromDateStr = dep.dep_type === 'FS' || dep.dep_type === 'FF' ? pred.bf : pred.bs
       const toDateStr   = dep.dep_type === 'FS' || dep.dep_type === 'SS' ? suc.bs  : suc.bf
@@ -732,287 +975,21 @@ export default function Gantt() {
       })
     }
     return result
-  }, [rowInfoMap, dependencies, rangeStart, totalMs, timelineW])
+  }, [arrowInfoMap, dependencies, rangeStart, totalMs, timelineW])
 
-  // ── Timeline cell factory ──────────────────────────────────────
-  function makeTimeline(
-    bs: string | null, bf: string | null,
-    rs: string | null, rf: string | null,
-    status: RowState,
-    act: Activity | null,
-    showTodayLabel = false,
-    tooltipGroup?: { name: string; leaves: Activity[] },
-  ): JSX.Element {
-    let onEnter: ((e: React.MouseEvent) => void) | null = null
-    if (act) {
-      const ev = eff.get(act.id)
-      onEnter = (e: React.MouseEvent) => {
-        setTooltip({
-          name: act.name,
-          bs: ev?.bs ?? null, bf: ev?.bf ?? null,
-          rs: ev?.rs ?? null, rf: ev?.rf ?? null,
-          pct:      ev?.pct ?? act.pct,
-          pct_prev: leafPctPrev(act, TODAY),
-          rowState: ev?.status ?? 'Em dia',
-          childCount: null,
-          x: e.clientX, y: e.clientY,
-        })
-      }
-    } else if (tooltipGroup) {
-      const { name, leaves } = tooltipGroup
-      onEnter = (e: React.MouseEvent) => setTooltip({
-        name, bs, bf, rs, rf,
-        pct:      Math.round(groupPct(leaves, eff)),
-        pct_prev: rollupPctPrev(leaves, TODAY),
-        rowState: status,
-        childCount: leaves.length,
-        x: e.clientX, y: e.clientY,
-      })
-    }
-    const handlers = onEnter ? {
-      onMouseEnter: onEnter,
-      onMouseMove:  (e: React.MouseEvent) => setTooltip(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null),
-      onMouseLeave: () => setTooltip(null),
-    } : {}
-
-    return (
-      <td
-        key="tl"
-        className={`gantt-tl-td${(act || tooltipGroup) ? ' gantt-tl-hoverable' : ''}`}
-        style={{ width: timelineW, minWidth: timelineW }}
-        colSpan={nPeriodCols}
-        {...handlers}
-      >
-        {/* Period grid lines */}
-        {periods.map((_, i) => i > 0 && (
-          <div key={i} className="gantt-grid-line" style={{ left: `${(i / periods.length) * 100}%` }} />
-        ))}
-        {/* Today marker — line on every row, label shown once on first row */}
-        {todayPct >= 0 && todayPct <= 100 && (
-          <div className="gantt-today-line" style={{ left: `${todayPct}%` }}>
-            {showTodayLabel && <span className="gantt-today-label">Hoje</span>}
-          </div>
-        )}
-        {/* Bars */}
-        <GanttBar start={bs} end={bf} rangeStart={rangeStart} totalMs={totalMs} variant="baseline" lane="top"    status={status} />
-        <GanttBar start={rs} end={rf} rangeStart={rangeStart} totalMs={totalMs} variant="real"     lane="bottom" status={status} />
-      </td>
-    )
-  }
-
-  // ── Build rows ─────────────────────────────────────────────────
-  const rows: JSX.Element[] = []
-  let firstRow = true
-
-  // Inner helper — pushes N1/N2/N3/N4 rows into `rows`.
-  // n1Indent: paddingLeft for N1; subsequent levels add 16px each.
-  const renderN1Rows = (n1groups: N1Group[], n1Indent: number) => {
-    for (const n1g of n1groups) {
-      const n1key = `n1:${n1g.n1}`
-      const n1col = collapsed.has(n1key)
-      const n1leaves = n1g.allActs.filter(a => a.level === 4)
-      const n1d  = groupDataMap.get(n1key) ?? EMPTY_GROUP_DATA
-      const showLabel = firstRow; firstRow = false
-
-      rows.push(
-        <tr key={n1key} className="gantt-row-n1">
-          <td className="gantt-sticky">
-            <div className="gantt-sticky-cell">
-              <div className="gantt-sticky-name">
-                <div className="gantt-name-cell" style={{ paddingLeft: n1Indent }}>
-                  <button className="gantt-toggle" onClick={() => toggle(n1key)}>{n1col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
-                  <span className="gantt-name-n1" title={n1g.n1}>{highlightMatch(n1g.n1, searchQuery)}</span>
-                </div>
-              </div>
-              <div className="gantt-sticky-status"><StatusPill state={n1d.status} /></div>
-              <div className="gantt-sticky-exec">{Math.round(n1d.pct)}%</div>
-            </div>
-          </td>
-          {makeTimeline(n1d.bs, n1d.bf, n1d.rs ?? n1d.bs, n1d.rf ?? n1d.bf, n1d.status, null, showLabel,
-            { name: n1g.n1, leaves: n1leaves })}
-          <td className="gantt-filler-td" />
-        </tr>
-      )
-      if (n1col) continue
-
-      for (const n2g of n1g.n2groups) {
-        const n2key = `n2:${n1g.n1}:${n2g.n2}`
-        const n2col = collapsed.has(n2key)
-        const n2leaves = n2g.allActs.filter(a => a.level === 4)
-        const n2d  = groupDataMap.get(n2key) ?? EMPTY_GROUP_DATA
-
-        rows.push(
-          <tr key={n2key} className="gantt-row-n2">
-            <td className="gantt-sticky">
-              <div className="gantt-sticky-cell">
-                <div className="gantt-sticky-name">
-                  <div className="gantt-name-cell" style={{ paddingLeft: n1Indent + 16 }}>
-                    <button className="gantt-toggle" onClick={() => toggle(n2key)}>{n2col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
-                    <span className="gantt-name-n2" title={n2g.n2}>{highlightMatch(n2g.n2, searchQuery)}</span>
-                  </div>
-                </div>
-                <div className="gantt-sticky-status"><StatusPill state={n2d.status} /></div>
-                <div className="gantt-sticky-exec">{Math.round(n2d.pct)}%</div>
-              </div>
-            </td>
-            {makeTimeline(n2d.bs, n2d.bf, n2d.rs ?? n2d.bs, n2d.rf ?? n2d.bf, n2d.status, null, false,
-              { name: n2g.n2, leaves: n2leaves })}
-            <td className="gantt-filler-td" />
-          </tr>
-        )
-        if (n2col) continue
-
-        for (const n3g of n2g.n3groups) {
-          // ── No N3 name: render all acts directly as leaf rows ──
-          if (!n3g.n3) {
-            for (const a of n3g.acts) {
-              const ev  = eff.get(a.id)
-              const ast = ev?.status ?? 'Em dia'
-              rows.push(
-                <tr key={a.id} className="gantt-row-n4">
-                  <td className="gantt-sticky">
-                    <div className="gantt-sticky-cell">
-                      <div className="gantt-sticky-name">
-                        <div className="gantt-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
-                          <span className="gantt-name-n4" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
-                        </div>
-                      </div>
-                      <div className="gantt-sticky-status"><StatusPill state={ast} /></div>
-                      <div className="gantt-sticky-exec">{Math.round(ev?.pct ?? a.pct)}%</div>
-                    </div>
-                  </td>
-                  {makeTimeline(ev?.bs ?? null, ev?.bf ?? null, ev?.rs ?? ev?.bs ?? null, ev?.rf ?? ev?.bf ?? null, ast, a)}
-                  <td className="gantt-filler-td" />
-                </tr>
-              )
-            }
-            continue
-          }
-
-          // ── N3 has a name: exclude the level-3 representative from children ──
-          const n3ChildLeaves = n3g.acts.filter(a => a.level !== 3)
-          const n3HasChildren = n3ChildLeaves.length > 0
-
-          if (!n3HasChildren) {
-            // N3 has no children — render only the level-3 representative as a single leaf row
-            const rep = n3g.acts.find(a => a.level === 3)
-            if (!rep) continue
-            const ev  = eff.get(rep.id)
-            const ast = ev?.status ?? 'Em dia'
-            rows.push(
-              <tr key={rep.id} className="gantt-row-n4">
-                <td className="gantt-sticky">
-                  <div className="gantt-sticky-cell">
-                    <div className="gantt-sticky-name">
-                      <div className="gantt-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
-                        <span className="gantt-name-n3" title={rep.name}>{highlightMatch(rep.name, searchQuery)}</span>
-                      </div>
-                    </div>
-                    <div className="gantt-sticky-status"><StatusPill state={ast} /></div>
-                    <div className="gantt-sticky-exec">{Math.round(ev?.pct ?? rep.pct)}%</div>
-                  </div>
-                </td>
-                {makeTimeline(ev?.bs ?? null, ev?.bf ?? null, ev?.rs ?? ev?.bs ?? null, ev?.rf ?? ev?.bf ?? null, ast, rep)}
-                <td className="gantt-filler-td" />
-              </tr>
-            )
-            continue
-          }
-
-          // ── Has real children: render collapsible N3 header + children only ──
-          const n3key = `n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`
-          const n3col = collapsed.has(n3key)
-          const n3leaves = n3ChildLeaves.filter(a => a.level === 4)
-          const n3d  = groupDataMap.get(n3key) ?? EMPTY_GROUP_DATA
-
-          rows.push(
-            <tr key={n3key} className="gantt-row-n3">
-              <td className="gantt-sticky">
-                <div className="gantt-sticky-cell">
-                  <div className="gantt-sticky-name">
-                    <div className="gantt-name-cell" style={{ paddingLeft: n1Indent + 32 }}>
-                      <button className="gantt-toggle" onClick={() => toggle(n3key)}>{n3col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
-                      <span className="gantt-name-n3" title={n3g.n3}>{highlightMatch(n3g.n3, searchQuery)}</span>
-                    </div>
-                  </div>
-                  <div className="gantt-sticky-status"><StatusPill state={n3d.status} /></div>
-                  <div className="gantt-sticky-exec">{Math.round(n3d.pct)}%</div>
-                </div>
-              </td>
-              {makeTimeline(n3d.bs, n3d.bf, n3d.rs ?? n3d.bs, n3d.rf ?? n3d.bf, n3d.status, null, false,
-                { name: n3g.n3, leaves: n3leaves })}
-              <td className="gantt-filler-td" />
-            </tr>
-          )
-          if (n3col) continue
-
-          // Render only the real children — the N3 representative is excluded to avoid duplicates
-          for (const a of n3ChildLeaves) {
-            const ev  = eff.get(a.id)
-            const ast = ev?.status ?? 'Em dia'
-            rows.push(
-              <tr key={a.id} className="gantt-row-n4">
-                <td className="gantt-sticky">
-                  <div className="gantt-sticky-cell">
-                    <div className="gantt-sticky-name">
-                      <div className="gantt-name-cell" style={{ paddingLeft: n1Indent + 48 }}>
-                        <span className="gantt-name-n4" title={a.name}>{highlightMatch(a.name, searchQuery)}</span>
-                      </div>
-                    </div>
-                    <div className="gantt-sticky-status"><StatusPill state={ast} /></div>
-                    <div className="gantt-sticky-exec">{Math.round(ev?.pct ?? a.pct)}%</div>
-                  </div>
-                </td>
-                {makeTimeline(ev?.bs ?? null, ev?.bf ?? null, ev?.rs ?? ev?.bs ?? null, ev?.rf ?? ev?.bf ?? null, ast, a)}
-                <td className="gantt-filler-td" />
-              </tr>
-            )
-          }
-        }
-      }
-    }
-  }
-
-  if (n0tree) {
-    // Multi-program: N0 group header + indented N1 subtree
-    for (const n0g of n0tree) {
-      const n0key = `n0:${n0g.progId}`
-      const n0col = collapsed.has(n0key)
-      const n0leaves = n0g.allActs.filter(a => a.level === 4)
-      const n0d  = groupDataMap.get(n0key) ?? EMPTY_GROUP_DATA
-      const showLabel = firstRow; firstRow = false
-
-      rows.push(
-        <tr key={n0key} className="gantt-row-n0">
-          <td className="gantt-sticky">
-            <div className="gantt-sticky-cell">
-              <div className="gantt-sticky-name">
-                <div className="gantt-name-cell" style={{ paddingLeft: 4 }}>
-                  <button className="gantt-toggle" onClick={() => toggle(n0key)}>{n0col ? <ChevronRight size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={1.5} />}</button>
-                  <span className="gantt-name-n0" title={n0g.progName}>{highlightMatch(n0g.progName, searchQuery)}</span>
-                </div>
-              </div>
-              <div className="gantt-sticky-status"><StatusPill state={n0d.status} /></div>
-              <div className="gantt-sticky-exec">{Math.round(n0d.pct)}%</div>
-            </div>
-          </td>
-          {makeTimeline(n0d.bs, n0d.bf, n0d.rs ?? n0d.bs, n0d.rf ?? n0d.bf, n0d.status, null, showLabel,
-            { name: n0g.progName, leaves: n0leaves })}
-          <td className="gantt-filler-td" />
-        </tr>
-      )
-
-      if (!n0col) renderN1Rows(n0g.n1groups, 16)
-    }
-  } else {
-    // Single program (or no programs): existing behaviour, no N0 header
-    renderN1Rows(tree, 4)
-  }
+  // ── Virtualizer ────────────────────────────────────────────────
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const virtualizer = useVirtualizer({
+    count: flatRows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_H,
+    overscan: 10,
+  })
+  const virtualRows = virtualizer.getVirtualItems()
 
   return (
     <>
       <Card title="GANTT">
-        {/* Fix 1: Toolbar with navy background, inside card body bleeding edge-to-edge */}
         <div className="gantt-toolbar">
           <div className="gantt-toolbar-left">
             <div className="gi-search">
@@ -1118,7 +1095,7 @@ export default function Gantt() {
             {searchQuery.trim() ? `Nenhuma actividade encontrada para "${searchQuery}"` : 'Sem actividades para os filtros seleccionados.'}
           </div>
         ) : (
-          <div className="gantt-scroll-wrap">
+          <div className="gantt-scroll-wrap" ref={scrollRef}>
             <div className="gantt-inner">
               <table
                 className="gantt-table"
@@ -1127,7 +1104,7 @@ export default function Gantt() {
                 <colgroup>
                   <col style={{ width: COL_NAME + COL_STATUS + COL_EXEC }} />
                   {periods.map((_, i) => <col key={i} style={{ width: colW }} />)}
-                  <col /> {/* filler: absorbs remaining card width */}
+                  <col />
                 </colgroup>
                 <thead>
                   <tr>
@@ -1141,11 +1118,66 @@ export default function Gantt() {
                     {periods.map((p, i) => (
                       <th key={i} className="gantt-th gantt-th-period t-label">{p.label}</th>
                     ))}
-                    {/* Issue 4: filler header — empty, navy bg extends to right edge */}
                     <th className="gantt-th gantt-th-filler" />
                   </tr>
                 </thead>
-                <tbody>{rows}</tbody>
+                <tbody>
+                  {/* Top spacer — fills scroll space above visible window */}
+                  {virtualRows.length > 0 && (
+                    <tr>
+                      <td colSpan={nPeriodCols + 2} style={{ height: virtualRows[0].start, padding: 0 }} />
+                    </tr>
+                  )}
+                  {virtualRows.map(vi => {
+                    const row = flatRows[vi.index]
+                    if (row.kind === 'group') {
+                      return (
+                        <GroupRow
+                          key={row.key}
+                          row={row}
+                          isCollapsed={collapsed.has(row.collapseKey)}
+                          toggle={toggle}
+                          searchQuery={searchQuery}
+                          rangeStart={rangeStart}
+                          totalMs={totalMs}
+                          timelineW={timelineW}
+                          nPeriodCols={nPeriodCols}
+                          periods={periods}
+                          todayPct={todayPct}
+                          setTooltip={setTooltip}
+                          isFirst={vi.index === 0}
+                        />
+                      )
+                    }
+                    return (
+                      <ActivityRow
+                        key={row.key}
+                        row={row}
+                        searchQuery={searchQuery}
+                        rangeStart={rangeStart}
+                        totalMs={totalMs}
+                        timelineW={timelineW}
+                        nPeriodCols={nPeriodCols}
+                        periods={periods}
+                        todayPct={todayPct}
+                        setTooltip={setTooltip}
+                        isFirst={vi.index === 0}
+                      />
+                    )
+                  })}
+                  {/* Bottom spacer — fills scroll space below visible window */}
+                  {virtualRows.length > 0 && (
+                    <tr>
+                      <td
+                        colSpan={nPeriodCols + 2}
+                        style={{
+                          height: virtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end,
+                          padding: 0,
+                        }}
+                      />
+                    </tr>
+                  )}
+                </tbody>
               </table>
               {arrows.length > 0 && (
                 <svg
@@ -1155,7 +1187,7 @@ export default function Gantt() {
                     top: HEADER_H,
                     left: STICKY_W,
                     width: timelineW,
-                    height: rows.length * ROW_H,
+                    height: flatRows.length * ROW_H,
                     pointerEvents: 'none',
                     zIndex: 4,
                     overflow: 'visible',
