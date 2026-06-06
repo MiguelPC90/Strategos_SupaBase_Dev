@@ -983,7 +983,7 @@ export default function Gantt() {
     count: flatRows.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_H,
-    overscan: 10,
+    overscan: 20,
   })
   const virtualRows = virtualizer.getVirtualItems()
 
