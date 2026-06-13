@@ -254,16 +254,7 @@
   }
   .gantt-tl-hoverable { cursor: default; }
 
-  /* Period grid lines */
-  .gantt-grid-line {
-    position: absolute;
-    top: 0; bottom: 0;
-    width: 0;
-    border-left: 1px solid var(--border);
-    pointer-events: none;
-  }
-
-  /* Today marker — amber line, single label on first row */
+  /* Today marker — amber line, single label via overlay */
   .gantt-today-line {
     position: absolute;
     top: 0; bottom: 0;

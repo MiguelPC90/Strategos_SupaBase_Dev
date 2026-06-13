@@ -518,16 +518,13 @@ interface GroupRowProps {
   totalMs: number
   timelineW: number
   nPeriodCols: number
-  periods: Period[]
-  todayPct: number
   setTooltip: Dispatch<SetStateAction<TooltipState | null>>
-  isFirst: boolean
 }
 
 const GroupRow = memo(function GroupRow({
   row, isCollapsed, toggle, searchQuery,
-  rangeStart, totalMs, timelineW, nPeriodCols, periods, todayPct,
-  setTooltip, isFirst,
+  rangeStart, totalMs, timelineW, nPeriodCols,
+  setTooltip,
 }: GroupRowProps) {
   return (
     <tr className={row.rowClass}>
@@ -563,14 +560,6 @@ const GroupRow = memo(function GroupRow({
         onMouseMove={(e) => setTooltip(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null)}
         onMouseLeave={() => setTooltip(null)}
       >
-        {periods.map((_, i) => i > 0 && (
-          <div key={i} className="gantt-grid-line" style={{ left: `${(i / periods.length) * 100}%` }} />
-        ))}
-        {todayPct >= 0 && todayPct <= 100 && (
-          <div className="gantt-today-line" style={{ left: `${todayPct}%` }}>
-            {isFirst && <span className="gantt-today-label">Hoje</span>}
-          </div>
-        )}
         <GanttBar start={row.bs} end={row.bf} rangeStart={rangeStart} totalMs={totalMs} variant="baseline" lane="top"    status={row.status} />
         <GanttBar start={row.rs} end={row.rf} rangeStart={rangeStart} totalMs={totalMs} variant="real"     lane="bottom" status={row.status} />
       </td>
@@ -587,16 +576,13 @@ interface ActivityRowProps {
   totalMs: number
   timelineW: number
   nPeriodCols: number
-  periods: Period[]
-  todayPct: number
   setTooltip: Dispatch<SetStateAction<TooltipState | null>>
-  isFirst: boolean
 }
 
 const ActivityRow = memo(function ActivityRow({
   row, searchQuery,
-  rangeStart, totalMs, timelineW, nPeriodCols, periods, todayPct,
-  setTooltip, isFirst,
+  rangeStart, totalMs, timelineW, nPeriodCols,
+  setTooltip,
 }: ActivityRowProps) {
   return (
     <tr className={row.rowClass}>
@@ -627,14 +613,6 @@ const ActivityRow = memo(function ActivityRow({
         onMouseMove={(e) => setTooltip(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null)}
         onMouseLeave={() => setTooltip(null)}
       >
-        {periods.map((_, i) => i > 0 && (
-          <div key={i} className="gantt-grid-line" style={{ left: `${(i / periods.length) * 100}%` }} />
-        ))}
-        {todayPct >= 0 && todayPct <= 100 && (
-          <div className="gantt-today-line" style={{ left: `${todayPct}%` }}>
-            {isFirst && <span className="gantt-today-label">Hoje</span>}
-          </div>
-        )}
         <GanttBar start={row.bs} end={row.bf} rangeStart={rangeStart} totalMs={totalMs} variant="baseline" lane="top"    status={row.status} />
         <GanttBar start={row.rs ?? row.bs} end={row.rf ?? row.bf} rangeStart={rangeStart} totalMs={totalMs} variant="real" lane="bottom" status={row.status} />
       </td>
@@ -1142,10 +1120,7 @@ export default function Gantt() {
                           totalMs={totalMs}
                           timelineW={timelineW}
                           nPeriodCols={nPeriodCols}
-                          periods={periods}
-                          todayPct={todayPct}
                           setTooltip={setTooltip}
-                          isFirst={vi.index === 0}
                         />
                       )
                     }
@@ -1158,10 +1133,7 @@ export default function Gantt() {
                         totalMs={totalMs}
                         timelineW={timelineW}
                         nPeriodCols={nPeriodCols}
-                        periods={periods}
-                        todayPct={todayPct}
                         setTooltip={setTooltip}
-                        isFirst={vi.index === 0}
                       />
                     )
                   })}
@@ -1179,6 +1151,36 @@ export default function Gantt() {
                   )}
                 </tbody>
               </table>
+              {/* Grid-lines overlay — single div, repeating gradient tiles at colW; no per-row divs */}
+              <div
+                className="gantt-grid-overlay"
+                style={{
+                  position: 'absolute',
+                  top: HEADER_H,
+                  left: STICKY_W,
+                  width: timelineW,
+                  height: flatRows.length * ROW_H,
+                  pointerEvents: 'none',
+                  zIndex: 0,
+                  backgroundImage: `repeating-linear-gradient(to right, var(--border) 0px, var(--border) 1px, transparent 1px, transparent ${colW}px)`,
+                }}
+              />
+              {/* Today-line overlay — single full-height div; one 'Hoje' label */}
+              {todayPct >= 0 && todayPct <= 100 && (
+                <div
+                  className="gantt-today-line"
+                  style={{
+                    position: 'absolute',
+                    top: HEADER_H,
+                    left: STICKY_W + (todayPct / 100) * timelineW,
+                    height: flatRows.length * ROW_H,
+                    pointerEvents: 'none',
+                    zIndex: 2,
+                  }}
+                >
+                  <span className="gantt-today-label">Hoje</span>
+                </div>
+              )}
               {arrows.length > 0 && (
                 <svg
                   className="gantt-arrows-overlay"
