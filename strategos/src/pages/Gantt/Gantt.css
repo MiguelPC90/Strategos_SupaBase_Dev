@@ -129,6 +129,7 @@
     border-bottom: 1px solid var(--border);
     border-right: 1px solid var(--stratgos-ink-100);
     vertical-align: middle;
+    box-sizing: border-box;
   }
   .gantt-th.gantt-sticky {
     padding: 0;
@@ -251,6 +252,7 @@
     border-left: 1px solid var(--border);
     vertical-align: middle;
     overflow: hidden;
+    box-sizing: border-box; /* border included in 34px; matches virtualizer estimateSize: ROW_H */
   }
   .gantt-tl-hoverable { cursor: default; }
 

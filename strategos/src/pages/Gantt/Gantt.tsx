@@ -508,6 +508,17 @@ type GanttFlatRow =
       rf: string | null   // ev?.rf ?? null
     }
 
+// ── Row identity cache ─────────────────────────────────────────
+function shallowEqualRow(a: GanttFlatRow, b: GanttFlatRow): boolean {
+  if (a.kind !== b.kind || a.key !== b.key) return false
+  if (a.rowClass !== b.rowClass || a.nameClass !== b.nameClass) return false
+  if (a.indent !== b.indent || a.status !== b.status || a.pct !== b.pct) return false
+  if (a.bs !== b.bs || a.bf !== b.bf || a.rs !== b.rs || a.rf !== b.rf) return false
+  if (a.kind === 'group' && b.kind === 'group') return a.label === b.label && a.collapseKey === b.collapseKey
+  if (a.kind === 'activity' && b.kind === 'activity') return a.act === b.act
+  return false
+}
+
 // ── GroupRow ───────────────────────────────────────────────────
 interface GroupRowProps {
   row: Extract<GanttFlatRow, { kind: 'group' }>
@@ -527,7 +538,7 @@ const GroupRow = memo(function GroupRow({
   setTooltip,
 }: GroupRowProps) {
   return (
-    <tr className={row.rowClass}>
+    <tr className={row.rowClass} style={{ height: ROW_H }}>
       <td className="gantt-sticky">
         <div className="gantt-sticky-cell">
           <div className="gantt-sticky-name">
@@ -585,7 +596,7 @@ const ActivityRow = memo(function ActivityRow({
   setTooltip,
 }: ActivityRowProps) {
   return (
-    <tr className={row.rowClass}>
+    <tr className={row.rowClass} style={{ height: ROW_H }}>
       <td className="gantt-sticky">
         <div className="gantt-sticky-cell">
           <div className="gantt-sticky-name">
@@ -777,19 +788,27 @@ export default function Gantt() {
     setCollapsed(buildLevelKeys(level, n0tree, tree))
   }, [n0tree, tree])
 
-  const { rangeStart, totalMs, periods, todayPct } = useMemo(() => {
+  const { rangeStartMs, totalMs, periods, todayPct } = useMemo(() => {
     const dr = computeDateRange(filtered)
-    if (!dr) return { rangeStart: new Date(), totalMs: 0, periods: [] as Period[], todayPct: -1 }
-    const { rangeStart, rangeEnd } = dr
-    const totalMs  = rangeEnd.getTime() - rangeStart.getTime()
-    const periods  = buildPeriods(rangeStart, rangeEnd, scale)
-    const todayPct = totalMs > 0 ? ((Date.now() - rangeStart.getTime()) / totalMs) * 100 : -1
-    return { rangeStart, totalMs, periods, todayPct }
+    if (!dr) return { rangeStartMs: 0, totalMs: 0, periods: [] as Period[], todayPct: -1 }
+    const { rangeStart: rs, rangeEnd } = dr
+    const rangeStartMs = rs.getTime()
+    const totalMs  = rangeEnd.getTime() - rangeStartMs
+    const periods  = buildPeriods(rs, rangeEnd, scale)
+    const todayPct = totalMs > 0 ? ((Date.now() - rangeStartMs) / totalMs) * 100 : -1
+    return { rangeStartMs, totalMs, periods, todayPct }
   }, [filtered, scale])
+
+  // Stable Date reference — only a new object when the timestamp actually changes,
+  // so row memos (GanttBar receives rangeStart) don't invalidate on every activities refetch
+  const rangeStart = useMemo(() => new Date(rangeStartMs), [rangeStartMs])
 
   const colW        = COL_WIDTH[scale]
   const nPeriodCols = Math.max(periods.length, 1)
   const timelineW   = nPeriodCols * colW
+
+  // ── Row identity cache — persists across flatRows recomputes ──
+  const rowCacheRef = useRef(new Map<string, GanttFlatRow>())
 
   // ── Flat row model (replaces renderN1Rows + rows JSX array) ───
   const flatRows = useMemo((): GanttFlatRow[] => {
@@ -911,7 +930,23 @@ export default function Gantt() {
       pushN1Rows(tree, 4)
     }
 
-    return rows
+    // Stabilize row object identities — reuse prior object when data is unchanged so
+    // React.memo on GroupRow/ActivityRow can bail out for unmodified rows
+    const cache = rowCacheRef.current
+    const stableRows = rows.map(next => {
+      const prev = cache.get(next.key)
+      if (prev && shallowEqualRow(prev, next)) return prev
+      cache.set(next.key, next)
+      return next
+    })
+
+    // Prune keys no longer in the list
+    const currentKeys = new Set(stableRows.map(r => r.key))
+    for (const k of cache.keys()) {
+      if (!currentKeys.has(k)) cache.delete(k)
+    }
+
+    return stableRows
   }, [n0tree, tree, collapsed, groupDataMap, eff])
 
   // ── Arrow info map (replaces rowInfoMap) ──────────────────────
@@ -1111,7 +1146,7 @@ export default function Gantt() {
                     if (row.kind === 'group') {
                       return (
                         <GroupRow
-                          key={row.key}
+                          key={vi.key}
                           row={row}
                           isCollapsed={collapsed.has(row.collapseKey)}
                           toggle={toggle}
@@ -1126,7 +1161,7 @@ export default function Gantt() {
                     }
                     return (
                       <ActivityRow
-                        key={row.key}
+                        key={vi.key}
                         row={row}
                         searchQuery={searchQuery}
                         rangeStart={rangeStart}
