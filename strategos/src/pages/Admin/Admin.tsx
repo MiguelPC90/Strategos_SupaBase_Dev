@@ -2487,6 +2487,7 @@ function fmtDateTime(iso: string) {
 // ── Tab: Snapshots ─────────────────────────────────────────────
 function SnapshotsTab() {
   const { showToast } = useToast()
+  const qc = useQueryClient()
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [loading,   setLoading]   = useState(true)
   const [snapshotDeleteConfirm, setSnapshotDeleteConfirm] = useState<{ id: string; date: string } | null>(null)
@@ -2507,6 +2508,7 @@ function SnapshotsTab() {
   async function saveNow() {
     try {
       await supabase.rpc('daily_snapshot')
+      void qc.invalidateQueries({ queryKey: ['snapshots'] })
       showToast('Snapshot guardado!')
       await loadSnapshots()
     } catch {
@@ -2521,6 +2523,7 @@ function SnapshotsTab() {
   async function handleConfirmDeleteSnapshot() {
     if (!snapshotDeleteConfirm) return
     await supabase.from('snapshots').delete().eq('id', snapshotDeleteConfirm.id)
+    void qc.invalidateQueries({ queryKey: ['snapshots'] })
     setSnapshots(prev => prev.filter(s => s.id !== snapshotDeleteConfirm.id))
     setSnapshotDeleteConfirm(null)
   }
