@@ -12,6 +12,7 @@ import {
 import Card from '../../components/Card/Card'
 import { invoiceAlert } from '../../lib/invoiceHelpers'
 import { useFinancials } from '../../hooks/useFinancials'
+import { useAppConfig } from '../../hooks/useAppConfig'
 import type { FinBudgetLine } from '../../types/index'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
@@ -242,7 +243,6 @@ export default function ExecucaoFinanceira() {
   const [currSymbol,          setCurrSymbol]          = useState('€')
   const [mgmtYears,           setMgmtYears]           = useState<string[]>([])
   const [invoiceAlertFilter,  setInvoiceAlertFilter]  = useState<'overdue' | 'due_soon' | null>(null)
-  const [alertThresholds,     setAlertThresholds]     = useState({ overdue: 100, due_soon: 85 })
   const [detailTab,           setDetailTab]           = useState<'rubricas' | 'contratos'>('rubricas')
   const [sortBy,              setSortBy]              = useState('supplier')
   const [sortDir,             setSortDir]             = useState<'asc' | 'desc'>('asc')
@@ -258,21 +258,15 @@ export default function ExecucaoFinanceira() {
       .then(({ data }) => { if (data?.[0]?.symbol) setCurrSymbol(data[0].symbol) })
   }, [])
 
-  // Load invoice alert thresholds from app_config
-  useEffect(() => {
-    supabase
-      .from('app_config')
-      .select('config_key, config_value')
-      .in('config_key', ['invoice_alert_overdue', 'invoice_alert_due_soon'])
-      .then(({ data }) => {
-        if (!data) return
-        const m = Object.fromEntries(data.map(r => [r.config_key, Number(r.config_value)]))
-        setAlertThresholds({
-          overdue:  m.invoice_alert_overdue  ?? 100,
-          due_soon: m.invoice_alert_due_soon ?? 85,
-        })
-      })
-  }, [])
+  const { config } = useAppConfig()
+  const alertThresholds = useMemo(() => {
+    const ov = Number(config['invoice_alert_overdue'])
+    const ds = Number(config['invoice_alert_due_soon'])
+    return {
+      overdue:  Number.isFinite(ov) && ov  > 0 ? ov  : 100,
+      due_soon: Number.isFinite(ds) && ds  > 0 ? ds  : 85,
+    }
+  }, [config])
 
   // Fetch management years for the selected program
   useEffect(() => {
