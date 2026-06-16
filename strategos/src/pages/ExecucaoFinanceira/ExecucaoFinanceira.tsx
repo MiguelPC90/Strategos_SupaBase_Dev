@@ -258,15 +258,11 @@ export default function ExecucaoFinanceira() {
       .then(({ data }) => { if (data?.[0]?.symbol) setCurrSymbol(data[0].symbol) })
   }, [])
 
-  const { config } = useAppConfig()
-  const alertThresholds = useMemo(() => {
-    const ov = Number(config['invoice_alert_overdue'])
-    const ds = Number(config['invoice_alert_due_soon'])
-    return {
-      overdue:  Number.isFinite(ov) && ov  > 0 ? ov  : 100,
-      due_soon: Number.isFinite(ds) && ds  > 0 ? ds  : 85,
-    }
-  }, [config])
+  const { config, getNumber } = useAppConfig()
+  const alertThresholds = useMemo(() => ({
+    overdue:  getNumber('invoice_alert_overdue', 100),
+    due_soon: getNumber('invoice_alert_due_soon', 85),
+  }), [config])
 
   // Fetch management years for the selected program
   useEffect(() => {

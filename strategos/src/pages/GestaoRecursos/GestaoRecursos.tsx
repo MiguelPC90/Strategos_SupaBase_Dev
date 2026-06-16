@@ -15,6 +15,7 @@ import Modal from '../../components/Modal/Modal'
 import type { FteResource, Person, FinContract } from '../../types/index'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 import { usePermissions } from '../../hooks/usePermissions'
+import { useAppConfig } from '../../hooks/useAppConfig'
 
 // ── Types ──────────────────────────────────────────────────────────
 interface PlanOption {
@@ -665,24 +666,16 @@ export default function GestaoRecursos({
   const [workDays, setWorkDays] = useState(22)
 
   // ── AppConfig: profiles + org units ─────────────────────────
-  const [profiles,   setProfiles]   = useState<string[]>([])
-  const [orgUnits,   setOrgUnits]   = useState<string[]>([])
+  const { config } = useAppConfig()
+  const profiles = useMemo((): string[] => {
+    try { const v = JSON.parse(config['resource_profiles'] || '[]'); return Array.isArray(v) ? v : [] }
+    catch { return [] }
+  }, [config])
+  const orgUnits = useMemo((): string[] => {
+    try { const v = JSON.parse(config['org_units'] || '[]'); return Array.isArray(v) ? v : [] }
+    catch { return [] }
+  }, [config])
   const [currSymbol, setCurrSymbol] = useState('€')
-
-  useEffect(() => {
-    supabase.from('app_config')
-      .select('config_key, data')
-      .in('config_key', ['resource_profiles', 'org_units'])
-      .then(({ data }) => {
-        if (!data) return
-        for (const row of data) {
-          const strs = JSON.parse(row.data as string) as string[]
-          if (!Array.isArray(strs)) continue
-          if (row.config_key === 'resource_profiles') setProfiles(strs)
-          if (row.config_key === 'org_units')         setOrgUnits(strs)
-        }
-      })
-  }, [])
 
   // Fetch default currency symbol
   useEffect(() => {

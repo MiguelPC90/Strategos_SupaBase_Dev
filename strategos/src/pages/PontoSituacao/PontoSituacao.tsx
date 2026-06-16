@@ -23,13 +23,13 @@ import { useFilters } from '../../context/FilterContext'
 
 import { leafPctPrev } from '../../lib/rollup'
 import { useEffectiveValues } from '../../hooks/useEffectiveValues'
-import { supabase } from '../../lib/supabase'
 import type { PdsItem, Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
 import {
   computeHealth, DEFAULT_HEALTH_CONFIG,
-  type HealthConfig, type HealthInput,
+  type HealthInput,
 } from '../../lib/healthRules'
+import { useAppConfig } from '../../hooks/useAppConfig'
 
 type SortDir = 'asc' | 'desc'
 function sortItems(items: PdsItem[], dir: SortDir): PdsItem[] {
@@ -251,11 +251,15 @@ export default function PontoSituacao() {
   const n2Name = filters.n2Values[0] ?? null
 
   // ── State ──────────────────────────────────────────────────
-  const [hideCompletedDays, setHideCompletedDays] = useState(90)
   const [selectedRiskIds,   setSelectedRiskIds]   = useState<string[]>([])
-  const [matrixSize,        setMatrixSize]        = useState(5)
-  const [thresholds,        setThresholds]        = useState<RiskThresholds>(DEFAULT_THRESHOLDS)
-  const [healthConfig,      setHealthConfig]      = useState<HealthConfig>(DEFAULT_HEALTH_CONFIG)
+  const { config, getNumber, getJSON } = useAppConfig()
+  const hideCompletedDays = useMemo(() => getNumber('pds_hide_completed_days', 90), [config])
+  const matrixSize        = useMemo(() => {
+    const n = getNumber('risk_matrix_size', 5)
+    return (n >= 2 && n <= 8) ? n : 5
+  }, [config])
+  const thresholds        = useMemo(() => getJSON('risk_thresholds',  DEFAULT_THRESHOLDS),    [config])
+  const healthConfig      = useMemo(() => getJSON('health_rules',     DEFAULT_HEALTH_CONFIG), [config])
   const [commitSort,        setCommitSort]        = useState<SortDir>('asc')
   const [progressSort,      setProgressSort]      = useState<SortDir>('asc')
   const [nextSort,          setNextSort]          = useState<SortDir>('asc')
@@ -293,36 +297,6 @@ export default function PontoSituacao() {
   useEffect(() => {
     setSelectedRiskIds([])
   }, [selectedKey])
-
-  // Load app_config values once
-  useEffect(() => {
-    supabase.from('app_config').select('data').eq('config_key', 'pds_hide_completed_days').single()
-      .then(({ data }) => {
-        if (data != null) {
-          const v = parseInt(data.data ?? '')
-          if (!isNaN(v)) setHideCompletedDays(v)
-        }
-      })
-    supabase.from('app_config').select('config_key, data')
-      .in('config_key', ['risk_matrix_size', 'risk_thresholds', 'health_rules'])
-      .then(({ data }) => {
-        if (!data) return
-        const map: Record<string, string> = {}
-        for (const row of data) map[row.config_key] = row.data
-        if (map['risk_matrix_size']) {
-          const v = parseInt(map['risk_matrix_size'])
-          if (!isNaN(v) && v >= 2 && v <= 8) setMatrixSize(v)
-        }
-        if (map['risk_thresholds']) {
-          try { setThresholds({ ...DEFAULT_THRESHOLDS, ...JSON.parse(map['risk_thresholds']) }) }
-          catch { /* keep defaults */ }
-        }
-        if (map['health_rules']) {
-          try { setHealthConfig({ ...DEFAULT_HEALTH_CONFIG, ...JSON.parse(map['health_rules']) }) }
-          catch { /* keep defaults */ }
-        }
-      })
-  }, [])
 
   // ── Derived data ───────────────────────────────────────────
 

@@ -9,6 +9,7 @@ import Badge from '../../components/Badge/Badge'
 import Modal from '../../components/Modal/Modal'
 import EmptyState from '../../components/EmptyState/EmptyState'
 import { useRisks } from '../../hooks/useRisks'
+import { useAppConfig } from '../../hooks/useAppConfig'
 import { supabase } from '../../lib/supabase'
 import type { Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
@@ -203,27 +204,12 @@ interface GestaoRiscosProps {
 export default function GestaoRiscos({ planoId, programId }: GestaoRiscosProps = {}) {
   const { showToast } = useToast()
   const readOnly = !useCanEditCurrent('gestao-riscos', planoId)
-  const [matrixSize,  setMatrixSize]  = useState(5)
-  const [thresholds,  setThresholds]  = useState<RiskThresholds>(DEFAULT_THRESHOLDS)
-
-  // Fetch risk matrix config from app_config
-  useEffect(() => {
-    supabase.from('app_config').select('config_key, data')
-      .in('config_key', ['risk_matrix_size', 'risk_thresholds'])
-      .then(({ data }) => {
-        if (!data) return
-        const map: Record<string, string> = {}
-        for (const row of data) map[row.config_key] = row.data
-        if (map['risk_matrix_size']) {
-          const parsed = parseInt(map['risk_matrix_size'])
-          if (!isNaN(parsed) && parsed > 0) setMatrixSize(parsed)
-        }
-        if (map['risk_thresholds']) {
-          try { setThresholds({ ...DEFAULT_THRESHOLDS, ...JSON.parse(map['risk_thresholds']) }) }
-          catch { /* keep defaults */ }
-        }
-      })
-  }, [])
+  const { config, getNumber, getJSON } = useAppConfig()
+  const matrixSize = useMemo(() => {
+    const n = getNumber('risk_matrix_size', 5)
+    return n > 0 ? n : 5
+  }, [config])
+  const thresholds = useMemo(() => getJSON('risk_thresholds', DEFAULT_THRESHOLDS), [config])
 
   const { risks, loading, refetch } = useRisks(programId)
 
