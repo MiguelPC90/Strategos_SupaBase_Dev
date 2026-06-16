@@ -2948,6 +2948,7 @@ function ExportarTab() {
 // ── Tab: Rótulos ───────────────────────────────────────────────
 function RotulosTab() {
   const { showToast } = useToast()
+  const qc = useQueryClient()
   const { programs } = usePrograms()
   const [selProgId, setSelProgId] = useState<string | null>(null)
   const [labels,    setLabels]    = useState<FilterLabels>({ n0: '', n1: '', n2: '', owner: '', sponsor: '' })
@@ -2987,6 +2988,7 @@ function RotulosTab() {
         { config_key: `filter_labels_${selProgId}`, data: JSON.stringify(labels) },
         { onConflict: 'config_key' },
       )
+      void qc.invalidateQueries({ queryKey: ['app_config'] })
       showToast('Guardado!')
     } finally {
       setSaving(false)

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { useMemo } from 'react'
+import { useAppConfig } from './useAppConfig'
 
 export interface ProgramLabels {
   n0:      string
@@ -17,47 +17,21 @@ export const DEFAULT_LABELS: ProgramLabels = {
   sponsor: 'Patrocinador',
 }
 
-// Module-level cache: programId → merged labels (avoids repeated Supabase fetches)
-const labelsCache = new Map<string, ProgramLabels>()
-
 export function useProgramLabels(programId: string | null | undefined): ProgramLabels {
-  const [labels, setLabels] = useState<ProgramLabels>(
-    programId ? (labelsCache.get(programId) ?? DEFAULT_LABELS) : DEFAULT_LABELS,
-  )
-
-  useEffect(() => {
-    if (!programId) {
-      setLabels(DEFAULT_LABELS)
-      return
-    }
-    if (labelsCache.has(programId)) {
-      setLabels(labelsCache.get(programId)!)
-      return
-    }
-    let cancelled = false
-    supabase
-      .from('app_config')
-      .select('data')
-      .eq('config_key', `filter_labels_${programId}`)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return
-        const merged: ProgramLabels = { ...DEFAULT_LABELS }
-        if (data?.data) {
-          try {
-            const parsed = JSON.parse(data.data) as Partial<ProgramLabels>
-            if (parsed.n0)      merged.n0      = parsed.n0
-            if (parsed.n1)      merged.n1      = parsed.n1
-            if (parsed.n2)      merged.n2      = parsed.n2
-            if (parsed.owner)   merged.owner   = parsed.owner
-            if (parsed.sponsor) merged.sponsor = parsed.sponsor
-          } catch { /* keep defaults */ }
-        }
-        labelsCache.set(programId, merged)
-        setLabels(merged)
-      })
-    return () => { cancelled = true }
-  }, [programId])
-
-  return labels
+  const { config } = useAppConfig()
+  return useMemo(() => {
+    if (!programId) return DEFAULT_LABELS
+    const raw = config[`filter_labels_${programId}`]
+    if (!raw) return DEFAULT_LABELS
+    try {
+      const parsed = JSON.parse(raw) as Partial<ProgramLabels>
+      return {
+        n0:      parsed.n0      || DEFAULT_LABELS.n0,
+        n1:      parsed.n1      || DEFAULT_LABELS.n1,
+        n2:      parsed.n2      || DEFAULT_LABELS.n2,
+        owner:   parsed.owner   || DEFAULT_LABELS.owner,
+        sponsor: parsed.sponsor || DEFAULT_LABELS.sponsor,
+      }
+    } catch { return DEFAULT_LABELS }
+  }, [config, programId])
 }
