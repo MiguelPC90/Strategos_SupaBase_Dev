@@ -15,9 +15,9 @@ import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 import { usePlanos } from '../../hooks/usePlanos'
 import { useEixos } from '../../hooks/useEixos'
 import { usePermissions } from '../../hooks/usePermissions'
-import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
+import { useEffectiveValues } from '../../hooks/useEffectiveValues'
 import type { Activity, Program } from '../../types/index'
-import { leafPctPrev, computeRowState, computeGroupStatusFromEff, type RowState } from '../../lib/rollup'
+import { leafPctPrev, computeRowState, computeGroupStatusFromEff, computeKpis, type KpiCounts, type RowState } from '../../lib/rollup'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 const ALL_STATUS_KEYS: RowState[] = ['Concluída', 'Em dia', 'Em risco', 'Em atraso']
@@ -25,11 +25,6 @@ const ROW_H = 47
 
 // ── Status helpers ─────────────────────────────────────────────
 type LevelView  = 'todos' | 'programa' | 'eixo' | 'plano' | 'macro' | 'actividade'
-
-function groupPct(n4leaves: Activity[], eff: Map<string, EffectiveValue>): number {
-  if (n4leaves.length === 0) return 0
-  return n4leaves.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / n4leaves.length
-}
 
 const STATE_PILL_CLASS: Record<RowState, string> = {
   'Concluída': 'done',
@@ -53,41 +48,7 @@ const STATE_FILL: Record<RowState, string> = {
 }
 
 // ── Stats computation ──────────────────────────────────────────
-interface Stats {
-  total: number
-  concluidas: number
-  em_dia: number
-  em_risco: number
-  em_atraso: number
-  exec: number
-  exec_obj: number
-  latest_end: string | null
-}
-
-function computeStats(acts: Activity[], eff: Map<string, EffectiveValue>): Stats {
-  const total = acts.length
-  let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0, sumPct = 0, sumPrev = 0
-  let latest_end: string | null = null
-  for (const a of acts) {
-    const status = eff.get(a.id)?.status ?? 'Em dia'
-    if (status === 'Concluída') concluidas++
-    else if (status === 'Em dia')    em_dia++
-    else if (status === 'Em risco')  em_risco++
-    else                             em_atraso++
-    sumPct  += eff.get(a.id)?.pct ?? a.pct
-    sumPrev += leafPctPrev(a, TODAY)
-    const end = a.rf ?? a.bf
-    if (end && (!latest_end || end > latest_end)) latest_end = end
-  }
-  return {
-    total, concluidas, em_dia, em_risco, em_atraso,
-    exec:     total > 0 ? sumPct  / total : 0,
-    exec_obj: total > 0 ? sumPrev / total : 0,
-    latest_end,
-  }
-}
-
-const EMPTY_STATS: Stats = {
+const EMPTY_STATS: KpiCounts = {
   total: 0, concluidas: 0, em_dia: 0, em_risco: 0, em_atraso: 0,
   exec: 0, exec_obj: 0, latest_end: null,
 }
@@ -331,7 +292,7 @@ type FlatRow =
       name: string
       indent: number
       state: RowState
-      stats: Stats
+      stats: KpiCounts
       pct: number
       isCollapsed: boolean
     }
@@ -497,16 +458,26 @@ export default function Actividades() {
     () => multiProg ? buildProgramTree(sortedActivities, programs) : null,
     [sortedActivities, programs, multiProg]
   )
-  const summary  = useMemo(
-    () => computeStats(finalActs.filter(a => a.level === 4), eff),
-    [finalActs, eff],
+
+  // Scope trees: built from filtered (breadcrumb scope only, before local filters).
+  // KPI numbers always reflect the full scope, not the display subset.
+  const scopeTree   = useMemo(() => buildTree(filtered), [filtered])
+  const scopeN0Tree = useMemo(
+    () => multiProg ? buildProgramTree(filtered, programs) : null,
+    [filtered, programs, multiProg],
+  )
+  const scopeLeaves = useMemo(() => filtered.filter(a => a.level === 4), [filtered])
+
+  const summary = useMemo(
+    () => computeKpis(scopeLeaves, eff, TODAY),
+    [scopeLeaves, eff],
   )
 
   const groupStatusMap = useMemo(() => {
     const m = new Map<string, RowState>()
-    const allN1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
-    if (n0tree) {
-      for (const n0g of n0tree) {
+    const allN1groups = scopeN0Tree ? scopeN0Tree.flatMap(g => g.n1groups) : scopeTree
+    if (scopeN0Tree) {
+      for (const n0g of scopeN0Tree) {
         m.set(`n0:${n0g.progId}`, computeGroupStatusFromEff(n0g.allActs.filter(a => a.level === 4), eff, 0, TODAY))
       }
     }
@@ -522,33 +493,37 @@ export default function Actividades() {
       }
     }
     return m
-  }, [n0tree, tree, eff])
+  }, [scopeN0Tree, scopeTree, eff])
 
   const groupStatsMap = useMemo(() => {
-    const m = new Map<string, { stats: Stats; pct: number }>()
-    const allN1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
-    if (n0tree) {
-      for (const n0g of n0tree) {
+    const m = new Map<string, { stats: KpiCounts; pct: number }>()
+    const allN1groups = scopeN0Tree ? scopeN0Tree.flatMap(g => g.n1groups) : scopeTree
+    if (scopeN0Tree) {
+      for (const n0g of scopeN0Tree) {
         const leaves = n0g.allActs.filter(a => a.level === 4)
-        m.set(`n0:${n0g.progId}`, { stats: computeStats(leaves, eff), pct: groupPct(leaves, eff) })
+        const kpi = computeKpis(leaves, eff, TODAY)
+        m.set(`n0:${n0g.progId}`, { stats: kpi, pct: kpi.exec })
       }
     }
     for (const n1g of allN1groups) {
       const n1leaves = n1g.allActs.filter(a => a.level === 4)
-      m.set(`n1:${n1g.n1}`, { stats: computeStats(n1leaves, eff), pct: groupPct(n1leaves, eff) })
+      const n1kpi = computeKpis(n1leaves, eff, TODAY)
+      m.set(`n1:${n1g.n1}`, { stats: n1kpi, pct: n1kpi.exec })
       for (const n2g of n1g.n2groups) {
         const n2leaves = n2g.allActs.filter(a => a.level === 4)
-        m.set(`n2:${n1g.n1}:${n2g.n2}`, { stats: computeStats(n2leaves, eff), pct: groupPct(n2leaves, eff) })
+        const n2kpi = computeKpis(n2leaves, eff, TODAY)
+        m.set(`n2:${n1g.n1}:${n2g.n2}`, { stats: n2kpi, pct: n2kpi.exec })
         for (const n3g of n2g.n3groups) {
           if (n3g.n3) {
             const n3leaves = n3g.acts.filter(a => a.level === 4)
-            m.set(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`, { stats: computeStats(n3leaves, eff), pct: groupPct(n3leaves, eff) })
+            const n3kpi = computeKpis(n3leaves, eff, TODAY)
+            m.set(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`, { stats: n3kpi, pct: n3kpi.exec })
           }
         }
       }
     }
     return m
-  }, [n0tree, tree, eff])
+  }, [scopeN0Tree, scopeTree, eff])
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 

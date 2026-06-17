@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getDirectChildren, getEffectivePct, rollupEffectivePct, getDescendantLeaves, getEffectiveStatus, getEffectiveDates, getEffectiveTarget, getGroupStatus, computeEffectiveMap, computeGroupStatusFromEff } from './rollup'
+import { getDirectChildren, getEffectivePct, rollupEffectivePct, getDescendantLeaves, getEffectiveStatus, getEffectiveDates, getEffectiveTarget, getGroupStatus, computeEffectiveMap, computeGroupStatusFromEff, computeKpis, type KpiCounts } from './rollup'
 import type { Activity } from '../types/index'
 
 // ── Minimal activity factory ───────────────────────────────────
@@ -622,5 +622,70 @@ describe('computeGroupStatusFromEff parity', () => {
     for (const level of [0, 1, 2, 3, 4] as const) {
       expect(computeGroupStatusFromEff(n4s, eff, level, D)).toBe(getGroupStatus(n4s, acts, D, level))
     }
+  })
+})
+
+// ── computeKpis ──────────────────────────────────────────────────
+describe('computeKpis', () => {
+  const D = '2026-06-17'
+
+  function effMapFrom(acts: Activity[]): Map<string, { pct: number; status: ReturnType<typeof computeGroupStatusFromEff> }> {
+    const full = computeEffectiveMap(acts, D)
+    const m = new Map<string, { pct: number; status: import('./rollup').RowState }>()
+    for (const [id, r] of full) m.set(id, { pct: r.pct, status: r.status })
+    return m
+  }
+
+  it('empty array → all-zero KpiCounts', () => {
+    const result = computeKpis([], new Map(), D)
+    expect(result).toEqual<KpiCounts>({
+      total: 0, concluidas: 0, em_dia: 0, em_risco: 0, em_atraso: 0,
+      exec: 0, exec_obj: 0, latest_end: null,
+    })
+  })
+
+  it('single Concluída leaf → concluidas=1, exec=100', () => {
+    const a = mkAct({ id: 'k1', level: 4, name: 'A', n3: 'M', n4: 'A', pct: 100, bs: '2026-01-01', bf: '2026-12-31' })
+    const eff = effMapFrom([a])
+    const r = computeKpis([a], eff, D)
+    expect(r.total).toBe(1)
+    expect(r.concluidas).toBe(1)
+    expect(r.em_dia).toBe(0)
+    expect(r.em_risco).toBe(0)
+    expect(r.em_atraso).toBe(0)
+    expect(r.exec).toBeCloseTo(100)
+    expect(r.latest_end).toBe('2026-12-31')
+  })
+
+  it('mix of statuses → correct counts', () => {
+    const done = mkAct({ id: 'km1', level: 4, name: 'Done', n3: 'M', n4: 'Done', pct: 100 })
+    const ontr = mkAct({ id: 'km2', level: 4, name: 'OnTr', n3: 'M', n4: 'OnTr', pct: 80, bs: '2026-01-01', bf: '2026-12-31' })
+    const late = mkAct({ id: 'km3', level: 4, name: 'Late', n3: 'M', n4: 'Late', pct: 30, bs: '2020-01-01', bf: '2022-01-01' })
+    const acts = [done, ontr, late]
+    const eff = effMapFrom(acts)
+    const r = computeKpis(acts, eff, D)
+    expect(r.total).toBe(3)
+    expect(r.concluidas).toBe(1)
+    expect(r.em_atraso).toBe(1)
+    expect(r.em_risco + r.em_dia).toBe(1)
+    expect(r.exec).toBeCloseTo((100 + 80 + 30) / 3)
+  })
+
+  it('latest_end picks max rf ?? bf', () => {
+    const a1 = mkAct({ id: 'le1', level: 4, name: 'A1', n3: 'M', n4: 'A1', pct: 0, bf: '2026-06-01', rf: '2026-08-01' })
+    const a2 = mkAct({ id: 'le2', level: 4, name: 'A2', n3: 'M', n4: 'A2', pct: 0, bf: '2027-01-01' })
+    const eff = effMapFrom([a1, a2])
+    const r = computeKpis([a1, a2], eff, D)
+    expect(r.latest_end).toBe('2027-01-01')
+  })
+
+  it('parity: exec matches average of eff pct values', () => {
+    const a1 = mkAct({ id: 'p1', level: 4, name: 'A1', n3: 'M', n4: 'A1', pct: 40 })
+    const a2 = mkAct({ id: 'p2', level: 4, name: 'A2', n3: 'M', n4: 'A2', pct: 60 })
+    const full = computeEffectiveMap([a1, a2], D)
+    const eff = new Map([...full].map(([id, r]) => [id, { pct: r.pct, status: r.status }]))
+    const r = computeKpis([a1, a2], eff, D)
+    const expectedExec = ([...full.values()].reduce((s, r) => s + r.pct, 0)) / 2
+    expect(r.exec).toBeCloseTo(expectedExec)
   })
 })

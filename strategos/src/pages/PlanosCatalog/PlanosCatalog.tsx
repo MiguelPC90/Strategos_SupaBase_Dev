@@ -222,7 +222,7 @@ export default function PlanosCatalog() {
 
   // ── Plan-level access filter ──────────────────────────────────
   const accessiblePlanIds = useMemo(
-    () => new Set(planos.filter(p => hasAccess('actividades', p.program_id ?? undefined, p.id)).map(p => p.id)),
+    () => new Set(planos.filter(p => hasAccess('gestao-iniciativas', p.program_id ?? undefined, p.id)).map(p => p.id)),
     [planos, hasAccess],
   )
 

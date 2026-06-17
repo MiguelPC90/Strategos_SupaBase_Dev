@@ -27,7 +27,7 @@ import { supabase } from '../../lib/supabase'
 import { generateAlerts } from '../../lib/alerts'
 import type { Alert, AlertRule } from '../../lib/alerts'
 import type { Activity, Program, Eixo, Plano } from '../../types/index'
-import { leafPctPrev, computeRowState, rollupDateRange, computeGroupStatusFromEff, type RowState } from '../../lib/rollup'
+import { computeRowState, rollupDateRange, computeGroupStatusFromEff, computeKpis, type KpiCounts, type RowState } from '../../lib/rollup'
 import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
 import { colors, statusColor } from '../../lib/tokens'
 
@@ -61,18 +61,6 @@ function renderPieLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent }:
 type EvoMetric = 'grau_exec' | 'conc_geral' | 'conc_data'
 
 // ── Metric helpers ────────────────────────────────────────────
-interface Metrics {
-  total: number
-  concluidas: number
-  em_dia: number
-  em_risco: number
-  em_atraso: number
-  /** Average pct (0–100) */
-  grau_exec: number
-  /** Average pct_prev (0–100) */
-  exec_obj: number
-}
-
 type EffectiveMap = Map<string, EffectiveValue>
 
 function classify(
@@ -84,28 +72,6 @@ function classify(
   if (s === 'Em risco')  return 'em_risco'
   if (s === 'Em atraso') return 'em_atraso'
   return 'em_dia'
-}
-
-function calcMetrics(acts: Activity[], effectiveMap?: EffectiveMap): Metrics {
-  const total = acts.length
-  if (total === 0) {
-    return { total: 0, concluidas: 0, em_dia: 0, em_risco: 0, em_atraso: 0, grau_exec: 0, exec_obj: 0 }
-  }
-  let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0, sumPct = 0, sumPrev = 0
-  for (const a of acts) {
-    const cls = classify(a, effectiveMap)
-    if (cls === 'concluida') concluidas++
-    else if (cls === 'em_dia') em_dia++
-    else if (cls === 'em_risco') em_risco++
-    else em_atraso++
-    sumPct  += effectiveMap?.get(a.id)?.pct ?? a.pct
-    sumPrev += leafPctPrev(a, TODAY)
-  }
-  return {
-    total, concluidas, em_dia, em_risco, em_atraso,
-    grau_exec: sumPct  / total,
-    exec_obj:  sumPrev / total,
-  }
 }
 
 function safeDiv(a: number, b: number): number { return b > 0 ? a / b : 0 }
@@ -253,7 +219,7 @@ function DeviationBar({ actual, target }: DeviationBarProps) {
 
 function buildRow(
   nome: string,
-  m: Metrics,
+  m: KpiCounts,
   isParent: boolean,
   leaves: Activity[],
   eff: EffectiveMap,
@@ -262,7 +228,7 @@ function buildRow(
   const concGeral = safeDiv(m.concluidas, m.total) * 100
   const concData  = safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100
   const cgObj     = safeDiv(m.concluidas + m.em_atraso, m.total) * 100
-  const grauExec  = m.total > 0 ? m.grau_exec : null
+  const grauExec  = m.total > 0 ? m.exec : null
   const execObj   = m.total > 0 ? m.exec_obj  : null
   return {
     _isParent: isParent,
@@ -698,7 +664,7 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
         .map(prog => {
           const progLeaves = leaves.filter(a => a.program_id === prog.id)
           if (progLeaves.length === 0) return null
-          return { ...buildRow(prog.name, calcMetrics(progLeaves, effectiveMap), false, progLeaves, effectiveMap, 0), _prog_id: prog.id } as Record<string, unknown>
+          return { ...buildRow(prog.name, computeKpis(progLeaves, effectiveMap, TODAY), false, progLeaves, effectiveMap, 0), _prog_id: prog.id } as Record<string, unknown>
         })
         .filter((r): r is Record<string, unknown> => r !== null)
     }
@@ -729,9 +695,9 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
       for (const prog of sortedProgs) {
         const progLeaves = leaves.filter(a => a.program_id === prog.id)
         if (progLeaves.length === 0) continue
-        rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, effectiveMap), false, progLeaves, effectiveMap, 0), _prog_id: prog.id, _isProgHeader: true })
+        rows.push({ ...buildRow(prog.name, computeKpis(progLeaves, effectiveMap, TODAY), false, progLeaves, effectiveMap, 0), _prog_id: prog.id, _isProgHeader: true })
         for (const { name, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
-          rows.push({ ...buildRow(name, calcMetrics(eixoLeaves, effectiveMap), false, eixoLeaves, effectiveMap, 1), _n1: name, _prog_id: prog.id })
+          rows.push({ ...buildRow(name, computeKpis(eixoLeaves, effectiveMap, TODAY), false, eixoLeaves, effectiveMap, 1), _n1: name, _prog_id: prog.id })
         }
       }
       return rows
@@ -741,9 +707,9 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
     for (const prog of sortedProgs) {
       const progLeaves = leaves.filter(a => a.program_id === prog.id)
       if (progLeaves.length === 0) continue
-      rows.push({ ...buildRow(prog.name, calcMetrics(progLeaves, effectiveMap), false, progLeaves, effectiveMap, 0), _prog_id: prog.id, _isProgHeader: true })
+      rows.push({ ...buildRow(prog.name, computeKpis(progLeaves, effectiveMap, TODAY), false, progLeaves, effectiveMap, 0), _prog_id: prog.id, _isProgHeader: true })
       for (const { name: eixoName, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
-        rows.push({ ...buildRow(eixoName, calcMetrics(eixoLeaves, effectiveMap), true, eixoLeaves, effectiveMap, 1), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
+        rows.push({ ...buildRow(eixoName, computeKpis(eixoLeaves, effectiveMap, TODAY), true, eixoLeaves, effectiveMap, 1), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
         const byPlano = groupBy(eixoLeaves, a => a.n2 || '(sem plano)')
         const eixoPlanos = allPlanos
           .filter(p => p.program_id === prog.id && p.eixo?.name === eixoName)
@@ -753,11 +719,11 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
           const acts = byPlano.get(plano.name)
           if (!acts) continue
           seen.add(plano.name)
-          rows.push({ ...buildRow(plano.name, calcMetrics(acts, effectiveMap), false, acts, effectiveMap, 2), _n1: eixoName, _n2: plano.name, _indent: 2 })
+          rows.push({ ...buildRow(plano.name, computeKpis(acts, effectiveMap, TODAY), false, acts, effectiveMap, 2), _n1: eixoName, _n2: plano.name, _indent: 2 })
         }
         for (const [n2, acts] of byPlano) {
           if (seen.has(n2)) continue
-          rows.push({ ...buildRow(n2, calcMetrics(acts, effectiveMap), false, acts, effectiveMap, 2), _n1: eixoName, _n2: n2, _indent: 2 })
+          rows.push({ ...buildRow(n2, computeKpis(acts, effectiveMap, TODAY), false, acts, effectiveMap, 2), _n1: eixoName, _n2: n2, _indent: 2 })
         }
       }
     }
@@ -863,7 +829,7 @@ export default function Dashboard() {
     [allPlanos, accessiblePlanIds],
   )
 
-  const m = useMemo(() => calcMetrics(accessibleLeaves, effectiveMap), [accessibleLeaves, effectiveMap])
+  const m = useMemo(() => computeKpis(accessibleLeaves, effectiveMap, TODAY), [accessibleLeaves, effectiveMap])
 
   // ── Snapshot references ──────────────────────────────────────
   const currentSnapshot = useMemo(
@@ -974,7 +940,7 @@ export default function Dashboard() {
   }, [alertRules, currentSnapshot, snap14dAgo, planoRefs, alertPlanoFilter])
 
   // ── Zone 1 — Smart KPI values & deltas ──────────────────────
-  const grauExecVal    = m.total > 0 ? m.grau_exec : null
+  const grauExecVal    = m.total > 0 ? m.exec : null
   const grauExecTarget = m.total > 0 ? m.exec_obj : null
   const grauExecDelta  = (grauExecVal !== null && kpi7dAgo && kpi7dAgo.total > 0)
     ? grauExecVal - kpi7dAgo.exec_media : null
@@ -1037,7 +1003,7 @@ export default function Dashboard() {
 
   // ── Totals row ───────────────────────────────────────────────
   const totalsRow = useMemo((): Record<string, unknown> => {
-    const grauExec = m.total > 0 ? m.grau_exec : null
+    const grauExec = m.total > 0 ? m.exec : null
     const execObj  = m.total > 0 ? m.exec_obj  : null
     return {
       _isTotals: true,

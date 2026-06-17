@@ -467,3 +467,62 @@ export function computeEffectiveMap(
   }
   return result
 }
+
+// ── Shared KPI aggregation ─────────────────────────────────────
+
+/** Minimal shape needed by computeKpis (any superset, e.g. EffectiveRecord, is accepted). */
+export interface KpiLookup {
+  pct:    number
+  status: RowState
+}
+
+/** Aggregated KPI counts for a set of leaf activities. */
+export interface KpiCounts {
+  total:      number
+  concluidas: number
+  em_dia:     number
+  em_risco:   number
+  em_atraso:  number
+  /** Average effective pct (0–100). */
+  exec:       number
+  /** Average expected pct (0–100), date-derived. */
+  exec_obj:   number
+  latest_end: string | null
+}
+
+/**
+ * Compute KPI counts from a set of leaf activities and a pre-computed eff map.
+ * Pass N4 leaves only. `today` must be an ISO date string (YYYY-MM-DD).
+ * Replaces the local calcMetrics/computeStats helpers in Dashboard and Actividades.
+ */
+export function computeKpis(
+  leaves: Activity[],
+  eff: Map<string, KpiLookup>,
+  today: string,
+): KpiCounts {
+  const total = leaves.length
+  if (total === 0) {
+    return { total: 0, concluidas: 0, em_dia: 0, em_risco: 0, em_atraso: 0, exec: 0, exec_obj: 0, latest_end: null }
+  }
+  let concluidas = 0, em_dia = 0, em_risco = 0, em_atraso = 0
+  let sumPct = 0, sumPrev = 0
+  let latest_end: string | null = null
+  for (const a of leaves) {
+    const e = eff.get(a.id)
+    const status = e?.status ?? 'Em dia'
+    if (status === 'Concluída')     concluidas++
+    else if (status === 'Em dia')   em_dia++
+    else if (status === 'Em risco') em_risco++
+    else                            em_atraso++
+    sumPct  += e?.pct ?? a.pct
+    sumPrev += leafPctPrev(a, today)
+    const end = a.rf ?? a.bf
+    if (end && (!latest_end || end > latest_end)) latest_end = end
+  }
+  return {
+    total, concluidas, em_dia, em_risco, em_atraso,
+    exec:     sumPct  / total,
+    exec_obj: sumPrev / total,
+    latest_end,
+  }
+}
