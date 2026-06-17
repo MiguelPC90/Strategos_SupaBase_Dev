@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import { ToastProvider } from './context/ToastContext'
 import { FavoritesProvider } from './context/FavoritesContext'
 import { BrandingProvider } from './context/BrandingContext'
-import { ProfileProvider } from './context/ProfileContext'
+import { ProfileProvider, useProfile } from './context/ProfileContext'
 import Layout from './components/Layout/Layout'
 import Login from './pages/Login/Login'
 import Dashboard from './pages/Dashboard/Dashboard'
@@ -102,13 +102,12 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const { profile, loading: profileLoading } = useProfile()
 
-  if (loading) {
-    return <SplashScreen />
-  }
-
+  if (authLoading || profileLoading) return <SplashScreen />
   if (!user) return <Login />
+  if (!profile) return <Login />
 
   return <>{children}</>
 }
