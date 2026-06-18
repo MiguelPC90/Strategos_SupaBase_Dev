@@ -11,7 +11,7 @@ This `TODO.md` plays two roles:
 
 **1. Narrative changelog** — `Session updates` sections record, in chronological order, what was done in each session (commits, decisions, lessons). Old content is not deleted: it serves to reconstruct context.
 
-**2. Roadmap** — sections like `Pending`, `Loose ends`, `Phase 13.x`, `Phase 14`, `Phase 15` list what's left to do, grouped by theme and priority.
+**2. Roadmap** — sections like `Pending`, `Loose ends`, `Phase 13.x`, `Phase 14`, `Phase 15` list what’s left to do, grouped by theme and priority.
 
 **Relationship with `CLAUDE.md`:**
 
@@ -37,7 +37,7 @@ This `TODO.md` plays two roles:
 - **Live webapp:** strategos.migcacoelho.workers.dev
 - **Live landing:** stratgos.com
 
-> **Note on naming:** the product is **Stratgos** (without the `e`). Repository, working directory, Cloudflare worker URL, and `package.json` still use "Strategos" — handled in Phase 13.6 Phase B of the rename.
+> **Note on naming:** the product is **Stratgos** (without the `e`). Repository, working directory, Cloudflare worker URL, and `package.json` still use “Strategos” — handled in Phase 13.6 Phase B of the rename.
 
 -----
 
@@ -217,7 +217,7 @@ This `TODO.md` plays two roles:
 - [x] **Wave 5b:** sunset `GestaoPDS` standalone
 - [x] **Wave 5c:** sunset `GestaoRecursos` (resource management) standalone
 - [x] **Wave 6:** sunset `GestaoIniciativas` + `PlanoPage` rewire + `PlanosCatalog` edit
-- [x] **Wave 7 (original, April-May 2026):** `DuplicatePlanoModal` with deep-copy + hybrid time-shift. Note: the name "Wave 7" was later reused for another wave — bundle splitting — which was reverted; see "Session updates May 2026 — Waves 3, 7, 8" below
+- [x] **Wave 7 (original, April-May 2026):** `DuplicatePlanoModal` with deep-copy + hybrid time-shift. Note: the name “Wave 7” was later reused for another wave — bundle splitting — which was reverted; see “Session updates May 2026 — Waves 3, 7, 8” below
 - [x] **DB fix (migration 029):** `log_change` trigger function corrected to use `auth.uid()` (was `COALESCE(NEW.updated_by, OLD.updated_by)` — failed on planos / eixos)
 
 **Net result:** sidebar `GESTÃO` (management) section with no standalone entries; all plan management lives in `PlanosCatalog` (+ New / Edit / Duplicate) and `PlanoPage` (Edit inline, embedded tabs for activities / PDS / Risks / Resources / Financial).
@@ -279,7 +279,7 @@ This was a multi-day stretch with one significant rollback. Details preserved fo
   - **Decision:** revert. Wave 7 in standby until structural fix. Possible future approaches: move Tailwind reset out of `@layer base` in source; post-build script to inject layer order; `!important` on critical structural properties; downgrade to Tailwind v3; wait for upstream fix.
   - **Lesson learned:** `npm run dev` shows correct visuals; only `npm run build && npm run preview` exposes the issue. **Smoke test convention added** to the development workflow.
 - [x] **Wave 5 (Multiselect removal) was prepared by Claude Code on top of Wave 7 but rebased out** when Wave 7 was reverted. `_Dev` was hard-reset to `1650868` (Wave 8 baseline). To be redone from clean baseline in a future session.
-- [x] **Multi-tab Supabase auth lock conflict** discovered during the Wave 7 debug session. Opening Stratgos in multiple browsers / tabs simultaneously with the same user causes "Lock stolen by another request" cascading failures. Workaround: close all tabs. Future fix: configure Supabase JS client `autoRefreshToken` / `multiTab` options.
+- [x] **Multi-tab Supabase auth lock conflict** discovered during the Wave 7 debug session. Opening Stratgos in multiple browsers / tabs simultaneously with the same user causes “Lock stolen by another request” cascading failures. Workaround: close all tabs. Future fix: configure Supabase JS client `autoRefreshToken` / `multiTab` options.
 
 **Net result in production:** Wave 8 (TS hygiene + CI gate) + Wave 3 (3-zone band threshold model) + everything before. Wave 7 in standby (Tailwind v4 layer ordering bug to resolve first). HEAD on `main` = `de8b3c9` (Wave 7 + hotfix reverted).
 
@@ -320,18 +320,297 @@ Glossary-driven contextual tooltips across the app. Two-file new component + 12-
 
 This wave was a documentation pass, no code touched.
 
-- [x] **`CLAUDE.md` v2** — restructured as "living technical manual": snapshot of current state, no narrative history. All gaps with `TODO.md` reconciled (Edge Functions, `BrandingContext` / `ProfileContext`, 5 roles, Forge Deep v5 palette, Wave H plan-level permissions, `MultiPersonSelect`, `ConfirmModal`, etc.). New "Known Issues & Gotchas" section consolidating Wave 7 Tailwind v4 bug, multi-tab Supabase lock, `FunctionsHttpError`, macOS 11 limitations, email rate limits.
+- [x] **`CLAUDE.md` v2** — restructured as “living technical manual”: snapshot of current state, no narrative history. All gaps with `TODO.md` reconciled (Edge Functions, `BrandingContext` / `ProfileContext`, 5 roles, Forge Deep v5 palette, Wave H plan-level permissions, `MultiPersonSelect`, `ConfirmModal`, etc.). New “Known Issues & Gotchas” section consolidating Wave 7 Tailwind v4 bug, multi-tab Supabase lock, `FunctionsHttpError`, macOS 11 limitations, email rate limits.
 - [x] **`CLAUDE.md` v2 rewritten in English** with PT-PT product terms preserved + inline English translations on first occurrence per section. UI strings cited literally between quotes stay in PT-PT.
 - [x] **Tagline corrected:** `Strategy made visible` (was incorrectly stated as `Intelligence driving Strategy` in previous CLAUDE.md).
 - [x] **Rollup section corrected to the actual model:** 3-zone band → 4-state status. Each `ThresholdBand` is `{ low, high }` defining the width of the `"Em risco"` middle zone. Defaults: aggregates `{ low: 15, high: 25 }`, leaves `{ low: 5, high: 10 }`. Previously documented as 3-state with single integer thresholds, which was wrong.
-- [x] **`TODO.md` v2** — full English rewrite (this current rewrite). Preserves all chronological session entries, adds preamble "How to use this document" defining the changelog + roadmap role and the relationship with `CLAUDE.md`. Waves 3 / 7 (reverted) / 8 documented in chronological detail. Wave 6d itself recorded here. Pre-May 2026 sessions retain their original PT-PT prose by design (passé reconstruction is not worth the cost).
-- [x] **Golden rule formalized:** when something changes, update `CLAUDE.md` (state) AND add chronological note in `TODO.md` (history). Documented in both files' preambles.
-- [x] **Smoke test convention formalized:** for build / perf waves, `npm run preview` is mandatory before push. `npm run dev` is NOT a substitute (Tailwind v4 + Vite production-build issues don't manifest in dev mode).
+- [x] **`TODO.md` v2** — full English rewrite (this current rewrite). Preserves all chronological session entries, adds preamble “How to use this document” defining the changelog + roadmap role and the relationship with `CLAUDE.md`. Waves 3 / 7 (reverted) / 8 documented in chronological detail. Wave 6d itself recorded here. Pre-May 2026 sessions retain their original PT-PT prose by design (passé reconstruction is not worth the cost).
+- [x] **Golden rule formalized:** when something changes, update `CLAUDE.md` (state) AND add chronological note in `TODO.md` (history). Documented in both files’ preambles.
+- [x] **Smoke test convention formalized:** for build / perf waves, `npm run preview` is mandatory before push. `npm run dev` is NOT a substitute (Tailwind v4 + Vite production-build issues don’t manifest in dev mode).
 - [x] **Mac repo synced:** `CLAUDE.md` v2 committed on `dev` (`71f0651`) and merged to `main`.
 - [x] **TODO.md cross-check pass (May 2026):** during Wave 6d review, identified and added missing entries — Wave 2d pagination fix (1000-row limit detail), Quick Polish bundle (tokens v5, SplashScreen, NotFound, `UserPermissionsForm` `window.confirm`), Tooltips Wave (`TermTooltip` + glossary integration + PDS renames). Marked `/glossary` standalone page and 404 page as done. Added Phase 13.12 Owner Update Form with full design and decision capture. Added `TermTooltip` and `glossary.ts` documentation to `CLAUDE.md`.
 - [ ] **`_Dev` repo sync:** pending. Will be bundled with the next Claude Code wave to avoid burning a dedicated interaction.
 
 **Net result:** documentation aligned with current state; Known Issues centralized; convention layer formalized for future sessions; language standard set to English-with-PT-PT-product-terms going forward.
+
+
+### Session updates (May 25 2026 — Wave 5 + Wave 4 + Wave 6 Path A + bug fixes + visual polish)
+
+Multi-wave session resolving several queued items. 6 commits to production. Three major waves landed: Wave 5 (multiselect removal redo), Wave 4 (hierarchical sort), Wave 6 Path A (band threshold CRUD migration). Plus bug fixes and a visual polish iteration partially completed.
+
+**Net result:** 6 commits in production (`36006dd`, `b64f472`, `7fb09b4`, `2b7bd60`, `84a17f2`, `020ef14`). Wave 4 + Wave 5 + Wave 6 Path A complete. One bug fix landed (Actividades+Gantt sort). Visual polish backlogged.
+
+### Session updates (May 26 2026 — Phase 13.12 prerequisites: owner/sponsor refactor + Resend SMTP + 3 quick wins)
+
+Pivotal session: completed the full owner/sponsor data model refactor (3 commits), set up Resend custom SMTP with `stratgos.com` domain authentication, and cleared 3 backlog items as quick wins. Bloco 1 — "habilitar a persona Owner externa" — is now 75% complete; only the Owner Update Form MVP (Sub-fase 1.4) remains. Production HEAD: `9747b5d`.
+
+#### Owner/Sponsor refactor (3 commits)
+
+**Goal:** transition `planos.owner` and `planos.sponsor` from free-text strings to FK references against `people.id`, so the Owner Update Form can resolve owner emails for email-driven update flows.
+
+**Decisions recap (from prior planning):**
+
+- Owner data are dummy → no production data to preserve → big-bang B-adaptado migration preferred over hybrid
+- 3 columns per role (`_person_ids[]` + `_primary_id` + `_label_override`) applied symmetrically to owner AND sponsor for future flexibility, even though only owner is involved in the Owner Update Form MVP
+- Pattern matches Linear/Stripe/Notion: structured FKs replace ambiguous strings
+- Refactor split into 3 commits (migration + write paths + read paths) to keep each step testable and reversible
+
+**Commit 1 of 3 — Migration 039 + types + helper (`7f37c5c`):**
+
+- Migration `039_owner_sponsor_person_refs.sql`: adds 6 columns to `planos` (3 for owner, 3 for sponsor); auto-populates from existing strings via case-insensitive `JOIN people.name`; uses `regexp_split_to_table` with `|` or `,` as separators; `WITH ORDINALITY` preserves order; unmatched fragments produce empty arrays
+- `src/types/index.ts`: `Plano` interface gains 6 new fields; legacy `owner` / `sponsor` strings marked `@deprecated`
+- New file `src/lib/owners.ts`: 4 helper exports — `resolveOwnerNames`, `resolveSponsorNames`, `resolveOwnerPrimaryEmail`, `formatPeopleList`
+- Migration 039 applied via Supabase Dashboard. Auto-population stats: 13/24 owners populated (54%), 12/24 sponsors (50%). The 10 unmatched owners are all initials (`A.L.`, `H.Q.`, `MPC`) or org units (`DCH`, `GGE`) — expected and acceptable
+
+**Commit 2 of 3 — Write paths + dual-write (`8b89ec2`):**
+
+- `src/lib/owners.ts`: 2 new transitional helpers — `buildLegacyOwnerString` / `buildLegacySponsorString` (removed in commit 3)
+- `NovoPlanoModal.tsx`: refactored both save handlers (`handleSavePlanoEdit` and `handleSavePlanoWithActivities`) to dual-write — both FK fields AND legacy strings kept in sync via the new helpers. `MultiPersonSelect` continues to use `p.name` as `value` to preserve chip display UX; UUIDs derived at save time via `peopleByName.get(n)?.id`. Adds `peopleMap` + `peopleByName` memos. Adds `ownerLabelOverride` / `sponsorLabelOverride` state with a text input ("Ou nome de entidade (raro)") below each MultiPersonSelect
+- `DuplicatePlanoModal.tsx`: copies FK fields + rebuilds legacy strings from FKs to ensure consistency
+- `MultiPersonSelect.tsx`: untouched (already generic — accepts any `value: string[]` from options)
+- Org units (`DCH`, `GGE`) appear as dropdown options with `subtitle: 'Unidade'`. At save time they don't match `peopleByName` and were silently dropped — captured in backlog, fixed later in this session as Quick win 3
+- Smoke-tested all 5 validation points (create, edit, label_override, duplicate, regression)
+
+**Commit 3 of 3 — Read paths + drop legacy (`3f0d274`):**
+
+- Migration `040_drop_planos_owner_sponsor_strings.sql`: drops `planos.owner` and `planos.sponsor` (legacy strings). Applied AFTER smoke test of frontend
+- `src/types/index.ts`: `@deprecated owner` and `@deprecated sponsor` fields removed from `Plano` interface
+- `src/lib/owners.ts`: transitional helpers (`buildLegacyOwnerString`, `buildLegacySponsorString`) removed — no callers after commit 3. 4 final exports remain
+- `FilterContext.tsx`: filter state changed from name strings to UUIDs. `ownerOptions` and `sponsorOptions` derived from `owner_person_ids[]` via `peopleMap` lookup; `personIdToName` map exported for downstream use. Session storage version bumped to v2 to invalidate old filter state. Org units no longer filterable (decision A: filters only by people)
+- `FilterBar.tsx`: dropdowns adapted to UUID values; name↔UUID translation mirrors the program filter pattern
+- `Breadcrumb.tsx`: filter chips resolve UUIDs to names via `personIdToName` for display
+- `NovoPlanoModal.tsx`: dual-write removed; init no longer falls back to `planoToEdit.owner` (field doesn't exist anymore)
+- `DuplicatePlanoModal.tsx`: dual-write removed
+- Read paths refactored to use `resolveOwnerNames` / `resolveSponsorNames`: `PlanoPage.tsx`, `PlanosCatalog.tsx`. `Recursos.tsx` and `ExecucaoFinanceira.tsx` adapted to UUID-based scope matching. `Admin.tsx`: select updated to FK fields; tooltip uses `owner_label_override`
+- **Breaking change documented:** URL filters that previously had name strings are no longer compatible. Bookmarked URLs lose the filter silently. Acceptable scope for dummy-data phase
+- Smoke-tested all 11 validation points BEFORE applying migration 040. Migration 040 applied via Supabase Dashboard. Post-migration smoke OK
+
+**Final architecture:**
+
+- `planos.owner_person_ids uuid[] NOT NULL DEFAULT '{}'`
+- `planos.owner_primary_id uuid REFERENCES people(id) ON DELETE SET NULL`
+- `planos.owner_label_override text`
+- Same triplet for sponsor
+- No more `planos.owner` or `planos.sponsor` columns
+- Filter identity in URL = UUIDs (robust, less readable URL)
+- Multi-owner natively supported via array
+- Owner Update Form will use `owner_primary_id` to identify which person receives email
+
+#### Custom SMTP setup — Resend (~30 min)
+
+**Goal:** resolve Supabase free-tier rate limit (4 emails/hour) and use `stratgos.com` domain for outgoing emails. Pre-requisite for Owner Update Form.
+
+**Steps executed:**
+
+1. Created Resend account, chose Europe region (closer to PT/Angola servers)
+2. Added domain `stratgos.com` via Resend's **native Cloudflare integration** — Resend authorized one-time access to Cloudflare DNS and added 3 records automatically:
+   - `MX send.stratgos.com → feedback-smtp.eu-west-1.amazonses.com` (bounces/feedback)
+   - `TXT resend._domainkey.stratgos.com → ...` (DKIM)
+   - `TXT send.stratgos.com → v=spf1 include:amazonses.com ~all` (SPF)
+   - All `DNS only` (not proxied), TTL 1hr
+3. DNS records propagated within minutes (Cloudflare native), all 3 verified ✓
+4. Connected Resend to Supabase via Resend's **native Supabase integration**:
+   - Resend dashboard → Integrations → Supabase → Connect
+   - OAuth flow with Supabase account
+   - Selected project (`wirokqtgrvlxwvypmbej`)
+   - Confirmed sender email `noreply@stratgos.com` and sender name `Stratgos`
+   - Integration creates Resend API key, auto-fills Supabase SMTP settings (no manual copy-paste)
+5. Validated end-to-end: triggered password reset email from production app → email arrived in inbox (not spam) within 30s; Resend logs showed **Delivered**
+
+**Result:** Supabase now sends all auth emails (and future application emails via Edge Functions) through Resend on `stratgos.com` domain. Free tier (3000 emails/month) more than sufficient for MVP + early customer phase.
+
+**Why this matters:** Owner Update Form Edge Functions will reuse the same Resend stack — no additional integration work.
+
+#### Quick wins (3 commits)
+
+**Quick win 1 — `useActivities.ts` dead code (`7435051`):**
+
+- 4 references to `owner` / `sponsor` removed from `src/hooks/useActivities.ts` (interface, destructure, two query branches, useEffect dep)
+- These queried `activities.owner` / `activities.sponsor` columns dropped in Wave 8d months ago — silent failures because no caller passed those params (verified 7 call sites)
+- Net: −6 lines, 0 behavior change
+
+**Quick win 2 — Filter popup scroll UX (`21e1314`):**
+
+- In `SecondaryFiltersMenu` (inside `Breadcrumb`), the entire popup scrolled including Estado/Owner/Sponsor group titles, making long lists confusing
+- New CSS: each group's options list (`.bfp-group-options`) has its own `max-height: 180px` + `overflow-y: auto`. Group titles (`.bfp-group-title`) are `position: sticky; top: 0` within their group
+- `Breadcrumb.tsx`: each group's options wrapped in `<div className="bfp-group-options">` (consistent across all 3 groups)
+- No JS logic change
+
+**Quick win 3 — Owner/Sponsor unit semantics fix (`9747b5d`):**
+
+- When user selected an org unit (`DCH`, `GGE`) from `MultiPersonSelect` dropdown, the fragment didn't match in `peopleByName` and was silently dropped during save
+- Fix: in both `handleSavePlanoEdit` and `handleSavePlanoWithActivities`, non-matched fragments are captured (`ownerUnmatched`, `sponsorUnmatched` arrays) and concatenated into `owner_label_override` / `sponsor_label_override` (joined by ` | `), preserving user intent
+- User-typed label override input still takes precedence — auto-captured fragments appended after
+- Backward compatible: matched people behave identically
+- DB validation: edited plano `#38 RFP GPS` with Abel Lelo + GGE → `owner_person_ids = [uuid-Abel]`, `owner_label_override = 'GGE'` ✓
+
+#### Commits landed this session
+
+| # | SHA (Mac) | Title |
+|---|---|---|
+| 1 | `7f37c5c` | feat(planos): owner/sponsor as FK to people (commit 1/3) |
+| 2 | `8b89ec2` | refactor(planos): write paths use FK fields for owner/sponsor (commit 2/3) |
+| 3 | `3f0d274` | refactor(planos): read paths use FK fields + drop legacy strings (commit 3/3) |
+| 4 | `7435051` | chore(activities): remove dead owner/sponsor filter params |
+| 5 | `21e1314` | fix(breadcrumb): sticky group titles + per-group scroll in filters popup |
+| 6 | `9747b5d` | fix(plano): preserve org-unit selections in owner_label_override |
+
+**Migrations applied:** 039 (add FK columns + auto-populate), 040 (drop legacy strings).
+
+**Files added this session:** `src/lib/owners.ts`, `supabase/migrations/039_owner_sponsor_person_refs.sql`, `supabase/migrations/040_drop_planos_owner_sponsor_strings.sql`.
+
+#### Known issues registered this session
+
+- **`@supabase/gotrue-js` auth-token lock warnings** in dev preview console — caused by React Strict Mode double-mount; non-blocking, only in dev/preview, not in production builds. No fix planned.
+
+#### Sub-fase 1.4 — Owner Update Form MVP — sequencing plan
+
+Total estimated ~28h split across **3 sessions**:
+
+**Componente A — Backbone técnico (~10h)**
+- A1: DB schema `update_tokens` + RLS (~1h)
+- A2: Edge Function `send-update-request` (gera token + envia email via Resend) (~3h)
+- A3: Edge Function `submit-owner-update` (valida token + cria draft) (~3h)
+- A4: Email template PT-PT com brand Stratgos (~2h)
+- A5: Rate limit logic (1/(owner,plano)/7d configurable) (~1h)
+
+**Componente B — Formulário público (~8h)**
+- B1: Página `/update/:token` (token validation, error states) (~1h)
+- B2: Layout responsive mobile-first, sem app shell (~2h)
+- B3: Form fields: % execução por activity, datas reais por activity (~2h)
+- B4: Form fields: 4 textareas PDS com placeholders úteis (~2h)
+- B5: Submit flow + thank-you page (~1h)
+
+**Componente C — UI PMO (~10h)**
+- C1: Botão "Pedir actualização" no PlanoPage (~1h)
+- C2: Modal "Quem queres convidar" (multi-owner picker) (~2h)
+- C3: Confirmação + envio + toast (~1h)
+- C4: Lista de "Updates pendentes" (drafts) — novo tab/secção (~3h)
+- C5: Revisão de draft: side-by-side current vs proposed (~2h)
+- C6: Aceitar/Rejeitar com audit log (~1h)
+
+#### Wave 5 — Multiselect removal redo (commit `36006dd`)
+
+Originally prepared by Claude Code on top of Wave 7 (bundle splitting), then rebased out when Wave 7 was reverted. Redone from clean baseline.
+
+- [x] **`ExecucaoFinanceira` + `Recursos` pages:** removed local plano `<MultiSelect>` components. Both pages now wire to the global breadcrumb’s `n2Values[0]` (single plano filter).
+- [x] **New filter context fields:** `breadcrumbPlanoId`, `ownerPlanoIds`, `sponsorPlanoIds` with AND logic for compound filtering.
+- [x] **Smoke test result:** discovered scroll-bar UX issue in `+ Filtros` popup (CSS `max-height: 400px` hides Owner/Sponsor sections below Estado on macOS with auto-hidden scrollbars). **Not a regression** — pre-existing UX issue. Backlogged.
+
+#### Wave 4 — Hierarchical natural sort (commit `b64f472`)
+
+Wave 4 split into 2 sub-waves: 4a (DB migration) + 4b (frontend).
+
+**Sub-wave 4a — Migration 037:**
+
+- [x] **Migration 037 applied** via Supabase Dashboard SQL Editor: `ROW_NUMBER() PARTITION BY parent ORDER BY numeric code first, then text code, then created_at`.
+- [x] **Idempotent:** safe to re-run; programs, eixos, planos, and activities all renumbered with per-parent canonical `sort_order` starting from 1.
+- [x] **Pre-flight findings:** 4 programs all had `sort_order=0`; 26 eixos all `0`; 10/25 planos had `0`; zero orphan rows.
+- [x] **Discovery:** duplicate plano `#19 ERP` (code `19` vs `#19`) detected in eixo `b224a876` — user deferred investigation.
+
+**Sub-wave 4b — Frontend:**
+
+- [x] **New library `src/lib/sort.ts`:** exports `compareCodes(a, b)`, `comparePlanos(a, b)`, `compareEixos(a, b)` using `Intl.Collator('pt-PT', { numeric: true })` for natural ordering.
+- [x] **`FilterBar.tsx`:** maps n1/n2 text values to eixo/plano objects, then sorts by `sort_order` (with `Infinity` fallback for missing data).
+- [x] **`PlanosCatalog.tsx`:** default sort uses `comparePlanos` hierarchically.
+- [x] **`Admin.tsx`:** new programs/eixos use `max-within-parent + 1` for sort_order (no more hardcoded `0`).
+- [x] **`NovoPlanoModal` + `DuplicatePlanoModal`:** already correct, no changes needed.
+- [x] **Migration 037 versioned** at `supabase/migrations/037_sort_order_per_parent.sql`.
+
+#### Wave 6 Path A — Threshold band CRUD migration (commits `7fb09b4` + `2b7bd60`)
+
+Two-commit wave. Closes a fundamental gap discovered in audit: Wave 3 (May 2026) migrated the **read layer** to `ThresholdBand {low, high}` model but never migrated the **write layer**. Forms still wrote to deprecated single-value fields, which the read layer ignored.
+
+**Audit findings (pre-flight):**
+
+- 40+ hits of deprecated fields across `Admin.tsx` (22), `NovoPlanoModal.tsx` (14), `DuplicatePlanoModal.tsx` (2), `Layout.tsx` (1), `types/index.ts` (4).
+- 3 critical mismatches:
+  - **M1:** Admin Program threshold UI edits had **zero runtime effect** (writes to dead fields).
+  - **M2:** Plano-level overrides completely dead (25/25 planos had NULL on new band fields).
+  - **M3:** App was computing correct statuses **by accident** (defaults coincided).
+
+**Decisions:**
+
+- Path A directly (no Path C transitional fallback).
+- UI: 2 separate inputs per pair (Low green-amber border, High amber-red border), no spinner arrows.
+- Client-side validation: `low ≥ 0`, `≤ 100`, `high ≥ low` — applied to all 3 forms.
+- 2 commits: Commit 1 = frontend, Commit 2 = DB migration 038.
+
+**Commit 1 — Frontend (`7fb09b4`):**
+
+Multiple polish iterations consolidated:
+
+- [x] **`types/index.ts`:** removed `@deprecated` fields from `Plano` and `Program` interfaces.
+- [x] **`Admin.tsx`:** rewrote `Programas e Eixos` section from accordion → flat hierarchical table → modal-based editor (final pattern).
+- [x] **New components:** `AdminProgramModal.tsx`, `AdminEixoModal.tsx` (modal-based create/edit, max-width 560px, ESC/backdrop/Cancel all close).
+- [x] **`NovoPlanoModal.tsx`:** added `defaultEixoId` prop for invocation from Admin tree + `contextLabel` prop for “Novo Plano · em <programa> › <eixo>” titles.
+- [x] **`DuplicatePlanoModal.tsx`:** band fields wired.
+- [x] **`Layout.tsx`:** new band config keys loaded at startup.
+- [x] **CSS:** `index.css` and `Admin.css` updated with `.threshold-pair` styles + spinner removal.
+- [x] **Tab `"Plano"` renamed to `"Definições"`** in Admin sidebar (PT-PT software convention; “Plano” misled because it suggested config for a specific plano entity).
+- [x] **Inline `Limiares` column** in Admin tree: format `Agregados X–Ypp · Actividades W–Zpp` (single line, hierarchy: Agregados first).
+- [x] **All 3 threshold pair forms** (Admin Program modal, NovoPlanoModal, Definições tab) reordered to Agregados-first for consistency.
+- [x] **Tooltip ⓘ** on each plano row with Responsável + Patrocinador (reuses `gi-tooltip-trigger` pattern).
+- [x] **Empty states:** `Sem eixos` / `Sem planos` in cinzento italic when a programa/eixo expands with no children.
+- [x] **Sort:** all 3 levels (programs, eixos, planos) ordered by `sort_order ASC` (canonical from Wave 4).
+
+**Commit 2 — Migration 038 (`2b7bd60`):**
+
+- [x] **`supabase/migrations/038_drop_deprecated_thresholds.sql`** created and applied via Supabase Dashboard SQL Editor.
+- [x] **DB changes:**
+  - Dropped `programs.threshold_aggregates` and `programs.threshold_leaves` (both NOT NULL, populated; values lost but already duplicated in `_low`/`_high`).
+  - Dropped `planos.threshold_aggregates` and `planos.threshold_leaves` (both NULL on all 25 planos).
+  - Deleted 3 legacy `app_config` keys: `status_delay_threshold`, `status_delay_threshold_aggregates`, `status_delay_threshold_leaves`.
+- [x] **Verification:** post-migration confirmed 8 threshold columns remain (4 per table, all `_low/_high`), 4 `app_config` keys remain (all `_low/_high`).
+- [x] **Pre-flight `grep` confirmed:** zero references to deprecated fields/keys in `src/`.
+
+**Net result:** threshold model now fully band-based across all layers (read, write, persist, UI, DB). Wave 6 Path A complete.
+
+#### Bug fix — Actividades + Gantt hierarchical sort (commit `84a17f2`)
+
+Discovered during Wave 6 commit 2 smoke test: `Actividades` and `Gantt` pages showed eixos and planos in inconsistent / random order. Root cause: `useActivities.ts` queries `ORDER BY sort_order ASC` but `sort_order` is per-parent (per `(plano_id, level)`), so global ordering returns Postgres heap order for collisions.
+
+Wave 4 was applied to `FilterBar`, `PlanosCatalog`, and `Admin` — but missed these two pages.
+
+- [x] **Client-side hierarchical sort** added in `Actividades.tsx` and `Gantt.tsx`.
+- [x] **Strategy:** maps from `usePrograms`, `useEixos`, `usePlanos` to resolve hierarchy. Sort order: `program_id` → `eixo` (matched by `program_id:n1` text) → `plano_id` → `level` → `sort_order`.
+- [x] **`useActivities` hook unchanged** — kept simple; each consumer decides its own ordering.
+- [x] **Verified:** `Plano Estratégico → Eixo 6` now shows planos in numeric ascending order (`#18, #20, #23, #24, #25, #26, #27, #28`).
+
+#### Admin tree visual polish — partial (commit `020ef14`)
+
+Attempted to align Admin Programas/Eixos/Planos table colors with the Actividades pattern. Two iterations applied, both partial.
+
+- [x] **Iteration 1 (commit `f3e5710` in `_Dev`):** applied `parchment-deep` / `parchment` / `transparent` backgrounds per level → user feedback: too heavy.
+- [x] **Iteration 2 (commit `7919271` in `_Dev`):** reverted to neutral bg, consolidated `border-bottom` to a single high-specificity rule on `<td>`. Hierarchy expressed only via font weight + color.
+- [x] **Left-border highlight removed** — chevron `▾`/`▸` indicates expand state instead.
+
+**Persistent visual artifacts after 5 fix attempts:**
+
+- Double border on some rows.
+- “+ Novo X” rows have invisible bottom border on some configurations.
+- Row heights vary between data rows and “+ Novo X” rows.
+
+**Read-only audit completed** (commit not applied):
+
+- JSX is heterogeneous: data rows have 3 separate `<td>` cells, “+ Novo Eixo”/”+ Novo Plano” rows use 1 `<td colSpan={3}>`, “+ Novo Programa” lives **outside** the `<table>` in a `<div className="adm-panel-footer">`.
+- CSS itself is statically correct (`border-collapse: collapse`, no conflicting rules).
+- Root cause **hypothesis** (not confirmed in browser): (A) Tailwind v4 `@layer` ordering bug in production builds suppressing border-width — same bug that blocked Wave 7; (B) Card wrapper interaction with table edge borders.
+
+**Decision:** backlog the visual polish — not worth further iterations vs. value delivered. Functionality is fine. Final commit `020ef14` represents partial state with `selected` class still present in JSX (now visually a no-op).
+
+#### Workflow improvements / lessons
+
+- [x] **Smoke test convention reinforced:** `npm run preview` mandatory for build / perf waves (already in convention layer).
+- [x] **Pre-flight queries pattern paid off** for Wave 4 (sort_order audit) and Wave 6 Path A (deprecated field detection in `src/`).
+- [x] **Read-only audit pattern introduced:** when iterative fixes fail multiple times, ask Claude Code to inspect and report (no commits) before any more code changes. Saves further iteration cycles.
+
+**Net result:** 6 commits in production (`36006dd`, `b64f472`, `7fb09b4`, `2b7bd60`, `84a17f2`, `020ef14`). Wave 4 + Wave 5 + Wave 6 Path A complete. One bug fix landed (Actividades+Gantt sort). Visual polish backlogged.
+
+### Pending — registered during this session
+
+- [ ] **Admin tree visual polish (final pass):** investigate Tailwind v4 layer ordering interaction with table borders, OR uniformize “+ Novo Programa” into the `<table>` with colspan (currently lives in `adm-panel-footer` div outside). Possibly bundled with the Tailwind v4 root-cause investigation that’s blocking Wave 7.
+- [ ] **`+ Filtros` popup scroll UX:** CSS `max-height: 400px` hides Owner/Sponsor sections below Estado on macOS with auto-hidden scrollbars. Add visible scrollbar styling or sticky section headers.
 
 ### Pending in Phase 11
 
@@ -371,7 +650,7 @@ This wave was a documentation pass, no code touched.
 ### Session updates (May 2026 — Wave H Permissions Rework)
 
 - [x] **`UserPermissionsModal`** (`08d642c`): per-user modal replaces 2D matrix
-- [x] **Save logic refactor** (`13a6131` + `3fa9c8b`): single batch save via delete-all + insert-desired transaction; fixes 'No API key' error
+- [x] **Save logic refactor** (`13a6131` + `3fa9c8b`): single batch save via delete-all + insert-desired transaction; fixes ‘No API key’ error
 - [x] **Migration 033** (`c2bed0d`): `log_change` trigger attached to `user_permissions`
 - [x] **Migration 034** (`148f098`): partial unique indices allow program-level + plan-level co-existence
 
@@ -386,7 +665,7 @@ This wave was a documentation pass, no code touched.
 ### Phase 2 — SELECT scoped
 
 - [x] RLS policies on 8 tables filter rows by `user_has_program_access`
-- [x] Dropped 4 duplicate "authenticated can read" legacy policies
+- [x] Dropped 4 duplicate “authenticated can read” legacy policies
 
 ### Phase 3 — Write scoped by program
 
@@ -405,7 +684,7 @@ This wave was a documentation pass, no code touched.
 ### Phase 4b — Frontend read-only mode
 
 - [x] New hook `useCanEditCurrent(page)`
-- [x] Breadcrumb shows `"· apenas leitura"` (`· read-only`) badge on `gestao-*` when user can't edit
+- [x] Breadcrumb shows `"· apenas leitura"` (`· read-only`) badge on `gestao-*` when user can’t edit
 - [x] All 5 gestão pages hide edit / create / delete buttons + disable inputs when read-only
 
 ### Phase 4c — Sidebar filtered (verified)
@@ -572,18 +851,18 @@ Forge Deep v5 supersedes the Subtle Warm Family (v4). Driven by need for stronge
 ### 🟡 Phase B — Internal identifiers (deferred)
 
 - [ ] TypeScript types, function names, comments
-- [ ] `package.json` "name" field
+- [ ] `package.json` “name” field
 - [ ] File / folder renames (decision: defer or keep)
 - [ ] Repository rename on GitHub (Strategos → Stratgos)
 - [ ] Cloudflare Pages project rename
-- [ ] Working directory rename on user's Mac — manual `mv`
+- [ ] Working directory rename on user’s Mac — manual `mv`
 - [ ] Environment variables (if any `STRATEGOS_*` exist)
 
 -----
 
 ## Phase 13.7 — Cmd+K command bar expansion
 
-> Inspired by Linear's command palette. Existing E2 implementation only searches plans; expand to full contextual command bar.
+> Inspired by Linear’s command palette. Existing E2 implementation only searches plans; expand to full contextual command bar.
 
 ### Pending decisions
 
@@ -608,14 +887,14 @@ Forge Deep v5 supersedes the Subtle Warm Family (v4). Driven by need for stronge
 
 - [ ] Recent / pinned commands surface at top
 - [ ] Keyboard shortcut hints visible per command
-- [ ] Hierarchical entry (e.g. "Create issue" → subpalette)
+- [ ] Hierarchical entry (e.g. “Create issue” → subpalette)
 
 -----
 
 ## Phase 13.8 — Activity Dependencies polish (continuation)
 
 - [ ] **G3:** status propagation — predecessor `"Em atraso"` → successor inherits visual alert
-- [ ] Allow adding dependencies in new mode (transaction with FK that doesn't exist yet)
+- [ ] Allow adding dependencies in new mode (transaction with FK that doesn’t exist yet)
 - [ ] Threshold gap configurable per program (currently hardcoded 7 days)
 - [x] Migration 028 confirmed at `supabase/migrations/028_create_activity_dependencies.sql`
 - [ ] Level cascade — promote / demote activity with automatic child re-parenting
@@ -655,7 +934,7 @@ Forge Deep v5 supersedes the Subtle Warm Family (v4). Driven by need for stronge
 
 ### Sub-waves (priority order)
 
-- [ ] **8a (mini-cleanup):** fix `type` semantics in people (rename `type` → `company`, add `is_external BOOLEAN`)
+- [x] **8a (mini-cleanup) — DB confirmed May 26 2026:** `people.type` no longer exists; `people.company text` and `people.is_external boolean NOT NULL DEFAULT false` already in schema. Phase 13.10 Sub-Wave 8a is effectively complete — no further migration needed before Owner Update Form MVP.
 - [x] **8d (mini-cleanup):** drop `activities.owner` / `sponsor` legacy columns — DB confirmed dropped; insert payload cleaned (`d8dc1e5`)
 - [ ] **8.0 (gating):** populate `people` and `unidades` with real data — prerequisite to 8b
 - [ ] **8b (after 8.0):** polish Admin / `Pessoas` (active toggle, notes edit, internal / external selector)
@@ -700,7 +979,7 @@ Forge Deep v5 supersedes the Subtle Warm Family (v4). Driven by need for stronge
 - [ ] **`Evolução` snapshot plan-level filtering:** today `by_n1` filtered by program but does NOT respect plan-level restrictions
 - [ ] **`by_n2` (plan-level breakdown) UI:** snapshot field exists but unused
 - [ ] **Aggregation RLS hardening (Option B):** plan-level enforcement at DB layer
-- [ ] **Custom SMTP (resolve rate limit):** Supabase free tier 4 emails / hour
+- [x] **Custom SMTP (Resend, May 26 2026):** Resend native Supabase integration; `stratgos.com` domain verified with DKIM + SPF via Cloudflare native integration; 3000 emails/month free tier; sender `noreply@stratgos.com` (display name `Stratgos`); verified end-to-end via password reset flow
 - [ ] **Apply `ConfirmModal` to `UserPermissionsForm` sub-action** (line 128, nested modal complication)
 
 -----
@@ -718,7 +997,7 @@ Forge Deep v5 supersedes the Subtle Warm Family (v4). Driven by need for stronge
 - [ ] Unsaved changes warning when navigating away
 - [ ] Sortable table columns in all management pages
 - [x] **Replace `window.confirm` with custom modal** (May 2026): 7 migrated to `ConfirmModal`; 1 sub-action kept
-- [ ] Global "quick add" drawer (activity, risk, PDS from any page)
+- [ ] Global “quick add” drawer (activity, risk, PDS from any page)
 - [ ] Transversal save pattern — review all menus
 
 #### Per menu
@@ -819,13 +1098,111 @@ Forge Deep v5 supersedes the Subtle Warm Family (v4). Driven by need for stronge
 
 -----
 
-## Phase 13.12 — Owner Update Form (deferred, design captured)
+## Phase 13.12 — Owner Update Form (Sub-fase 1.4 — ready to start)
 
-Email-driven update flow that allows plan owners without platform access to update their plans via a one-time token link. **Status:** designed and discussed (May 2026); deferred pending prerequisites. Estimated effort: 1-2 weeks.
+Email-driven update flow that allows plan owners without platform access to update their plans via a one-time token link. **Status (May 26 2026):** all prerequisites complete (Wave 8a, owner/sponsor refactor, Resend SMTP) and all decisions closed. MVP implementation will span ~3 sessions (~28h estimated).
 
 ### Use case
 
-PMO / Program manager cannot keep plan data current if owners don't have platform access. Email-driven update is the standard SaaS pattern for this (parity with Asana, Jira via Atlassian Smart Links, Smartsheet forms, Monday.com Updates).
+PMO / Program manager cannot keep plan data current if owners don't have platform access. Email-driven update is the standard SaaS pattern for this (parity with Asana, Jira via Atlassian Smart Links, Smartsheet forms, Monday.com Updates) — but Stratgos differentiates by collecting a **full PDS-like update** (not just status %).
+
+### Final flow
+
+1. PMO/Gestor clicks `"Pedir actualização"` on a plano in `PlanoPage` or `PlanosCatalog`
+2. If plano has multiple owners, modal asks PMO to pick who to invite (decision #6)
+3. System generates a unique token + sends email via Resend SMTP on `stratgos.com` domain: `"Olá [Nome], por favor actualize o estado de [Plano X]: <link>"`
+4. Owner clicks link → opens `/update/<token>` (public page, mobile-first, no app shell)
+5. Owner sees plan + activities + current state → fills in:
+   - `% Execução` per activity
+   - Real dates per activity
+   - 4 PDS textareas: Compromissos, Avanços, Próximos Passos, Pontos de Atenção (with useful placeholders)
+6. Owner submits → creates draft in DB
+7. PMO receives notification (in-app + email) → reviews draft side-by-side with current → accepts or rejects
+8. Token is single-use, expires after 7 days
+
+### All decisions closed
+
+| # | Decision | Final |
+|---|---|---|
+| 1 | Workflow approval | Draft + PMO approval (controlo qualidade) |
+| 2 | Granularity | Por plano |
+| 3 | Form scope | % + datas reais + PDS completo (4 secções) |
+| 4 | Re-scoping | Core product feature (não polish) |
+| 5 | Data state | Dummy — clean migrations OK |
+| 6 | Multi-owner | PMO escolhe quem convidar no momento |
+| 7 | Data model | B-adaptado — `_person_ids[]` + `_primary_id` + `_label_override` applied symmetrically to owner AND sponsor ✓ implemented |
+| 8 | Authentication | Single-use UUID token, 7-day expiry |
+| 9 | SMTP provider | Resend (chosen for native Supabase integration + 99.2% deliverability + 3000/mo free tier) ✓ configured |
+| A | Activity-level granularity | All activities of the plano editable by the owner (no per-activity owner) |
+| B | Free text format | 4 textareas with useful placeholders |
+| C | Rate limit | 1 request per (owner, plano) per 7 days, configurable in Admin |
+
+### Prerequisites complete
+
+- ✅ **Owner/sponsor data model refactor** (3 commits, this session) — `planos.owner_person_ids[]` + `owner_primary_id` + `owner_label_override` (same for sponsor)
+- ✅ **`src/lib/owners.ts` helper** — `resolveOwnerPrimaryEmail()` to resolve who receives the email
+- ✅ **Custom SMTP via Resend** on `stratgos.com` domain — verified DKIM + SPF, native Supabase integration
+- ✅ **Audit log infrastructure** — already in place via `change_log` and existing audit hooks
+
+### Sub-fase 1.4 sequencing — components & effort
+
+**Componente A — Backbone técnico (~10h, 1 session)**
+
+| Step | Component | Effort |
+|---|---|---|
+| A1 | DB schema `update_tokens` + RLS | ~1h |
+| A2 | Edge Function `send-update-request` | ~3h |
+| A3 | Edge Function `submit-owner-update` | ~3h |
+| A4 | Email template PT-PT (HTML, brand Stratgos) | ~2h |
+| A5 | Rate limit logic | ~1h |
+
+**Componente B — Formulário público (~8h, 1 session)**
+
+| Step | Component | Effort |
+|---|---|---|
+| B1 | Página `/update/:token` (token validation, error states) | ~1h |
+| B2 | Layout responsive mobile-first | ~2h |
+| B3 | Form fields: % + datas | ~2h |
+| B4 | Form fields: 4 textareas PDS | ~2h |
+| B5 | Submit + thank-you page | ~1h |
+
+**Componente C — UI PMO (~10h, 1-2 sessions)**
+
+| Step | Component | Effort |
+|---|---|---|
+| C1 | Botão `"Pedir actualização"` no PlanoPage | ~1h |
+| C2 | Modal "Quem queres convidar" (multi-owner picker) | ~2h |
+| C3 | Confirmação + envio + toast | ~1h |
+| C4 | Lista de "Updates pendentes" (drafts) | ~3h |
+| C5 | Revisão de draft: side-by-side current vs proposed | ~2h |
+| C6 | Aceitar/Rejeitar com audit log | ~1h |
+
+### Risks and mitigations
+
+| Risk | Mitigation |
+|---|---|
+| Token leaked via email forward | Token one-time + 7-day expiry + audit log |
+| Owner submits wrong data | PMO review workflow (decision #1) |
+| Spam of update requests | Rate limit (decision C): 1/(owner,plano)/7d configurable |
+| Mobile form complexity | Single-page UX, max 4 textarea fields |
+| Supabase email rate limit (4/hour) | Resend SMTP resolved ✓ |
+| Owner has no email associated | Wave 8a + decision #7 cover the case |
+
+### Strategic value
+
+**For clients:** raises plan data freshness without PMO chasing owners; owners held accountable via email tracking; automatic audit (who updated, when, via update flow).
+
+**For Stratgos:** competitive differentiator (PDS-like update, not just % status); raises engagement (more indirect users); potential paid feature (e.g. update request quota tied to plan tier).
+
+### Deferred for after MVP
+
+- **Auto-trigger:** cron-like job that sends update-requests for stale planos (> N days). Infrastructure: Supabase `pg_cron` or external scheduler. Configurable threshold per program in Admin. **Not in MVP** — adds 2-3h work.
+- **Multi-language email templates:** PT-PT-only for MVP; EN translation deferred.
+
+
+### Use case
+
+PMO / Program manager cannot keep plan data current if owners don’t have platform access. Email-driven update is the standard SaaS pattern for this (parity with Asana, Jira via Atlassian Smart Links, Smartsheet forms, Monday.com Updates).
 
 ### Proposed flow
 
@@ -838,7 +1215,7 @@ PMO / Program manager cannot keep plan data current if owners don't have platfor
 
 **Scope of the form (if proceeded):** `% + datas reais + ponto de situação` (commitments, key progress, next steps, and attention points are critical). This is option C-equivalent from the original analysis — not just percentage, not just dates, but a structured PDS-like update.
 
-**Status:** "Discutir mais detalhe primeiro (escopo, owner data model)" — design captured, decision deferred until prerequisites resolved.
+**Status:** “Discutir mais detalhe primeiro (escopo, owner data model)” — design captured, decision deferred until prerequisites resolved.
 
 ### Owner data model — 3 paths (decision pending)
 
@@ -967,7 +1344,7 @@ Discussed in May 2026 session. MVP scope ~1 week when started. Standby until rea
 ### Deferred decisions
 
 - [ ] Technical approach: interactive walkthrough (Shepherd.js / Driver.js) vs static page vs contextual tooltips
-- [ ] Recommended pre-work: fill out the 3 guides in free-form text before implementing code (separates "what to say" from "how to show")
+- [ ] Recommended pre-work: fill out the 3 guides in free-form text before implementing code (separates “what to say” from “how to show”)
 
 -----
 
@@ -1104,7 +1481,7 @@ Extensive history already resolved up to May 2026: `rollup.ts` dual + 3-zone ban
 - **Edge Functions deploy via Supabase Dashboard** (macOS 11 Big Sur limitation): Supabase CLI requires macOS 12+. All Edge Functions are deployed via Dashboard copy-paste from source files in `supabase/functions/<name>/index.ts` (versioned in `_Dev` repo).
 - **`FunctionsHttpError` gotcha:** response body lives in `error.context` (Response object), NOT `data.error`. Use the `extractEdgeFunctionError` helper.
 - **Site URL config critical:** Edge Function `redirectTo` only respected if URL is in the Redirect URLs allowed list.
-- **Email rate limit (Supabase free tier):** 4 emails / hour. Long-term solution: configure custom SMTP.
+- **Email delivery:** Resend custom SMTP (May 26 2026) — resolved the 4 emails/hour free-tier limit. Sends from `noreply@stratgos.com` via Resend native Supabase integration. 3000 emails/month free tier.
 
 ### Domain & infrastructure
 
@@ -1119,7 +1496,7 @@ Extensive history already resolved up to May 2026: `rollup.ts` dual + 3-zone ban
 ### Tech debt discovered (May 2026)
 
 - **Tailwind v4 + Vite + lazy chunks:** layer ordering bug in production builds. Wave 7 (bundle splitting) reverted. Details in `CLAUDE.md` → Known Issues.
-- **Multi-tab Supabase auth lock:** opening Stratgos in multiple tabs causes "Lock stolen". Workaround: close tabs.
+- **Multi-tab Supabase auth lock:** opening Stratgos in multiple tabs causes “Lock stolen”. Workaround: close tabs.
 - **Gantt colgroup whitespace hydration warning:** pre-existing, low severity, deferred.
 
 ### Branding

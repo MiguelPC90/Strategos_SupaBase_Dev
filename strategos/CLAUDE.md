@@ -14,7 +14,7 @@ Stratgos is a PMO (Project Management Office) dashboard for organizations managi
 
 **Tagline:** *Strategy made visible*
 
-**Brand name:** **Stratgos** (without the `e`). The italic *g* occupies the place of the missing *e* in the wordmark. The typographic quirk IS the brand. Never spell it "Strategos". (Note: repo / Cloudflare worker URL / `package.json` still use the legacy "Strategos" spelling — see Phase 13.6 Phase B in `TODO.md` for cleanup plan.)
+**Brand name:** **Stratgos** (without the `e`). The italic *g* occupies the place of the missing *e* in the wordmark. The typographic quirk IS the brand. Never spell it “Strategos”. (Note: repo / Cloudflare worker URL / `package.json` still use the legacy “Strategos” spelling — see Phase 13.6 Phase B in `TODO.md` for cleanup plan.)
 
 -----
 
@@ -50,6 +50,20 @@ The `_Dev` repo is where Claude Code operates. The Mac repo is the source of tru
 - **Credentials:** `.env.local` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)
 - **Service role:** used only inside Edge Functions
 - **DEV/PROD split:** **NOT YET** — single Supabase project for now. See Phase 15 in `TODO.md`.
+
+### Email delivery (SMTP)
+
+Custom SMTP configured via **Resend** native Supabase integration (May 26 2026). Resolves the free-tier rate limit (4 emails/hour) and enables sending from the `stratgos.com` domain.
+
+- **Provider:** Resend (Europe region, AWS SES backend)
+- **Sender:** `noreply@stratgos.com` (display name: `Stratgos`)
+- **Domain authentication:** DKIM + SPF + MX via 3 DNS records on `stratgos.com`, added automatically by Resend's Cloudflare native integration (no manual copy-paste). All `DNS only` (not proxied through CDN), TTL 1hr.
+- **Free tier:** 3000 emails/month (sufficient for MVP + early customer phase)
+- **Setup:** Resend dashboard → Integrations → Supabase → Connect (OAuth flow auto-fills SMTP credentials in Supabase Auth settings; Resend API key generated automatically)
+- **Verified workflows:** Supabase Auth emails (magic link, password reset, signup confirmation) ✓
+- **Pending integration:** Owner Update Form Edge Functions will use the same Resend stack via the API (not just SMTP) for richer HTML email templates.
+
+To check delivery in production: Resend dashboard → Emails (or Logs).
 
 ### Current users
 
@@ -178,12 +192,12 @@ Lucide / Feather only. Stroke-based, 1.5px, rounded caps and joins. Optically al
 
 **Full Stratgos voice** (direct, opinionated, dry) — marketing site, landing pages, board-facing reports, sales decks, brand documents.
 
-**Neutral functional voice** (transactional, no personality) — product UI labels, buttons, empty states, system messages, errors, email notifications. Reason: in cobrand deployments the customer's logo sits next to ours; product UI is shared infrastructure, not marketing.
+**Neutral functional voice** (transactional, no personality) — product UI labels, buttons, empty states, system messages, errors, email notifications. Reason: in cobrand deployments the customer’s logo sits next to ours; product UI is shared infrastructure, not marketing.
 
 Four principles (apply to both registers):
 
 1. Numbers first — lead with the specific fact, then interpretation
-1. No exclamation marks — boards don't shout
+1. No exclamation marks — boards don’t shout
 1. Portuguese-first (European Portuguese, neutral register) for UI strings
 1. Dry over witty — never witty in transactional UI
 
@@ -193,13 +207,13 @@ Governed by `app_config.branding_mode` (JSONB string):
 
 - `stratgos` — Stratgos-only (default for marketing, demo, single-tenant)
 - `cobrand` — italic g mark + 1px divider + customer logo + customer name
-- `whitelabel` — customer logo only, "powered by Stratgos" footer (premium tier, **deferred to Phase 15**)
+- `whitelabel` — customer logo only, “powered by Stratgos” footer (premium tier, **deferred to Phase 15**)
 
 The ink-900 topbar is shared infrastructure. Never customizable to client colors. Logo goes ON it, not behind it.
 
 ### Authority
 
-This section is source of truth for brand. When a request conflicts (e.g. "make topbar blue", "use red for status"), flag the conflict and ask before proceeding.
+This section is source of truth for brand. When a request conflicts (e.g. “make topbar blue”, “use red for status”), flag the conflict and ask before proceeding.
 
 -----
 
@@ -262,7 +276,6 @@ Pages with embedded `gestão` (management) tabs — `PlanoPage` (plan page) now 
 |`useFilter()`                                                                                |`{ filters, setFilter, clearAll }`. `filters.{programIds, n1Values, n2Values, statuses, owners, sponsors}[]`                                                                                |
 |`useProgramLabels(programId)`                                                                |Dynamic filter labels per program; module-level cache (one fetch per program per session)                                                                                                   |
 |`useSnapshots()`                                                                             |KPI snapshots for `Evolução` (Evolution page)                                                                                                                                               |
-|`useEffectiveValues(activities, today)`                                                      |Returns `Map<id, EffectiveValue>` (pct + bs/bf/rs/rf + status) for every activity in the array. Single call per page; memoized. All pages consume this instead of calling rollup functions directly.|
 
 -----
 
@@ -289,30 +302,30 @@ Two independent bands are loaded from `app_config` at startup (via `setThreshold
 |Aggregates|15 pp|25 pp |N0-N3 levels (`Programa` / `Eixo` / `Plano` / `Macro-actividade`)|
 |Leaves    |5 pp |10 pp |N4-N6 levels (`Actividade` / `Sub-actividade` / `Detalhe`)       |
 
-**Exports:** `setThresholds(aggregates, leaves)`, `getThresholdAggregates()`, `getThresholdLeaves()`, `leafPctPrev(activity, today)`, `rollupPctPrev(leaves, today)`, `computeRowState(actual, target, band?)`, `rollupDateRange(activities)`, `rollupRealDateRange(activities)`, `getDirectChildren(activity, all)`, `getEffectivePct(activity, all)`, `rollupEffectivePct(leaves, all)`, `getDescendantLeaves(activity, all)`, `getEffectiveDates(activity, all)`, `getEffectiveTarget(activity, all, today)`, `getEffectiveStatus(activity, all, today)`, `getGroupStatus(n4Leaves, all, today, level)`, `computeEffectiveMap(activities, today)`, interface `EffectiveRecord`.
+Since Wave 6 Path A (May 2026, migration 038), the deprecated single-value threshold columns (`programs.threshold_aggregates`, `programs.threshold_leaves`, `planos.threshold_aggregates`, `planos.threshold_leaves`) have been dropped. The legacy `app_config` keys `status_delay_threshold`, `status_delay_threshold_aggregates`, `status_delay_threshold_leaves` were also deleted. The model is now fully band-based across all layers: read, write, persist, UI, and DB.
+
+**Exports:** `setThresholds(aggregates, leaves)`, `getThresholdAggregates()`, `getThresholdLeaves()`, `leafPctPrev(activity, today)`, `leafStatus(activity, today, band?)`, `rollupPct(leaves)`, `rollupPctPrev(leaves, today)`, `rollupStatus(leaves, today, band?)`, `computeRowState(actual, target, band?)`, `rollupDateRange(activities)`, `rollupRealDateRange(activities)`, `getN4DescendantLeaves(n4, all)`, `getN4Effective(n4, all)`.
 
 **`leafPctPrev(activity, today)`** — date-based expected % for a single activity (0-100). Linear interpolation between `bs` (baseline start) and `bf` (baseline finish). `today <= bs` → 0, `today >= bf` → 100, else linear. Falls back to stored `pct_prev` when baseline dates are missing.
 
-**`computeRowState(actual, target, band)`** — 4-state status from already-computed percentages. Does NOT consider deadlines. Prefer `getEffectiveStatus` when the caller has access to the full activities array.
+**`leafStatus(activity, today, band = THRESHOLD_LEAVES)`** — 4-state status for a single leaf (level 4-6). Resolution order (first match wins):
 
-**Unifying principle — effective values everywhere:** An activity's %, dates, and status are ALWAYS effective — rolled up from children when they exist, own stored values when it is a leaf. KPIs select `level === 4` rows only (N5/N6 are detail records and NEVER included to avoid double-counting), but each N4 contributes its EFFECTIVE pct and status, not the raw stored values. An N4 with all children at 100% must show 100% and "Concluída" in every KPI and every status badge.
+1. `pct >= 100` → `"Concluída"`
+1. `today > bf AND pct < 100` → `"Em atraso"` (deadline missed)
+1. Compute `delta = leafPctPrev(today) - pct`; apply 3-zone bands → `"Em dia"` / `"Em risco"` / `"Em atraso"`
 
-**Recursive effective pct model** — All pct display and KPI sums use `getEffectivePct(activity, all)`, which recursively averages direct children (level + 1, matched by the child's `n{level}` column equalling the parent's `name`, plus ancestor column equality). Leaves (no children in `all`) return their own `pct`. Aggregate rows (N0-N3 in tables) use `rollupEffectivePct(leaves, all)` over their level-4 children, which automatically handles N4 leaves that themselves have N5/N6 descendants. `getDirectChildren(activity, all)` is the traversal helper used internally.
+**`rollupStatus(leaves, today, band = THRESHOLD_AGGREGATES)`** — 4-state status for an aggregate (N0-N3), computed from its N4 leaves. Resolution order:
 
-**`getEffectiveDates(activity, all)`** — returns `{ bs, bf, rs, rf }`. Leaf (no direct children) returns its own stored dates. With children, `bs`/`bf` roll up as min/max over all descendant leaves; `rs`/`rf` roll up similarly but remain `null` when no descendant has real-date data (no baseline fallback — model stays null-honest).
+1. `leaves.length === 0` → `"Em dia"`
+1. All `pct >= 100` → `"Concluída"`
+1. `today > max(bf of leaves) AND avg pct < 100` → `"Em atraso"` (group deadline missed)
+1. Compute `delta = avg pct_prevista - avg pct`; apply 3-zone bands → `"Em dia"` / `"Em risco"` / `"Em atraso"`
 
-**`getEffectiveTarget(activity, all, today)`** — recursive expected % (0-100) that mirrors `getEffectivePct`'s tree traversal. Leaf → `leafPctPrev`. Has children → average `getEffectiveTarget` over children that have at least one dated leaf (`hasDatedLeaf`); dateless branches are excluded (avoids polluting the average with activities that have no schedule data). Returns 0 if no dated branch exists. Used by both `getEffectiveStatus` and `getGroupStatus` for Step 3.
+**`computeRowState(actual, target, band)`** — 4-state status from already-computed percentages. Does NOT consider deadlines. Prefer `rollupStatus` when the caller has access to leaves (handles date-based overrides correctly).
 
-**`getEffectiveStatus(activity, all, today)`** — unified 3-step status for any activity at any level. Band is chosen automatically by `activity.level` (N0-N2 → aggregates band, N3-N6 → leaves band). Resolution order:
-1. **Concluída** — leaf `pct >= 100`, OR (for aggregates) every descendant leaf has `pct >= 100`
-2. **Em atraso** — effective `bf` is in the past and effective `pct < 100`
-3. **Delta vs band** — `getEffectiveTarget(activity, all, today) − effectivePct` compared to band thresholds. Target is now recursive (matches `getEffectivePct`'s tree structure) — unbalanced hierarchies give correct per-branch averages, not a flattened leaf count.
+**KPI rule:** all KPI aggregations use `level === 4` only. N5/N6 are detail records and NEVER included.
 
-**`getGroupStatus(n4Leaves, all, today, level)`** — aggregate status for virtual group rows (N0-N4) that have no `Activity` object. Replaces the old per-page `groupState` worst-wins pattern. `n4Leaves`: the N4-level activities belonging to this group. `all`: full activities array for descendant resolution. `level`: determines the band (`>= 3` → leaves, `< 3` → aggregates). Same 3-step resolution as `getEffectiveStatus`: Concluída → deadline miss → delta vs band. Group pct and target are both averaged over `n4Leaves`, each of which may itself roll up further N5/N6 children via `getEffectivePct` / `getEffectiveTarget`.
-
-**`useEffectiveValues` hook** (`src/hooks/useEffectiveValues.ts`) — single memoized hook consumed by every page. Signature: `useEffectiveValues(activities, today): Map<string, EffectiveValue>`. `EffectiveValue = { pct, bs, bf, rs, rf, status }`. One call per page; no per-row calls to `getEffectivePct` / `getEffectiveDates` / `getEffectiveStatus` directly. Gantt uses the map's date fields for timeline bars; real→baseline fallback (`ev.rs ?? ev.bs`) is presentation-only at render time (model stays null-honest). Aggregate (group) row status uses `getGroupStatus` from rollup — not per-leaf worst-wins.
-
-**Bug fix (this wave):** `Activity` interface was missing `n6: string` field — added. DB column exists; parser always wrote it; interface omission caused silent type gaps.
+**N4 effective values** — `getN4Effective(n4, all)` returns `{ bs, bf, rs, rf, pct }` for an N4: if it has N5/N6 descendants (matched by shared `n1`/`n2`/`n3` + `n4 === parent.name`), values are rolled up from descendants; otherwise the N4’s own DB values are used.
 
 ### `src/lib/riskColors.ts`
 
@@ -370,30 +383,6 @@ JS/TS source of truth for brand colors (mirrors CSS `:root` variables). Used by 
 
 **Rule:** charts NEVER hardcode hex values. Always import from `tokens.ts`.
 
-### `src/lib/excel-import.ts`
-
-Excel parser for activity bulk import. Used by `NovoPlanoModal` Step 2 (create flow) and `BulkActivitiesModal` (post-create append flow).
-
-**Algorithm:** stack-walking based on `Nivel` column. For each row, the level's name is pushed to the stack; all deeper levels are invalidated; ancestors are read from the stack. The numeric prefix in `Nome` is NOT used for hierarchy resolution (intentional — `Nome` is free-form per entity convention).
-
-**Exports:** `parseExcelFile(File)`, `parseExcelBuffer(ArrayBuffer)`, `parseRows(unknown[][])`, `buildAncestors(act, all)`, `downloadActivitiesTemplate()`, `parseDate(raw)`, `exportActivitiesToExcel(activities, planoName)`, `computeDiff(parsed, existing)`, types `ParsedActivity`, `ParseError`, `ParseResult`, `Ancestors`, `ActivityForExport`, `ExistingActivity`, `DiffType`, `FieldChange`, `ActivityDiff`, `DiffResult`.
-
-**`parseRows`** is the core parsing function — accepts raw row arrays (row 0 = headers, row 1+ = data). `parseExcelBuffer` and `parseExcelFile` are thin wrappers that read XLSX files and delegate to `parseRows`. Tests call `parseRows` directly to avoid XLSX file round-trips.
-
-**Hidden `_uuid` column:** when present, used to match parsed rows against existing DB activities (diff preview). When absent, all rows treated as new.
-
-**Warnings (non-fatal):** missing-ancestor cases (e.g. level 6 with no level 5 in stack) attach to `ParsedActivity.warnings`. Parser continues; ancestors below the gap stay empty strings.
-
-**Validations (fatal — emit `ParseError`, skip row):** invalid level (not 3-6), missing name, missing/invalid required dates (Inicio_Planeado, Fim_Planeado), end_date < start_date.
-
-**Bug fixed (Phase 1):** `n6` was never populated in the INSERT payload for level 6 activities. `buildAncestors` (renamed from `buildN345`) now returns all four levels.
-
-**`exportActivitiesToExcel(activities, planoName)`** — downloads current plano activities as an XLSX with a hidden `_uuid` column. Filename: `actividades-{slugified-plano-name}.xlsx`. The hidden UUID column is what enables round-trip diffing on re-import.
-
-**`computeDiff(parsed, existing)`** — matches parsed rows against existing DB activities by `uuid` field. Classifies each entry as `'new' | 'modified' | 'unchanged' | 'deleted'` across 8 fields (name, level, bs, bf, rs, rf, pct, notes). Rows without a UUID in the parsed file are treated as new. Returns `DiffResult` with `.diffs[]` and `.summary` (counts + `levelChanges`).
-
-**Test suite:** `src/lib/excel-import.test.ts` — 26 vitest cases: 18 covering golden path, stack invalidation, skip-level warnings, empty rows, invalid levels, missing columns, 8 date formats, and UUID present/invalid/absent; 8 covering `computeDiff` (all-new, all-unchanged, pct-only modified, multi-field modified, level-change flagged, deletion, mixed batch, date-null-vs-value).
-
 ### `src/lib/edgeFunctionError.ts`
 
 `extractEdgeFunctionError(error)` reads `FunctionsHttpError.context.json()` to surface specific error messages from Edge Function 4xx/5xx responses. See **Known Issues — FunctionsHttpError gotcha** below.
@@ -401,6 +390,33 @@ Excel parser for activity bulk import. Used by `NovoPlanoModal` Step 2 (create f
 ### `src/lib/markdown.tsx`
 
 Markdown rendering for PDS narrative text.
+
+### `src/lib/owners.ts`
+
+Centralized resolution helpers for plano owner/sponsor display (Phase 13.12 prerequisite, May 2026). Since migration 040 (May 26 2026), `planos.owner` and `planos.sponsor` are no longer string columns — they're FK arrays + primary FK + optional label override. These helpers encapsulate the resolution logic so every UI surface that displays or computes an owner/sponsor goes through the same code path.
+
+**Exports:**
+
+- `resolveOwnerNames(plano, peopleMap): string[]` — array of display names. Priority: FK lookup via `owner_person_ids[]`, then `owner_label_override` (non-person entity like "Comissão Executiva", "DCH"), else empty.
+- `resolveSponsorNames(plano, peopleMap): string[]` — same logic for sponsor.
+- `resolveOwnerPrimaryEmail(plano, peopleMap): string | null` — resolves `owner_primary_id` to the person's email (used by the Owner Update Form to determine where to send the update-request email).
+- `formatPeopleList(names, separator = ' · '): string` — join names with middle-dot separator (used in tables, lists, breadcrumb chips).
+
+Callers must pass a `peopleMap: Map<string, Person>` built once via `useMemo(() => new Map(people.map(p => [p.id, p])), [people])` to avoid O(n) lookups per row.
+
+### `src/lib/sort.ts`
+
+Hierarchical natural sort helpers introduced in Wave 4 (May 2026).
+
+**Exports:** `compareCodes(a, b)`, `comparePlanos(a, b)`, `compareEixos(a, b)`.
+
+**Use cases:**
+
+- `FilterBar`: dropdown options for `Eixo` / `Plano`.
+- `PlanosCatalog`: default plano list ordering.
+- `Admin.tsx`: programs / eixos / planos in the hierarchy table.
+
+**For `useActivities` consumers (`Actividades`, `Gantt`):** these pages do a client-side hierarchical sort using maps from `usePrograms` + `useEixos` + `usePlanos` to resolve the `program → eixo → plano → level → sort_order` chain. The `useActivities` hook intentionally stays simple (only orders by `sort_order ASC` from the DB) — each consumer is responsible for its own multi-level ordering when needed.
 
 ### `src/lib/glossary.ts`
 
@@ -416,11 +432,13 @@ Supabase client setup.
 
 ### Forms & Pickers
 
-- **`NovoPlanoModal`** (new-plan modal) — 2-step `Plano` (action plan) wizard (Step 1 form, Step 2 optional Excel import). Shared by `PlanosCatalog` and embedded `GestaoIniciativas`. Used in both create + edit modes.
-- **`BulkActivitiesModal`** — post-create Excel import modal. Mounted in `GestaoIniciativas` (Actividades tab). 2-step flow: upload (drag-and-drop or click, `.xlsx`/`.xls` only) → diff preview. Upload triggers parallel parse + DB fetch → `computeDiff` → colour-coded table (green=new, amber=modified, crimson=deleted, plain=unchanged). Filter chips (Todas / Novas / Modificadas / A apagar). "Exportar actividades" button downloads current activities with hidden `_uuid` col for round-trip diffing. Apply calls `supabase.rpc('apply_activity_diff', ...)` (transactional). ConfirmModal extra step when diff contains deletions. Gate: rendered only when `propPlanoId` is set and `!readOnly`.
+- **`NovoPlanoModal`** (new-plan modal) — 2-step `Plano` (action plan) wizard (Step 1 form, Step 2 optional Excel import). Shared by `PlanosCatalog`, embedded `GestaoIniciativas`, and the Admin Programas/Eixos/Planos tree. Used in both create + edit modes. Optional props `defaultEixoId` (pre-select parent eixo in create mode) and `contextLabel` (e.g. `"em <programa> › <eixo>"` for contextual modal title). Threshold pair inputs ordered Agregados-first for consistency with the Admin Definições tab.
+  - **Owner/Sponsor (since Phase 13.12, May 26 2026):** uses `MultiPersonSelect` returning `string[]` of person names. At save time, names resolve to UUIDs via `peopleByName` map; unmatched fragments (typically org units like `DCH`/`GGE`) are captured into `owner_label_override` / `sponsor_label_override` (joined by ` | `), preserving user intent. User-typed label override input ("Ou nome de entidade (raro)") takes precedence — auto-captured fragments are appended after it. Persists to FK fields only (`owner_person_ids[]` + `owner_primary_id` + `owner_label_override`, same for sponsor).
 - **`DuplicatePlanoModal`** — deep-copy with hybrid time-shift (offset by `chosenDate - earliestSourceBs`). `activity_dependencies` remapped via `oldId → newId`. Not cloned: risks, recursos (resources), PDS, fin_*.
 - **`SearchableSelect`** — typeahead with `position: fixed` dropdown (escapes parent `overflow: clip`), `min-width: 280px`, closes on scroll/resize.
 - **`MultiPersonSelect`** — Linear/Notion style single input. Sources: active people + unique `org_units` from `people.org_unit`. Storage: text joined with `' | '` (no schema change). Backward compatible with legacy single-value entries.
+- **`AdminProgramModal`** (May 2026) — create + edit programs from the Admin tree. Fields: Code, Name, 4 threshold inputs (Agregados Low/High first, Actividades Low/High second). Validation: `low ≥ 0`, `≤ 100`, `high ≥ low`. Defaults for new program: leaves `{ 5, 10 }`, aggregates `{ 15, 25 }`. Max-width 560px, ESC / backdrop / Cancel all close.
+- **`AdminEixoModal`** (May 2026) — create + edit eixos. Fields: Code, Name (eixos have no thresholds — inherit from parent programa). Contextual title `"Novo Eixo · em <programa>"` / `"Editar Eixo · em <programa>"`. Same modal infrastructure as AdminProgramModal.
 - **`InviteUserModal`** — email + role + name + permissions form. Calls `invite-user` Edge Function.
 - **`EditUserModal`** — 3 editable fields (name, email, role). Email change shows secondary `ConfirmModal`. Role downgrade (edit-capable → view-only with stranded edit permissions) shows `ConfirmModal`.
 - **`UserPermissionsForm`** — controlled reusable form. Vertical `"Acesso por página"` (per-page access) list (12 rows) + `"Restrições por plano"` (per-plan restrictions) picker.
@@ -451,7 +469,7 @@ Supabase client setup.
 |Context          |Role                                                                                                                                                              |
 |-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 |`AuthContext`    |Authentication state, login/logout/session                                                                                                                        |
-|`FilterContext`  |Filters across all pages (programIds, n1Values, n2Values, statuses, owners, sponsors)                                                                             |
+|`FilterContext`  |Filters across all pages (programIds, n1Values, n2Values, statuses, owners, sponsors). Since Phase 13.12 commit 3 (May 26 2026), `owners` and `sponsors` filter state keys hold UUIDs (not name strings); options derived from `owner_person_ids[]` via `peopleMap` lookup. URL filter format changed accordingly — bookmarked URLs with the old name-based format silently lose the filter. Exports `personIdToName` map for downstream UUID→name resolution. Session storage version bumped to v2. Org units (`DCH`, `GGE`) no longer filterable — they live in `owner_label_override` only.|
 |`ToastContext`   |Global toast notifications                                                                                                                                        |
 |`BrandingContext`|Brand identity from `app_config.branding_mode` + `client_logo_url` + `client_title`/`client_subtitle`. `refresh()` for live updates after Admin save.             |
 |`ProfileContext` |User profile (`full_name`, avatar). Subscribes to `auth.onAuthStateChange`: clears on `SIGNED_OUT`, refetches on `SIGNED_IN` / `TOKEN_REFRESHED` / `USER_UPDATED`.|
@@ -464,11 +482,17 @@ Supabase client setup.
 
 ### Core hierarchy (dedicated tables)
 
-- **`programs`** — N0 level. Top of the hierarchy (`Programa`). id, code, name, sort_order
+- **`programs`** — N0 level. Top of the hierarchy (`Programa`). id, code, name, sort_order, threshold_aggregates_low, threshold_aggregates_high, threshold_leaves_low, threshold_leaves_high
 - **`eixos`** — N1 level (`Eixo` / axis-track). id, program_id → programs (RESTRICT), code, name, sort_order
-- **`planos`** — N2 level (`Plano de Acção` / action plan). id, eixo_id → eixos (RESTRICT), program_id, code, name, owner, sponsor, sort_order, start_date, end_date, objective
-  - `owner` / `sponsor`: text with `' | '` separator for multi-value (handled by `MultiPersonSelect`)
+- **`planos`** — N2 level (`Plano de Acção` / action plan). id, eixo_id → eixos (RESTRICT), program_id, code, name, sort_order, start_date, end_date, objective, threshold_aggregates_low, threshold_aggregates_high, threshold_leaves_low, threshold_leaves_high, owner_person_ids, owner_primary_id, owner_label_override, sponsor_person_ids, sponsor_primary_id, sponsor_label_override
+  - **Owner/Sponsor (since migration 040, May 26 2026):** structured FK columns replace the legacy `owner` / `sponsor` strings (dropped).
+    - `owner_person_ids uuid[] NOT NULL DEFAULT '{}'` — UUIDs of people who own this plano (multi-value)
+    - `owner_primary_id uuid REFERENCES people(id) ON DELETE SET NULL` — primary owner; receives Owner Update Form emails
+    - `owner_label_override text` — fallback for non-person owners (e.g. "Comissão Executiva", "DCH") when no `people` row exists
+    - Same triplet for sponsor (`sponsor_person_ids`, `sponsor_primary_id`, `sponsor_label_override`)
+    - Resolution centralized in `src/lib/owners.ts` (`resolveOwnerNames` / `resolveSponsorNames`)
   - `start_date` / `end_date` kept but no longer written by frontend (rollup-only model since Wave 4.1)
+  - `threshold_*` columns are nullable; when null, the plano inherits from the parent programa (resolution chain in `rollup.ts`)
 - **`activities`** — N3-N6 levels (`Macro-actividade` / `Actividade` / `Sub-actividade` / `Detalhe`). id, level (0-6), name, n0-n6 text, program_id, eixo_id, plano_id → planos (CASCADE)
   - `pct`, `pct_prev`: stored as 0-100 (**NOT 0-1**) — do NOT multiply by 100
   - `status`: `"Em dia" | "Em atraso" | "Concluída"`
@@ -512,7 +536,7 @@ Supabase client setup.
 
 - **`profiles`** — id, email, full_name, role (admin / program_manager / project_manager / sponsor / stakeholder)
 - **`user_permissions`** — user_id, program_id, plan_id → planos (CASCADE), page, access_level
-  - `plan_id IS NULL` = "all plans of program" (program-wide row, default)
+  - `plan_id IS NULL` = “all plans of program” (program-wide row, default)
   - `plan_id IS NOT NULL` = plan-level override (can only RESTRICT, never expand)
   - **Migration 033:** `log_change` trigger attached for audit trail
   - **Migration 034:** partial unique indices (`user_permissions_program_level_uniq` WHERE plan_id IS NULL, `user_permissions_plan_level_uniq` WHERE plan_id IS NOT NULL) allow co-existence
@@ -524,7 +548,7 @@ Supabase client setup.
 
 ### Key constraints
 
-- `eixos`: RESTRICT (can't delete with child planos)
+- `eixos`: RESTRICT (can’t delete with child planos)
 - `planos`: RESTRICT from eixos; CASCADE to all child tables
 - `activities_history`: SET NULL (preserves history)
 - `fin_invoices`: status CHECK constraint
@@ -532,13 +556,13 @@ Supabase client setup.
 
 ### Migrations naming
 
-Files in `supabase/migrations/NNN_description.sql` (NNN zero-padded). Apply manually via Supabase SQL Editor. Lives only in `_Dev` repo. Latest applied: 036 (3-zone threshold model). Pending manual application: **043** (`apply_activity_diff` — transactional bulk-import apply function; see `supabase/migrations/043_apply_activity_diff.sql`).
+Files in `supabase/migrations/NNN_description.sql` (NNN zero-padded). Apply manually via Supabase SQL Editor. Lives only in `_Dev` repo. Latest applied: **040** (drop legacy `planos.owner` and `planos.sponsor` string columns — Phase 13.12 Owner refactor, May 26 2026). Recent: 039 added 6 FK columns to `planos` (`owner_person_ids[]` + `owner_primary_id` + `owner_label_override`, same triplet for sponsor) and auto-populated from legacy strings; 038 dropped deprecated single-value threshold columns + 3 legacy app_config keys (Wave 6 Path A, May 2026); 037 introduced per-parent canonical `sort_order` for programs / eixos / planos / activities via `ROW_NUMBER() PARTITION BY parent`.
 
 -----
 
 ## Edge Functions
 
-Privileged operations on `auth.users` (which anon client cannot perform) are routed through Edge Functions. Each function performs admin-role validation via the caller's JWT, then uses `service_role` internally.
+Privileged operations on `auth.users` (which anon client cannot perform) are routed through Edge Functions. Each function performs admin-role validation via the caller’s JWT, then uses `service_role` internally.
 
 |Function              |Source                                            |Purpose                                                                |
 |----------------------|--------------------------------------------------|-----------------------------------------------------------------------|
@@ -547,7 +571,7 @@ Privileged operations on `auth.users` (which anon client cannot perform) are rou
 |`force-reset-password`|`supabase/functions/force-reset-password/index.ts`|`generateLink({ type: 'recovery' })` + send recovery email             |
 |`update-user-email`   |`supabase/functions/update-user-email/index.ts`   |Update auth.users email + sync `profiles.email` + sync `people.email`  |
 
-**Deploy workflow:** code versioned in `_Dev` repo. Actual deploy is via Supabase Dashboard copy-paste because user's Mac runs **macOS 11 Big Sur** which lacks the Supabase CLI requirement of macOS 12+.
+**Deploy workflow:** code versioned in `_Dev` repo. Actual deploy is via Supabase Dashboard copy-paste because user’s Mac runs **macOS 11 Big Sur** which lacks the Supabase CLI requirement of macOS 12+.
 
 **CORS:** all functions allow `authorization, content-type, apikey, x-client-info` in `Access-Control-Allow-Headers`. Missing them breaks preflight.
 
@@ -565,9 +589,12 @@ Privileged operations on `auth.users` (which anon client cannot perform) are rou
 
 ### Rollup thresholds (3-zone band model)
 
-- `status_delay_threshold_aggregates` (JSONB `{ low, high }`, default `{ low: 15, high: 25 }`) — band for N0-N3 status
-- `status_delay_threshold_leaves` (JSONB `{ low, high }`, default `{ low: 5, high: 10 }`) — band for N4-N6 status
+- `status_delay_threshold_aggregates_low` (numeric, default 15) — lower bound of `"Em risco"` band for N0-N3
+- `status_delay_threshold_aggregates_high` (numeric, default 25) — upper bound of `"Em risco"` band for N0-N3 (delta > high → `"Em atraso"`)
+- `status_delay_threshold_leaves_low` (numeric, default 5) — lower bound of `"Em risco"` band for N4-N6
+- `status_delay_threshold_leaves_high` (numeric, default 10) — upper bound of `"Em risco"` band for N4-N6
 - Loaded at startup in `Layout.tsx` via `setThresholds(aggregates, leaves)`
+- **Legacy keys dropped (Wave 6 Path A, migration 038):** `status_delay_threshold`, `status_delay_threshold_aggregates` (JSONB), `status_delay_threshold_leaves` (JSONB)
 
 ### PDS (`Ponto de Situação` — status reports)
 
@@ -620,16 +647,16 @@ Per-user × per-program × per-page (`user_permissions`). Plan-level rows can RE
 
 - `usePermissions().hasAccess(page, programId?, planId?)`, `canEdit(...)` — plan-row first, fallback to program-row. Deny-by-default. Stakeholder → `canEdit` always false.
 - `Breadcrumb` uses `useAccessiblePrograms(currentRoute)`.
-- `Eixo` / `Plano` dropdowns bounded by `accessibleProgramIds` even when `Programa=Todos` ("All").
+- `Eixo` / `Plano` dropdowns bounded by `accessibleProgramIds` even when `Programa=Todos` (“All”).
 - Auto-reset of `programIds` when they become inaccessible.
-- Read-only badge `"· apenas leitura"` (`· read-only`) on `gestao-*` routes when user can't edit.
+- Read-only badge `"· apenas leitura"` (`· read-only`) on `gestao-*` routes when user can’t edit.
 - All 5 `gestão` (management) tabs hide edit/create/delete buttons + disable inputs when read-only.
 - **Aggregations** (`Dashboard`, `Recursos`, `ExecucaoFinanceira`) filter raw datasets before KPI aggregation by `accessiblePlanIds`.
 - **Filter silently** — no `"vista parcial"` (partial view) messages (least-privilege principle).
 
 ### Admin UI gates
 
-- Matrix dropdown: 'edit' option only for editor-tier profiles
+- Matrix dropdown: ‘edit’ option only for editor-tier profiles
 - Role downgrade (edit-capable → view-only): warns with edit-row count, converts on confirm
 - Admin-role rows: edit/delete buttons disabled with tooltip `"Utilizadores Admin não podem ser editados/eliminados a partir desta interface"` (`Admin users cannot be edited/deleted from this interface`)
 
@@ -651,6 +678,8 @@ Frontend-only enforcement at plan-level (Option A). RLS policies are program-lev
 - Inline shadow values: use `--shadow-*` tokens
 - Font-size literals: use `--text-*` tokens
 - Border-radius: `var(--r)` (8px) or `var(--rl)` (12px)
+
+**Admin.css organization:** the Admin tree (`Admin.tsx` → `AdminProgramas`) uses class prefix `.adm-tree-*` (`.adm-tree-row-prog`, `.adm-tree-row-eixo`, `.adm-tree-row-plano`, `.adm-tree-row-add-prog`, `.adm-tree-row-add-eixo`, `.adm-tree-row-add-plano`). The table uses both `.adm-panel-table` (generic admin table styles) and `.adm-tree-table` (tree-specific styles). Hierarchy is expressed only via `padding-left` on the first `<td>` of each row — no nested tables. The `.selected` class is kept on expanded program/eixo rows for future use but currently has no visual effect (chevron icon indicates expand state instead).
 
 ### Global utility classes
 
@@ -796,7 +825,7 @@ npm run build
 npm run preview   # serves dist/ on localhost:4173
 ```
 
-`npm run dev` is **NOT** a substitute. Tailwind v4 + Vite have known production-build issues that don't manifest in dev mode (see Known Issues — Tailwind v4 layer ordering).
+`npm run dev` is **NOT** a substitute. Tailwind v4 + Vite have known production-build issues that don’t manifest in dev mode (see Known Issues — Tailwind v4 layer ordering).
 
 ### Before each Wave
 
@@ -804,7 +833,7 @@ Ask Claude Code to do `git merge main` (or equivalent rebase) at the start of th
 
 ### Pre-flight queries (DB-touching waves)
 
-Before any wave that depends on DB state (e.g. Wave 8 Fix 12 needed to confirm `pds_entries` status values), run validation queries first. Captured in the wave's investigation doc.
+Before any wave that depends on DB state (e.g. Wave 8 Fix 12 needed to confirm `pds_entries` status values), run validation queries first. Captured in the wave’s investigation doc.
 
 -----
 
@@ -812,19 +841,19 @@ Before any wave that depends on DB state (e.g. Wave 8 Fix 12 needed to confirm `
 
 ### Wave model
 
-Changes are bundled into numbered "Waves". Each wave:
+Changes are bundled into numbered “Waves”. Each wave:
 
 - Has a **prompt document** in `/mnt/user-data/outputs/` (or similar) that Claude Code executes
 - Is tested locally before push (smoke test convention above)
 - Lands in a single commit per wave (or 2-3 if technically necessary)
 - Is referenced in `TODO.md` changelog under its session header
-- Carries a name/scope memorable enough to discuss later (e.g. "Wave 3 — 3-zone threshold model")
+- Carries a name/scope memorable enough to discuss later (e.g. “Wave 3 — 3-zone threshold model”)
 
 ### Workflow correction (May 2026)
 
 Previously the merge-to-main was bundled into commit instructions, pushing untested code to production (Cloudflare auto-deploys from `main`). **Corrected workflow:**
 
-1. Commit on `dev` (or Claude Code's branch)
+1. Commit on `dev` (or Claude Code’s branch)
 1. Push
 1. Sync Mac + smoke test local
 1. **ONLY THEN** merge to `main`
@@ -840,15 +869,15 @@ Multi-line copy-paste in terminal can accidentally create files with stray quote
 
 ### Stale `_Dev` sync (gotcha)
 
-`cp -r` is silent if the source doesn't have what you expect. Before each sync, confirm last commits in `_Dev`:
+`cp -r` is silent if the source doesn’t have what you expect. Before each sync, confirm last commits in `_Dev`:
 
 ```bash
 git log --oneline -5   # in temp-sync directory
 ```
 
-### "Keep intact" sections
+### “Keep intact” sections
 
-In wave prompts, "keep intact" means **DO NOT touch those files/features**. Failure to respect this caused regressions historically.
+In wave prompts, “keep intact” means **DO NOT touch those files/features**. Failure to respect this caused regressions historically.
 
 -----
 
@@ -857,7 +886,7 @@ In wave prompts, "keep intact" means **DO NOT touch those files/features**. Fail
 ### Data integrity
 
 - `pct` and `pct_prev` stored as **0-100** — do NOT multiply by 100
-- KPI calculations always based on `level === 4` activities only (N5/N6 are detail records); each N4 contributes its EFFECTIVE pct/status (see rollup.ts Unifying principle)
+- KPI calculations always based on `level === 4` activities only (N5/N6 are detail records)
 - `Owner` / `Sponsor` (`Responsável` / `Patrocinador`) are on `planos` table, not `activities` (Wave 8d dropped legacy `activities.owner` / `sponsor`)
 - Plan selectors use `usePlanos` hook (not DISTINCT from activities)
 - Invoice status must be one of the 5 canonical states (DB CHECK enforces)
@@ -922,7 +951,19 @@ In wave prompts, "keep intact" means **DO NOT touch those files/features**. Fail
 
 **Tailwind v4 + Vite + lazy chunks: broken layer ordering in production builds**
 
-Discovered in Wave 7 (May 2026). When using lazy-loaded routes with code-split CSS chunks, **OR** with `cssCodeSplit: false`, the Vite + `@tailwindcss/vite` v4.2.2 toolchain serializes `@layer` blocks in an order where `@layer base` appears AFTER `@layer components`. Per CSS spec, the first occurrence of a layer name fixes its priority — so `base` (declared later in source) wins over `components`. The result: Tailwind's universal reset `*, ::after, ::before, ::backdrop { margin: 0; padding: 0 }` wins over component rules like `.main-content { margin-left: var(--sidebar-w-col) }`.
+Discovered in Wave 7 (May 2026). When using lazy-loaded routes with code-split CSS chunks, **OR** with `cssCodeSplit: false`, the Vite + `@tailwindcss/vite` v4.2.2 toolchain serializes `@layer` blocks in an order where `@layer base` appears AFTER `@layer components`. Per CSS spec, the first occurrence of a layer name fixes its priority — so `base` (declared later in source) wins over `components`. The result: Tailwind’s universal reset `*, ::after, ::before, ::backdrop { margin: 0; padding: 0 }` wins over component rules like `.main-content { margin-left: var(--sidebar-w-col) }`.
+
+**Admin hierarchy table visual artifacts (related to Tailwind v4 layer bug)**
+
+The Admin "Programas, Eixos e Planos" hierarchical table (`Admin.tsx` → `AdminProgramas` component) shows occasional visual artifacts: double horizontal borders on some rows, missing border-bottom on "+ Novo X" rows, and row-height mismatches between data rows and add-rows.
+
+A read-only audit (May 2026) confirmed:
+
+- JSX is correct: single `<table>` with one `<tbody>`, all rows at the same level. Data rows have 3 separate `<td>` cells; "+ Novo Eixo" / "+ Novo Plano" rows use `<td colSpan={3}>`. "+ Novo Programa" lives in a `<div className="adm-panel-footer">` outside the `<table>` element.
+- CSS is statically correct: `border-collapse: collapse` is active, no conflicting `border-top` / `border-bottom` rules.
+- Root cause hypothesis (not confirmed): Tailwind v4 `@layer` ordering bug interfering with `border-width` in production builds (same bug that blocked Wave 7), and/or interaction with the parent `Card` component's edge borders.
+
+**Status:** backlogged. Functionality is fine — purely cosmetic. Likely resolves when the Tailwind v4 layer ordering bug is fixed (Wave 7 standby). May be revisited as part of moving "+ Novo Programa" into the `<table>` with `colSpan={3}` for structural uniformity.
 
 **Workarounds attempted (all failed):**
 
@@ -938,9 +979,13 @@ Discovered in Wave 7 (May 2026). When using lazy-loaded routes with code-split C
 
 ### Auth / Supabase
 
+**`@supabase/gotrue-js` auth-token lock warnings in dev preview console**
+
+Appears as console errors like `Lock "lock:sb-...-auth-token" was not released within 5000ms` and `Unhandled Promise Rejection: AbortError: Lock was stolen by another request`. Caused by React Strict Mode double-mount in dev/preview: auth-token is acquired twice; the second request "steals" the lock from the first. **Non-blocking, does not appear in production builds** (no Strict Mode in production). No fix planned. Distinct from the Multi-tab lock issue below (which IS reproducible in production).
+
 **Multi-tab Supabase auth lock conflict**
 
-Opening Stratgos in multiple browsers/tabs simultaneously with the same user causes "Lock stolen by another request" cascading failures. Workaround: close all tabs. Future fix: configure Supabase JS client `autoRefreshToken` and `multiTab` options.
+Opening Stratgos in multiple browsers/tabs simultaneously with the same user causes “Lock stolen by another request” cascading failures. Workaround: close all tabs. Future fix: configure Supabase JS client `autoRefreshToken` and `multiTab` options.
 
 **FunctionsHttpError gotcha**
 
@@ -958,7 +1003,7 @@ Edge Function `redirectTo` is only respected if the URL is in the Redirect URLs 
 
 **macOS 11 Big Sur limitation**
 
-User's Mac runs macOS 11 (Big Sur). Modern Supabase CLI binaries (2.x and legacy 1.226.x) fail at runtime with `dyld: Symbol not found: _ubrk_clone` because compiled against macOS 13+ libicucore. Workarounds attempted: Homebrew limits, Docker incompatible, Dashboard schema export blocked by Free tier. **Net:** all Edge Functions deployed via Supabase Dashboard copy-paste; DEV/PROD split blocked until newer macOS access.
+User’s Mac runs macOS 11 (Big Sur). Modern Supabase CLI binaries (2.x and legacy 1.226.x) fail at runtime with `dyld: Symbol not found: _ubrk_clone` because compiled against macOS 13+ libicucore. Workarounds attempted: Homebrew limits, Docker incompatible, Dashboard schema export blocked by Free tier. **Net:** all Edge Functions deployed via Supabase Dashboard copy-paste; DEV/PROD split blocked until newer macOS access.
 
 ### React / SSR
 
@@ -978,7 +1023,7 @@ Brand name is **Stratgos** (no `e`), but webapp repo + Cloudflare worker URL sti
 
 - Always run `npm run build` before finishing — 0 errors required (CI gate)
 - Respect existing patterns — adapt to actual API (`setFilter` not `setFilters`, etc.)
-- "Keep intact" sections mean DO NOT touch those files/features
+- “Keep intact” sections mean DO NOT touch those files/features
 - React 19 + JSX transform — no need to `import React`
 - Tailwind v4 — use CSS `@layer components` for reusable classes
 - Show SQL migrations at top of response if schema changes needed
@@ -993,8 +1038,12 @@ Brand name is **Stratgos** (no `e`), but webapp repo + Cloudflare worker URL sti
 
 ## Operational notes (snapshot)
 
-This section lists operational conventions whose origin is documented chronologically in `TODO.md`. Kept here only as "how it is today".
+This section lists operational conventions whose origin is documented chronologically in `TODO.md`. Kept here only as “how it is today”.
 
+- **Production HEAD (May 26 2026):** `9747b5d` on both `dev` and `main`. Bundle 1779 KB / 504 KB gzip. Cloudflare Pages auto-deploys from `main`.
+- **Latest migration applied:** `040_drop_planos_owner_sponsor_strings.sql` (drops `planos.owner` and `planos.sponsor` legacy string columns; FK fields are now the source of truth).
+- **Email/SMTP:** Resend via native Supabase integration; `stratgos.com` domain verified with DKIM + SPF + MX. 3000 emails/month free tier; sender `noreply@stratgos.com` (display name `Stratgos`).
+- **Bloco 1 status (habilitar Owner externa):** prerequisites complete (Wave 8a ✓, owner refactor ✓, SMTP ✓). Sub-fase 1.4 — Owner Update Form MVP — is the next major work, ~28h estimated across 3 sessions.
 - `supabase/migrations/` lives only in the `_Dev` repo. Sync via `cp -r supabase ~/Strategos/strategos/`.
 - `TODO.md` diverges between `_Dev` and Mac — reconcile manually when both edit.
 - Edge Functions deploy via Supabase Dashboard (macOS 11 Big Sur limitation).
