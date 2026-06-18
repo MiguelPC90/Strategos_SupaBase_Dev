@@ -26,6 +26,7 @@ import NovoPlanoModal from '../../components/NovoPlanoModal/NovoPlanoModal'
 import AdminProgramModal from './AdminProgramModal'
 import AdminEixoModal from './AdminEixoModal'
 import { extractEdgeFunctionError } from '../../lib/edgeFunctionError'
+import { fetchAllPaginated } from '../../lib/fetchAllPaginated'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -2918,7 +2919,7 @@ function ExportarTab() {
     try {
       const results = await Promise.all(
         EXPORT_TABLES.map(t =>
-          supabase.from(t).select('*').then(({ data }) => ({ table: t, rows: data ?? [] }))
+          fetchAllPaginated(t).then(rows => ({ table: t, rows }))
         )
       )
       const wb = XLSX.utils.book_new()
