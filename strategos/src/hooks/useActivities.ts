@@ -21,12 +21,14 @@ async function fetchActivities(filters: ActivityFilters): Promise<Activity[]> {
   const { program_id, plano_id, n1, n2, status } = filters
   const PAGE_SIZE = 1000
   const all: Activity[] = []
+  const seen = new Set<string>()
   let from = 0
   while (true) {
     let q = supabase
       .from('activities')
       .select('*')
       .order('sort_order', { ascending: true })
+      .order('id', { ascending: true })
     if (program_id) q = q.eq('program_id', program_id)
     if (plano_id)   q = q.eq('plano_id', plano_id)
     if (n1)         q = q.eq('n1', n1)
@@ -35,7 +37,12 @@ async function fetchActivities(filters: ActivityFilters): Promise<Activity[]> {
     const { data, error } = await q.range(from, from + PAGE_SIZE - 1)
     if (error) throw error
     const batch = (data ?? []) as Activity[]
-    all.push(...batch)
+    for (const row of batch) {
+      if (!seen.has(row.id)) {
+        seen.add(row.id)
+        all.push(row)
+      }
+    }
     if (batch.length < PAGE_SIZE) break
     from += PAGE_SIZE
   }
