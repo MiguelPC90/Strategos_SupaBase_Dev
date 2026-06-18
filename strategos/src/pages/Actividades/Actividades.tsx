@@ -467,10 +467,6 @@ export default function Actividades() {
     [filtered, programs, multiProg],
   )
   const scopeLeaves = useMemo(() => filtered.filter(a => a.level === 4), [filtered])
-  // TEMP DEBUG — remove after diffing
-  console.log('[KPI-DEBUG][Actividades] rawL4=', activities.filter(a => a.level === 4).length)
-  console.log('[KPI-DEBUG][Actividades] filteredL4=', filtered.filter(a => a.level === 4).length)
-  console.log('[KPI-DEBUG][Actividades] count=', scopeLeaves.length, 'ids=', JSON.stringify(scopeLeaves.map(a => a.id).sort()))
 
   const summary = useMemo(
     () => computeKpis(scopeLeaves, eff, TODAY),
