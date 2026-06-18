@@ -261,6 +261,8 @@ Pages with embedded `gestão` (management) tabs — `PlanoPage` (plan page) now 
 
 ## Custom Hooks
 
+All remote state is managed by **React Query** (`@tanstack/react-query`). `QueryClientProvider` is mounted in `main.tsx`. Reference-data hooks (programs, eixos, planos, people, resources, risks, pds entries) use `staleTime: 5min`, `gcTime: 10min`, `retry: 1`, `refetchOnWindowFocus: false`. Activities use `staleTime: 2min`. Financials use a combined 3-table fetch under one key. Snapshots use `staleTime: 15min`. The old `useState + useEffect + supabase` per-hook pattern is fully replaced; the N+1 fetch pattern (one fetch per plano per page load) is closed.
+
 |Hook                                                                                         |Purpose                                                                                                                                                                                     |
 |---------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 |`useAuth()`                                                                                  |Auth state + login/logout                                                                                                                                                                   |
@@ -271,11 +273,14 @@ Pages with embedded `gestão` (management) tabs — `PlanoPage` (plan page) now 
 |`useCanEditCurrent(page)`                                                                    |Derived from FilterContext; true only if user can edit in ALL selected programs/plans                                                                                                       |
 |`usePrograms()`, `useEixos(programId?)`, `usePlanos(programId?)`, `useActivities(programId?)`|Hierarchy data: programs / eixos (axes) / planos (action plans) / activities                                                                                                                |
 |`useActivityDependencies()`                                                                  |CRUD + `getPredecessors` / `getSuccessors`. `updateDependency` typed to `dep_type | lag_days` only                                                                                          |
-|`useFinancials()`, `useResources()`, `useRisks()`, `usePdsEntries()`                         |Domain data                                                                                                                                                                                 |
+|`useFinancials()`                                                                            |Combined 3-table fetch (`fin_budget_lines`, `fin_contracts`, `fin_invoices`) under one React Query key (`['financials']`). `staleTime: 5min`.                                               |
+|`useResources()`, `useRisks()`, `usePdsEntries()`                                           |Domain data. Each uses React Query with `staleTime: 5min`, `gcTime: 10min`, `retry: 1`, `refetchOnWindowFocus: false`.                                                                      |
+|`useAppConfig()`                                                                             |Reads the `app_config` table via React Query (`['app_config']`, `staleTime: 5min`). Returns `{ config, getNumber, getJSON, loading, error, invalidate }`. Used by ExecucaoFinanceira, GestaoRiscos, GestaoRecursos, PontoSituacao, useProgramLabels.|
 |`usePeople()`                                                                                |Global catalog (no filtering; callers handle active filter)                                                                                                                                 |
 |`useFilter()`                                                                                |`{ filters, setFilter, clearAll }`. `filters.{programIds, n1Values, n2Values, statuses, owners, sponsors}[]`                                                                                |
-|`useProgramLabels(programId)`                                                                |Dynamic filter labels per program; module-level cache (one fetch per program per session)                                                                                                   |
-|`useSnapshots()`                                                                             |KPI snapshots for `Evolução` (Evolution page)                                                                                                                                               |
+|`useProgramLabels(programId)`                                                                |Dynamic filter labels per program. Derives labels from `useAppConfig` cache via `useMemo` — no module-level cache, no extra fetch.                                                          |
+|`useSnapshots()`                                                                             |KPI snapshots for `Evolução` (Evolution page). React Query key `['snapshots']`, `staleTime: 15min`.                                                                                         |
+|`useEffectiveValues(activities, today)`                                                      |Returns `Map<id, EffectiveValue>` (`{ pct, target, bs, bf, rs, rf, allAt100, hasDatedLeaf, status }`) for every activity in the array. Single call per page; memoized. All pages consume this instead of calling rollup functions directly.|
 
 -----
 
@@ -304,7 +309,7 @@ Two independent bands are loaded from `app_config` at startup (via `setThreshold
 
 Since Wave 6 Path A (May 2026, migration 038), the deprecated single-value threshold columns (`programs.threshold_aggregates`, `programs.threshold_leaves`, `planos.threshold_aggregates`, `planos.threshold_leaves`) have been dropped. The legacy `app_config` keys `status_delay_threshold`, `status_delay_threshold_aggregates`, `status_delay_threshold_leaves` were also deleted. The model is now fully band-based across all layers: read, write, persist, UI, and DB.
 
-**Exports:** `setThresholds(aggregates, leaves)`, `getThresholdAggregates()`, `getThresholdLeaves()`, `leafPctPrev(activity, today)`, `leafStatus(activity, today, band?)`, `rollupPct(leaves)`, `rollupPctPrev(leaves, today)`, `rollupStatus(leaves, today, band?)`, `computeRowState(actual, target, band?)`, `rollupDateRange(activities)`, `rollupRealDateRange(activities)`, `getN4DescendantLeaves(n4, all)`, `getN4Effective(n4, all)`.
+**Exports:** `setThresholds(aggregates, leaves)`, `getThresholdAggregates()`, `getThresholdLeaves()`, `leafPctPrev(activity, today)`, `rollupPctPrev(leaves, today)`, `computeRowState(actual, target, band?)`, `rollupDateRange(activities)`, `rollupRealDateRange(activities)`, `getDirectChildren(activity, all)`, `getEffectivePct(activity, all)`, `rollupEffectivePct(leaves, all)`, `getDescendantLeaves(activity, all)`, `getEffectiveDates(activity, all)`, `getEffectiveTarget(activity, all, today)`, `getEffectiveStatus(activity, all, today)`, `getGroupStatus(n4Leaves, all, today, level)`, `computeEffectiveMap(activities, today)`, `computeGroupStatusFromEff(n4Leaves, eff, level, today)`, `computeKpis(leaves, eff, today)`, interfaces `EffectiveRecord`, `KpiCounts`, `KpiLookup`. **Test suite: 90 Vitest tests.**
 
 **`leafPctPrev(activity, today)`** — date-based expected % for a single activity (0-100). Linear interpolation between `bs` (baseline start) and `bf` (baseline finish). `today <= bs` → 0, `today >= bf` → 100, else linear. Falls back to stored `pct_prev` when baseline dates are missing.
 
@@ -325,7 +330,15 @@ Since Wave 6 Path A (May 2026, migration 038), the deprecated single-value thres
 
 **KPI rule:** all KPI aggregations use `level === 4` only. N5/N6 are detail records and NEVER included.
 
-**N4 effective values** — `getN4Effective(n4, all)` returns `{ bs, bf, rs, rf, pct }` for an N4: if it has N5/N6 descendants (matched by shared `n1`/`n2`/`n3` + `n4 === parent.name`), values are rolled up from descendants; otherwise the N4’s own DB values are used.
+**`getGroupStatus(n4Leaves, all, today, level)`** — aggregate status for virtual group rows (N0-N4) that have no `Activity` object. Retained for tests and legacy callers. `n4Leaves`: the N4-level activities belonging to this group. `all`: full activities array for descendant resolution. `level`: determines the band (`>= 3` → leaves, `< 3` → aggregates). Same 3-step resolution as `getEffectiveStatus`: Concluída → deadline miss → delta vs band. Group pct and target are both averaged over `n4Leaves`, each of which may itself roll up further N5/N6 children via `getEffectivePct` / `getEffectiveTarget`.
+
+**`computeGroupStatusFromEff(n4Leaves, eff, level, today)`** — O(n) eff-aware group status that reads from a precomputed `Map<id, EffectiveValue>` instead of walking the full activities array per group. Replaces O(n²) `getGroupStatus` at all 11 production call sites (Actividades, Gantt, Dashboard group rows). Band selection and 3-step resolution are identical to `getGroupStatus`.
+
+**`computeKpis(leaves, eff, today)`** — canonical shared KPI function. `leaves`: N4 activities in scope; `eff`: precomputed `EffectiveValue` map. Returns `KpiCounts { total, concluidas, em_dia, em_risco, em_atraso, exec, exec_obj, latest_end }`. Replaces page-local `calcMetrics` / `computeStats` helpers. Dashboard, Actividades, Gantt, GestaoIniciativas all consume this.
+
+**`useEffectiveValues` hook** (`src/hooks/useEffectiveValues.ts`) — single memoized hook consumed by every page. Signature: `useEffectiveValues(activities, today): Map<string, EffectiveValue>`. `EffectiveValue = { pct, target, bs, bf, rs, rf, allAt100, hasDatedLeaf, status }`. One call per page; no per-row calls to `getEffectivePct` / `getEffectiveDates` / `getEffectiveStatus` directly. Gantt uses the map’s date fields for timeline bars; real→baseline fallback (`ev.rs ?? ev.bs`) is presentation-only at render time (model stays null-honest). Aggregate (group) row status uses `computeGroupStatusFromEff` from rollup — not per-leaf worst-wins.
+
+**Bug fix (this wave):** `Activity` interface was missing `n6: string` field — added. DB column exists; parser always wrote it; interface omission caused silent type gaps.
 
 ### `src/lib/riskColors.ts`
 
@@ -426,6 +439,15 @@ Canonical product vocabulary as structured data. 13 sections × ~62 terms total,
 
 Supabase client setup.
 
+### Rendering & Virtualization
+
+Large lists (Actividades, Gantt) use **`@tanstack/react-virtual`** row virtualization.
+
+- **Actividades:** `ROW_H = 47 px`. Flat-row model — the tree is pre-flattened into a plain array before passing to the virtualizer; each row knows its own depth. Group rows and leaf rows are the same array type.
+- **Gantt:** `ROW_H = 34 px`. Same flat-row model. The Gantt overlay (timeline bars) is rendered via an absolutely positioned `<canvas>` or `<div>` layer over the virtual list; the sticky `border-right` column uses `position: sticky; left: 0` with `box-sizing: border-box` to prevent drift at large scroll offsets.
+- **`React.memo`** wraps all row renderers to prevent re-renders from unrelated state updates. Referentially stable row objects are required — row arrays are `useMemo`-derived.
+- **Scroll contract:** virtualizer `overscan` is set to 5. The outer scroll container is the page `<div>`; the virtualizer `getScrollElement` ref must point to that element, not `window`.
+
 -----
 
 ## Reusable Components (highlights)
@@ -473,6 +495,10 @@ Supabase client setup.
 |`ToastContext`   |Global toast notifications                                                                                                                                        |
 |`BrandingContext`|Brand identity from `app_config.branding_mode` + `client_logo_url` + `client_title`/`client_subtitle`. `refresh()` for live updates after Admin save.             |
 |`ProfileContext` |User profile (`full_name`, avatar). Subscribes to `auth.onAuthStateChange`: clears on `SIGNED_OUT`, refetches on `SIGNED_IN` / `TOKEN_REFRESHED` / `USER_UPDATED`.|
+
+### ProtectedRoute profile gate
+
+`ProtectedRoute` requires both a valid auth session **and** a non-null profile before rendering the app. A session where `auth.users` exists but `profiles` row does not (e.g. a half-deleted user or a newly-invited user whose profile insert failed) is redirected to Login. This is a defense-in-depth measure covering `/planos`, `/glossary`, `/profile`, and all main pages. Previously, a profileless session could reach the app shell and trigger null-dereference errors.
 
 -----
 
@@ -549,10 +575,11 @@ Supabase client setup.
 ### Key constraints
 
 - `eixos`: RESTRICT (can’t delete with child planos)
-- `planos`: RESTRICT from eixos; CASCADE to all child tables
+- `planos`: RESTRICT from eixos; CASCADE to all child tables. **`planos.program_id` is nullable** (`ON DELETE SET NULL`) — a plano’s `program_id` becomes `NULL` if its parent program is deleted. Hooks that filter `WHERE program_id = ?` will therefore silently exclude orphaned planos; `usePlanos()` (no argument) returns all including those with `program_id IS NULL`.
 - `activities_history`: SET NULL (preserves history)
 - `fin_invoices`: status CHECK constraint
 - `activity_dependencies`: CASCADE on both FKs, UNIQUE pair, no self-reference
+- **Audit FKs SET NULL (11 columns):** `activities.updated_by`, `app_config.updated_by`, `change_log.changed_by`, `fin_budget_lines.updated_by`, `fin_contracts.updated_by`, `fin_invoices.updated_by`, `fte_resources.updated_by`, `pds_entries.updated_by`, `people.updated_by`, `risks.updated_by`, `snapshots.created_by` — changed from `NO ACTION` to `ON DELETE SET NULL` via SQL Editor. Allows `auth.users` delete to succeed when audit rows reference the user. Pending backfill migration: **041** (`041_audit_fks_set_null.sql`; not yet in repo).
 
 ### Migrations naming
 
@@ -564,14 +591,16 @@ Files in `supabase/migrations/NNN_description.sql` (NNN zero-padded). Apply manu
 
 Privileged operations on `auth.users` (which anon client cannot perform) are routed through Edge Functions. Each function performs admin-role validation via the caller’s JWT, then uses `service_role` internally.
 
-|Function              |Source                                            |Purpose                                                                |
+|Function              |Source in repo                                    |Purpose                                                                |
 |----------------------|--------------------------------------------------|-----------------------------------------------------------------------|
-|`invite-user`         |`supabase/functions/invite-user/index.ts`         |`inviteUserByEmail` + insert profile + insert user_permissions (atomic)|
-|`delete-user`         |`supabase/functions/delete-user/index.ts`         |Delete user_permissions + profile + auth.users (cascade)               |
-|`force-reset-password`|`supabase/functions/force-reset-password/index.ts`|`generateLink({ type: 'recovery' })` + send recovery email             |
-|`update-user-email`   |`supabase/functions/update-user-email/index.ts`   |Update auth.users email + sync `profiles.email` + sync `people.email`  |
+|`invite-user`         |`supabase/functions/invite-user/index.ts` ✓       |`inviteUserByEmail` + insert profile + insert user_permissions (atomic)|
+|`delete-user`         |⚠ Dashboard-only (not in repo)                   |Deletes `auth.users` FIRST (audit FKs are SET NULL so delete succeeds), then belt-and-suspenders delete of `user_permissions` + profile. **Order matters:** auth delete must come first; SET NULL FKs mean no FK blocker. Previously deleted profile/permissions first → auth delete failed on NO ACTION FKs → half-deleted user state.|
+|`force-reset-password`|⚠ Dashboard-only (not in repo)                   |`generateLink({ type: 'recovery' })` + send recovery email             |
+|`update-user-email`   |⚠ Dashboard-only (not in repo)                   |Update auth.users email + sync `profiles.email` + sync `people.email`  |
 
-**Deploy workflow:** code versioned in `_Dev` repo. Actual deploy is via Supabase Dashboard copy-paste because user’s Mac runs **macOS 11 Big Sur** which lacks the Supabase CLI requirement of macOS 12+.
+**Source availability note:** Only `invite-user` source is committed to the `_Dev` repo (`supabase/functions/invite-user/`). The other three functions exist only in the Supabase Dashboard editor. Their current code must be copied from the Dashboard before any edit. Pending: commit all four sources to repo.
+
+**Deploy workflow:** Actual deploy is via Supabase Dashboard copy-paste because user’s Mac runs **macOS 11 Big Sur** which lacks the Supabase CLI requirement of macOS 12+.
 
 **CORS:** all functions allow `authorization, content-type, apikey, x-client-info` in `Access-Control-Allow-Headers`. Missing them breaks preflight.
 
@@ -1011,6 +1040,25 @@ User’s Mac runs macOS 11 (Big Sur). Modern Supabase CLI binaries (2.x and lega
 
 Pre-existing, low severity. Whitespace inside `<colgroup>` triggers React hydration warning. Deferred as tech debt.
 
+### KPI
+
+**KPI residual delta — 1 leaf gap**
+
+Dashboard top-line KPIs can be off by 1 leaf when a `plano` whose `program_id` became `NULL` (via `ON DELETE SET NULL`) still has activities in the database. `usePlanos()` (no argument) returns all planos including those with `program_id IS NULL`; `accessiblePlanIds` therefore includes the orphaned plano's ID; those activities pass the `accessibleLeaves` filter and inflate the KPI counts. Diagnostic query to detect: `SELECT id, name FROM planos WHERE program_id IS NULL;`. Fix: ensure every plano has a valid `program_id` (re-assign or purge orphaned planos after program deletion).
+
+**Note on SQL diagnostic:** the original check `WHERE a.program_id != p.program_id` silently misses NULL because `'uuid' != NULL` evaluates to UNKNOWN in PostgreSQL. Use `IS DISTINCT FROM` operator instead.
+
+### Homonym-program robustness (latent)
+
+When two programs share eixo names (N1) or plano names (N2), several code paths are unsafe:
+
+- **`FilterContext.setFilter('n2Values')`** (`FilterContext.tsx:135`): `allPlanos.find(p => p.name === planoName)` — first match by name wins, no `program_id` constraint. **Highest urgency.** Can navigate to wrong plano when switching programs.
+- **Actividades/Gantt group-stat keys** (`Actividades.tsx:485-490`): keyed as `n1:${n1g.n1}`, `n2:${n1g.n1}:${n2g.n2}` — no `program_id`. In multi-program view with shared eixo names (current data: Eixo 1/5/6 shared between "Plano Estratégico" and "Plano Estratégico Old"), the second program's group row overwrites the first's in the stats Map.
+- **`FilterBar` sort-order lookups** (`FilterBar.tsx:63,77`): `allEixos.find(e => e.name === name)` / `allPlanos.find(p => p.name === name)` — no `program_id`. Benign (sort only, not navigation).
+- **`computeEffectiveMap` keys** (`rollup.ts:340-348`): `level|n1|n2|n3|n4` without `program_id`. Safe because full n1+n2+n3 tuples currently do not overlap across programs; would be unsafe if they ever do.
+
+Ranked fixes pending — see `TODO.md` Loose ends.
+
 ### Naming
 
 **`stratgos.com` vs `strategos`**
@@ -1045,7 +1093,10 @@ This section lists operational conventions whose origin is documented chronologi
 - **Email/SMTP:** Resend via native Supabase integration; `stratgos.com` domain verified with DKIM + SPF + MX. 3000 emails/month free tier; sender `noreply@stratgos.com` (display name `Stratgos`).
 - **Bloco 1 status (habilitar Owner externa):** prerequisites complete (Wave 8a ✓, owner refactor ✓, SMTP ✓). Sub-fase 1.4 — Owner Update Form MVP — is the next major work, ~28h estimated across 3 sessions.
 - `supabase/migrations/` lives only in the `_Dev` repo. Sync via `cp -r supabase ~/Strategos/strategos/`.
-- `TODO.md` diverges between `_Dev` and Mac — reconcile manually when both edit.
-- Edge Functions deploy via Supabase Dashboard (macOS 11 Big Sur limitation).
+- `TODO.md` and `CLAUDE.md` live at repo root — **not** under `src/`. The `cp -r src` sync does NOT carry them; reconcile manually on Mac.
+- Edge Functions deploy via Supabase Dashboard (macOS 11 Big Sur limitation). Only `invite-user` source is in the repo; the other three are Dashboard-only.
 - Cloudflare Email Routing: `hello@stratgos.com` → forward to `migcacoelho@gmail.com`.
 - Formspree: `https://formspree.io/f/mdajobnr` receives landing form submissions.
+- **Production HEAD (as of this session):** `abbbe9d`.
+- **React Query:** all remote state uses `@tanstack/react-query`. `QueryClientProvider` is in `main.tsx`. N+1 fetch pattern (one fetch per plano per page load, ~274 requests) is closed (~38 requests typical).
+- **Pending migration 041:** `041_audit_fks_set_null.sql` — backfill for the 11 audit FK columns changed from `NO ACTION` to `ON DELETE SET NULL` via SQL Editor. Needs to be written and committed to match the live DB state.

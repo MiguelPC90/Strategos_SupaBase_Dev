@@ -329,7 +329,7 @@ This wave was a documentation pass, no code touched.
 - [x] **Smoke test convention formalized:** for build / perf waves, `npm run preview` is mandatory before push. `npm run dev` is NOT a substitute (Tailwind v4 + Vite production-build issues don’t manifest in dev mode).
 - [x] **Mac repo synced:** `CLAUDE.md` v2 committed on `dev` (`71f0651`) and merged to `main`.
 - [x] **TODO.md cross-check pass (May 2026):** during Wave 6d review, identified and added missing entries — Wave 2d pagination fix (1000-row limit detail), Quick Polish bundle (tokens v5, SplashScreen, NotFound, `UserPermissionsForm` `window.confirm`), Tooltips Wave (`TermTooltip` + glossary integration + PDS renames). Marked `/glossary` standalone page and 404 page as done. Added Phase 13.12 Owner Update Form with full design and decision capture. Added `TermTooltip` and `glossary.ts` documentation to `CLAUDE.md`.
-- [ ] **`_Dev` repo sync:** pending. Will be bundled with the next Claude Code wave to avoid burning a dedicated interaction.
+- [x] **`_Dev` repo sync:** bundled into the June 2026 docs wave (see entry below).
 
 **Net result:** documentation aligned with current state; Known Issues centralized; convention layer formalized for future sessions; language standard set to English-with-PT-PT-product-terms going forward.
 
@@ -611,6 +611,50 @@ Attempted to align Admin Programas/Eixos/Planos table colors with the Actividade
 
 - [ ] **Admin tree visual polish (final pass):** investigate Tailwind v4 layer ordering interaction with table borders, OR uniformize “+ Novo Programa” into the `<table>` with colspan (currently lives in `adm-panel-footer` div outside). Possibly bundled with the Tailwind v4 root-cause investigation that’s blocking Wave 7.
 - [ ] **`+ Filtros` popup scroll UX:** CSS `max-height: 400px` hides Owner/Sponsor sections below Estado on macOS with auto-hidden scrollbars. Add visible scrollbar styling or sticky section headers.
+
+### Session updates (June 2026 — Performance overhaul + Security hardening + Docs)
+
+This session covered three substantive waves plus a full documentation update (this entry).
+
+#### Performance overhaul (React Query + Virtualization)
+
+- [x] **React Query migration:** all remote state hooks (`useActivities`, `usePrograms`, `useEixos`, `usePlanos`, `usePeople`, `useResources`, `useRisks`, `usePdsEntries`, `useFinancials`, `useSnapshots`, `useAppConfig`, `usePermissions`) migrated from `useState + useEffect + supabase` to `@tanstack/react-query`. `QueryClientProvider` mounted in `main.tsx`. N+1 fetch pattern (one fetch per plano per page load, ~274 requests) closed (~38 requests typical). Reference-data hooks: `staleTime: 5min, gcTime: 10min, retry: 1, refetchOnWindowFocus: false`. Activities: `staleTime: 2min`. Snapshots: `staleTime: 15min`. Financials: combined 3-table fetch under one key.
+- [x] **`useAppConfig()` hook:** React Query hook (`['app_config']`, `staleTime: 5min`). Returns `{ config, getNumber, getJSON, loading, error, invalidate }`. Replaces direct supabase calls in ExecucaoFinanceira, GestaoRiscos, GestaoRecursos, PontoSituacao, useProgramLabels.
+- [x] **`useProgramLabels` simplified:** no longer uses module-level cache. Derives labels from `useAppConfig` cache via `useMemo` — zero extra fetches.
+- [x] **Row virtualization:** Actividades and Gantt pages use `@tanstack/react-virtual`. Flat-row model (tree pre-flattened before passing to virtualizer). `ROW_H = 47px` (Actividades), `ROW_H = 34px` (Gantt). Row renderers wrapped in `React.memo`. Gantt overlay rendered as absolutely positioned layer; sticky `border-right` column uses `box-sizing: border-box` to prevent drift.
+- [x] **`computeGroupStatusFromEff`:** new O(n) group-status function in `rollup.ts` that reads from precomputed `EffectiveValue` map. Replaces O(n²) `getGroupStatus` at all 11 production call sites. `getGroupStatus` retained for backward-compatibility in tests.
+- [x] **`computeKpis(leaves, eff, today)`:** canonical shared KPI function in `rollup.ts`. Returns `KpiCounts { total, concluidas, em_dia, em_risco, em_atraso, exec, exec_obj, latest_end }`. Replaces page-local `calcMetrics` / `computeStats` helpers across Dashboard, Actividades, Gantt, GestaoIniciativas.
+- [x] **`EffectiveValue` fields extended:** added `target`, `allAt100`, `hasDatedLeaf` to the interface. `computeEffectiveMap` computes all fields in a single O(n log n) bottom-up pass.
+- [x] **Test suite:** 90 Vitest tests (up from 85). New tests cover `computeGroupStatusFromEff`, `computeKpis`, EffectiveValue field contract.
+- [x] **Production HEAD:** `abbbe9d`.
+
+#### Security hardening — user-delete flow
+
+- [x] **Audit FKs SET NULL (11 columns):** `activities.updated_by`, `app_config.updated_by`, `change_log.changed_by`, `fin_budget_lines.updated_by`, `fin_contracts.updated_by`, `fin_invoices.updated_by`, `fte_resources.updated_by`, `pds_entries.updated_by`, `people.updated_by`, `risks.updated_by`, `snapshots.created_by` changed from `ON DELETE NO ACTION` to `ON DELETE SET NULL` via Supabase SQL Editor. Allows `auth.users` row deletion to succeed without violating FK constraints. Pending backfill migration: `041_audit_fks_set_null.sql` (not yet in repo).
+- [x] **`delete-user` Edge Function reordered:** now deletes `auth.users` FIRST (SET NULL FKs mean no blocker), then belt-and-suspenders delete of `user_permissions` + profile. Prior order (profile/permissions first) caused auth delete to fail on NO ACTION FKs → half-deleted user state.
+- [x] **ProtectedRoute profile gate:** now requires both a valid auth session AND a non-null `profiles` row. Auth-valid but profile-less sessions (e.g. half-deleted users) are redirected to Login. Defense-in-depth covering `/planos`, `/glossary`, `/profile`, and all main pages.
+
+#### KPI coherence
+
+- [x] **`computeKpis` replaces page-local helpers:** single canonical function ensures all pages count KPIs identically. Closes a long-standing drift where Dashboard, Actividades, and GestaoIniciativas each had their own counting logic with subtle differences.
+
+#### Homonym-program robustness investigation (read-only)
+
+Thorough 6-part investigation of name-based code paths under programs sharing eixo/plano names ("Plano Estratégico" and "Plano Estratégico Old" share Eixo 1/5/6 and planos #18 CRM / #19 ERP). No code changed; findings documented as Known Issues in `CLAUDE.md`.
+
+- [x] **`computeEffectiveMap` key safety confirmed:** `actKeyOf = level|n1|n2|n3|n4` is safe because full n1+n2+n3 tuples do not currently overlap across programs. Latent risk if they ever do.
+- [x] **FilterContext name-vs-id filtering pinned:** `setFilter('n2Values')` at `FilterContext.tsx:135` uses `allPlanos.find(p => p.name === planoName)` with no `program_id` constraint — highest-urgency unsafe path.
+- [x] **accessiblePlanIds gap pinned:** `planos.program_id` is nullable (`ON DELETE SET NULL` per migration 009). Original SQL diagnostic `WHERE a.program_id != p.program_id` missed NULL rows (PostgreSQL NULL comparison → UNKNOWN). Correct diagnostic uses `IS DISTINCT FROM`.
+- [x] **+1 leaf mechanism pinned:** a plano with `program_id = NULL` is included in `usePlanos()` (all-programs) but excluded from `usePlanos('uuid')` (one-program). Dashboard uses the all-programs set → orphaned leaf included in KPI counts.
+- [x] **Actividades/Gantt group-stat key collision confirmed:** keys `n1:${n1}`, `n2:${n1}:${n2}` have no `program_id`. Second program's group row overwrites first's in multi-program view for shared eixo names.
+- [x] **`sync_plano_id()` trigger:** matches activities to planos by `n2` name. Whether it constrains by `program_id` is unverifiable from repo (function applied via Dashboard only); data shows 0 cross-program plano_id matches.
+
+#### Documentation
+
+- [x] **`CLAUDE.md` updated:** Custom Hooks table (React Query, `useAppConfig`, corrected `useProgramLabels` / `useSnapshots`, extended `EffectiveValue` fields); rollup.ts exports (added `computeGroupStatusFromEff`, `computeKpis`, `KpiCounts`, `KpiLookup`, 90-test count); new Rendering & Virtualization subsection; Database Schema Key constraints (nullable `planos.program_id`, audit FKs SET NULL, migration 041 note); Edge Functions table (source availability, `delete-user` reorder note, `invite-user`-only in repo); ProtectedRoute profile gate subsection; two new Known Issues (KPI residual delta, homonym-program robustness); Operational notes (production HEAD, React Query note, pending migration 041, root-file sync reminder).
+- [x] **Wave 6d `_Dev` sync checkbox ticked** (was pending).
+
+**Note to Mac operator:** `CLAUDE.md` and `TODO.md` live at repo root — NOT under `src/`. The `cp -r src` sync does NOT carry them. Reconcile Mac copies manually after pulling this branch.
 
 ### Pending in Phase 11
 
@@ -1463,6 +1507,13 @@ Extensive history already resolved up to May 2026: `rollup.ts` dual + 3-zone ban
 - [ ] **Wave E — Import hardening:** transactional, FK validation, clear-first toggle, idempotent re-imports
 - [ ] Threshold cascade validation — only works in one direction
 - [ ] **Rename PT → EN files:** `Actividades`, `Recursos`, `Evolucao`, `PlanoPage`, `PlanosCatalog` → `Activities`, `Resources`, etc. (convention: code in English, UI in PT)
+- [ ] **Commit Edge Function sources:** `delete-user`, `force-reset-password`, `update-user-email` exist only in Supabase Dashboard. Copy source to `supabase/functions/<name>/index.ts` and commit.
+- [ ] **Migration 041 — audit FKs:** write and commit `supabase/migrations/041_audit_fks_set_null.sql` to backfill the 11 `ON DELETE SET NULL` changes applied via SQL Editor. Without this, the migration sequence does not reflect live DB state.
+- [ ] **Homonym-program robustness — Rank 1 (already logged in Known Issues):** `FilterContext.tsx:135` `setFilter('n2Values')` uses `allPlanos.find(p => p.name === planoName)` with no `program_id` constraint. Fix: add `p.program_id === activeProgramId` constraint (or use plano ID instead of name as the filter value).
+- [ ] **Homonym-program robustness — Rank 2:** Actividades/Gantt group-stat keys (`n1:${n1}`, `n2:${n1}:${n2}`) have no `program_id`. In multi-program view with shared eixo names, second program's group row overwrites first's. Fix: prefix key with `program_id` or scope to single-program view.
+- [ ] **Homonym-program robustness — Rank 3 (benign, low urgency):** `FilterBar` sort-order lookups (`allEixos.find(e => e.name === name)`, `allPlanos.find(p => p.name === name)`) have no `program_id` constraint. Impact: sort order may pull from wrong program's eixo/plano when names collide, causing non-deterministic dropdown ordering.
+- [ ] **KPI IS DISTINCT FROM diagnostic:** update any SQL diagnostics checking cross-program plano_id to use `IS DISTINCT FROM` instead of `!=`. The pattern `WHERE a.program_id != p.program_id` silently misses NULL rows in PostgreSQL.
+- [ ] **Evolução odd numbers investigation:** whether snapshot KPIs on Evolução page show odd (misaligned) numbers after the performance overhaul. Pre-flight check needed before marking the wave as complete.
 
 -----
 
