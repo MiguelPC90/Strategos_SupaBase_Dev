@@ -815,6 +815,8 @@ export default function Dashboard() {
     [activities, getFilteredActivities],
   )
   const leaves = useMemo(() => filtered.filter(a => a.level === 4), [filtered])
+  // TEMP DEBUG — remove after diffing
+  console.log('[KPI-DEBUG][Dashboard] rawL4=', leaves.length)
 
   const accessiblePlanIds = useMemo(
     () => new Set(allPlanos.filter(p => hasAccess('dashboard', p.program_id ?? undefined, p.id)).map(p => p.id)),
@@ -824,6 +826,9 @@ export default function Dashboard() {
     () => leaves.filter(a => !a.plano_id || accessiblePlanIds.has(a.plano_id)),
     [leaves, accessiblePlanIds],
   )
+  // TEMP DEBUG — remove after diffing
+  console.log('[KPI-DEBUG][Dashboard] count=', accessibleLeaves.length, 'ids=', JSON.stringify(accessibleLeaves.map(a => a.id).sort()))
+
   const visiblePlanos = useMemo(
     () => allPlanos.filter(p => accessiblePlanIds.has(p.id)),
     [allPlanos, accessiblePlanIds],
