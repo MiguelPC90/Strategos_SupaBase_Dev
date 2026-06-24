@@ -139,7 +139,7 @@ export default function Evolucao() {
 
   // ── filter by date range ──────────────────────────────────────
   const filtered = useMemo(
-    () => snapshots.filter(s => s.snap_date >= dateFrom && s.snap_date <= dateTo),
+    () => snapshots.filter(s => s.snap_date.slice(0, 10) >= dateFrom && s.snap_date.slice(0, 10) <= dateTo),
     [snapshots, dateFrom, dateTo],
   )
 
