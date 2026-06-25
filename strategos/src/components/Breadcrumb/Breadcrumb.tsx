@@ -6,6 +6,7 @@ import { useFilters } from '../../context/FilterContext'
 import { useAccessiblePrograms } from '../../hooks/useAccessiblePrograms'
 import { useEixos } from '../../hooks/useEixos'
 import { usePlanos } from '../../hooks/usePlanos'
+import { usePrograms } from '../../hooks/usePrograms'
 import { useCanEditCurrent } from '../../hooks/useCanEditCurrent'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useToast } from '../../context/ToastContext'
@@ -234,6 +235,7 @@ export default function Breadcrumb() {
 
   const { eixos: allEixos } = useEixos()
   const { planos: allPlanos } = usePlanos()
+  const { programs } = usePrograms()
 
   const canEditPage = useCanEditCurrent(isGestaoCurrent ? pageKey : 'gestao-pds')
   const showReadOnly = isGestaoCurrent && !canEditPage
@@ -260,16 +262,32 @@ export default function Breadcrumb() {
     [allPlanos, accessiblePlanIds],
   )
 
+  const progSortById = useMemo(
+    () => new Map(programs.map(p => [p.id, p.sort_order])),
+    [programs],
+  )
+
   const eixoOptions = useMemo(() => {
     const base = programId
       ? allEixos.filter(e => e.program_id === programId)
       : allEixos.filter(e => e.program_id !== null && accessibleProgramIds.has(e.program_id))
-    return base.filter(e => accessibleEixoIds.has(e.id))
-  }, [allEixos, programId, accessibleProgramIds, accessibleEixoIds])
+    const filtered = base.filter(e => accessibleEixoIds.has(e.id))
+    if (!programId) {
+      filtered.sort((a, b) =>
+        (progSortById.get(a.program_id ?? '') ?? 0) - (progSortById.get(b.program_id ?? '') ?? 0) ||
+        a.sort_order - b.sort_order
+      )
+    }
+    return filtered
+  }, [allEixos, programId, accessibleProgramIds, accessibleEixoIds, progSortById])
 
   const planoOptions = useMemo(() => {
     const base = n1Name
-      ? allPlanos.filter(p => p.eixo?.name === n1Name)
+      ? allPlanos.filter(p =>
+          p.eixo?.name === n1Name &&
+          (programId
+            ? p.program_id === programId
+            : p.program_id !== null && accessibleProgramIds.has(p.program_id)))
       : programId
         ? allPlanos.filter(p => p.program_id === programId)
         : allPlanos.filter(p => p.program_id !== null && accessibleProgramIds.has(p.program_id))
