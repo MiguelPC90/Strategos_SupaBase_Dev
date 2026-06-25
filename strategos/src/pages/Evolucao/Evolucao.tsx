@@ -11,6 +11,7 @@ import Card from '../../components/Card/Card'
 import KpiCard from '../../components/KpiCard/KpiCard'
 import { useSnapshots } from '../../hooks/useSnapshots'
 import { useEixos } from '../../hooks/useEixos'
+import { usePrograms } from '../../hooks/usePrograms'
 import { useFilters } from '../../context/FilterContext'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
 import type { Snapshot, SnapshotKpi } from '../../types/index'
@@ -82,6 +83,15 @@ interface CompGroup {
   rows: CompRow[]
 }
 
+interface EixoRow {
+  programId: string
+  programName: string
+  programSort: number
+  eixoId: string
+  eixoName: string
+  eixoSort: number
+}
+
 function varStyle(variation: number, invertColor: boolean): { color: string; prefix: ReactNode } {
   if (variation === 0) return { color: 'var(--text3)', prefix: '' }
   const isPositive = variation > 0
@@ -128,14 +138,7 @@ export default function Evolucao() {
 
   const { snapshots, loading, error } = useSnapshots(programId || undefined)
   const { eixos: allEixos }           = useEixos()
-
-  // UUID → name map: resolves eixo UUIDs used as by_n1 keys since migration 007.
-  // Loads all eixos (no program filter) so historical references from migrated
-  // eixos still resolve correctly; genuinely deleted eixos fall back to '(eixo eliminado)'.
-  const eixoNameById = useMemo(
-    () => new Map(allEixos.map(e => [e.id, e.name])),
-    [allEixos],
-  )
+  const { programs }                  = usePrograms()
 
   // ── filter by date range ──────────────────────────────────────
   const filtered = useMemo(
@@ -161,23 +164,38 @@ export default function Evolucao() {
     [filtered, programId],
   )
 
-  // ── unique eixo keys (for comparison table Por Eixo group) ────
-  // When a specific program is selected, filter by_n1 keys to that program's
-  // eixos only — snapshots are global so by_n1 spans all programs.
-  const programEixoIds = useMemo(
-    () => programId
-      ? new Set(allEixos.filter(e => e.program_id === programId).map(e => e.id))
-      : null,
-    [allEixos, programId],
-  )
+  // ── Por Eixo: ordered list built top-down from canonical eixo data ─────────
+  // Using allEixos as the source of truth (not snapshot by_n1 keys) prevents
+  // homonym eixos from leaking across programs when programId is '' (no-selection
+  // or mid-switch state). programId is a direct dep so every switch recomputes.
+  const eixoRows = useMemo((): EixoRow[] => {
+    const snapshotEixoIds = new Set<string>()
+    filtered.forEach(s => Object.keys(s.by_n1).forEach(k => snapshotEixoIds.add(k)))
 
-  const eixoKeys = useMemo(() => {
-    const keys = new Set<string>()
-    filtered.forEach(s => Object.keys(s.by_n1).forEach(k => keys.add(k)))
-    const allKeys = [...keys].sort()
-    if (!programEixoIds) return allKeys
-    return allKeys.filter(k => programEixoIds.has(k))
-  }, [filtered, programEixoIds])
+    const progById = new Map(programs.map(p => [p.id, p]))
+    const candidates = programId
+      ? allEixos.filter(e => e.program_id === programId)
+      : allEixos
+
+    const rows: EixoRow[] = []
+    for (const e of candidates) {
+      if (!snapshotEixoIds.has(e.id)) continue
+      if (!e.program_id) continue
+      const prog = progById.get(e.program_id)
+      if (!prog) continue
+      rows.push({
+        programId:   e.program_id,
+        programName: prog.name,
+        programSort: prog.sort_order,
+        eixoId:      e.id,
+        eixoName:    e.name,
+        eixoSort:    e.sort_order,
+      })
+    }
+
+    rows.sort((a, b) => a.programSort - b.programSort || a.eixoSort - b.eixoSort)
+    return rows
+  }, [filtered, allEixos, programs, programId])
 
   // ── comparison table data ─────────────────────────────────────
   const compGroups = useMemo<CompGroup[]>(() => {
@@ -220,23 +238,45 @@ export default function Evolucao() {
       },
     ]
 
-    if (eixoKeys.length > 0) {
+    if (eixoRows.length > 0) {
       const firstSnap = filtered[0]
       const lastSnap  = filtered[filtered.length - 1]
-      groups.push({
-        title: `Por ${labels.n1}`,
-        rows: eixoKeys.map(k => ({
-          label:       `${eixoNameById.get(k) ?? '(eixo eliminado)'} — Grau de execução (%)`,
-          ref:         firstSnap.by_n1[k]?.exec_media ?? 0,
-          actual:      lastSnap.by_n1[k]?.exec_media  ?? 0,
-          invertColor: false,
-          isPercent:   true,
-        })),
-      })
+      if (programId) {
+        // Single-program: one section, no sub-headers
+        groups.push({
+          title: `Por ${labels.n1}`,
+          rows: eixoRows.map(er => ({
+            label:       `${er.eixoName} — Grau de execução (%)`,
+            ref:         firstSnap.by_n1[er.eixoId]?.exec_media ?? 0,
+            actual:      lastSnap.by_n1[er.eixoId]?.exec_media  ?? 0,
+            invertColor: false,
+            isPercent:   true,
+          })),
+        })
+      } else {
+        // All-programs: one section per program (program name = section header)
+        // eixoRows is sorted by (programSort, eixoSort) so map insertion order is correct
+        const byProg = new Map<string, { name: string; rows: CompRow[] }>()
+        for (const er of eixoRows) {
+          if (!byProg.has(er.programId)) {
+            byProg.set(er.programId, { name: er.programName, rows: [] })
+          }
+          byProg.get(er.programId)!.rows.push({
+            label:       `${er.eixoName} — Grau de execução (%)`,
+            ref:         firstSnap.by_n1[er.eixoId]?.exec_media ?? 0,
+            actual:      lastSnap.by_n1[er.eixoId]?.exec_media  ?? 0,
+            invertColor: false,
+            isPercent:   true,
+          })
+        }
+        for (const [, { name, rows }] of byProg) {
+          groups.push({ title: name, rows })
+        }
+      }
     }
 
     return groups
-  }, [filtered, programId, eixoKeys])
+  }, [filtered, programId, eixoRows, labels])
 
   // ── delta cards: first → last ─────────────────────────────────
   const firstKpi  = filtered.length > 0 ? extractKpi(filtered[0], programId) : null
