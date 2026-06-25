@@ -1,0 +1,16 @@
+-- Migration 042: fix daily_snapshot() — band thresholds from app_config
+--
+-- Context: applied MANUALLY via the Supabase Dashboard on 2026-06-24 and validated (PE total
+-- 755, 6 eixos; parity with Dashboard cards). The cron job 'daily-snapshot' (59 23 * * *)
+-- resumed successfully the same night. This file versions that change.
+--
+-- The previous function crashed nightly since ~2026-05-24 with
+--   ERROR 42703: column p.threshold_leaves does not exist
+-- after the schema moved to the two-ended band model. This version reads
+-- status_delay_threshold_leaves_low/high from app_config (defaults 5/10), classifies leaves
+-- per rollup.ts (planned_pct interpolated bs..COALESCE(bf,finish), pct_prev fallback;
+-- precedence Concluida -> Em atraso by date -> band), and preserves risks/financials.
+--
+-- Safe to re-run (CREATE OR REPLACE FUNCTION). Re-running only redefines the function.
+
+-- [INSERT CREATE OR REPLACE FUNCTION public.daily_snapshot() ... $function$; BELOW]
