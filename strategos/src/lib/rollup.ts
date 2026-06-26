@@ -8,6 +8,21 @@ export type ThresholdBand = {
 
 export type RowState = 'Concluída' | 'Em dia' | 'Em risco' | 'Em atraso'
 
+/** Which band applies: leaf activities (N4-N6) or aggregates (N0-N3). */
+export type ThresholdKind = 'leaves' | 'aggregates'
+
+/**
+ * Optional per-context band resolver. When provided, the classification
+ * engine calls it instead of reading the module-level globals, enabling
+ * per-plano / per-programa threshold overrides.
+ * When omitted, all functions fall back to the globals set by setThresholds().
+ */
+export type BandResolver = (
+  programId: string | null | undefined,
+  planoId:   string | null | undefined,
+  kind:      ThresholdKind,
+) => ThresholdBand
+
 // ── Module-level thresholds (set once at app startup via setThresholds) ───────
 // Defaults are based on the 3-zone model from Wave 3a migration.
 let THRESHOLD_AGGREGATES: ThresholdBand = { low: 15, high: 25 }
@@ -217,8 +232,12 @@ export function getEffectiveStatus(
   activity: Activity,
   all: Activity[],
   today: string,
+  resolver?: BandResolver,
 ): RowState {
-  const band     = activity.level >= 3 ? THRESHOLD_LEAVES : THRESHOLD_AGGREGATES
+  const kind: ThresholdKind = activity.level >= 3 ? 'leaves' : 'aggregates'
+  const band = resolver
+    ? resolver(activity.program_id, activity.plano_id, kind)
+    : (kind === 'leaves' ? THRESHOLD_LEAVES : THRESHOLD_AGGREGATES)
   const children = getDirectChildren(activity, all)
   const leaves   = getDescendantLeaves(activity, all)
 
@@ -267,9 +286,13 @@ export function computeGroupStatusFromEff(
   eff: Map<string, EffLookup>,
   level: number,
   today: string,
+  resolver?: BandResolver,
 ): RowState {
   if (n4Leaves.length === 0) return 'Em dia'
-  const band = level >= 3 ? THRESHOLD_LEAVES : THRESHOLD_AGGREGATES
+  const kind: ThresholdKind = level >= 3 ? 'leaves' : 'aggregates'
+  const band = resolver
+    ? resolver(n4Leaves[0].program_id, n4Leaves[0].plano_id, kind)
+    : (kind === 'leaves' ? THRESHOLD_LEAVES : THRESHOLD_AGGREGATES)
   if (n4Leaves.every(n4 => eff.get(n4.id)?.allAt100 ?? n4.pct >= 100)) return 'Concluída'
   const pct = n4Leaves.reduce((s, n4) => s + (eff.get(n4.id)?.pct ?? n4.pct), 0) / n4Leaves.length
   let bf: string | null = null
@@ -296,9 +319,13 @@ export function getGroupStatus(
   all: Activity[],
   today: string,
   level: number,
+  resolver?: BandResolver,
 ): RowState {
   if (n4Leaves.length === 0) return 'Em dia'
-  const band = level >= 3 ? THRESHOLD_LEAVES : THRESHOLD_AGGREGATES
+  const kind: ThresholdKind = level >= 3 ? 'leaves' : 'aggregates'
+  const band = resolver
+    ? resolver(n4Leaves[0].program_id, n4Leaves[0].plano_id, kind)
+    : (kind === 'leaves' ? THRESHOLD_LEAVES : THRESHOLD_AGGREGATES)
 
   const pct = n4Leaves.reduce((s, n4) => s + getEffectivePct(n4, all), 0) / n4Leaves.length
 
@@ -363,8 +390,17 @@ function status3step(
   target: number,
   allAt100: boolean,
   today: string,
+  programId?: string | null,
+  planoId?: string | null,
+  resolver?: BandResolver,
 ): RowState {
-  const band = level >= 3 ? THRESHOLD_LEAVES : THRESHOLD_AGGREGATES
+  let band: ThresholdBand
+  if (resolver) {
+    const kind: ThresholdKind = level >= 3 ? 'leaves' : 'aggregates'
+    band = resolver(programId, planoId, kind)
+  } else {
+    band = level >= 3 ? THRESHOLD_LEAVES : THRESHOLD_AGGREGATES
+  }
   if (allAt100) return 'Concluída'
   if (bfDeadline && today > bfDeadline && pct < 100) return 'Em atraso'
   return statusFromDelta(target - pct, band)
@@ -378,6 +414,7 @@ function status3step(
 export function computeEffectiveMap(
   activities: Activity[],
   today: string,
+  resolver?: BandResolver,
 ): Map<string, EffectiveRecord> {
   // Step 1: build parent→children index in O(n)
   const childrenByParentKey = new Map<string, Activity[]>()
@@ -415,7 +452,7 @@ export function computeEffectiveMap(
           rf: a.rf,
           allAt100:     a.pct >= 100,
           hasDatedLeaf: hdl,
-          status: status3step(a.level, a.pct, bfProp, target, a.pct >= 100, today),
+          status: status3step(a.level, a.pct, bfProp, target, a.pct >= 100, today, a.program_id, a.plano_id, resolver),
         },
       })
     } else {
@@ -453,7 +490,7 @@ export function computeEffectiveMap(
           rf,
           allAt100,
           hasDatedLeaf,
-          status: status3step(a.level, pct, bfProp, target, allAt100, today),
+          status: status3step(a.level, pct, bfProp, target, allAt100, today, a.program_id, a.plano_id, resolver),
         },
       })
     }
