@@ -290,8 +290,11 @@ export function computeGroupStatusFromEff(
 ): RowState {
   if (n4Leaves.length === 0) return 'Em dia'
   const kind: ThresholdKind = level >= 3 ? 'leaves' : 'aggregates'
+  // Group-pill band uses the GROUP's identity: a plano (N2) or macro (N3) its own
+  // plano band; an eixo (N1) or programa (N0) the PROGRAMA's band (planoId = null).
+  const groupPlanoId = level >= 2 ? n4Leaves[0].plano_id : null
   const band = resolver
-    ? resolver(n4Leaves[0].program_id, n4Leaves[0].plano_id, kind)
+    ? resolver(n4Leaves[0].program_id, groupPlanoId, kind)
     : (kind === 'leaves' ? THRESHOLD_LEAVES : THRESHOLD_AGGREGATES)
   if (n4Leaves.every(n4 => eff.get(n4.id)?.allAt100 ?? n4.pct >= 100)) return 'Concluída'
   const pct = n4Leaves.reduce((s, n4) => s + (eff.get(n4.id)?.pct ?? n4.pct), 0) / n4Leaves.length
@@ -323,8 +326,11 @@ export function getGroupStatus(
 ): RowState {
   if (n4Leaves.length === 0) return 'Em dia'
   const kind: ThresholdKind = level >= 3 ? 'leaves' : 'aggregates'
+  // Group-pill band uses the GROUP's identity: a plano (N2) or macro (N3) its own
+  // plano band; an eixo (N1) or programa (N0) the PROGRAMA's band (planoId = null).
+  const groupPlanoId = level >= 2 ? n4Leaves[0].plano_id : null
   const band = resolver
-    ? resolver(n4Leaves[0].program_id, n4Leaves[0].plano_id, kind)
+    ? resolver(n4Leaves[0].program_id, groupPlanoId, kind)
     : (kind === 'leaves' ? THRESHOLD_LEAVES : THRESHOLD_AGGREGATES)
 
   const pct = n4Leaves.reduce((s, n4) => s + getEffectivePct(n4, all), 0) / n4Leaves.length

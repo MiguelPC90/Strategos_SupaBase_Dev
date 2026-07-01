@@ -27,8 +27,9 @@ import { supabase } from '../../lib/supabase'
 import { generateAlerts } from '../../lib/alerts'
 import type { Alert, AlertRule } from '../../lib/alerts'
 import type { Activity, Program, Eixo, Plano } from '../../types/index'
-import { computeRowState, rollupDateRange, computeGroupStatusFromEff, computeKpis, type KpiCounts, type RowState } from '../../lib/rollup'
+import { computeRowState, rollupDateRange, computeGroupStatusFromEff, computeKpis, type KpiCounts, type RowState, type BandResolver } from '../../lib/rollup'
 import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
+import { useBandResolver } from '../../hooks/useThresholdsMap'
 import { colors, statusColor } from '../../lib/tokens'
 
 const TODAY = new Date().toISOString().slice(0, 10)
@@ -224,6 +225,7 @@ function buildRow(
   leaves: Activity[],
   eff: EffectiveMap,
   level: number,
+  resolver?: BandResolver,
 ): Record<string, unknown> {
   const concGeral = safeDiv(m.concluidas, m.total) * 100
   const concData  = safeDiv(m.concluidas, m.concluidas + m.em_atraso) * 100
@@ -233,7 +235,7 @@ function buildRow(
   return {
     _isParent: isParent,
     nome,
-    _estado: m.total > 0 ? computeGroupStatusFromEff(leaves, eff, level, TODAY) : null,
+    _estado: m.total > 0 ? computeGroupStatusFromEff(leaves, eff, level, TODAY, resolver) : null,
     total:      m.total,
     concluidas: m.concluidas,
     em_dia:     m.em_dia,
@@ -650,6 +652,7 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
   const [tableChip, setTableChip] = useState<'programa' | 'eixo' | 'plano'>('eixo')
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const bandResolver = useBandResolver()
 
   function handleSortChange(key: string, dir: 'asc' | 'desc') {
     setSortKey(key)
@@ -664,7 +667,7 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
         .map(prog => {
           const progLeaves = leaves.filter(a => a.program_id === prog.id)
           if (progLeaves.length === 0) return null
-          return { ...buildRow(prog.name, computeKpis(progLeaves, effectiveMap, TODAY), false, progLeaves, effectiveMap, 0), _prog_id: prog.id } as Record<string, unknown>
+          return { ...buildRow(prog.name, computeKpis(progLeaves, effectiveMap, TODAY), false, progLeaves, effectiveMap, 0, bandResolver), _prog_id: prog.id } as Record<string, unknown>
         })
         .filter((r): r is Record<string, unknown> => r !== null)
     }
@@ -695,9 +698,9 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
       for (const prog of sortedProgs) {
         const progLeaves = leaves.filter(a => a.program_id === prog.id)
         if (progLeaves.length === 0) continue
-        rows.push({ ...buildRow(prog.name, computeKpis(progLeaves, effectiveMap, TODAY), false, progLeaves, effectiveMap, 0), _prog_id: prog.id, _isProgHeader: true })
+        rows.push({ ...buildRow(prog.name, computeKpis(progLeaves, effectiveMap, TODAY), false, progLeaves, effectiveMap, 0, bandResolver), _prog_id: prog.id, _isProgHeader: true })
         for (const { name, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
-          rows.push({ ...buildRow(name, computeKpis(eixoLeaves, effectiveMap, TODAY), false, eixoLeaves, effectiveMap, 1), _n1: name, _prog_id: prog.id })
+          rows.push({ ...buildRow(name, computeKpis(eixoLeaves, effectiveMap, TODAY), false, eixoLeaves, effectiveMap, 1, bandResolver), _n1: name, _prog_id: prog.id })
         }
       }
       return rows
@@ -707,9 +710,9 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
     for (const prog of sortedProgs) {
       const progLeaves = leaves.filter(a => a.program_id === prog.id)
       if (progLeaves.length === 0) continue
-      rows.push({ ...buildRow(prog.name, computeKpis(progLeaves, effectiveMap, TODAY), false, progLeaves, effectiveMap, 0), _prog_id: prog.id, _isProgHeader: true })
+      rows.push({ ...buildRow(prog.name, computeKpis(progLeaves, effectiveMap, TODAY), false, progLeaves, effectiveMap, 0, bandResolver), _prog_id: prog.id, _isProgHeader: true })
       for (const { name: eixoName, leaves: eixoLeaves } of orderedEixoEntries(progLeaves, prog.id)) {
-        rows.push({ ...buildRow(eixoName, computeKpis(eixoLeaves, effectiveMap, TODAY), true, eixoLeaves, effectiveMap, 1), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
+        rows.push({ ...buildRow(eixoName, computeKpis(eixoLeaves, effectiveMap, TODAY), true, eixoLeaves, effectiveMap, 1, bandResolver), _n1: eixoName, _prog_id: prog.id, _indent: 1 })
         const byPlano = groupBy(eixoLeaves, a => a.n2 || '(sem plano)')
         const eixoPlanos = allPlanos
           .filter(p => p.program_id === prog.id && p.eixo?.name === eixoName)
@@ -719,16 +722,16 @@ function DetailTableCard({ leaves, programs, allEixos, allPlanos, totalsRow, onR
           const acts = byPlano.get(plano.name)
           if (!acts) continue
           seen.add(plano.name)
-          rows.push({ ...buildRow(plano.name, computeKpis(acts, effectiveMap, TODAY), false, acts, effectiveMap, 2), _n1: eixoName, _n2: plano.name, _indent: 2 })
+          rows.push({ ...buildRow(plano.name, computeKpis(acts, effectiveMap, TODAY), false, acts, effectiveMap, 2, bandResolver), _n1: eixoName, _n2: plano.name, _indent: 2 })
         }
         for (const [n2, acts] of byPlano) {
           if (seen.has(n2)) continue
-          rows.push({ ...buildRow(n2, computeKpis(acts, effectiveMap, TODAY), false, acts, effectiveMap, 2), _n1: eixoName, _n2: n2, _indent: 2 })
+          rows.push({ ...buildRow(n2, computeKpis(acts, effectiveMap, TODAY), false, acts, effectiveMap, 2, bandResolver), _n1: eixoName, _n2: n2, _indent: 2 })
         }
       }
     }
     return rows
-  }, [tableChip, leaves, programs, allEixos, allPlanos, effectiveMap])
+  }, [tableChip, leaves, programs, allEixos, allPlanos, effectiveMap, bandResolver])
 
 
   const sortedTableRows = useMemo(
@@ -1008,6 +1011,8 @@ export default function Dashboard() {
     return {
       _isTotals: true,
       nome:      'TOTAL',
+      // Cross-program total has no single programa identity → global aggregates band
+      // (no resolver passed). The snapshot never classifies a TOTAL aggregate, so no parity risk.
       _estado:   m.total > 0 ? computeGroupStatusFromEff(accessibleLeaves, effectiveMap, 0, TODAY) : null,
       total:      m.total,
       concluidas: m.concluidas,

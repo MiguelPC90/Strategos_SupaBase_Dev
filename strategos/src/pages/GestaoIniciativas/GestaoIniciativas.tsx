@@ -16,6 +16,7 @@ import { usePlanos } from '../../hooks/usePlanos'
 import { supabase } from '../../lib/supabase'
 import { rollupPctPrev, rollupDateRange, leafPctPrev, computeGroupStatusFromEff } from '../../lib/rollup'
 import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
+import { useBandResolver } from '../../hooks/useThresholdsMap'
 import type { Activity, ActivityDependency, DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
 import { validateNewDependency, propagateDateChanges, computeDepGap, DEP_GAP_WARNING_THRESHOLD } from '../../lib/activityDependencies'
@@ -784,6 +785,7 @@ export default function GestaoIniciativas({
   }, [localActs, searchQuery])
 
   const eff = useEffectiveValues(localActs, TODAY)
+  const bandResolver = useBandResolver()
 
   const tree = useMemo(() => buildTree(searchFilteredActs), [searchFilteredActs])
 
@@ -1141,7 +1143,7 @@ export default function GestaoIniciativas({
         const n3col = collapsed.has(n3g.key)
         const n3leaves = n3g.all.filter(a => a.level === 4)
         const n3pct = groupPct(n3leaves, eff); const n3prev = rollupPctPrev(n3leaves, TODAY)
-        const n3st  = computeGroupStatusFromEff(n3leaves, eff, 3, TODAY); const n3dr = rollupDateRange(n3leaves)
+        const n3st  = computeGroupStatusFromEff(n3leaves, eff, 3, TODAY, bandResolver); const n3dr = rollupDateRange(n3leaves)
         const n3Rep  = n3g.all.find(a => a.level === 3)
         const n3Sibs = n3Rep
           ? localActs.filter(a => a.level === 3 && a.n1 === n3Rep.n1 && a.n2 === n3Rep.n2)
@@ -1197,7 +1199,7 @@ export default function GestaoIniciativas({
           const n4col = collapsed.has(n4g.key)
           const n4leaves = n4g.all.filter(a => a.level === 4)
           const n4pct = groupPct(n4leaves, eff); const n4prev = rollupPctPrev(n4leaves, TODAY)
-          const n4st  = computeGroupStatusFromEff(n4leaves, eff, 4, TODAY); const n4dr = rollupDateRange(n4leaves)
+          const n4st  = computeGroupStatusFromEff(n4leaves, eff, 4, TODAY, bandResolver); const n4dr = rollupDateRange(n4leaves)
           const n4Rep  = n4g.all.find(a => a.level === 4)
           const n4Sibs = n4Rep
             ? localActs.filter(a => a.level === 4 && a.n1 === n4Rep.n1 && a.n2 === n4Rep.n2 && a.n3 === n4Rep.n3)

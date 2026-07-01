@@ -19,6 +19,7 @@ import GestaoIniciativas from '../GestaoIniciativas/GestaoIniciativas'
 import NovoPlanoModal from '../../components/NovoPlanoModal/NovoPlanoModal'
 import { rollupPctPrev, rollupDateRange, computeGroupStatusFromEff } from '../../lib/rollup'
 import { useEffectiveValues } from '../../hooks/useEffectiveValues'
+import { useBandResolver } from '../../hooks/useThresholdsMap'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { resolveOwnerNames, resolveSponsorNames } from '../../lib/owners'
 import { statusColor } from '../../lib/tokens'
@@ -71,10 +72,11 @@ export default function PlanoPage() {
   const { activities: planActivities } = useActivities(planoId ? { plano_id: planoId } : {})
   const planLeaves = useMemo(() => planActivities.filter(a => a.level === 4), [planActivities])
   const eff = useEffectiveValues(planActivities, today)
+  const bandResolver = useBandResolver()
 
   const planoStatus = useMemo(
-    () => computeGroupStatusFromEff(planLeaves, eff, 2, today),
-    [planLeaves, eff, today],
+    () => computeGroupStatusFromEff(planLeaves, eff, 2, today, bandResolver),
+    [planLeaves, eff, today, bandResolver],
   )
 
   const execMedia    = useMemo(

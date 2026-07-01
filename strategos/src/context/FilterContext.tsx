@@ -3,6 +3,7 @@ import { usePlanos } from '../hooks/usePlanos'
 import { useEixos } from '../hooks/useEixos'
 import { usePeople } from '../hooks/usePeople'
 import { getEffectiveStatus } from '../lib/rollup'
+import { useBandResolver } from '../hooks/useThresholdsMap'
 import type { Activity } from '../types/index'
 
 // ── State shape ───────────────────────────────────────────────
@@ -71,6 +72,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const { eixos: allEixos }     = useEixos()
   const { planos: allPlanos }   = usePlanos()
   const { people }              = usePeople()
+  const bandResolver            = useBandResolver()
 
   const personIdToName = useMemo(
     () => new Map(people.map(p => [p.id, p.name])),
@@ -173,12 +175,12 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       if (sponsorPlanoIds && !sponsorPlanoIds.has(a.plano_id ?? ''))               return false
 
       if (statuses.length && a.level >= 4) {
-        if (!statuses.includes(getEffectiveStatus(a, activities, today))) return false
+        if (!statuses.includes(getEffectiveStatus(a, activities, today, bandResolver))) return false
       }
 
       return true
     })
-  }, [filters, allPlanos])
+  }, [filters, allPlanos, bandResolver])
 
   const ctxValue = useMemo(
     () => ({ filters, setFilter, resetFilters, getFilteredActivities, ownerOptions, sponsorOptions, personIdToName }),

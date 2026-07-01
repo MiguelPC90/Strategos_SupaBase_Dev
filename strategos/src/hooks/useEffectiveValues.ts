@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { Activity } from '../types/index'
 import { computeEffectiveMap } from '../lib/rollup'
 import type { RowState } from '../lib/rollup'
+import { useBandResolver } from './useThresholdsMap'
 
 export interface EffectiveValue {
   pct:          number
@@ -19,8 +20,9 @@ export function useEffectiveValues(
   activities: Activity[],
   today: string,
 ): Map<string, EffectiveValue> {
+  const resolver = useBandResolver()
   return useMemo(() => {
-    const full = computeEffectiveMap(activities, today)
+    const full = computeEffectiveMap(activities, today, resolver)
     const map  = new Map<string, EffectiveValue>()
     for (const [id, r] of full) {
       map.set(id, {
@@ -36,5 +38,5 @@ export function useEffectiveValues(
       })
     }
     return map
-  }, [activities, today])
+  }, [activities, today, resolver])
 }

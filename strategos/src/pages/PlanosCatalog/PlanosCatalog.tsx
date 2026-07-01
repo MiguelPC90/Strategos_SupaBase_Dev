@@ -15,6 +15,7 @@ import { usePermissions } from '../../hooks/usePermissions'
 import { supabase } from '../../lib/supabase'
 import { useEffectiveValues } from '../../hooks/useEffectiveValues'
 import { computeGroupStatusFromEff } from '../../lib/rollup'
+import { useBandResolver } from '../../hooks/useThresholdsMap'
 import { resolveOwnerNames, resolveSponsorNames } from '../../lib/owners'
 import { comparePlanos } from '../../lib/sort'
 import MultiSelect from '../../components/MultiSelect/MultiSelect'
@@ -189,6 +190,7 @@ export default function PlanosCatalog() {
   }, [leaves])
 
   const eff = useEffectiveValues(leaves, today)
+  const bandResolver = useBandResolver()
 
   // ── Filter state ──────────────────────────────────────────────
   const [progFilter,    setProgFilter]    = useState<string[]>([])
@@ -212,13 +214,13 @@ export default function PlanosCatalog() {
   // ── Enrich planos with computed status + pct ──────────────────
   const enriched = useMemo(() => planos.map(plano => {
     const lv           = leavesByPlano.get(plano.id) ?? []
-    const status       = computeGroupStatusFromEff(lv, eff, 2, today)
+    const status       = computeGroupStatusFromEff(lv, eff, 2, today, bandResolver)
     const pct          = lv.length === 0 ? 0 : lv.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / lv.length
     const program      = plano.program_id ? programMap.get(plano.program_id) ?? null : null
     const ownerNames   = resolveOwnerNames(plano, peopleMap).join(', ') || null
     const sponsorNames = resolveSponsorNames(plano, peopleMap).join(', ') || null
     return { ...plano, status, pct, program, ownerNames, sponsorNames }
-  }), [planos, leavesByPlano, eff, programMap, peopleMap])
+  }), [planos, leavesByPlano, eff, programMap, peopleMap, bandResolver])
 
   // ── Plan-level access filter ──────────────────────────────────
   const accessiblePlanIds = useMemo(

@@ -16,6 +16,7 @@ import { usePlanos } from '../../hooks/usePlanos'
 import { useEixos } from '../../hooks/useEixos'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useEffectiveValues } from '../../hooks/useEffectiveValues'
+import { useBandResolver } from '../../hooks/useThresholdsMap'
 import type { Activity, Program } from '../../types/index'
 import { leafPctPrev, computeRowState, computeGroupStatusFromEff, computeKpis, type KpiCounts, type RowState } from '../../lib/rollup'
 
@@ -382,6 +383,7 @@ export default function Actividades() {
   const multiProg = programs.length > 1
 
   const eff = useEffectiveValues(activities, TODAY)
+  const bandResolver = useBandResolver()
 
   const pctPrevMap = useMemo(
     () => new Map(activities.map(a => [a.id, leafPctPrev(a, TODAY)])),
@@ -478,22 +480,22 @@ export default function Actividades() {
     const allN1groups = scopeN0Tree ? scopeN0Tree.flatMap(g => g.n1groups) : scopeTree
     if (scopeN0Tree) {
       for (const n0g of scopeN0Tree) {
-        m.set(`n0:${n0g.progId}`, computeGroupStatusFromEff(n0g.allActs.filter(a => a.level === 4), eff, 0, TODAY))
+        m.set(`n0:${n0g.progId}`, computeGroupStatusFromEff(n0g.allActs.filter(a => a.level === 4), eff, 0, TODAY, bandResolver))
       }
     }
     for (const n1g of allN1groups) {
-      m.set(`n1:${n1g.n1}`, computeGroupStatusFromEff(n1g.allActs.filter(a => a.level === 4), eff, 1, TODAY))
+      m.set(`n1:${n1g.n1}`, computeGroupStatusFromEff(n1g.allActs.filter(a => a.level === 4), eff, 1, TODAY, bandResolver))
       for (const n2g of n1g.n2groups) {
-        m.set(`n2:${n1g.n1}:${n2g.n2}`, computeGroupStatusFromEff(n2g.allActs.filter(a => a.level === 4), eff, 2, TODAY))
+        m.set(`n2:${n1g.n1}:${n2g.n2}`, computeGroupStatusFromEff(n2g.allActs.filter(a => a.level === 4), eff, 2, TODAY, bandResolver))
         for (const n3g of n2g.n3groups) {
           if (n3g.n3) {
-            m.set(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`, computeGroupStatusFromEff(n3g.acts.filter(a => a.level === 4), eff, 3, TODAY))
+            m.set(`n3:${n1g.n1}:${n2g.n2}:${n3g.n3}`, computeGroupStatusFromEff(n3g.acts.filter(a => a.level === 4), eff, 3, TODAY, bandResolver))
           }
         }
       }
     }
     return m
-  }, [scopeN0Tree, scopeTree, eff])
+  }, [scopeN0Tree, scopeTree, eff, bandResolver])
 
   const groupStatsMap = useMemo(() => {
     const m = new Map<string, { stats: KpiCounts; pct: number }>()

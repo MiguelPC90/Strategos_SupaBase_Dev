@@ -127,3 +127,45 @@ describe('BandResolver — Phase 1 dormant capability', () => {
   })
 
 })
+
+describe('Group-pill band identity (B6 correction)', () => {
+  // A resolver where the plano has a TIGHT aggregates override {2,4}, but its
+  // programa (planoId=null) has a WIDE aggregates band {30,50}.
+  const identityResolver: BandResolver = (_programId, planoId, kind) => {
+    if (kind === 'leaves') return { low: 5, high: 10 }
+    // aggregates: plano override only when planoId is provided
+    return planoId ? { low: 2, high: 4 } : { low: 30, high: 50 }
+  }
+
+  // One leaf: pct=80, target=90 → delta=10. Tight {2,4} → atraso; wide {30,50} → em dia.
+  const leaf = mkAct({
+    id: 'g1', level: 4, name: 'Act', n3: 'M', n4: 'Act',
+    pct: 80,
+    program_id: 'progX', plano_id: 'planoX',
+  })
+  const effMap = new Map<string, {
+    pct: number; bf: string | null; allAt100: boolean; hasDatedLeaf: boolean; target: number
+  }>([
+    ['g1', { pct: 80, target: 90, bf: null, allAt100: false, hasDatedLeaf: true }],
+  ])
+
+  it('N2 plano group uses the plano aggregates band (planoId passed)', () => {
+    // level 2 → planoId = leaf.plano_id → tight {2,4} → delta 10 > 4 → Em atraso
+    expect(computeGroupStatusFromEff([leaf], effMap, 2, TODAY, identityResolver)).toBe('Em atraso')
+  })
+
+  it('N1 eixo group uses the PROGRAMA aggregates band (planoId = null)', () => {
+    // level 1 → planoId null → wide {30,50} → delta 10 ≤ 30 → Em dia
+    // (must NOT adopt the child plano override)
+    expect(computeGroupStatusFromEff([leaf], effMap, 1, TODAY, identityResolver)).toBe('Em dia')
+  })
+
+  it('N0 programa group uses the PROGRAMA aggregates band (planoId = null)', () => {
+    expect(computeGroupStatusFromEff([leaf], effMap, 0, TODAY, identityResolver)).toBe('Em dia')
+  })
+
+  it('N3 macro group uses the plano leaves band (planoId passed, kind=leaves)', () => {
+    // level 3 → kind leaves, planoId passed → {5,10} → delta 10 ≤ 10 → Em risco boundary
+    expect(computeGroupStatusFromEff([leaf], effMap, 3, TODAY, identityResolver)).toBe('Em risco')
+  })
+})

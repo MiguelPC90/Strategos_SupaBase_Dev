@@ -12,6 +12,7 @@ import { useFilters } from '../../context/FilterContext'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { leafPctPrev, rollupPctPrev, computeGroupStatusFromEff, type RowState } from '../../lib/rollup'
 import { useEffectiveValues, type EffectiveValue } from '../../hooks/useEffectiveValues'
+import { useBandResolver } from '../../hooks/useThresholdsMap'
 import type { Activity, Program } from '../../types/index'
 import type { DependencyType } from '../../types/index'
 import { useActivityDependencies } from '../../hooks/useActivityDependencies'
@@ -649,6 +650,7 @@ export default function Gantt() {
   const multiProg = programs.length > 1
 
   const eff = useEffectiveValues(activities, TODAY)
+  const bandResolver = useBandResolver()
 
   const programSortMap = useMemo(
     () => new Map(programs.map(p => [p.id, p.sort_order] as [string, number])),
@@ -720,7 +722,7 @@ export default function Gantt() {
     const allN1groups = n0tree ? n0tree.flatMap(g => g.n1groups) : tree
 
     const entry = (leaves4: Activity[], allActs: Activity[], level: number): GroupData => {
-      const status = computeGroupStatusFromEff(leaves4, eff, level, TODAY)
+      const status = computeGroupStatusFromEff(leaves4, eff, level, TODAY, bandResolver)
       const dr = groupDateRange(allActs, eff)
       return { status, bs: dr.bs, bf: dr.bf, rs: dr.rs, rf: dr.rf, pct: groupPct(leaves4, eff) }
     }
@@ -743,7 +745,7 @@ export default function Gantt() {
       }
     }
     return m
-  }, [n0tree, tree, eff])
+  }, [n0tree, tree, eff, bandResolver])
 
   const [scale, setScale]         = useState<Scale>('Mês')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
