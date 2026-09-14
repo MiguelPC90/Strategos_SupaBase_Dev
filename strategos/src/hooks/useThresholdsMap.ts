@@ -17,8 +17,12 @@ import {
 export { buildThresholdsMap, buildBandResolver }
 export type { PlanoThresholds }
 
-/** Reads the live app_config global bands the same way Layout does. */
-function useGlobalBands(): { globalLeaves: ThresholdBand; globalAggregates: ThresholdBand } {
+/**
+ * Reads the live app_config global bands the same way Layout does.
+ * Exported so Admin surfaces can resolve the GLOBAL tier (what a programa with
+ * NULL columns inherits) without re-deriving the parse.
+ */
+export function useGlobalBands(): { globalLeaves: ThresholdBand; globalAggregates: ThresholdBand } {
   const { config } = useAppConfig()
   const globalLeaves = useMemo<ThresholdBand>(() => ({
     low:  parseInt(config['status_delay_threshold_leaves_low']  ?? '5')  || FALLBACK_LEAVES_LOW,

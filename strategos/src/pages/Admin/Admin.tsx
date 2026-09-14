@@ -1,5 +1,5 @@
 import './Admin.css'
-import { useState, useEffect, useRef, Fragment, type ChangeEvent } from 'react'
+import { useState, useEffect, useRef, useMemo, Fragment, type ChangeEvent } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Check, X, Pencil, Trash2, AlertCircle, FileText, Lock, Key, ChevronDown, ChevronRight, Info } from 'lucide-react'
 import { useToast } from '../../context/ToastContext'
@@ -27,6 +27,9 @@ import AdminProgramModal from './AdminProgramModal'
 import AdminEixoModal from './AdminEixoModal'
 import { extractEdgeFunctionError } from '../../lib/edgeFunctionError'
 import { fetchAllPaginated } from '../../lib/fetchAllPaginated'
+import { buildBandResolver } from '../../lib/thresholds'
+import { useGlobalBands } from '../../hooks/useThresholdsMap'
+import type { ThresholdBand } from '../../lib/rollup'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -329,10 +332,33 @@ function HealthBlockEditor({ color, label, block, onChange }: HealthBlockEditorP
 }
 
 // ── Section 2: Programas e Eixos ──────────────────────────────
-function formatThresholdCell(inherited: boolean, ll: number, lh: number, al: number, ah: number) {
+
+/** Which half of a band the row sets itself (false = inherited from a parent tier). */
+interface BandOwn { low: boolean; high: boolean }
+
+const NONE_OWN: BandOwn = { low: false, high: false }
+
+/** Own values render in the normal colour; inherited ones render muted. */
+function ThresholdNum({ value, own }: { value: number; own: boolean }) {
   return (
-    <span className={inherited ? 'adm-tree-limiares-inherited' : 'adm-tree-limiares-own'}>
-      Agregados {al}–{ah}pp · Actividades {ll}–{lh}pp
+    <span className={own ? 'adm-tree-limiares-own' : 'adm-tree-limiares-inherited'}>{value}</span>
+  )
+}
+
+/**
+ * Renders the RESOLVED bands (the values the classification engine actually uses,
+ * via lib/thresholds.ts buildBandResolver), styling each of the four values by
+ * provenance: the row's own non-NULL column = normal, inherited = muted.
+ */
+function ThresholdCell({ agg, aggOwn, lvs, lvsOwn }: {
+  agg: ThresholdBand; aggOwn: BandOwn
+  lvs: ThresholdBand; lvsOwn: BandOwn
+}) {
+  return (
+    <span className="adm-tree-limiares">
+      Agregados <ThresholdNum value={agg.low} own={aggOwn.low} />–<ThresholdNum value={agg.high} own={aggOwn.high} />pp
+      {' · '}
+      Actividades <ThresholdNum value={lvs.low} own={lvsOwn.low} />–<ThresholdNum value={lvs.high} own={lvsOwn.high} />pp
     </span>
   )
 }
@@ -351,6 +377,34 @@ function AdminProgramas() {
   const [eixoModal,          setEixoModal]          = useState<{ program: Program; eixo: Eixo | null } | null>(null)
   const [planoModal,         setPlanoModal]         = useState<{ program: Program; eixo: Eixo; plano: Plano | null } | null>(null)
   const [planoDeleteConfirm, setPlanoDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
+
+  // Display resolution goes through the SAME resolver the engine classifies with,
+  // built from the rows this tree is rendering so the two can never disagree.
+  const { globalLeaves, globalAggregates } = useGlobalBands()
+  const bandResolver = useMemo(
+    () => buildBandResolver(programs, planos, globalLeaves, globalAggregates),
+    [programs, planos, globalLeaves, globalAggregates],
+  )
+
+  /** Resolved bands + per-value provenance for a programa row (and its eixos). */
+  function programCell(p: Program) {
+    return {
+      agg: bandResolver(p.id, null, 'aggregates'),
+      lvs: bandResolver(p.id, null, 'leaves'),
+      aggOwn: { low: p.threshold_aggregates_low !== null, high: p.threshold_aggregates_high !== null },
+      lvsOwn: { low: p.threshold_leaves_low     !== null, high: p.threshold_leaves_high     !== null },
+    }
+  }
+
+  /** Resolved bands + per-value provenance for a plano row. */
+  function planoCell(pl: Plano) {
+    return {
+      agg: bandResolver(pl.program_id, pl.id, 'aggregates'),
+      lvs: bandResolver(pl.program_id, pl.id, 'leaves'),
+      aggOwn: { low: pl.threshold_aggregates_low !== null, high: pl.threshold_aggregates_high !== null },
+      lvsOwn: { low: pl.threshold_leaves_low     !== null, high: pl.threshold_leaves_high     !== null },
+    }
+  }
 
   async function loadAll() {
     setLoading(true)
@@ -457,11 +511,7 @@ function AdminProgramas() {
                                   </td>
                                 </tr>]
                               : eixoPlanos.map(pl => {
-                                  const plHasOwn   = pl.threshold_leaves_low !== null || pl.threshold_leaves_high !== null || pl.threshold_aggregates_low !== null || pl.threshold_aggregates_high !== null
-                                  const leavesLow  = plHasOwn ? (pl.threshold_leaves_low  ?? 5)  : (p.threshold_leaves_low  ?? 5)
-                                  const leavesHigh = plHasOwn ? (pl.threshold_leaves_high ?? 10)  : (p.threshold_leaves_high ?? 10)
-                                  const aggLow     = plHasOwn ? (pl.threshold_aggregates_low  ?? 15) : (p.threshold_aggregates_low  ?? 15)
-                                  const aggHigh    = plHasOwn ? (pl.threshold_aggregates_high ?? 25) : (p.threshold_aggregates_high ?? 25)
+                                  const cell = planoCell(pl)
                                   return (
                                     <tr key={`plano-${pl.id}`} className="adm-tree-row-plano">
                                       <td className="adm-tree-cell adm-tree-cell--plano">
@@ -471,7 +521,7 @@ function AdminProgramas() {
                                           data-tooltip={`Resp: ${pl.owner_label_override || (pl.owner_person_ids?.length > 0 ? `${pl.owner_person_ids.length} pessoa(s)` : '—')} · Patr: ${pl.sponsor_label_override || (pl.sponsor_person_ids?.length > 0 ? `${pl.sponsor_person_ids.length} pessoa(s)` : '—')}`}
                                         ><Info size={11} /></span>
                                       </td>
-                                      <td>{formatThresholdCell(!plHasOwn, leavesLow, leavesHigh, aggLow, aggHigh)}</td>
+                                      <td><ThresholdCell {...cell} /></td>
                                       <td>
                                         <span style={{ whiteSpace: 'nowrap' }}>
                                           <button className="adm-icon-btn" title="Editar"
@@ -509,7 +559,8 @@ function AdminProgramas() {
                                 <span className="adm-tree-code">{p.code}.{e.code}</span>
                                 <span className="adm-tree-name">{e.name}</span>
                               </td>
-                              <td>{formatThresholdCell(true, p.threshold_leaves_low ?? 5, p.threshold_leaves_high ?? 10, p.threshold_aggregates_low ?? 15, p.threshold_aggregates_high ?? 25)}</td>
+                              {/* Eixos have no threshold columns — always inherited from the programa. */}
+                              <td><ThresholdCell {...programCell(p)} aggOwn={NONE_OWN} lvsOwn={NONE_OWN} /></td>
                               <td onClick={ev => ev.stopPropagation()}>
                                 <span style={{ whiteSpace: 'nowrap' }}>
                                   <button className="adm-icon-btn" title="Editar"
@@ -548,7 +599,7 @@ function AdminProgramas() {
                         <span className="adm-tree-code">{p.code}</span>
                         <span className="adm-tree-name adm-tree-name--prog">{p.name}</span>
                       </td>
-                      <td>{formatThresholdCell(false, p.threshold_leaves_low ?? 5, p.threshold_leaves_high ?? 10, p.threshold_aggregates_low ?? 15, p.threshold_aggregates_high ?? 25)}</td>
+                      <td><ThresholdCell {...programCell(p)} /></td>
                       <td onClick={e => e.stopPropagation()}>
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Editar"

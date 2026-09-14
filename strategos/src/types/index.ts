@@ -70,14 +70,14 @@ export interface Program {
   name: string
   description: string | null
   sort_order: number
-  /** Low band for leaves status (pp). delta <= low → Em dia. */
-  threshold_leaves_low: number
-  /** High band for leaves status (pp). delta > high → Em atraso. */
-  threshold_leaves_high: number
-  /** Low band for aggregates status (pp). delta <= low → Em dia. */
-  threshold_aggregates_low: number
-  /** High band for aggregates status (pp). delta > high → Em atraso. */
-  threshold_aggregates_high: number
+  /** Low band for leaves status (pp). delta <= low → Em dia. NULL = inherit from app_config global. */
+  threshold_leaves_low: number | null
+  /** High band for leaves status (pp). delta > high → Em atraso. NULL = inherit from app_config global. */
+  threshold_leaves_high: number | null
+  /** Low band for aggregates status (pp). delta <= low → Em dia. NULL = inherit from app_config global. */
+  threshold_aggregates_low: number | null
+  /** High band for aggregates status (pp). delta > high → Em atraso. NULL = inherit from app_config global. */
+  threshold_aggregates_high: number | null
   created_at: string
   updated_at: string
 }

@@ -279,16 +279,23 @@
 
   .adm-tree-tooltip-trigger:hover::before { opacity: 1; }
 
-  .adm-tree-limiares-inherited {
-    font-size: 11px;
-    line-height: 1.5;
-    color: var(--text3);
-  }
-
-  .adm-tree-limiares-own {
+  /* Base for the limiares cell: labels/separators sit at the normal secondary tone;
+     each numeric value is then coloured by provenance (own vs inherited). */
+  .adm-tree-limiares {
     font-size: 11px;
     line-height: 1.5;
     color: var(--text2);
+  }
+
+  /* Inherited from a parent tier (programa / global) — muted. */
+  .adm-tree-limiares-inherited {
+    color: var(--text3);
+  }
+
+  /* Set on this row itself — normal colour. */
+  .adm-tree-limiares-own {
+    color: var(--text2);
+    font-weight: 500;
   }
 
   .adm-tree-empty {

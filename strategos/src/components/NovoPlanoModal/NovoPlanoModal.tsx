@@ -16,6 +16,8 @@ import { useEixos } from '../../hooks/useEixos'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { usePeople } from '../../hooks/usePeople'
 import { usePrograms } from '../../hooks/usePrograms'
+import { useBandResolver } from '../../hooks/useThresholdsMap'
+import { resolveBandDraft } from '../../lib/thresholdValidation'
 import { useToast } from '../../context/ToastContext'
 import { supabase } from '../../lib/supabase'
 import type { Plano } from '../../types/index'
@@ -123,6 +125,42 @@ export default function NovoPlanoModal({
     [programs, effectiveProgramId]
   )
 
+  // What this plano inherits when a threshold column is left empty: the programa
+  // tier of the LIVE resolver (planoId = null), so the shown/auto-filled value is
+  // exactly the value the classification engine would use.
+  const bandResolver   = useBandResolver()
+  const inheritedAgg   = bandResolver(effectiveProgramId, null, 'aggregates')
+  const inheritedLvs   = bandResolver(effectiveProgramId, null, 'leaves')
+
+  const aggResult = resolveBandDraft(
+    { low: planoForm.threshold_aggregates_low, high: planoForm.threshold_aggregates_high },
+    inheritedAgg,
+  )
+  const lvsResult = resolveBandDraft(
+    { low: planoForm.threshold_leaves_low, high: planoForm.threshold_leaves_high },
+    inheritedLvs,
+  )
+  const thresholdError = aggResult.error ?? lvsResult.error
+
+  /** On blur, materialise the auto-completed half so the user sees what will be saved. */
+  const completeAggregates = useCallback(() => {
+    setPlanoForm(f => {
+      const r = resolveBandDraft(
+        { low: f.threshold_aggregates_low, high: f.threshold_aggregates_high }, inheritedAgg)
+      if (!r.autoFilled) return f
+      return { ...f, threshold_aggregates_low: r.low, threshold_aggregates_high: r.high }
+    })
+  }, [inheritedAgg.low, inheritedAgg.high])
+
+  const completeLeaves = useCallback(() => {
+    setPlanoForm(f => {
+      const r = resolveBandDraft(
+        { low: f.threshold_leaves_low, high: f.threshold_leaves_high }, inheritedLvs)
+      if (!r.autoFilled) return f
+      return { ...f, threshold_leaves_low: r.low, threshold_leaves_high: r.high }
+    })
+  }, [inheritedLvs.low, inheritedLvs.high])
+
   // Reset / populate form when modal opens or planoToEdit changes
   useEffect(() => {
     if (!isOpen) {
@@ -181,13 +219,10 @@ export default function NovoPlanoModal({
     if (!planoForm.name.trim())   errs.name    = 'Nome obrigatório.'
     if (!planoForm.code.trim())   errs.code    = 'Código obrigatório.'
     if (!planoForm.eixo_id)       errs.eixo_id = `${labels.n1} obrigatório.`
-    const { threshold_leaves_low: ll, threshold_leaves_high: lh,
-            threshold_aggregates_low: al, threshold_aggregates_high: ah } = planoForm
-    if (ll !== null && lh !== null && lh < ll) errs.threshold = 'Folhas High deve ser ≥ Folhas Low'
-    else if (al !== null && ah !== null && ah < al) errs.threshold = 'Agregados High deve ser ≥ Agregados Low'
+    if (thresholdError) errs.threshold = thresholdError
     if (Object.keys(errs).length) { setPlanoErrors(errs); return }
     setPlanoStep(2)
-  }, [planoForm])
+  }, [planoForm, thresholdError, labels.n1])
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -214,10 +249,7 @@ export default function NovoPlanoModal({
     if (!planoForm.name.trim()) errs.name = 'Nome obrigatório.'
     if (!planoForm.code.trim()) errs.code = 'Código obrigatório.'
     if (Object.keys(errs).length) { setPlanoErrors(errs); return }
-    const { threshold_leaves_low: ll, threshold_leaves_high: lh,
-            threshold_aggregates_low: al, threshold_aggregates_high: ah } = planoForm
-    if (ll !== null && lh !== null && lh < ll) { setPlanoErrors({ threshold: 'Folhas High deve ser ≥ Folhas Low' }); return }
-    if (al !== null && ah !== null && ah < al) { setPlanoErrors({ threshold: 'Agregados High deve ser ≥ Agregados Low' }); return }
+    if (thresholdError) { setPlanoErrors({ threshold: thresholdError }); return }
     setPlanoSaving(true); setPlanoErrors({})
     const ownerNames = (planoForm.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)
     const ownerPersonIds: string[] = []
@@ -247,10 +279,10 @@ export default function NovoPlanoModal({
         sponsor_primary_id:   sponsorPersonIds[0] ?? null,
         sponsor_label_override: sponsorLabelOverrideVal,
         objective:            planoForm.objective || null,
-        threshold_leaves_low:      planoForm.threshold_leaves_low,
-        threshold_leaves_high:     planoForm.threshold_leaves_high,
-        threshold_aggregates_low:  planoForm.threshold_aggregates_low,
-        threshold_aggregates_high: planoForm.threshold_aggregates_high,
+        threshold_leaves_low:      lvsResult.low,
+        threshold_leaves_high:     lvsResult.high,
+        threshold_aggregates_low:  aggResult.low,
+        threshold_aggregates_high: aggResult.high,
       })
       .eq('id', planoToEdit.id)
     setPlanoSaving(false)
@@ -258,10 +290,13 @@ export default function NovoPlanoModal({
     showToast('Plano guardado.', 'success')
     onClose()
     onSaved()
-  }, [planoToEdit, planoForm, ownerLabelOverride, sponsorLabelOverride, peopleByName, showToast, onClose, onSaved])
+  }, [planoToEdit, planoForm, ownerLabelOverride, sponsorLabelOverride, peopleByName, showToast, onClose, onSaved,
+      thresholdError, aggResult.low, aggResult.high, lvsResult.low, lvsResult.high])
 
   const handleSavePlanoWithActivities = useCallback(async () => {
     if (parseErrors.length > 0) return
+    // Defence in depth: step 1 already gates this, but never write an inverted band.
+    if (thresholdError) { setPlanoStep(1); setPlanoErrors({ threshold: thresholdError }); return }
     setPlanoSaving(true); setPlanoErrors({})
 
     const { data: maxResult } = await supabase
@@ -299,10 +334,10 @@ export default function NovoPlanoModal({
       sponsor_primary_id:   sponsorPersonIdsNew[0] ?? null,
       sponsor_label_override: sponsorLabelOverrideNew,
       objective:            planoForm.objective || null,
-      threshold_leaves_low:      planoForm.threshold_leaves_low,
-      threshold_leaves_high:     planoForm.threshold_leaves_high,
-      threshold_aggregates_low:  planoForm.threshold_aggregates_low,
-      threshold_aggregates_high: planoForm.threshold_aggregates_high,
+      threshold_leaves_low:      lvsResult.low,
+      threshold_leaves_high:     lvsResult.high,
+      threshold_aggregates_low:  aggResult.low,
+      threshold_aggregates_high: aggResult.high,
       sort_order:                nextSort,
     }
 
@@ -495,74 +530,74 @@ export default function NovoPlanoModal({
           <div className="gi-section">
             <div className="gi-section-title">Limiares de Estado</div>
             <p style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6 }}>
-              Margem em pontos percentuais. Vazio = herdar do programa. Low = limite entre «Em dia» e «Em risco»; High = limite entre «Em risco» e «Em atraso».
+              Margem em pontos percentuais. Vazio = herdar do programa; se preencher apenas um dos limites, o outro é preenchido com o valor herdado. Low = limite entre «Em dia» e «Em risco»; High = limite entre «Em risco» e «Em atraso».
             </p>
             <div className="threshold-pair" style={{ marginTop: 10 }}>
               <label className="gi-field">
                 <span className="gi-field-label">Plano e Macroactividades (N2-N3) — Low</span>
                 <input
-                  className="gi-field-input threshold-input-low"
+                  className={`gi-field-input threshold-input-low${aggResult.error ? ' gi-input-error' : ''}`}
                   type="number" min={0} max={100}
                   value={planoForm.threshold_aggregates_low ?? ''}
-                  placeholder={`padrão: ${effectiveProgram?.threshold_aggregates_low ?? 15}`}
+                  placeholder={`padrão: ${inheritedAgg.low}`}
+                  onBlur={completeAggregates}
                   onChange={e => setPlanoForm(f => ({
                     ...f,
-                    threshold_aggregates_low: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
+                    threshold_aggregates_low: e.target.value === '' ? null : Number(e.target.value),
                   }))}
                 />
               </label>
               <label className="gi-field">
                 <span className="gi-field-label">Plano e Macroactividades (N2-N3) — High</span>
                 <input
-                  className="gi-field-input threshold-input-high"
+                  className={`gi-field-input threshold-input-high${aggResult.error ? ' gi-input-error' : ''}`}
                   type="number" min={0} max={100}
                   value={planoForm.threshold_aggregates_high ?? ''}
-                  placeholder={`padrão: ${effectiveProgram?.threshold_aggregates_high ?? 25}`}
+                  placeholder={`padrão: ${inheritedAgg.high}`}
+                  onBlur={completeAggregates}
                   onChange={e => setPlanoForm(f => ({
                     ...f,
-                    threshold_aggregates_high: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
+                    threshold_aggregates_high: e.target.value === '' ? null : Number(e.target.value),
                   }))}
                 />
               </label>
             </div>
+            {aggResult.error && (
+              <span style={{ fontSize: 11, color: 'var(--red)', marginTop: 4, display: 'block' }}>{aggResult.error}</span>
+            )}
             <div className="threshold-pair" style={{ marginTop: 8 }}>
               <label className="gi-field">
                 <span className="gi-field-label">Actividades (N4-N6) — Low</span>
                 <input
-                  className="gi-field-input threshold-input-low"
+                  className={`gi-field-input threshold-input-low${lvsResult.error ? ' gi-input-error' : ''}`}
                   type="number" min={0} max={100}
                   value={planoForm.threshold_leaves_low ?? ''}
-                  placeholder={`padrão: ${effectiveProgram?.threshold_leaves_low ?? 5}`}
+                  placeholder={`padrão: ${inheritedLvs.low}`}
+                  onBlur={completeLeaves}
                   onChange={e => setPlanoForm(f => ({
                     ...f,
-                    threshold_leaves_low: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
+                    threshold_leaves_low: e.target.value === '' ? null : Number(e.target.value),
                   }))}
                 />
               </label>
               <label className="gi-field">
                 <span className="gi-field-label">Actividades (N4-N6) — High</span>
                 <input
-                  className="gi-field-input threshold-input-high"
+                  className={`gi-field-input threshold-input-high${lvsResult.error ? ' gi-input-error' : ''}`}
                   type="number" min={0} max={100}
                   value={planoForm.threshold_leaves_high ?? ''}
-                  placeholder={`padrão: ${effectiveProgram?.threshold_leaves_high ?? 10}`}
+                  placeholder={`padrão: ${inheritedLvs.high}`}
+                  onBlur={completeLeaves}
                   onChange={e => setPlanoForm(f => ({
                     ...f,
-                    threshold_leaves_high: e.target.value === '' ? null : (parseInt(e.target.value) || 0),
+                    threshold_leaves_high: e.target.value === '' ? null : Number(e.target.value),
                   }))}
                 />
               </label>
             </div>
-            {(() => {
-              const ll = planoForm.threshold_leaves_low, lh = planoForm.threshold_leaves_high
-              const al = planoForm.threshold_aggregates_low, ah = planoForm.threshold_aggregates_high
-              const err = (ll !== null && lh !== null && lh < ll)
-                ? 'Folhas High deve ser ≥ Folhas Low'
-                : (al !== null && ah !== null && ah < al)
-                ? 'Agregados High deve ser ≥ Agregados Low'
-                : null
-              return err ? <span style={{ fontSize: 11, color: 'var(--red)', marginTop: 4, display: 'block' }}>{err}</span> : null
-            })()}
+            {lvsResult.error && (
+              <span style={{ fontSize: 11, color: 'var(--red)', marginTop: 4, display: 'block' }}>{lvsResult.error}</span>
+            )}
           </div>
 
         </div>
