@@ -347,19 +347,22 @@ function ThresholdNum({ value, own }: { value: number; own: boolean }) {
 
 /**
  * Renders the RESOLVED bands (the values the classification engine actually uses,
- * via lib/thresholds.ts buildBandResolver), styling each of the four values by
- * provenance: the row's own non-NULL column = normal, inherited = muted.
+ * via lib/thresholds.ts buildBandResolver) as FOUR numeric cells under the grouped
+ * header, styling each value by provenance: the row's own non-NULL column = normal,
+ * inherited = muted. Emits <td>s directly so the numbers align in their own columns
+ * regardless of how deep the Designação cell is indented.
  */
 function ThresholdCell({ agg, aggOwn, lvs, lvsOwn }: {
   agg: ThresholdBand; aggOwn: BandOwn
   lvs: ThresholdBand; lvsOwn: BandOwn
 }) {
   return (
-    <span className="adm-tree-limiares">
-      Agregados <ThresholdNum value={agg.low} own={aggOwn.low} />–<ThresholdNum value={agg.high} own={aggOwn.high} />pp
-      {' · '}
-      Actividades <ThresholdNum value={lvs.low} own={lvsOwn.low} />–<ThresholdNum value={lvs.high} own={lvsOwn.high} />pp
-    </span>
+    <>
+      <td className="adm-tree-num"><ThresholdNum value={agg.low}  own={aggOwn.low}  /></td>
+      <td className="adm-tree-num"><ThresholdNum value={agg.high} own={aggOwn.high} /></td>
+      <td className="adm-tree-num"><ThresholdNum value={lvs.low}  own={lvsOwn.low}  /></td>
+      <td className="adm-tree-num"><ThresholdNum value={lvs.high} own={lvsOwn.high} /></td>
+    </>
   )
 }
 
@@ -482,9 +485,20 @@ function AdminProgramas() {
             <table className="adm-panel-table adm-tree-table">
               <thead>
                 <tr>
-                  <th>Designação</th>
-                  <th style={{ width: 200 }} title="Bandas de estado em pp. Act = Actividades (N4-N6); Agr = Plano e Macroact. (N2-N3). Low = limite «Em dia»; High = limite «Em atraso».">Limiares</th>
-                  <th style={{ width: 80 }}>Acções</th>
+                  <th rowSpan={2}>Designação</th>
+                  <th colSpan={2} className="adm-tree-th-group"
+                    title="Plano e Macroactividades (N2-N3). mín = limite «Em dia»; máx = limite «Em atraso»."
+                  >Agregados (pp)</th>
+                  <th colSpan={2} className="adm-tree-th-group"
+                    title="Actividades (N4-N6). mín = limite «Em dia»; máx = limite «Em atraso»."
+                  >Actividades (pp)</th>
+                  <th rowSpan={2} style={{ width: 80 }}>Acções</th>
+                </tr>
+                <tr>
+                  <th className="adm-tree-th-num">mín</th>
+                  <th className="adm-tree-th-num">máx</th>
+                  <th className="adm-tree-th-num">mín</th>
+                  <th className="adm-tree-th-num">máx</th>
                 </tr>
               </thead>
               <tbody>
@@ -495,7 +509,7 @@ function AdminProgramas() {
                   const eixoRows = isExpanded ? [
                     ...(progEixos.length === 0
                       ? [<tr key={`empty-eixos-${p.id}`} className="adm-tree-row-eixo">
-                          <td className="adm-tree-cell adm-tree-cell--eixo" colSpan={3}>
+                          <td className="adm-tree-cell adm-tree-cell--eixo" colSpan={6}>
                             <span className="adm-tree-empty">Sem eixos</span>
                           </td>
                         </tr>]
@@ -506,7 +520,7 @@ function AdminProgramas() {
                           const planoRows = eixoExpanded ? [
                             ...(eixoPlanos.length === 0
                               ? [<tr key={`empty-planos-${e.id}`} className="adm-tree-row-plano">
-                                  <td className="adm-tree-cell adm-tree-cell--plano" colSpan={3}>
+                                  <td className="adm-tree-cell adm-tree-cell--plano" colSpan={6}>
                                     <span className="adm-tree-empty">Sem planos</span>
                                   </td>
                                 </tr>]
@@ -521,7 +535,7 @@ function AdminProgramas() {
                                           data-tooltip={`Resp: ${pl.owner_label_override || (pl.owner_person_ids?.length > 0 ? `${pl.owner_person_ids.length} pessoa(s)` : '—')} · Patr: ${pl.sponsor_label_override || (pl.sponsor_person_ids?.length > 0 ? `${pl.sponsor_person_ids.length} pessoa(s)` : '—')}`}
                                         ><Info size={11} /></span>
                                       </td>
-                                      <td><ThresholdCell {...cell} /></td>
+                                      <ThresholdCell {...cell} />
                                       <td>
                                         <span style={{ whiteSpace: 'nowrap' }}>
                                           <button className="adm-icon-btn" title="Editar"
@@ -537,7 +551,7 @@ function AdminProgramas() {
                                 })
                             ),
                             <tr key={`add-plano-${e.id}`} className="adm-tree-row-add adm-tree-row-plano">
-                              <td className="adm-tree-cell adm-tree-cell--plano" colSpan={3}>
+                              <td className="adm-tree-cell adm-tree-cell--plano" colSpan={6}>
                                 <button className="adm-add-btn"
                                   onClick={() => setPlanoModal({ program: p, eixo: e, plano: null })}
                                 >+ Novo Plano</button>
@@ -560,7 +574,7 @@ function AdminProgramas() {
                                 <span className="adm-tree-name">{e.name}</span>
                               </td>
                               {/* Eixos have no threshold columns — always inherited from the programa. */}
-                              <td><ThresholdCell {...programCell(p)} aggOwn={NONE_OWN} lvsOwn={NONE_OWN} /></td>
+                              <ThresholdCell {...programCell(p)} aggOwn={NONE_OWN} lvsOwn={NONE_OWN} />
                               <td onClick={ev => ev.stopPropagation()}>
                                 <span style={{ whiteSpace: 'nowrap' }}>
                                   <button className="adm-icon-btn" title="Editar"
@@ -577,7 +591,7 @@ function AdminProgramas() {
                         })
                     ),
                     <tr key={`add-eixo-${p.id}`} className="adm-tree-row-add adm-tree-row-eixo">
-                      <td className="adm-tree-cell adm-tree-cell--eixo" colSpan={3}>
+                      <td className="adm-tree-cell adm-tree-cell--eixo" colSpan={6}>
                         <button className="adm-add-btn"
                           onClick={() => setEixoModal({ program: p, eixo: null })}
                         >+ Novo Eixo</button>
@@ -599,7 +613,7 @@ function AdminProgramas() {
                         <span className="adm-tree-code">{p.code}</span>
                         <span className="adm-tree-name adm-tree-name--prog">{p.name}</span>
                       </td>
-                      <td><ThresholdCell {...programCell(p)} /></td>
+                      <ThresholdCell {...programCell(p)} />
                       <td onClick={e => e.stopPropagation()}>
                         <span style={{ whiteSpace: 'nowrap' }}>
                           <button className="adm-icon-btn" title="Editar"

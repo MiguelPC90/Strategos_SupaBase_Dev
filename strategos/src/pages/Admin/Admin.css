@@ -279,12 +279,29 @@
 
   .adm-tree-tooltip-trigger:hover::before { opacity: 1; }
 
-  /* Base for the limiares cell: labels/separators sit at the normal secondary tone;
-     each numeric value is then coloured by provenance (own vs inherited). */
-  .adm-tree-limiares {
+  /* Grouped two-level threshold header: "Agregados (pp)" / "Actividades (pp)"
+     each spanning a mín|máx pair. Unit lives in the group header only. */
+  .adm-tree-th-group {
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .adm-tree-th-num {
+    width: 56px;
+    text-align: right;
+    font-weight: 400;
+    color: var(--text3);
+  }
+
+  /* One numeric value per cell, right-aligned so the four columns scan
+     vertically across programa / eixo / plano rows whatever the indentation. */
+  .adm-tree-num {
+    width: 56px;
     font-size: 11px;
     line-height: 1.5;
-    color: var(--text2);
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
 
   /* Inherited from a parent tier (programa / global) — muted. */
