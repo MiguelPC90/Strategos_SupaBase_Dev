@@ -483,6 +483,16 @@ function AdminProgramas() {
             <p className="adm-empty-panel">A carregar…</p>
           ) : (
             <table className="adm-panel-table adm-tree-table">
+              {/* Pins the column widths under table-layout: fixed. Designação has no
+                  width so it absorbs the remainder; the four numeric columns are equal. */}
+              <colgroup>
+                <col />
+                <col style={{ width: 70 }} />
+                <col style={{ width: 70 }} />
+                <col style={{ width: 70 }} />
+                <col style={{ width: 70 }} />
+                <col style={{ width: 80 }} />
+              </colgroup>
               <thead>
                 <tr>
                   <th rowSpan={2}>Designação</th>
@@ -492,7 +502,7 @@ function AdminProgramas() {
                   <th colSpan={2} className="adm-tree-th-group"
                     title="Actividades (N4-N6). mín = limite «Em dia»; máx = limite «Em atraso»."
                   >Actividades (pp)</th>
-                  <th rowSpan={2} style={{ width: 80 }}>Acções</th>
+                  <th rowSpan={2}>Acções</th>
                 </tr>
                 <tr>
                   <th className="adm-tree-th-num">mín</th>

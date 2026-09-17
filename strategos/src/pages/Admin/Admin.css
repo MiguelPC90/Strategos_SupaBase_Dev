@@ -175,10 +175,10 @@
     vertical-align: middle;
   }
 
-  .adm-tree-table th:nth-child(2),
-  .adm-tree-table td:nth-child(2) {
-    min-width: 260px;
-    white-space: nowrap;
+  /* Column widths are pinned by the <colgroup> in Admin.tsx; fixed layout makes them
+     bind exactly, so a long Designação wraps instead of pushing the numeric columns. */
+  .adm-tree-table {
+    table-layout: fixed;
   }
 
   /* Row level — hierarchy expressed via font weight + color only (no bg tint) */
@@ -280,14 +280,14 @@
   .adm-tree-tooltip-trigger:hover::before { opacity: 1; }
 
   /* Grouped two-level threshold header: "Agregados (pp)" / "Actividades (pp)"
-     each spanning a mín|máx pair. Unit lives in the group header only. */
-  .adm-tree-th-group {
+     each centred over its mín|máx pair. Unit lives in the group header only.
+     Selectors are scoped through .adm-panel-table to outrank its `th { text-align: left }`. */
+  .adm-panel-table .adm-tree-th-group {
     text-align: center;
     border-bottom: 1px solid var(--border);
   }
 
-  .adm-tree-th-num {
-    width: 56px;
+  .adm-panel-table .adm-tree-th-num {
     text-align: right;
     font-weight: 400;
     color: var(--text3);
@@ -296,12 +296,17 @@
   /* One numeric value per cell, right-aligned so the four columns scan
      vertically across programa / eixo / plano rows whatever the indentation. */
   .adm-tree-num {
-    width: 56px;
     font-size: 11px;
     line-height: 1.5;
     text-align: right;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Let the name shrink inside the fixed-width Designação cell so long plano
+     names wrap in place rather than overflowing the flex row. */
+  .adm-tree-name {
+    min-width: 0;
   }
 
   /* Inherited from a parent tier (programa / global) — muted. */
