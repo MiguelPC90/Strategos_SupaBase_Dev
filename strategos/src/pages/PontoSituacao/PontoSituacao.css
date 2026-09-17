@@ -58,23 +58,29 @@
   .pds-health-amber { background: #f59e0b; }
   .pds-health-red   { background: #ef4444; }
 
-  /* ── Header — 3-zone navy bar ───────────────────────────────── */
+  /* ── Header — 3-line navy bar ───────────────────────────────── */
   .pds-header {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    flex-direction: column;
+    gap: 6px;
     background: var(--navy);
     border-radius: var(--rl);
     padding: 12px 20px;
   }
 
-  .pds-header-left {
+  /* Line 1 — arrows flanking the plan name, PDS update date on the right */
+  .pds-header-row1 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .pds-header-title {
     flex: 1;
     min-width: 0;
     display: flex;
     align-items: center;
     gap: 8px;
-    overflow: hidden;
   }
 
   .pds-plan-name {
@@ -86,21 +92,48 @@
     white-space: nowrap;
   }
 
-  .pds-header-nav {
-    flex: 0 0 auto;
-    width: 80px;
-    display: flex;
-    justify-content: center;
-    gap: 4px;
-  }
-
   .pds-header-date {
     flex: 0 0 auto;
-    width: 100px;
     font-size: var(--text-base);
     color: rgba(255,255,255,0.75);
     white-space: nowrap;
     text-align: right;
+  }
+
+  /* Line 2 — datas · saúde · estado */
+  .pds-header-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+  }
+
+  .pds-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .pds-meta-label {
+    font-size: var(--text-sm);
+    color: rgba(255,255,255,0.55);
+    white-space: nowrap;
+  }
+
+  .pds-meta-value {
+    font-size: var(--text-base);
+    color: rgba(255,255,255,0.9);
+    white-space: nowrap;
+  }
+
+  /* Line 3 — shared status narrative, secondary + italic like PlanoPage's */
+  .pds-header-narrative {
+    margin: 0;
+    font-size: var(--text-base);
+    font-style: italic;
+    line-height: 1.5;
+    color: rgba(255,255,255,0.7);
   }
 
   /* ── Plan navigation arrows ──────────────────────────────────── */

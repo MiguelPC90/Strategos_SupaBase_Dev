@@ -12,7 +12,7 @@ import SortIcon from '../../components/SortIcon/SortIcon'
 import { estadoBadge } from '../../lib/riskHelpers'
 import Badge from '../../components/Badge/Badge'
 import ItemDetailModal from '../../components/ItemDetailModal/ItemDetailModal'
-import { fmtDate, statusVariant, displayStatus, renderText, TODAY } from '../../lib/pdsHelpers'
+import { fmtDate, fmtDateMY, planoStatusKey, statusVariant, displayStatus, renderText, TODAY } from '../../lib/pdsHelpers'
 import { usePdsEntries, usePdsConsolidated } from '../../hooks/usePdsEntries'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePermissions } from '../../hooks/usePermissions'
@@ -21,8 +21,10 @@ import { useRisks } from '../../hooks/useRisks'
 import { useActivities } from '../../hooks/useActivities'
 import { useFilters } from '../../context/FilterContext'
 
-import { leafPctPrev } from '../../lib/rollup'
+import { leafPctPrev, rollupPctPrev, rollupDateRange, computeGroupStatusFromEff } from '../../lib/rollup'
 import { useEffectiveValues } from '../../hooks/useEffectiveValues'
+import { useBandResolver } from '../../hooks/useThresholdsMap'
+import { generateStatusNarrative } from '../../lib/statusNarrative'
 import type { PdsItem, Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
 import {
@@ -371,6 +373,32 @@ export default function PontoSituacao() {
     return { total, concluidas, emDia, emRisco, emAtraso, pct, pctPrev, geralReal, geralObj, aDataReal }
   }, [planLeaves, eff])
 
+  // ── Plan header: estado, date range, synthesis ─────────────
+  // The band resolver is REQUIRED here: since Phase 2 the aggregates band resolves per
+  // plano/programa, so without it this Estado would use the GLOBAL band while the same
+  // plano's pill on PlanoPage / Actividades uses its own override.
+  const bandResolver = useBandResolver()
+
+  const planoStatus = useMemo(
+    () => computeGroupStatusFromEff(planLeaves, eff, 2, TODAY, bandResolver),
+    [planLeaves, eff, bandResolver],
+  )
+
+  const planDateRange = useMemo(() => rollupDateRange(planLeaves), [planLeaves])
+  const dateLine = [fmtDateMY(planDateRange.bs), fmtDateMY(planDateRange.bf)]
+    .filter(Boolean)
+    .join(' → ')
+
+  // Mirrors PlanoPage's inputs exactly (raw, unrounded averages) so both pages render the
+  // identical sentence. kpi.pct / kpi.pctPrev are pre-rounded and could round the other way.
+  const narrative = useMemo(() => {
+    if (planLeaves.length === 0) return ''
+    const execMedia    = planLeaves.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / planLeaves.length
+    const execTarget   = rollupPctPrev(planLeaves, TODAY)
+    const delayedCount = planLeaves.filter(a => eff.get(a.id)?.status === 'Em atraso').length
+    return generateStatusNarrative({ status: planoStatus, execMedia, execTarget, delayedCount })
+  }, [planLeaves, eff, planoStatus])
+
   // ── Plan navigation ────────────────────────────────────────
   // Scope arrows to eixo selected in breadcrumb (or all planos in program)
   const planosInScope = useMemo(
@@ -487,30 +515,53 @@ export default function PontoSituacao() {
         </div>
       ) : (
         <>
-          {/* Header — 3-zone: left (health + name), center (nav), right (date) */}
+          {/* Header — 3 lines: (1) arrows flanking the name + PDS update date,
+              (2) datas · saúde · estado, (3) synthesis sentence */}
           <div className="pds-header">
-            <div className="pds-header-left">
-              <span
-                className={`pds-health pds-health-${health.level}`}
-                title={health.reasons.join('\n')}
-              />
-              <span className="pds-plan-name">{planLabel}</span>
+            <div className="pds-header-row1">
+              <div className="pds-header-title">
+                <button
+                  className="pds-nav-btn"
+                  onClick={goPrev}
+                  disabled={currentIdx <= 0}
+                  title="Plano anterior (Alt+←)"
+                ><ChevronLeft size={14} strokeWidth={1.5} /></button>
+                <span className="pds-plan-name">{planLabel}</span>
+                <button
+                  className="pds-nav-btn"
+                  onClick={goNext}
+                  disabled={currentIdx >= planosInScope.length - 1}
+                  title="Plano seguinte (Alt+→)"
+                ><ChevronRight size={14} strokeWidth={1.5} /></button>
+              </div>
+              <span className="pds-header-date">
+                Actualizado em {fmtDate(planEntries[0]?.updated_at ?? TODAY)}
+              </span>
             </div>
-            <div className="pds-header-nav">
-              <button
-                className="pds-nav-btn"
-                onClick={goPrev}
-                disabled={currentIdx <= 0}
-                title="Plano anterior (Alt+←)"
-              ><ChevronLeft size={14} strokeWidth={1.5} /></button>
-              <button
-                className="pds-nav-btn"
-                onClick={goNext}
-                disabled={currentIdx >= planosInScope.length - 1}
-                title="Plano seguinte (Alt+→)"
-              ><ChevronRight size={14} strokeWidth={1.5} /></button>
+
+            <div className="pds-header-meta">
+              {dateLine && (
+                <span className="pds-meta-item">
+                  <span className="pds-meta-label">Datas</span>
+                  <span className="pds-meta-value">{dateLine}</span>
+                </span>
+              )}
+              {/* Saúde and Estado are deliberately different systems and may disagree —
+                  the labels are what make a disagreement read as intentional. */}
+              <span className="pds-meta-item">
+                <span className="pds-meta-label">Saúde</span>
+                <span
+                  className={`pds-health pds-health-${health.level}`}
+                  title={health.reasons.join('\n')}
+                />
+              </span>
+              <span className="pds-meta-item">
+                <span className="pds-meta-label">Estado</span>
+                <span className={`status-pill ${planoStatusKey(planoStatus)}`}>{planoStatus}</span>
+              </span>
             </div>
-            <span className="pds-header-date">{fmtDate(planEntries[0]?.updated_at ?? TODAY)}</span>
+
+            {narrative && <p className="pds-header-narrative">{narrative}</p>}
           </div>
 
           {/* KPI brief — 2-column layout mirroring Dashboard */}

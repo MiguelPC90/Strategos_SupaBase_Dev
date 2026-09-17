@@ -8,6 +8,24 @@ export function fmtDate(iso: string): string {
   return `${d}/${m}/${y}`
 }
 
+export const PT_MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
+/** "2026-03-14" → "Mar 2026". Empty string when the date is missing. */
+export function fmtDateMY(d: string | null | undefined): string {
+  if (!d) return ''
+  const parts = d.split('-')
+  const m = parseInt(parts[1], 10)
+  return `${PT_MONTHS[m - 1]} ${parts[0]}`
+}
+
+/** Maps a RowState to the shared status-pill / statusColor key. */
+export function planoStatusKey(s: string): 'ontrack' | 'late' | 'done' | 'risk' {
+  if (s === 'Concluída') return 'done'
+  if (s === 'Em atraso') return 'late'
+  if (s === 'Em risco')  return 'risk'
+  return 'ontrack'
+}
+
 export type BadgeVariant = 'green' | 'blue' | 'red' | 'amber' | 'grey' | 'navy'
 
 export function statusVariant(status: string): BadgeVariant {

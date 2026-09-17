@@ -24,6 +24,7 @@ import { useProgramLabels } from '../../hooks/useProgramLabels'
 import { resolveOwnerNames, resolveSponsorNames } from '../../lib/owners'
 import { statusColor } from '../../lib/tokens'
 import { generateStatusNarrative } from '../../lib/statusNarrative'
+import { fmtDateMY, planoStatusKey } from '../../lib/pdsHelpers'
 
 const TABS = [
   { id: 'visao',        label: 'Visão Executiva' },
@@ -38,22 +39,6 @@ type TabId = (typeof TABS)[number]['id']
 
 function isValidTab(t: string | null): t is TabId {
   return TABS.some(tab => tab.id === t)
-}
-
-const PT_MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-
-function fmtDateMY(d: string | null | undefined): string {
-  if (!d) return ''
-  const parts = d.split('-')
-  const m = parseInt(parts[1], 10)
-  return `${PT_MONTHS[m - 1]} ${parts[0]}`
-}
-
-function planoStatusKey(s: string): 'ontrack' | 'late' | 'done' | 'risk' {
-  if (s === 'Concluída') return 'done'
-  if (s === 'Em atraso') return 'late'
-  if (s === 'Em risco')  return 'risk'
-  return 'ontrack'
 }
 
 export default function PlanoPage() {
