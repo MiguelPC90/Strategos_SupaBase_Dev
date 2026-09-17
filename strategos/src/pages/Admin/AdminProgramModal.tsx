@@ -59,18 +59,31 @@ export default function AdminProgramModal({ program, programs, onClose, onSaved 
   const lvsResult = resolveBandDraft(lvsDraft, globalLeaves)
   const blocked   = !!(aggResult.error || lvsResult.error)
 
-  /** On blur, materialise the auto-completed half so the user sees what will be saved. */
-  function completeAggregates() {
-    const r = resolveBandDraft(aggDraft, globalAggregates)
-    if (r.autoFilled) set({ threshold_aggregates_low: r.low, threshold_aggregates_high: r.high })
-  }
-  function completeLeaves() {
-    const r = resolveBandDraft(lvsDraft, globalLeaves)
-    if (r.autoFilled) set({ threshold_leaves_low: r.low, threshold_leaves_high: r.high })
+  /**
+   * Materialise any auto-completed half into the visible fields, at SAVE time.
+   * Never on blur: a per-field blur can only ever see one half of the band, so it
+   * would refill a field the user is in the middle of clearing and make
+   * "clear both → inherit everything" unreachable.
+   */
+  function materialiseBands() {
+    const a = resolveBandDraft(aggDraft, globalAggregates)
+    const l = resolveBandDraft(lvsDraft, globalLeaves)
+    if (!a.autoFilled && !l.autoFilled) return
+    setDraft(d => ({
+      ...d,
+      threshold_aggregates_low:  a.autoFilled ? a.low  : d.threshold_aggregates_low,
+      threshold_aggregates_high: a.autoFilled ? a.high : d.threshold_aggregates_high,
+      threshold_leaves_low:      l.autoFilled ? l.low  : d.threshold_leaves_low,
+      threshold_leaves_high:     l.autoFilled ? l.high : d.threshold_leaves_high,
+    }))
   }
 
   async function handleSave() {
-    if (!draft.name.trim() || blocked) return
+    if (!draft.name.trim()) return
+    // Show any auto-completed half in the field before writing it (and before
+    // blocking), so the user never saves a value they could not see.
+    materialiseBands()
+    if (blocked) return
     setSaving(true)
     try {
       const payload = {
@@ -98,10 +111,12 @@ export default function AdminProgramModal({ program, programs, onClose, onSaved 
   const footer = (
     <>
       <button className="adm-btn-secondary" onClick={onClose} disabled={saving}>Cancelar</button>
+      {/* Not disabled when blocked: the click must still run materialiseBands so the
+          user SEES the auto-completed value that makes the band invalid. */}
       <button
         className="btn-primary"
         onClick={handleSave}
-        disabled={saving || !draft.name.trim() || blocked}
+        disabled={saving || !draft.name.trim()}
       >
         {saving ? 'A guardar…' : 'Guardar'}
       </button>
@@ -115,7 +130,6 @@ export default function AdminProgramModal({ program, programs, onClose, onSaved 
     highValue: number | null,
     onLow: (v: number | null) => void,
     onHigh: (v: number | null) => void,
-    onBlurBand: () => void,
     error: string | null,
   ) {
     return (
@@ -129,7 +143,6 @@ export default function AdminProgramModal({ program, programs, onClose, onSaved 
               value={lowValue ?? ''}
               placeholder={`padrão: ${inherited.low}`}
               onChange={e => onLow(parseField(e.target.value))}
-              onBlur={onBlurBand}
             />
           </div>
           <div className="adm-field">
@@ -140,7 +153,6 @@ export default function AdminProgramModal({ program, programs, onClose, onSaved 
               value={highValue ?? ''}
               placeholder={`padrão: ${inherited.high}`}
               onChange={e => onHigh(parseField(e.target.value))}
-              onBlur={onBlurBand}
             />
           </div>
         </div>
@@ -191,7 +203,6 @@ export default function AdminProgramModal({ program, programs, onClose, onSaved 
           draft.threshold_aggregates_high,
           v => set({ threshold_aggregates_low: v }),
           v => set({ threshold_aggregates_high: v }),
-          completeAggregates,
           aggResult.error,
         )}
 
@@ -202,7 +213,6 @@ export default function AdminProgramModal({ program, programs, onClose, onSaved 
           draft.threshold_leaves_high,
           v => set({ threshold_leaves_low: v }),
           v => set({ threshold_leaves_high: v }),
-          completeLeaves,
           lvsResult.error,
         )}
       </div>

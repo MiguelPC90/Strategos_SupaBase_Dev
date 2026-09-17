@@ -142,24 +142,28 @@ export default function NovoPlanoModal({
   )
   const thresholdError = aggResult.error ?? lvsResult.error
 
-  /** On blur, materialise the auto-completed half so the user sees what will be saved. */
-  const completeAggregates = useCallback(() => {
+  /**
+   * Materialise any auto-completed half into the visible fields, at SAVE time.
+   * Never on blur: a per-field blur can only ever see one half of the band, so it
+   * would refill a field the user is in the middle of clearing and make
+   * "clear both → inherit everything" unreachable.
+   */
+  const materialiseBands = useCallback(() => {
     setPlanoForm(f => {
-      const r = resolveBandDraft(
+      const a = resolveBandDraft(
         { low: f.threshold_aggregates_low, high: f.threshold_aggregates_high }, inheritedAgg)
-      if (!r.autoFilled) return f
-      return { ...f, threshold_aggregates_low: r.low, threshold_aggregates_high: r.high }
-    })
-  }, [inheritedAgg.low, inheritedAgg.high])
-
-  const completeLeaves = useCallback(() => {
-    setPlanoForm(f => {
-      const r = resolveBandDraft(
+      const l = resolveBandDraft(
         { low: f.threshold_leaves_low, high: f.threshold_leaves_high }, inheritedLvs)
-      if (!r.autoFilled) return f
-      return { ...f, threshold_leaves_low: r.low, threshold_leaves_high: r.high }
+      if (!a.autoFilled && !l.autoFilled) return f
+      return {
+        ...f,
+        threshold_aggregates_low:  a.autoFilled ? a.low  : f.threshold_aggregates_low,
+        threshold_aggregates_high: a.autoFilled ? a.high : f.threshold_aggregates_high,
+        threshold_leaves_low:      l.autoFilled ? l.low  : f.threshold_leaves_low,
+        threshold_leaves_high:     l.autoFilled ? l.high : f.threshold_leaves_high,
+      }
     })
-  }, [inheritedLvs.low, inheritedLvs.high])
+  }, [inheritedAgg.low, inheritedAgg.high, inheritedLvs.low, inheritedLvs.high])
 
   // Reset / populate form when modal opens or planoToEdit changes
   useEffect(() => {
@@ -219,10 +223,12 @@ export default function NovoPlanoModal({
     if (!planoForm.name.trim())   errs.name    = 'Nome obrigatório.'
     if (!planoForm.code.trim())   errs.code    = 'Código obrigatório.'
     if (!planoForm.eixo_id)       errs.eixo_id = `${labels.n1} obrigatório.`
+    // Commit the band here too: leaving step 1 is the point the values are fixed.
+    materialiseBands()
     if (thresholdError) errs.threshold = thresholdError
     if (Object.keys(errs).length) { setPlanoErrors(errs); return }
     setPlanoStep(2)
-  }, [planoForm, thresholdError, labels.n1])
+  }, [planoForm, thresholdError, labels.n1, materialiseBands])
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -249,6 +255,9 @@ export default function NovoPlanoModal({
     if (!planoForm.name.trim()) errs.name = 'Nome obrigatório.'
     if (!planoForm.code.trim()) errs.code = 'Código obrigatório.'
     if (Object.keys(errs).length) { setPlanoErrors(errs); return }
+    // Show any auto-completed half in the field before writing it (and before
+    // blocking), so the user never saves a value they could not see.
+    materialiseBands()
     if (thresholdError) { setPlanoErrors({ threshold: thresholdError }); return }
     setPlanoSaving(true); setPlanoErrors({})
     const ownerNames = (planoForm.owner ?? '').split('|').map(s => s.trim()).filter(Boolean)
@@ -291,11 +300,12 @@ export default function NovoPlanoModal({
     onClose()
     onSaved()
   }, [planoToEdit, planoForm, ownerLabelOverride, sponsorLabelOverride, peopleByName, showToast, onClose, onSaved,
-      thresholdError, aggResult.low, aggResult.high, lvsResult.low, lvsResult.high])
+      thresholdError, aggResult.low, aggResult.high, lvsResult.low, lvsResult.high, materialiseBands])
 
   const handleSavePlanoWithActivities = useCallback(async () => {
     if (parseErrors.length > 0) return
     // Defence in depth: step 1 already gates this, but never write an inverted band.
+    materialiseBands()
     if (thresholdError) { setPlanoStep(1); setPlanoErrors({ threshold: thresholdError }); return }
     setPlanoSaving(true); setPlanoErrors({})
 
@@ -540,7 +550,6 @@ export default function NovoPlanoModal({
                   type="number" min={0} max={100}
                   value={planoForm.threshold_aggregates_low ?? ''}
                   placeholder={`padrão: ${inheritedAgg.low}`}
-                  onBlur={completeAggregates}
                   onChange={e => setPlanoForm(f => ({
                     ...f,
                     threshold_aggregates_low: e.target.value === '' ? null : Number(e.target.value),
@@ -554,7 +563,6 @@ export default function NovoPlanoModal({
                   type="number" min={0} max={100}
                   value={planoForm.threshold_aggregates_high ?? ''}
                   placeholder={`padrão: ${inheritedAgg.high}`}
-                  onBlur={completeAggregates}
                   onChange={e => setPlanoForm(f => ({
                     ...f,
                     threshold_aggregates_high: e.target.value === '' ? null : Number(e.target.value),
@@ -573,7 +581,6 @@ export default function NovoPlanoModal({
                   type="number" min={0} max={100}
                   value={planoForm.threshold_leaves_low ?? ''}
                   placeholder={`padrão: ${inheritedLvs.low}`}
-                  onBlur={completeLeaves}
                   onChange={e => setPlanoForm(f => ({
                     ...f,
                     threshold_leaves_low: e.target.value === '' ? null : Number(e.target.value),
@@ -587,7 +594,6 @@ export default function NovoPlanoModal({
                   type="number" min={0} max={100}
                   value={planoForm.threshold_leaves_high ?? ''}
                   placeholder={`padrão: ${inheritedLvs.high}`}
-                  onBlur={completeLeaves}
                   onChange={e => setPlanoForm(f => ({
                     ...f,
                     threshold_leaves_high: e.target.value === '' ? null : Number(e.target.value),
