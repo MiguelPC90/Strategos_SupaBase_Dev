@@ -170,9 +170,12 @@
   }
 
   /* ── Programas flat tree section ── */
+  /* One line box for every tree cell so rows with the info icon are exactly as tall as
+     rows without it, and so all six columns of a row share the same vertical centre. */
   .adm-tree-table td,
   .adm-tree-table th {
     vertical-align: middle;
+    line-height: 18px;
   }
 
   /* Column widths are pinned by the <colgroup> in Admin.tsx; fixed layout makes them
@@ -204,10 +207,17 @@
     cursor: pointer;
   }
 
-  .adm-tree-cell {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+  /* The Designação cell must stay a real table-cell. `display: flex` on a <td> drops its
+     table-cell box, so `vertical-align` no longer applied to it: its content sat at the top
+     of the row while the numeric cells centred, and its bottom rule followed the short flex
+     box instead of the row. Content is centred on a shared line box instead of a flex row. */
+  .adm-tree-cell > * {
+    vertical-align: middle;
+  }
+
+  /* Replaces the former flex `gap: 6px` (the tooltip trigger keeps its own tighter 4px). */
+  .adm-tree-cell > * + * {
+    margin-left: 6px;
   }
 
   .adm-tree-cell--eixo {
@@ -297,17 +307,11 @@
      vertically across programa / eixo / plano rows whatever the indentation. */
   .adm-tree-num {
     font-size: 11px;
-    line-height: 1.5;
     text-align: right;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
 
-  /* Let the name shrink inside the fixed-width Designação cell so long plano
-     names wrap in place rather than overflowing the flex row. */
-  .adm-tree-name {
-    min-width: 0;
-  }
 
   /* Inherited from a parent tier (programa / global) — muted. */
   .adm-tree-limiares-inherited {
