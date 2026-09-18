@@ -12,6 +12,7 @@ import { useDefaultCurrency } from '../../hooks/useDefaultCurrency'
 import { rollupPctPrev, leafPctPrev } from '../../lib/rollup'
 import { useEffectiveValues } from '../../hooks/useEffectiveValues'
 import { DEFAULT_THRESHOLDS } from '../../lib/riskColors'
+import { useAppConfig } from '../../hooks/useAppConfig'
 import type { Activity } from '../../types/index'
 
 interface VisaoExecutivaProps {
@@ -44,6 +45,8 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
   const { budgetLines, invoices, loading: finLoading } = useFinancials(programId ?? undefined)
   const { snapshots }                                  = useSnapshots(programId ?? undefined)
   const { canViewCosts }                               = usePermissions()
+  const { config, getJSON }                            = useAppConfig()
+  const riskThresholds = useMemo(() => getJSON('risk_thresholds', DEFAULT_THRESHOLDS), [config])
   const { symbol: currSymbol }                         = useDefaultCurrency()
 
   const loading = actLoading || pdsLoading || risksLoading || finLoading
@@ -83,7 +86,9 @@ export default function VisaoExecutiva({ planoId, programId }: VisaoExecutivaPro
 
   const openAttention = pdsItems.attention.filter(i => !i.hidden_at)
   const planoRisks    = risks.filter(r => r.plano_id === planoId)
-  const criticalRisks = planoRisks.filter(r => r.probability * r.impact > DEFAULT_THRESHOLDS.high)
+  // Reads app_config.risk_thresholds like PontoSituacao / GestaoRiscos do, so an Admin
+  // change to the risk matrix reaches this counter. DEFAULT_THRESHOLDS is the fallback only.
+  const criticalRisks = planoRisks.filter(r => r.probability * r.impact > riskThresholds.high)
 
   // ── Snapshot deltas (vs. 7 days ago) ─────────────────────────
   const {

@@ -27,10 +27,7 @@ import { useBandResolver } from '../../hooks/useThresholdsMap'
 import { generateStatusNarrative } from '../../lib/statusNarrative'
 import type { PdsItem, Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
-import {
-  computeHealth, DEFAULT_HEALTH_CONFIG,
-  type HealthInput,
-} from '../../lib/healthRules'
+import { usePlanoHealth } from '../../hooks/usePlanoHealth'
 import { useAppConfig } from '../../hooks/useAppConfig'
 
 type SortDir = 'asc' | 'desc'
@@ -260,8 +257,8 @@ export default function PontoSituacao() {
     const n = getNumber('risk_matrix_size', 5)
     return (n >= 2 && n <= 8) ? n : 5
   }, [config])
+  // health_rules is read inside usePlanoHealth; `thresholds` stays for the risk matrix/grades.
   const thresholds        = useMemo(() => getJSON('risk_thresholds',  DEFAULT_THRESHOLDS),    [config])
-  const healthConfig      = useMemo(() => getJSON('health_rules',     DEFAULT_HEALTH_CONFIG), [config])
   const [commitSort,        setCommitSort]        = useState<SortDir>('asc')
   const [progressSort,      setProgressSort]      = useState<SortDir>('asc')
   const [nextSort,          setNextSort]          = useState<SortDir>('asc')
@@ -427,34 +424,9 @@ export default function PontoSituacao() {
   }, [goPrev, goNext])
 
   // ── Health indicator ───────────────────────────────────────
-  const healthInput = useMemo((): HealthInput => {
-    const total     = planLeaves.length
-    const delayed   = planLeaves.filter(a => {
-      const s = eff.get(a.id)?.status ?? 'Em dia'
-      return s === 'Em atraso' || s === 'Em risco'
-    }).length
-    const avgPct    = total > 0 ? planLeaves.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / total : 0
-    const avgPrev   = total > 0 ? planLeaves.reduce((s, a) => s + leafPctPrev(a, TODAY), 0) / total : 0
-    const attOpen   = visAttention.filter(i => {
-      const s = (i.status ?? '').toLowerCase()
-      return s !== 'concluído' && s !== 'concluída'
-    }).length
-    return {
-      execDelay:     Math.max(0, avgPrev - avgPct),
-      delayedPct:    total > 0 ? (delayed / total) * 100 : 0,
-      criticalRisks: planRisks.filter(r => r.impact * r.probability > thresholds.high).length,
-      highRisks:     planRisks.filter(r => {
-        const g = r.impact * r.probability
-        return g > thresholds.medium && g <= thresholds.high
-      }).length,
-      attentionOpen: attOpen,
-    }
-  }, [planLeaves, eff, planRisks, visAttention, thresholds])
-
-  const health = useMemo(
-    () => computeHealth(healthInput, healthConfig),
-    [healthInput, healthConfig],
-  )
+  // Shared with PlanoPage via usePlanoHealth; the HealthInput construction that used
+  // to live here moved into the hook verbatim.
+  const health = usePlanoHealth(selectedKey || undefined, programId, planLeaves, eff, TODAY)
 
   // ── Risk KPIs ──────────────────────────────────────────────
   const riskKpis = useMemo(() => ({

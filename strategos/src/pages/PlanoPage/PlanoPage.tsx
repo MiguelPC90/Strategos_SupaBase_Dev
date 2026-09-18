@@ -25,6 +25,7 @@ import { resolveOwnerNames, resolveSponsorNames } from '../../lib/owners'
 import { statusColor } from '../../lib/tokens'
 import { generateStatusNarrative } from '../../lib/statusNarrative'
 import { fmtDateMY, planoStatusKey } from '../../lib/pdsHelpers'
+import { usePlanoHealth } from '../../hooks/usePlanoHealth'
 
 const TABS = [
   { id: 'visao',        label: 'Visão Executiva' },
@@ -88,6 +89,11 @@ export default function PlanoPage() {
   const plano = planos.find(p => p.id === planoId)
   const program = programs.find(p => p.id === plano?.program_id)
   const labels = useProgramLabels(plano?.program_id)
+
+  // Same five-metric semaphore PontoSituacao shows, via the shared hook.
+  // Transitional placement in the title row; the shared PlanHeader moves it to a
+  // labelled "Saúde" position in a later wave.
+  const health = usePlanoHealth(planoId, plano?.program_id, planLeaves, eff, today)
 
   const ownerNames   = useMemo(() => plano ? resolveOwnerNames(plano, peopleMap)   : [], [plano, peopleMap])
   const sponsorNames = useMemo(() => plano ? resolveSponsorNames(plano, peopleMap) : [], [plano, peopleMap])
@@ -182,6 +188,10 @@ export default function PlanoPage() {
                 style={{ backgroundColor: statusColor(planoStatusKey(planoStatus)) }}
               />
               <h1 className="pp-title">{plano.name}</h1>
+              <span
+                className={`pp-health pp-health-${health.level}`}
+                title={health.reasons.join('\n')}
+              />
             </div>
           </div>
           <div className="pp-header-actions">
