@@ -4,7 +4,6 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { Star, ChevronLeft } from 'lucide-react'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePrograms } from '../../hooks/usePrograms'
-import { usePeople } from '../../hooks/usePeople'
 import { useFavorites } from '../../hooks/useFavorites'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useActivities } from '../../hooks/useActivities'
@@ -21,11 +20,11 @@ import { rollupPctPrev, rollupDateRange, computeGroupStatusFromEff } from '../..
 import { useEffectiveValues } from '../../hooks/useEffectiveValues'
 import { useBandResolver } from '../../hooks/useThresholdsMap'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
-import { resolveOwnerNames, resolveSponsorNames } from '../../lib/owners'
-import { statusColor } from '../../lib/tokens'
 import { generateStatusNarrative } from '../../lib/statusNarrative'
-import { fmtDateMY, planoStatusKey } from '../../lib/pdsHelpers'
+import { fmtDateMY } from '../../lib/pdsHelpers'
 import { usePlanoHealth } from '../../hooks/usePlanoHealth'
+import { usePlanoPeopleNames } from '../../hooks/usePlanoPeopleNames'
+import PlanHeader from '../../components/PlanHeader/PlanHeader'
 
 const TABS = [
   { id: 'visao',        label: 'Visão Executiva' },
@@ -49,8 +48,6 @@ export default function PlanoPage() {
 
   const { planos, loading: planosLoading, refetch: refetchPlano } = usePlanos()
   const { programs, loading: programsLoading } = usePrograms()
-  const { people } = usePeople()
-  const peopleMap = useMemo(() => new Map(people.map(p => [p.id, p])), [people])
   const { isFavorite, toggle: toggleFav, canAddMore } = useFavorites()
   const { canEdit, hasAccess } = usePermissions()
 
@@ -95,8 +92,7 @@ export default function PlanoPage() {
   // labelled "Saúde" position in a later wave.
   const health = usePlanoHealth(planoId, plano?.program_id, planLeaves, eff, today)
 
-  const ownerNames   = useMemo(() => plano ? resolveOwnerNames(plano, peopleMap)   : [], [plano, peopleMap])
-  const sponsorNames = useMemo(() => plano ? resolveSponsorNames(plano, peopleMap) : [], [plano, peopleMap])
+  const { ownerNames, sponsorNames } = usePlanoPeopleNames(plano)
 
   const [planoEditOpen, setPlanoEditOpen] = useState(false)
 
@@ -180,30 +176,19 @@ export default function PlanoPage() {
           <span className="pp-nav-current">{plano.name}</span>
         </div>
 
-        <div className="pp-title-row">
-          <div className="pp-title-left">
-            <div className="pp-title-line">
-              <span
-                className="pp-status-dot"
-                style={{ backgroundColor: statusColor(planoStatusKey(planoStatus)) }}
-              />
-              <h1 className="pp-title">{plano.name}</h1>
-              <span
-                className={`pp-health pp-health-${health.level}`}
-                title={health.reasons.join('\n')}
-              />
-            </div>
-          </div>
-          <div className="pp-header-actions">
-            {canEditPlano && (
-              <button
-                className="pp-btn-edit"
-                onClick={() => setPlanoEditOpen(true)}
-                type="button"
-              >
-                Editar plano
-              </button>
-            )}
+        <PlanHeader
+          planName={plano.name}
+          health={health}
+          status={planoStatus}
+          dateLine={dateLine}
+          narrative={narrative}
+          sponsorNames={sponsorNames}
+          ownerNames={ownerNames}
+          sponsorLabel={labels.sponsor}
+          ownerLabel={labels.owner}
+          canEdit={canEditPlano}
+          onEdit={() => setPlanoEditOpen(true)}
+          titleAside={
             <button
               className={`pp-fav-btn${isFav ? ' pp-fav-active' : ''}`}
               onClick={() => planoId && toggleFav(planoId)}
@@ -213,24 +198,12 @@ export default function PlanoPage() {
             >
               <Star size={16} fill={isFav ? 'currentColor' : 'none'} strokeWidth={1.5} />
             </button>
-          </div>
-        </div>
-
-        <div className="pp-meta">
-          {ownerNames.length > 0   && <span className="pp-meta-item"><span className="pp-meta-lbl">{labels.owner}</span>{ownerNames.join(', ')}</span>}
-          {sponsorNames.length > 0 && <span className="pp-meta-item"><span className="pp-meta-lbl">{labels.sponsor}</span>{sponsorNames.join(', ')}</span>}
-          {dateLine      && (
-            <span className="pp-meta-item">
-              <span className="pp-meta-lbl">Datas</span>
-              <span className="pp-meta-dates">{dateLine}</span>
-            </span>
+          }
+        >
+          {plano.objective && (
+            <p className="pp-objective">{plano.objective}</p>
           )}
-          {narrative && <span className="pp-narrative t-body-l">{narrative}</span>}
-        </div>
-
-        {plano.objective && (
-          <p className="pp-objective">{plano.objective}</p>
-        )}
+        </PlanHeader>
       </div>
 
       {/* Tab nav */}

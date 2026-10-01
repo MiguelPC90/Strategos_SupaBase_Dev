@@ -12,7 +12,7 @@ import SortIcon from '../../components/SortIcon/SortIcon'
 import { estadoBadge } from '../../lib/riskHelpers'
 import Badge from '../../components/Badge/Badge'
 import ItemDetailModal from '../../components/ItemDetailModal/ItemDetailModal'
-import { fmtDate, fmtDateMY, planoStatusKey, statusVariant, displayStatus, renderText, TODAY } from '../../lib/pdsHelpers'
+import { fmtDate, fmtDateMY, statusVariant, displayStatus, renderText, TODAY } from '../../lib/pdsHelpers'
 import { usePdsEntries, usePdsConsolidated } from '../../hooks/usePdsEntries'
 import { usePlanos } from '../../hooks/usePlanos'
 import { usePermissions } from '../../hooks/usePermissions'
@@ -28,6 +28,9 @@ import { generateStatusNarrative } from '../../lib/statusNarrative'
 import type { PdsItem, Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
 import { usePlanoHealth } from '../../hooks/usePlanoHealth'
+import { usePlanoPeopleNames } from '../../hooks/usePlanoPeopleNames'
+import { useProgramLabels } from '../../hooks/useProgramLabels'
+import PlanHeader from '../../components/PlanHeader/PlanHeader'
 import { useAppConfig } from '../../hooks/useAppConfig'
 
 type SortDir = 'asc' | 'desc'
@@ -428,6 +431,10 @@ export default function PontoSituacao() {
   // to live here moved into the hook verbatim.
   const health = usePlanoHealth(selectedKey || undefined, programId, planLeaves, eff, TODAY)
 
+  // Owner / sponsor for the shared header's people row, via the same helper the ficha uses.
+  const { ownerNames, sponsorNames } = usePlanoPeopleNames(selectedPlano)
+  const labels = useProgramLabels(programId)
+
   // ── Risk KPIs ──────────────────────────────────────────────
   const riskKpis = useMemo(() => ({
     total:     planRisks.length,
@@ -487,54 +494,40 @@ export default function PontoSituacao() {
         </div>
       ) : (
         <>
-          {/* Header — 3 lines: (1) arrows flanking the name + PDS update date,
-              (2) datas · saúde · estado, (3) synthesis sentence */}
-          <div className="pds-header">
-            <div className="pds-header-row1">
-              <div className="pds-header-title">
-                <button
-                  className="pds-nav-btn"
-                  onClick={goPrev}
-                  disabled={currentIdx <= 0}
-                  title="Plano anterior (Alt+←)"
-                ><ChevronLeft size={14} strokeWidth={1.5} /></button>
-                <span className="pds-plan-name">{planLabel}</span>
-                <button
-                  className="pds-nav-btn"
-                  onClick={goNext}
-                  disabled={currentIdx >= planosInScope.length - 1}
-                  title="Plano seguinte (Alt+→)"
-                ><ChevronRight size={14} strokeWidth={1.5} /></button>
-              </div>
-              <span className="pds-header-date">
+          {/* Shared header — same component and treatment as the ficha (PlanoPage).
+              The plano arrows flank the title; the PDS update date sits on the right. */}
+          <PlanHeader
+            planName={planLabel}
+            health={health}
+            status={planoStatus}
+            dateLine={dateLine}
+            narrative={narrative}
+            sponsorNames={sponsorNames}
+            ownerNames={ownerNames}
+            sponsorLabel={labels.sponsor}
+            ownerLabel={labels.owner}
+            navPrev={
+              <button
+                className="pds-nav-btn"
+                onClick={goPrev}
+                disabled={currentIdx <= 0}
+                title="Plano anterior (Alt+←)"
+              ><ChevronLeft size={14} strokeWidth={1.5} /></button>
+            }
+            navNext={
+              <button
+                className="pds-nav-btn"
+                onClick={goNext}
+                disabled={currentIdx >= planosInScope.length - 1}
+                title="Plano seguinte (Alt+→)"
+              ><ChevronRight size={14} strokeWidth={1.5} /></button>
+            }
+            titleAside={
+              <span className="pds-updated-at">
                 Actualizado em {fmtDate(planEntries[0]?.updated_at ?? TODAY)}
               </span>
-            </div>
-
-            <div className="pds-header-meta">
-              {dateLine && (
-                <span className="pds-meta-item">
-                  <span className="pds-meta-label">Datas</span>
-                  <span className="pds-meta-value">{dateLine}</span>
-                </span>
-              )}
-              {/* Saúde and Estado are deliberately different systems and may disagree —
-                  the labels are what make a disagreement read as intentional. */}
-              <span className="pds-meta-item">
-                <span className="pds-meta-label">Saúde</span>
-                <span
-                  className={`pds-health pds-health-${health.level}`}
-                  title={health.reasons.join('\n')}
-                />
-              </span>
-              <span className="pds-meta-item">
-                <span className="pds-meta-label">Estado</span>
-                <span className={`status-pill ${planoStatusKey(planoStatus)}`}>{planoStatus}</span>
-              </span>
-            </div>
-
-            {narrative && <p className="pds-header-narrative">{narrative}</p>}
-          </div>
+            }
+          />
 
           {/* KPI brief — 2-column layout mirroring Dashboard */}
           <div className="pds-brief">

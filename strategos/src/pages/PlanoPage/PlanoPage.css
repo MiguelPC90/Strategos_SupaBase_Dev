@@ -67,84 +67,6 @@
   }
 
   /* ── Title row ── */
-  .pp-title-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 0;
-  }
-
-  .pp-title-left {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-  }
-
-  .pp-title-line {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .pp-status-dot {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  /* Plan health semaphore — same colours as PontoSituacao's .pds-health.
-     No white ring here: this sits on a light surface, not the navy banner. */
-  .pp-health {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    cursor: help;
-  }
-  .pp-health-green { background: #22c55e; }
-  .pp-health-amber { background: #f59e0b; }
-  .pp-health-red   { background: #ef4444; }
-
-  .pp-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-    padding-top: 2px;
-  }
-
-  .pp-title {
-    font-family: var(--font-display);
-    font-size: 20px; /* TODO: outlier — review token candidate */
-    font-weight: 600;
-    color: var(--text);
-    margin: 0;
-  }
-
-  .pp-btn-edit {
-    height: 28px;
-    padding: 0 12px;
-    border: 1px solid var(--border2);
-    border-radius: var(--r);
-    background: none;
-    font: inherit;
-    font-size: var(--text-base);
-    font-weight: 500;
-    color: var(--text2);
-    cursor: pointer;
-    transition: border-color 0.15s, color 0.15s;
-  }
-
-  .pp-btn-edit:hover {
-    border-color: var(--stratgos-ember);
-    color: var(--stratgos-ember);
-  }
 
   .pp-fav-btn {
     display: inline-flex;
@@ -175,38 +97,6 @@
   .pp-fav-btn:disabled {
     cursor: not-allowed;
     opacity: 0.4;
-  }
-
-  .pp-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    padding: 8px 0;
-  }
-
-  .pp-meta-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: var(--text-base);
-    color: var(--text2);
-  }
-
-  .pp-meta-lbl {
-    font-size: var(--text-xs);
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--text3);
-  }
-
-  .pp-narrative {
-    flex-basis: 100%;
-    font-size: var(--text-base);
-    color: var(--text3);
-    font-style: italic;
-    line-height: 1.5;
-    padding-top: 2px;
   }
 
   .pp-objective {

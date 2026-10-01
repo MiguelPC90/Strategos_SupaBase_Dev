@@ -1,0 +1,135 @@
+@layer components {
+  /* Shared plan header — the ficha's light treatment, used by PlanoPage and
+     PontoSituacao. Four rows: title · state · people · narrative. */
+  .ph-header {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Row 1 — title ─────────────────────────────────────────── */
+  .ph-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .ph-title-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .ph-title {
+    font-family: var(--font-display);
+    font-size: 20px; /* TODO: outlier — matches the former .pp-title */
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+  }
+
+  .ph-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+
+  .ph-btn-edit {
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    background: none;
+    font: inherit;
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--text2);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .ph-btn-edit:hover {
+    border-color: var(--stratgos-ember);
+    color: var(--stratgos-ember);
+  }
+
+  /* ── Row 2 — state (primary) ───────────────────────────────── */
+  .ph-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 16px;
+    padding: 8px 0 0;
+  }
+
+  .ph-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--text-base);
+    color: var(--text2);
+  }
+
+  .ph-meta-lbl {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .ph-meta-dates {
+    white-space: nowrap;
+  }
+
+  /* Health semaphore. Same colours as the former .pds-health / .pp-health. */
+  .ph-health {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    cursor: help;
+  }
+  .ph-health-green { background: #22c55e; }
+  .ph-health-amber { background: #f59e0b; }
+  .ph-health-red   { background: #ef4444; }
+
+  /* ── Row 3 — people (secondary, deliberately lighter than row 2) ── */
+  .ph-people {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    padding: 6px 0 0;
+  }
+
+  .ph-people-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: var(--text-sm);
+    color: var(--text3);
+  }
+
+  .ph-people-lbl {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--stratgos-ink-200);
+  }
+
+  /* ── Row 4 — synthesis ─────────────────────────────────────── */
+  .ph-narrative {
+    margin: 0;
+    padding-top: 8px;
+    font-size: var(--text-base);
+    color: var(--text3);
+    font-style: italic;
+    line-height: 1.5;
+  }
+}
