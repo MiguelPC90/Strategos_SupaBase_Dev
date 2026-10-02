@@ -16,11 +16,11 @@ import GestaoRecursos from '../GestaoRecursos/GestaoRecursos'
 import GestaoFinanceira from '../GestaoFinanceira/GestaoFinanceira'
 import GestaoIniciativas from '../GestaoIniciativas/GestaoIniciativas'
 import NovoPlanoModal from '../../components/NovoPlanoModal/NovoPlanoModal'
-import { rollupPctPrev, rollupDateRange, computeGroupStatusFromEff } from '../../lib/rollup'
+import { rollupDateRange, computeGroupStatusFromEff } from '../../lib/rollup'
 import { useEffectiveValues } from '../../hooks/useEffectiveValues'
 import { useBandResolver } from '../../hooks/useThresholdsMap'
 import { useProgramLabels } from '../../hooks/useProgramLabels'
-import { generateStatusNarrative } from '../../lib/statusNarrative'
+import { usePlanoNarrative } from '../../hooks/usePlanoNarrative'
 import { fmtDateMY } from '../../lib/pdsHelpers'
 import { usePlanoHealth } from '../../hooks/usePlanoHealth'
 import { usePlanoPeopleNames } from '../../hooks/usePlanoPeopleNames'
@@ -62,20 +62,6 @@ export default function PlanoPage() {
     [planLeaves, eff, today, bandResolver],
   )
 
-  const execMedia    = useMemo(
-    () => planLeaves.length === 0 ? 0 : planLeaves.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / planLeaves.length,
-    [planLeaves, eff],
-  )
-  const execTarget   = useMemo(() => rollupPctPrev(planLeaves, today), [planLeaves, today])
-  const delayedCount = useMemo(
-    () => planLeaves.filter(a => eff.get(a.id)?.status === 'Em atraso').length,
-    [planLeaves, eff],
-  )
-  const narrative = useMemo(() => {
-    if (planLeaves.length === 0) return ''
-    return generateStatusNarrative({ status: planoStatus, execMedia, execTarget, delayedCount })
-  }, [planoStatus, execMedia, execTarget, delayedCount, planLeaves.length])
-
   const planDateRange = useMemo(() => rollupDateRange(planLeaves), [planLeaves])
 
   const loading = planosLoading || programsLoading
@@ -91,6 +77,10 @@ export default function PlanoPage() {
   // Transitional placement in the title row; the shared PlanHeader moves it to a
   // labelled "Saúde" position in a later wave.
   const health = usePlanoHealth(planoId, plano?.program_id, planLeaves, eff, today)
+
+  // All narrative inputs are derived inside the hook, so the same plano reads
+  // word-for-word identically here and on PontoSituacao.
+  const narrative = usePlanoNarrative(planoId, plano?.program_id, planoStatus, planLeaves, eff, today)
 
   const { ownerNames, sponsorNames } = usePlanoPeopleNames(plano)
 

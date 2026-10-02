@@ -21,10 +21,10 @@ import { useRisks } from '../../hooks/useRisks'
 import { useActivities } from '../../hooks/useActivities'
 import { useFilters } from '../../context/FilterContext'
 
-import { leafPctPrev, rollupPctPrev, rollupDateRange, computeGroupStatusFromEff } from '../../lib/rollup'
+import { leafPctPrev, rollupDateRange, computeGroupStatusFromEff } from '../../lib/rollup'
 import { useEffectiveValues } from '../../hooks/useEffectiveValues'
 import { useBandResolver } from '../../hooks/useThresholdsMap'
-import { generateStatusNarrative } from '../../lib/statusNarrative'
+import { usePlanoNarrative } from '../../hooks/usePlanoNarrative'
 import type { PdsItem, Risk } from '../../types/index'
 import { gradeStyle, gradeLabel, DEFAULT_THRESHOLDS, type RiskThresholds } from '../../lib/riskColors'
 import { usePlanoHealth } from '../../hooks/usePlanoHealth'
@@ -389,15 +389,9 @@ export default function PontoSituacao() {
     .filter(Boolean)
     .join(' → ')
 
-  // Mirrors PlanoPage's inputs exactly (raw, unrounded averages) so both pages render the
-  // identical sentence. kpi.pct / kpi.pctPrev are pre-rounded and could round the other way.
-  const narrative = useMemo(() => {
-    if (planLeaves.length === 0) return ''
-    const execMedia    = planLeaves.reduce((s, a) => s + (eff.get(a.id)?.pct ?? a.pct), 0) / planLeaves.length
-    const execTarget   = rollupPctPrev(planLeaves, TODAY)
-    const delayedCount = planLeaves.filter(a => eff.get(a.id)?.status === 'Em atraso').length
-    return generateStatusNarrative({ status: planoStatus, execMedia, execTarget, delayedCount })
-  }, [planLeaves, eff, planoStatus])
+  // All narrative inputs are derived inside the hook, so the same plano reads
+  // word-for-word identically here and on PlanoPage.
+  const narrative = usePlanoNarrative(selectedKey || undefined, programId, planoStatus, planLeaves, eff, TODAY)
 
   // ── Plan navigation ────────────────────────────────────────
   // Scope arrows to eixo selected in breadcrumb (or all planos in program)

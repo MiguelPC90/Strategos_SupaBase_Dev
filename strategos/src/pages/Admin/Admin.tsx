@@ -3150,6 +3150,7 @@ const PLANO_CONFIG_KEYS = [
   'status_delay_threshold_aggregates_low', 'status_delay_threshold_aggregates_high',
   'status_delay_threshold_leaves_low', 'status_delay_threshold_leaves_high',
   'pds_hide_completed_days', 'health_rules',
+  'narrative_trend_window_days', 'narrative_trend_stability_points',
 ] as const
 
 const SEVERITY_OPTS: AlertSeverity[] = ['critical', 'high', 'medium', 'low']
@@ -3165,6 +3166,8 @@ function AdminPlano() {
   const [delayLvsLow,  setDelayLvsLow]  = useState(5)
   const [delayLvsHigh, setDelayLvsHigh] = useState(10)
   const [hideCompletedDays,    setHideCompletedDays]    = useState(90)
+  const [trendWindowDays,      setTrendWindowDays]      = useState(30)
+  const [trendStabilityPts,    setTrendStabilityPts]    = useState(1)
   const [healthConfig,         setHealthConfig]         = useState<HealthConfig>(DEFAULT_HEALTH_CONFIG)
   const [loading,    setLoading]    = useState(true)
   const [savingKey,  setSavingKey]  = useState<string | null>(null)
@@ -3195,6 +3198,9 @@ function AdminPlano() {
         setDelayLvsHigh(parseInt(map['status_delay_threshold_leaves_high']     ?? '10') || 10)
         const hcd = parseInt(map['pds_hide_completed_days'] ?? '')
         if (!isNaN(hcd)) setHideCompletedDays(hcd)
+        setTrendWindowDays(parseInt(map['narrative_trend_window_days'] ?? '30') || 30)
+        const tsp = parseFloat(map['narrative_trend_stability_points'] ?? '')
+        if (!isNaN(tsp)) setTrendStabilityPts(tsp)
         if (map['health_rules']) {
           try { setHealthConfig({ ...DEFAULT_HEALTH_CONFIG, ...JSON.parse(map['health_rules']) }) }
           catch { /* keep defaults */ }
@@ -3355,6 +3361,42 @@ function AdminPlano() {
           />
         </div>
         {errorKey === 'health_rules' && <span className="adm-error-indicator" style={{ marginTop: 'var(--space-2)', display: 'block' }}>Erro ao guardar</span>}
+      </Card>
+
+      <Card title="Tendência" actions={
+        savedKey && ['narrative_trend_window_days', 'narrative_trend_stability_points'].includes(savedKey)
+          ? <span className="adm-saved-indicator">Guardado</span> : undefined
+      }>
+        <p className="adm-section-desc">
+          Parâmetros da frase de síntese no cabeçalho do plano. A tendência compara o
+          desvio ao plano de hoje com o da data correspondente à janela definida.
+        </p>
+        <div className="threshold-pair">
+          <div className="adm-field">
+            <label className="adm-label">Janela de comparação (dias)</label>
+            <input
+              className="adm-input"
+              type="number" min={1} step={1}
+              value={trendWindowDays}
+              onChange={e => setTrendWindowDays(parseInt(e.target.value) || 0)}
+              onBlur={() => saveConfigKey('narrative_trend_window_days', String(trendWindowDays))}
+            />
+            <span className="adm-help">Há quanto tempo comparar. Planos sem histórico tão antigo não mostram tendência.</span>
+            {errorKey === 'narrative_trend_window_days' && <span className="adm-error-indicator">Erro ao guardar</span>}
+          </div>
+          <div className="adm-field">
+            <label className="adm-label">Limiar de estabilidade (pontos)</label>
+            <input
+              className="adm-input"
+              type="number" min={0} step={0.1}
+              value={trendStabilityPts}
+              onChange={e => setTrendStabilityPts(parseFloat(e.target.value) || 0)}
+              onBlur={() => saveConfigKey('narrative_trend_stability_points', String(trendStabilityPts))}
+            />
+            <span className="adm-help">Variação do desvio abaixo da qual a tendência é considerada estável.</span>
+            {errorKey === 'narrative_trend_stability_points' && <span className="adm-error-indicator">Erro ao guardar</span>}
+          </div>
+        </div>
       </Card>
 
       <Card title="Alertas" actions={alertSaved ? <span className="adm-saved-indicator">Guardado</span> : undefined}>
