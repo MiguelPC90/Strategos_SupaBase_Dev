@@ -1,9 +1,15 @@
 @layer components {
   /* Shared plan header — the ficha's light treatment, used by PlanoPage and
-     PontoSituacao. Four rows: title · state · people · narrative. */
+     PontoSituacao. Four rows: title · state · people · narrative.
+     The SURFACE belongs to this component, not to the mounting page: that is what
+     makes the header render identically wherever it appears. Pages must not supply
+     or override background / border / padding here. */
   .ph-header {
     display: flex;
     flex-direction: column;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
   }
 
   /* ── Row 1 — title ─────────────────────────────────────────── */

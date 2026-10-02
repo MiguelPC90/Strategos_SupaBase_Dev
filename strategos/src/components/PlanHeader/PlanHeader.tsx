@@ -4,6 +4,9 @@ import { planoStatusKey } from '../../lib/pdsHelpers'
 import type { RowState } from '../../lib/rollup'
 import type { PlanoHealth } from '../../hooks/usePlanoHealth'
 
+/** Shown in place of a people field that has no value. */
+const EMPTY_VALUE = '—'
+
 export interface PlanHeaderProps {
   /** Plan name shown as the title. */
   planName: string
@@ -57,8 +60,6 @@ export default function PlanHeader({
   onEdit,
   children,
 }: PlanHeaderProps) {
-  const hasPeople = sponsorNames.length > 0 || ownerNames.length > 0
-
   return (
     <div className="ph-header">
       {/* Row 1 — arrows flanking the title, page-specific actions on the right */}
@@ -99,23 +100,19 @@ export default function PlanHeader({
         </span>
       </div>
 
-      {/* Row 3 — people (secondary, lighter): who owns it. Omitted when empty. */}
-      {hasPeople && (
-        <div className="ph-people">
-          {sponsorNames.length > 0 && (
-            <span className="ph-people-item">
-              <span className="ph-people-lbl">{sponsorLabel}</span>
-              {sponsorNames.join(', ')}
-            </span>
-          )}
-          {ownerNames.length > 0 && (
-            <span className="ph-people-item">
-              <span className="ph-people-lbl">{ownerLabel}</span>
-              {ownerNames.join(', ')}
-            </span>
-          )}
-        </div>
-      )}
+      {/* Row 3 — people (secondary, lighter): who owns it.
+          Both fields ALWAYS render, with an em dash when unset, so it is clear the
+          fields exist and are merely unfilled. Sponsor first, then owner. */}
+      <div className="ph-people">
+        <span className="ph-people-item">
+          <span className="ph-people-lbl">{sponsorLabel}</span>
+          {sponsorNames.length > 0 ? sponsorNames.join(', ') : EMPTY_VALUE}
+        </span>
+        <span className="ph-people-item">
+          <span className="ph-people-lbl">{ownerLabel}</span>
+          {ownerNames.length > 0 ? ownerNames.join(', ') : EMPTY_VALUE}
+        </span>
+      </div>
 
       {/* Row 4 — synthesis */}
       {narrative && <p className="ph-narrative">{narrative}</p>}

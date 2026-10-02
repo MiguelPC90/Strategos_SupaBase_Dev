@@ -6,21 +6,20 @@
     min-height: 100%;
   }
 
-  /* ── Header ── */
-  .pp-header {
-    padding: 16px 32px 0;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg2);
-  }
+  /* ── Header ──
+     Plain grouping wrapper: the header surface is owned by PlanHeader
+     (.ph-header) so both pages that mount it look identical. */
 
-  /* ── Nav strip ── */
+  /* ── Nav strip ──
+     Carries its own strip surface, continuous with the PlanHeader below it. */
   .pp-nav-strip {
     display: flex;
     align-items: center;
     gap: 6px;
     font-size: var(--text-base);
-    margin-bottom: 10px;
     flex-wrap: wrap;
+    background: var(--bg2);
+    padding: 16px 32px 10px;
   }
 
   .pp-nav-back {
