@@ -262,16 +262,25 @@ describe('trend clause', () => {
       expect(s).not.toMatch(/-\d/)
     }
   })
-  it('families 3 / 4 never print a negative pace either', () => {
-    const fora = generateStatusNarrative(p({
-      deadline: '2026-07-10', execMedia: 78.4, execTarget: 100, trend: { prevExec: 80, prevGap: 20 },
-    }))
-    const ultra = generateStatusNarrative(p({
-      deadline: '2026-09-20', execMedia: 78.4, execTarget: 100, trend: { prevExec: 80, prevGap: 10 },
-    }))
-    expect(fora).not.toContain('avançou -')
-    expect(ultra).not.toContain('avançou -')
-  })
+  // prevExec 78.4 → zero progress; prevExec 80 → revised down 1.6
+  for (const prevExec of [78.4, 80]) {
+    it(`fora de prazo, progress ${(78.4 - prevExec).toFixed(1)} → sem avanço material`, () => {
+      const s = generateStatusNarrative(p({
+        deadline: '2026-07-10', execMedia: 78.4, execTarget: 100, trend: { prevExec, prevGap: 20 },
+      }))
+      expect(s).toBe('Prazo terminou em Julho de 2026. Faltam 21,6% por executar, sem avanço material no último mês.')
+      expect(s).not.toContain('avançou 0')
+      expect(s).not.toContain('avançou -')
+    })
+    it(`ultrapassou o prazo, progress ${(78.4 - prevExec).toFixed(1)} → sem avanço material`, () => {
+      const s = generateStatusNarrative(p({
+        deadline: '2026-09-20', execMedia: 78.4, execTarget: 100, trend: { prevExec, prevGap: 10 },
+      }))
+      expect(s).toBe('Ultrapassou o prazo em Setembro de 2026 com 21,6% por executar, sem avanço material no último mês.')
+      expect(s).not.toContain('avançou 0')
+      expect(s).not.toContain('avançou -')
+    })
+  }
   it('the stable labels carry no "Tendência" prefix', () => {
     const trend = { prevExec: 61.5, prevGap: 6.8 }
     expect(generateStatusNarrative({ ...base, status: 'Em dia',   trend })).not.toContain('Tendência')

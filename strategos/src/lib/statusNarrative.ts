@@ -291,16 +291,20 @@ export function generateStatusNarrative(p: NarrativeParams): string {
     // close: this family talks about work remaining and pace, never "agravou-se".
     const head = `Prazo terminou em ${fmtMonthYear(p.deadline!)}. Faltam ${fmtPct(remaining)} por executar`
     if (!p.trend) return `${head}.`
-    // Floored at 0: a downward revision is never printed as "avançou -…".
-    const progress = Math.max(0, p.execMedia - p.trend.prevExec)
-    return `${head} e avançou ${fmtPoints(progress)} ${windowPhrase(p.windowDays)}.`
+    // Same "stalled" as the trend rows, so neither "avançou 0" nor "avançou -" is printed.
+    const progress = p.execMedia - p.trend.prevExec
+    return progress <= p.stabilityPoints
+      ? `${head}, sem avanço material ${windowPhrase(p.windowDays)}.`
+      : `${head} e avançou ${fmtPoints(progress)} ${windowPhrase(p.windowDays)}.`
   }
 
   if (family === 'ultrapassou_prazo') {
     const head = `Ultrapassou o prazo em ${fmtMonthYear(p.deadline!)} com ${fmtPct(remaining)} por executar`
     if (!p.trend) return `${head}.`
-    const progress = Math.max(0, p.execMedia - p.trend.prevExec)
-    return `${head}; avançou apenas ${fmtPoints(progress)} ${windowPhrase(p.windowDays)}.`
+    const progress = p.execMedia - p.trend.prevExec
+    return progress <= p.stabilityPoints
+      ? `${head}, sem avanço material ${windowPhrase(p.windowDays)}.`
+      : `${head}; avançou apenas ${fmtPoints(progress)} ${windowPhrase(p.windowDays)}.`
   }
 
   // family === 'em_curso'

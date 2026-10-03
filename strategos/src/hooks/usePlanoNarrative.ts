@@ -5,7 +5,7 @@ import { useAppConfig } from './useAppConfig'
 import { rollupPctPrev } from '../lib/rollup'
 import { DEFAULT_THRESHOLDS } from '../lib/riskColors'
 import { selectTrendInput } from '../lib/narrativeTrend'
-import { generateStatusNarrative } from '../lib/statusNarrative'
+import { generateStatusNarrative, effectiveWindowDays } from '../lib/statusNarrative'
 import type { Activity } from '../types/index'
 import type { EffectiveValue } from './useEffectiveValues'
 
@@ -41,7 +41,7 @@ export function usePlanoNarrative(
   const { config, getJSON, getNumber } = useAppConfig()
 
   const windowDays = useMemo(
-    () => getNumber(TREND_WINDOW_KEY, TREND_WINDOW_DEFAULT) || TREND_WINDOW_DEFAULT,
+    () => effectiveWindowDays(getNumber(TREND_WINDOW_KEY, TREND_WINDOW_DEFAULT) || TREND_WINDOW_DEFAULT),
     [config],
   )
   const stabilityPoints = useMemo(
