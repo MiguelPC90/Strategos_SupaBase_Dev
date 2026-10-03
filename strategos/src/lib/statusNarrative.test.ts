@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  generateStatusNarrative, selectFamily, fmtPct, fmtNum, windowPhrase,
+  generateStatusNarrative, selectFamily, fmtPct, fmtNum, windowPhrase, TREND_PERIODS,
   type NarrativeParams,
 } from './statusNarrative'
 
@@ -55,8 +55,12 @@ describe('family selection', () => {
     expect(s).toBe('Plano ainda não iniciado.')
     expect(s).not.toContain('objectivo')
   })
-  it('zero execution → não iniciado', () => {
-    expect(selectFamily(p({ execMedia: 0, execTarget: 40 }))).toBe('nao_iniciado')
+  it('zero execution WITH a live target is NOT não iniciado — it reads as em curso', () => {
+    const params = p({ execMedia: 0, execTarget: 30 })
+    expect(selectFamily(params)).toBe('em_curso')
+    const s = generateStatusNarrative(params)
+    expect(s).toBe('0% executado contra 30% previsto, com três meses até ao prazo.')
+    expect(s).not.toContain('não iniciado')
   })
   it('Concluída → concluído', () => {
     expect(selectFamily(p({ status: 'Concluída' }))).toBe('concluido')
@@ -73,8 +77,8 @@ describe('family selection', () => {
   it('no deadline at all → em curso', () => {
     expect(selectFamily(p({ deadline: null }))).toBe('em_curso')
   })
-  it('precedence: não iniciado wins over concluído', () => {
-    expect(selectFamily(p({ status: 'Concluída', execMedia: 0 }))).toBe('nao_iniciado')
+  it('precedence: não iniciado (no baseline) wins over concluído', () => {
+    expect(selectFamily(p({ status: 'Concluída', execTarget: 0 }))).toBe('nao_iniciado')
   })
   it('precedence: concluído wins over an expired deadline', () => {
     expect(selectFamily(p({ status: 'Concluída', deadline: '2026-07-10' }))).toBe('concluido')
@@ -178,13 +182,43 @@ describe('trend clause', () => {
     expect(generateStatusNarrative({ ...base, trend: { prevExec: 50.2, prevGap: 10 } }))
       .toContain('Tendência favorável: avançou 18 pontos no último mês e o desvio reduziu-se de 10 para 6,8 pontos.')
   })
-  it('stable + advanced → estável', () => {
-    expect(generateStatusNarrative({ ...base, trend: { prevExec: 61.5, prevGap: 6.8 } }))
-      .toContain('Tendência estável: avançou 6,7 pontos no último mês, com o desvio praticamente inalterado.')
+  it('narrowed + stalled → no judgement word, never "favorável"', () => {
+    const s = generateStatusNarrative({ ...base, trend: { prevExec: 68.2, prevGap: 10 } })
+    expect(s).toBe('68,2% executado contra 75% previsto. Sem avanços no último mês, embora o desvio se tenha reduzido de 10 para 6,8 pontos.')
+    expect(s).not.toContain('favorável')
   })
-  it('stable + stalled → estável, sem avanço material', () => {
-    expect(generateStatusNarrative({ ...base, trend: { prevExec: 68.2, prevGap: 6.8 } }))
-      .toContain('Tendência estável: sem avanço material no último mês e desvio inalterado.')
+  it('stable + Em dia → mantém o ritmo previsto (no "Tendência" prefix)', () => {
+    const s = generateStatusNarrative({ ...base, status: 'Em dia', trend: { prevExec: 61.5, prevGap: 6.8 } })
+    expect(s).toBe('68,2% executado contra 75% previsto. Mantém o ritmo previsto: avançou 6,7 pontos no último mês, com o desvio praticamente inalterado.')
+  })
+  it('stable + Em risco → sem recuperação, stating the current gap level', () => {
+    const s = generateStatusNarrative({ ...base, status: 'Em risco', trend: { prevExec: 61.5, prevGap: 6.8 } })
+    expect(s).toBe('68,2% executado contra 75% previsto. Sem recuperação: avançou 6,7 pontos no último mês, mas o desvio mantém-se em 6,8 pontos.')
+  })
+  it('stable + Em atraso → sem recuperação', () => {
+    expect(generateStatusNarrative({ ...base, status: 'Em atraso', trend: { prevExec: 61.5, prevGap: 6.8 } }))
+      .toContain('Sem recuperação: avançou 6,7 pontos no último mês, mas o desvio mantém-se em 6,8 pontos.')
+  })
+  it('sem recuperação with a large gap reads the level, not a from-to', () => {
+    // gap 18 both then and now
+    expect(generateStatusNarrative({ ...base, execMedia: 57, status: 'Em risco', trend: { prevExec: 50.3, prevGap: 18 } }))
+      .toContain('Sem recuperação: avançou 6,7 pontos no último mês, mas o desvio mantém-se em 18 pontos.')
+  })
+  it('same stable gap change, different state → different label', () => {
+    const trend = { prevExec: 61.5, prevGap: 6.8 }
+    const emDia    = generateStatusNarrative({ ...base, status: 'Em dia',    trend })
+    const emRisco  = generateStatusNarrative({ ...base, status: 'Em risco',  trend })
+    const emAtraso = generateStatusNarrative({ ...base, status: 'Em atraso', trend })
+    expect(emDia).toContain('Mantém o ritmo previsto')
+    expect(emDia).not.toContain('Sem recuperação')
+    expect(emRisco).toContain('Sem recuperação')
+    expect(emRisco).not.toContain('Mantém o ritmo previsto')
+    expect(emAtraso).toBe(emRisco)
+  })
+  it('the stable labels carry no "Tendência" prefix', () => {
+    const trend = { prevExec: 61.5, prevGap: 6.8 }
+    expect(generateStatusNarrative({ ...base, status: 'Em dia',   trend })).not.toContain('Tendência')
+    expect(generateStatusNarrative({ ...base, status: 'Em risco', trend })).not.toContain('Tendência')
   })
   it('no history → no trend clause at all', () => {
     const s = generateStatusNarrative({ ...base, trend: null })
@@ -201,32 +235,57 @@ describe('stability threshold boundary', () => {
   it('gap change exactly at the threshold counts as stable', () => {
     // prevGap 5.8 → change +1.0, not > 1
     expect(generateStatusNarrative({ ...base, trend: { prevExec: 55.2, prevGap: 5.8 } }))
-      .toContain('Tendência estável')
+      .toContain('Mantém o ritmo previsto')
   })
   it('gap change just outside the threshold counts as widened', () => {
     // prevGap 5.7 → change +1.1 > 1
     expect(generateStatusNarrative({ ...base, trend: { prevExec: 55.2, prevGap: 5.7 } }))
       .toContain('Tendência desfavorável')
   })
-  it('raising the threshold flips a borderline plano back to estável', () => {
+  it('raising the threshold flips a borderline plano back to stable', () => {
     expect(generateStatusNarrative({ ...base, stabilityPoints: 2, trend: { prevExec: 55.2, prevGap: 5.7 } }))
-      .toContain('Tendência estável')
+      .toContain('Mantém o ritmo previsto')
   })
 })
 
 // ── Window phrasing ───────────────────────────────────────────
 describe('window phrasing', () => {
-  it('maps the configured window to wording', () => {
+  it('the five named periods map to their exact phrase', () => {
     expect(windowPhrase(7)).toBe('na última semana')
+    expect(windowPhrase(15)).toBe('na última quinzena')
     expect(windowPhrase(30)).toBe('no último mês')
     expect(windowPhrase(90)).toBe('no último trimestre')
+    expect(windowPhrase(180)).toBe('no último semestre')
+  })
+  it('any other length is stated literally — never a false "no último mês"', () => {
+    expect(windowPhrase(45)).toBe('nos últimos 45 dias')
+    expect(windowPhrase(10)).toBe('nos últimos 10 dias')
+    expect(windowPhrase(31)).toBe('nos últimos 31 dias')
     expect(windowPhrase(200)).toBe('nos últimos 200 dias')
+  })
+  it('the Admin options are exactly the named periods, with matching phrases', () => {
+    expect(TREND_PERIODS.map(t => [t.label, t.days, t.phrase])).toEqual([
+      ['Semana',    7,   'na última semana'],
+      ['Quinzena',  15,  'na última quinzena'],
+      ['Mês',       30,  'no último mês'],
+      ['Trimestre', 90,  'no último trimestre'],
+      ['Semestre',  180, 'no último semestre'],
+    ])
+    for (const t of TREND_PERIODS) expect(windowPhrase(t.days)).toBe(t.phrase)
   })
   it('the sentence uses the configured phrasing', () => {
     expect(generateStatusNarrative(p({
       execMedia: 68.2, execTarget: 75, deadline: null, windowDays: 7,
       trend: { prevExec: 55.2, prevGap: 5 },
     }))).toContain('na última semana')
+  })
+  it('a non-named window reaches the sentence literally', () => {
+    const s = generateStatusNarrative(p({
+      execMedia: 68.2, execTarget: 75, deadline: null, windowDays: 45,
+      trend: { prevExec: 55.2, prevGap: 5 },
+    }))
+    expect(s).toContain('avançou 13 pontos nos últimos 45 dias')
+    expect(s).not.toContain('no último mês')
   })
 })
 
@@ -235,6 +294,10 @@ describe('the plan state is never restated', () => {
   for (const status of ['Em dia', 'Em risco', 'Em atraso']) {
     it(`"${status}" does not appear in the text`, () => {
       const s = generateStatusNarrative(p({ status, riskCount: 2, delayedCount: 1 }))
+      expect(s).not.toContain(status)
+    })
+    it(`"${status}" selects the stable trend label without being named`, () => {
+      const s = generateStatusNarrative(p({ status, trend: { prevExec: 61.5, prevGap: 6.75 } }))
       expect(s).not.toContain(status)
     })
   }

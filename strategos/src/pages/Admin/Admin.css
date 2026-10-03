@@ -1048,6 +1048,25 @@
     flex: 1;
   }
 
+  /* ── Tendência: named window selector + "Outro" days input ───── */
+  .adm-trend-window {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .adm-trend-window .adm-select {
+    flex: 1;
+    min-width: 0;
+  }
+  .adm-trend-window .adm-input {
+    flex: 0 0 80px;
+    width: 80px;
+  }
+  .adm-trend-window-unit {
+    font-size: var(--text-md);
+    color: var(--text2);
+  }
+
   /* ── Input modifiers ─────────────────────────────────────────── */
   .adm-input-uppercase {
     text-transform: uppercase;

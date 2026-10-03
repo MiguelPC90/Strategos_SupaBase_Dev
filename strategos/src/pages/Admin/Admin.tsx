@@ -30,6 +30,7 @@ import { fetchAllPaginated } from '../../lib/fetchAllPaginated'
 import { buildBandResolver } from '../../lib/thresholds'
 import { useGlobalBands } from '../../hooks/useThresholdsMap'
 import type { ThresholdBand } from '../../lib/rollup'
+import { TREND_PERIODS } from '../../lib/statusNarrative'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -3153,6 +3154,9 @@ const PLANO_CONFIG_KEYS = [
   'narrative_trend_window_days', 'narrative_trend_stability_points',
 ] as const
 
+/** True for the windows the Tendência selector names (Semana … Semestre). */
+const isNamedTrendPeriod = (days: number) => TREND_PERIODS.some(t => t.days === days)
+
 const SEVERITY_OPTS: AlertSeverity[] = ['critical', 'high', 'medium', 'low']
 const SEVERITY_LABELS: Record<AlertSeverity, string> = {
   critical: 'Crítico', high: 'Alto', medium: 'Médio', low: 'Baixo',
@@ -3167,6 +3171,8 @@ function AdminPlano() {
   const [delayLvsHigh, setDelayLvsHigh] = useState(10)
   const [hideCompletedDays,    setHideCompletedDays]    = useState(90)
   const [trendWindowDays,      setTrendWindowDays]      = useState(30)
+  // Text of the "Outro" days input; null while a named period is selected.
+  const [trendWindowOther,     setTrendWindowOther]     = useState<string | null>(null)
   const [trendStabilityPts,    setTrendStabilityPts]    = useState(1)
   const [healthConfig,         setHealthConfig]         = useState<HealthConfig>(DEFAULT_HEALTH_CONFIG)
   const [loading,    setLoading]    = useState(true)
@@ -3198,7 +3204,9 @@ function AdminPlano() {
         setDelayLvsHigh(parseInt(map['status_delay_threshold_leaves_high']     ?? '10') || 10)
         const hcd = parseInt(map['pds_hide_completed_days'] ?? '')
         if (!isNaN(hcd)) setHideCompletedDays(hcd)
-        setTrendWindowDays(parseInt(map['narrative_trend_window_days'] ?? '30') || 30)
+        const twd = parseInt(map['narrative_trend_window_days'] ?? '30') || 30
+        setTrendWindowDays(twd)
+        setTrendWindowOther(isNamedTrendPeriod(twd) ? null : String(twd))
         const tsp = parseFloat(map['narrative_trend_stability_points'] ?? '')
         if (!isNaN(tsp)) setTrendStabilityPts(tsp)
         if (map['health_rules']) {
@@ -3373,14 +3381,50 @@ function AdminPlano() {
         </p>
         <div className="threshold-pair">
           <div className="adm-field">
-            <label className="adm-label">Janela de comparação (dias)</label>
-            <input
-              className="adm-input"
-              type="number" min={1} step={1}
-              value={trendWindowDays}
-              onChange={e => setTrendWindowDays(parseInt(e.target.value) || 0)}
-              onBlur={() => saveConfigKey('narrative_trend_window_days', String(trendWindowDays))}
-            />
+            <label className="adm-label">Janela de comparação</label>
+            <div className="adm-trend-window">
+              <select
+                className="adm-select"
+                value={trendWindowOther !== null ? 'outro' : String(trendWindowDays)}
+                onChange={e => {
+                  if (e.target.value === 'outro') {
+                    setTrendWindowOther(String(trendWindowDays))
+                    return
+                  }
+                  const days = parseInt(e.target.value)
+                  setTrendWindowOther(null)
+                  setTrendWindowDays(days)
+                  saveConfigKey('narrative_trend_window_days', String(days))
+                }}
+              >
+                {TREND_PERIODS.map(t => (
+                  <option key={t.days} value={String(t.days)}>{t.label}</option>
+                ))}
+                <option value="outro">Outro</option>
+              </select>
+              {trendWindowOther !== null && (
+                <>
+                  <input
+                    className="adm-input"
+                    type="number" min={1} step={1}
+                    aria-label="Número de dias"
+                    value={trendWindowOther}
+                    onChange={e => setTrendWindowOther(e.target.value)}
+                    onBlur={() => {
+                      const typed = parseInt(trendWindowOther ?? '')
+                      const valid = typed >= 1
+                      // An invalid entry keeps the saved window. Either way the option is
+                      // re-derived from the saved number, as on load: 90 lands on "Trimestre".
+                      const days = valid ? typed : trendWindowDays
+                      setTrendWindowDays(days)
+                      setTrendWindowOther(isNamedTrendPeriod(days) ? null : String(days))
+                      if (valid) saveConfigKey('narrative_trend_window_days', String(days))
+                    }}
+                  />
+                  <span className="adm-trend-window-unit">dias</span>
+                </>
+              )}
+            </div>
             <span className="adm-help">Há quanto tempo comparar. Planos sem histórico tão antigo não mostram tendência.</span>
             {errorKey === 'narrative_trend_window_days' && <span className="adm-error-indicator">Erro ao guardar</span>}
           </div>

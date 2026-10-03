@@ -99,12 +99,34 @@ function fmtMonthYear(iso: string): string {
   return `${PT_MONTHS_LONG[parseInt(m, 10) - 1]} de ${y}`
 }
 
-/** Phrases the comparison window from its configured length in days. */
+export interface TrendPeriod {
+  /** Option label in Admin → Tendência. */
+  label: string
+  days: number
+  /** How the sentence phrases this window. */
+  phrase: string
+}
+
+/**
+ * The named comparison windows. Admin → Tendência offers exactly these (plus
+ * "Outro"), and the sentence phrases them from this same table, so the label an
+ * administrator picks and the words printed can never disagree.
+ */
+export const TREND_PERIODS: readonly TrendPeriod[] = [
+  { label: 'Semana',    days: 7,   phrase: 'na última semana'    },
+  { label: 'Quinzena',  days: 15,  phrase: 'na última quinzena'  },
+  { label: 'Mês',       days: 30,  phrase: 'no último mês'       },
+  { label: 'Trimestre', days: 90,  phrase: 'no último trimestre' },
+  { label: 'Semestre',  days: 180, phrase: 'no último semestre'  },
+]
+
+/**
+ * Phrases the comparison window. Exact match only: any length that is not a named
+ * period is stated literally, so a 45-day window never reads "no último mês".
+ */
 export function windowPhrase(windowDays: number): string {
-  if (windowDays <= 10)  return 'na última semana'
-  if (windowDays <= 45)  return 'no último mês'
-  if (windowDays <= 120) return 'no último trimestre'
-  return `nos últimos ${windowDays} dias`
+  const named = TREND_PERIODS.find(t => t.days === windowDays)
+  return named ? named.phrase : `nos últimos ${windowDays} dias`
 }
 
 function addDays(iso: string, days: number): string {
@@ -123,9 +145,12 @@ function monthsUntil(today: string, deadline: string): number {
 }
 
 export function selectFamily(p: NarrativeParams): NarrativeFamily {
-  // 1 — nothing executed, or no baseline to measure against (execTarget === 0 is
-  // the degenerate case that used to read "0% executado, em linha com o objectivo de 0%").
-  if (p.execTarget <= 0 || p.execMedia <= 0) return 'nao_iniciado'
+  // 1 — no baseline to measure against: execTarget <= 0 means no leaf has usable
+  // baseline dates, or none has reached its baseline start (also the degenerate case
+  // that used to read "0% executado, em linha com o objectivo de 0%"). Zero execution
+  // alone does NOT qualify: a plano at 0% with a live target should have started
+  // already, and family 5's "0% executado contra 30% previsto" says so.
+  if (p.execTarget <= 0) return 'nao_iniciado'
   // 2 — concluded
   if (p.status === 'Concluída') return 'concluido'
   // 3 / 4 — deadline already passed; which family depends on whether it fell
@@ -141,11 +166,18 @@ export function selectFamily(p: NarrativeParams): NarrativeFamily {
 /**
  * The trend clause. Judgement comes from how the GAP (planned − actual) moved
  * across the window; raw progress is always reported alongside as context.
+ * Widened and narrowed split by whether the plano advanced or stalled. Stable
+ * splits by plan state instead of a new threshold: the state already grades the
+ * gap's size through the aggregates band, and only Em dia / Em risco / Em atraso
+ * reach family 5 (expired deadlines go to 3/4), so that split is total.
  *
- * KNOWN LIMITATION (accepted, out of scope): extending a plano's deadline lowers
- * today's planned %, so the gap narrows with no work done and this reads
- * "Tendência favorável". Detecting that would require comparing baselines across
- * snapshots too.
+ * MOVED BASELINE — deliberately NOT detected (out of scope): the gap can narrow
+ * with no work done when the deadline is extended or scope is added, since both
+ * lower today's planned %. It would be detectable — the stored planned %
+ * (exec_media_prev in the snapshots) DROPS between the two dates, where it
+ * normally only rises — but that check was left out on purpose. This is why the
+ * narrowed-while-stalled row carries no judgement word: it states both facts and
+ * lets "embora" carry the oddity.
  */
 function trendClause(p: NarrativeParams): string {
   if (!p.trend) return ''
@@ -166,12 +198,14 @@ function trendClause(p: NarrativeParams): string {
   }
   if (narrowed) {
     return stalled
-      ? `Tendência favorável: praticamente sem avanço ${when}, mas o desvio reduziu-se de ${fmtNum(gapPrev)} para ${fmtPoints(gapNow)}.`
+      ? `Sem avanços ${when}, embora o desvio se tenha reduzido de ${fmtNum(gapPrev)} para ${fmtPoints(gapNow)}.`
       : `Tendência favorável: avançou ${fmtPoints(progress)} ${when} e o desvio reduziu-se de ${fmtNum(gapPrev)} para ${fmtPoints(gapNow)}.`
   }
-  return stalled
-    ? `Tendência estável: sem avanço material ${when} e desvio inalterado.`
-    : `Tendência estável: avançou ${fmtPoints(progress)} ${when}, com o desvio praticamente inalterado.`
+  // Stable. "Sem recuperação" states the gap's current level, not a from-to:
+  // nothing moved, so the level is what matters.
+  return p.status === 'Em dia'
+    ? `Mantém o ritmo previsto: avançou ${fmtPoints(progress)} ${when}, com o desvio praticamente inalterado.`
+    : `Sem recuperação: avançou ${fmtPoints(progress)} ${when}, mas o desvio mantém-se em ${fmtPoints(gapNow)}.`
 }
 
 /** Clause 2 of family 5: em risco → em atraso → riscos críticos → prazo. */
