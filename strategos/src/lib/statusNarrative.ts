@@ -13,6 +13,7 @@
 
 export type NarrativeFamily =
   | 'nao_iniciado'
+  | 'sem_baseline'
   | 'concluido'
   | 'fora_de_prazo'
   | 'ultrapassou_prazo'
@@ -121,12 +122,25 @@ export const TREND_PERIODS: readonly TrendPeriod[] = [
 ]
 
 /**
+ * Shortest comparison window. Snapshots are daily, so anything under a week would
+ * compare with yesterday — and "nos últimos 1 dias" is not Portuguese. Admin
+ * rejects shorter "Outro" values; a shorter value already stored is read as this.
+ */
+export const MIN_TREND_WINDOW_DAYS = 7
+
+/** The window actually used: the configured one, floored at a week. */
+export function effectiveWindowDays(windowDays: number): number {
+  return Math.max(MIN_TREND_WINDOW_DAYS, windowDays)
+}
+
+/**
  * Phrases the comparison window. Exact match only: any length that is not a named
  * period is stated literally, so a 45-day window never reads "no último mês".
  */
 export function windowPhrase(windowDays: number): string {
-  const named = TREND_PERIODS.find(t => t.days === windowDays)
-  return named ? named.phrase : `nos últimos ${windowDays} dias`
+  const days  = effectiveWindowDays(windowDays)
+  const named = TREND_PERIODS.find(t => t.days === days)
+  return named ? named.phrase : `nos últimos ${days} dias`
 }
 
 function addDays(iso: string, days: number): string {
@@ -145,18 +159,20 @@ function monthsUntil(today: string, deadline: string): number {
 }
 
 export function selectFamily(p: NarrativeParams): NarrativeFamily {
-  // 1 — no baseline to measure against: execTarget <= 0 means no leaf has usable
-  // baseline dates, or none has reached its baseline start (also the degenerate case
-  // that used to read "0% executado, em linha com o objectivo de 0%"). Zero execution
-  // alone does NOT qualify: a plano at 0% with a live target should have started
-  // already, and family 5's "0% executado contra 30% previsto" says so.
-  if (p.execTarget <= 0) return 'nao_iniciado'
-  // 2 — concluded
+  // 1 — concluded. FIRST, regardless of baseline: a plano that is 100% done but
+  // whose leaves carry no baseline dates must never read "não iniciado".
   if (p.status === 'Concluída') return 'concluido'
+  // 2 — no baseline to measure against: execTarget <= 0 means no leaf has usable
+  // baseline dates, or none has reached its baseline start (also the degenerate case
+  // that used to read "0% executado, em linha com o objectivo de 0%"). Splits on
+  // execution: none → não iniciado; some (work started ahead of the baseline) →
+  // sem baseline. Zero execution with a live target does NOT land here: that plano
+  // should have started, and family 5's "0% executado contra 30% previsto" says so.
+  if (p.execTarget <= 0) return p.execMedia > 0 ? 'sem_baseline' : 'nao_iniciado'
   // 3 / 4 — deadline already passed; which family depends on whether it fell
   // before the comparison window opened or inside it.
   if (p.deadline && p.deadline < p.today) {
-    const windowStart = addDays(p.today, -p.windowDays)
+    const windowStart = addDays(p.today, -effectiveWindowDays(p.windowDays))
     return p.deadline < windowStart ? 'fora_de_prazo' : 'ultrapassou_prazo'
   }
   // 5 — in progress, within the deadline
@@ -166,10 +182,14 @@ export function selectFamily(p: NarrativeParams): NarrativeFamily {
 /**
  * The trend clause. Judgement comes from how the GAP (planned − actual) moved
  * across the window; raw progress is always reported alongside as context.
- * Widened and narrowed split by whether the plano advanced or stalled. Stable
+ * Every gap change splits by whether the plano advanced or stalled; stable also
  * splits by plan state instead of a new threshold: the state already grades the
  * gap's size through the aggregates band, and only Em dia / Em risco / Em atraso
  * reach family 5 (expired deadlines go to 3/4), so that split is total.
+ *
+ * "Stalled" is one definition for all rows: progress <= stabilityPoints (the
+ * Admin stability threshold). It is one-sided on purpose — execution revised
+ * DOWNWARD counts as stalled — so a negative progress value is never printed.
  *
  * MOVED BASELINE — deliberately NOT detected (out of scope): the gap can narrow
  * with no work done when the deadline is extended or scope is added, since both
@@ -189,7 +209,7 @@ function trendClause(p: NarrativeParams): string {
 
   const widened  = gapDelta >  p.stabilityPoints
   const narrowed = gapDelta < -p.stabilityPoints
-  const stalled  = Math.abs(progress) <= p.stabilityPoints
+  const stalled  = progress <= p.stabilityPoints
 
   if (widened) {
     return stalled
@@ -202,9 +222,15 @@ function trendClause(p: NarrativeParams): string {
       : `Tendência favorável: avançou ${fmtPoints(progress)} ${when} e o desvio reduziu-se de ${fmtNum(gapPrev)} para ${fmtPoints(gapNow)}.`
   }
   // Stable. "Sem recuperação" states the gap's current level, not a from-to:
-  // nothing moved, so the level is what matters.
-  return p.status === 'Em dia'
-    ? `Mantém o ritmo previsto: avançou ${fmtPoints(progress)} ${when}, com o desvio praticamente inalterado.`
+  // nothing moved, so the level is what matters. Its stalled row says "execução
+  // inalterada" to avoid a second "sem".
+  if (p.status === 'Em dia') {
+    return stalled
+      ? `Mantém o ritmo previsto: sem avanço material ${when}, com o desvio praticamente inalterado.`
+      : `Mantém o ritmo previsto: avançou ${fmtPoints(progress)} ${when}, com o desvio praticamente inalterado.`
+  }
+  return stalled
+    ? `Sem recuperação: execução inalterada ${when}, com o desvio em ${fmtPoints(gapNow)}.`
     : `Sem recuperação: avançou ${fmtPoints(progress)} ${when}, mas o desvio mantém-se em ${fmtPoints(gapNow)}.`
 }
 
@@ -245,6 +271,11 @@ export function generateStatusNarrative(p: NarrativeParams): string {
     return 'Plano ainda não iniciado.'
   }
 
+  if (family === 'sem_baseline') {
+    // "Em execução" describes activity; it is not one of the four plan states.
+    return `Em execução (${fmtPct(p.execMedia)}), sem baseline para comparação.`
+  }
+
   if (family === 'concluido') {
     const n = `${numWord(p.concludedCount, 'f')} ${p.concludedCount === 1 ? 'actividade fechada' : 'actividades fechadas'}`
     return p.realFinish
@@ -260,14 +291,15 @@ export function generateStatusNarrative(p: NarrativeParams): string {
     // close: this family talks about work remaining and pace, never "agravou-se".
     const head = `Prazo terminou em ${fmtMonthYear(p.deadline!)}. Faltam ${fmtPct(remaining)} por executar`
     if (!p.trend) return `${head}.`
-    const progress = p.execMedia - p.trend.prevExec
+    // Floored at 0: a downward revision is never printed as "avançou -…".
+    const progress = Math.max(0, p.execMedia - p.trend.prevExec)
     return `${head} e avançou ${fmtPoints(progress)} ${windowPhrase(p.windowDays)}.`
   }
 
   if (family === 'ultrapassou_prazo') {
     const head = `Ultrapassou o prazo em ${fmtMonthYear(p.deadline!)} com ${fmtPct(remaining)} por executar`
     if (!p.trend) return `${head}.`
-    const progress = p.execMedia - p.trend.prevExec
+    const progress = Math.max(0, p.execMedia - p.trend.prevExec)
     return `${head}; avançou apenas ${fmtPoints(progress)} ${windowPhrase(p.windowDays)}.`
   }
 

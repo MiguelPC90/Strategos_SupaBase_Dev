@@ -30,7 +30,7 @@ import { fetchAllPaginated } from '../../lib/fetchAllPaginated'
 import { buildBandResolver } from '../../lib/thresholds'
 import { useGlobalBands } from '../../hooks/useThresholdsMap'
 import type { ThresholdBand } from '../../lib/rollup'
-import { TREND_PERIODS } from '../../lib/statusNarrative'
+import { TREND_PERIODS, MIN_TREND_WINDOW_DAYS, effectiveWindowDays } from '../../lib/statusNarrative'
 
 // ── Types ──────────────────────────────────────────────────────
 type SectionKey =
@@ -3173,6 +3173,7 @@ function AdminPlano() {
   const [trendWindowDays,      setTrendWindowDays]      = useState(30)
   // Text of the "Outro" days input; null while a named period is selected.
   const [trendWindowOther,     setTrendWindowOther]     = useState<string | null>(null)
+  const [trendWindowTooShort,  setTrendWindowTooShort]  = useState(false)
   const [trendStabilityPts,    setTrendStabilityPts]    = useState(1)
   const [healthConfig,         setHealthConfig]         = useState<HealthConfig>(DEFAULT_HEALTH_CONFIG)
   const [loading,    setLoading]    = useState(true)
@@ -3204,7 +3205,9 @@ function AdminPlano() {
         setDelayLvsHigh(parseInt(map['status_delay_threshold_leaves_high']     ?? '10') || 10)
         const hcd = parseInt(map['pds_hide_completed_days'] ?? '')
         if (!isNaN(hcd)) setHideCompletedDays(hcd)
-        const twd = parseInt(map['narrative_trend_window_days'] ?? '30') || 30
+        // A sub-week value stored before the minimum existed shows as the 7 the
+        // narrative actually uses (effectiveWindowDays); it is rewritten on next save.
+        const twd = effectiveWindowDays(parseInt(map['narrative_trend_window_days'] ?? '30') || 30)
         setTrendWindowDays(twd)
         setTrendWindowOther(isNamedTrendPeriod(twd) ? null : String(twd))
         const tsp = parseFloat(map['narrative_trend_stability_points'] ?? '')
@@ -3387,6 +3390,7 @@ function AdminPlano() {
                 className="adm-select"
                 value={trendWindowOther !== null ? 'outro' : String(trendWindowDays)}
                 onChange={e => {
+                  setTrendWindowTooShort(false)
                   if (e.target.value === 'outro') {
                     setTrendWindowOther(String(trendWindowDays))
                     return
@@ -3406,15 +3410,17 @@ function AdminPlano() {
                 <>
                   <input
                     className="adm-input"
-                    type="number" min={1} step={1}
+                    type="number" min={MIN_TREND_WINDOW_DAYS} step={1}
                     aria-label="Número de dias"
                     value={trendWindowOther}
-                    onChange={e => setTrendWindowOther(e.target.value)}
+                    onChange={e => { setTrendWindowOther(e.target.value); setTrendWindowTooShort(false) }}
                     onBlur={() => {
                       const typed = parseInt(trendWindowOther ?? '')
-                      const valid = typed >= 1
-                      // An invalid entry keeps the saved window. Either way the option is
-                      // re-derived from the saved number, as on load: 90 lands on "Trimestre".
+                      const valid = typed >= MIN_TREND_WINDOW_DAYS
+                      // Below a week is rejected with a message; empty/zero silently. Either
+                      // way the saved window is kept. The option is then re-derived from the
+                      // saved number, as on load: 90 lands on "Trimestre".
+                      setTrendWindowTooShort(typed >= 1 && !valid)
                       const days = valid ? typed : trendWindowDays
                       setTrendWindowDays(days)
                       setTrendWindowOther(isNamedTrendPeriod(days) ? null : String(days))
@@ -3425,6 +3431,7 @@ function AdminPlano() {
                 </>
               )}
             </div>
+            {trendWindowTooShort && <span className="adm-error-indicator">Mínimo de {MIN_TREND_WINDOW_DAYS} dias.</span>}
             <span className="adm-help">Há quanto tempo comparar. Planos sem histórico tão antigo não mostram tendência.</span>
             {errorKey === 'narrative_trend_window_days' && <span className="adm-error-indicator">Erro ao guardar</span>}
           </div>
