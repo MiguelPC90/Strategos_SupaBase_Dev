@@ -19,11 +19,15 @@ export type NarrativeFamily =
   | 'ultrapassou_prazo'
   | 'em_curso'
 
-/** Comparison point taken from snapshot history (see lib/narrativeTrend.ts). */
+/** Comparison point for the trend clause (built by lib/narrativeTrend.ts). */
 export interface TrendInput {
-  /** Execution % (0-100) at the comparison snapshot. */
+  /** Execution % (0-100) at the comparison snapshot — the past ACTUAL. */
   prevExec: number
-  /** Gap (planned − actual, in points) at the comparison snapshot. */
+  /**
+   * Gap (planned − actual, in points) at the comparison date: the planned % RECOMPUTED
+   * from today's leaves and baselines at that date, minus the snapshot's actual.
+   * Negative when the plano was ahead of plan.
+   */
   prevGap: number
 }
 
@@ -179,6 +183,42 @@ export function selectFamily(p: NarrativeParams): NarrativeFamily {
   return 'em_curso'
 }
 
+/** Which side of the plan a gap sits on, read from its DISPLAYED (truncated) value. */
+type Side = 'behind' | 'ahead' | 'level'
+
+function sideOf(gap: number): Side {
+  const shown = fmtNum(gap)
+  if (shown === '0') return 'level'
+  return shown.startsWith('-') ? 'ahead' : 'behind'
+}
+
+/** One end of a crossing: "4 pontos abaixo", "3 pontos acima", "em linha com o previsto". */
+function positionOf(gap: number, side: Side): string {
+  if (side === 'level') return 'em linha com o previsto'
+  return `${fmtPoints(Math.abs(gap))} ${side === 'behind' ? 'abaixo' : 'acima'}`
+}
+
+/**
+ * "de 4 pontos abaixo para 3 pontos acima do previsto": "do previsto" is said once, at
+ * the end — unless the end is "em linha com o previsto", which carries its own.
+ */
+function crossingFromTo(gapPrev: number, gapNow: number): string {
+  const sideNow = sideOf(gapNow)
+  const from    = positionOf(gapPrev, sideOf(gapPrev))
+  const to      = positionOf(gapNow, sideNow)
+  return sideNow === 'level'
+    ? `de ${from} do previsto para ${to}`
+    : `de ${from} para ${to} do previsto`
+}
+
+/**
+ * The stability threshold, floored at 0. Admin accepts a typed negative value, which
+ * would otherwise let a downward revision count as progress and print "avançou -…".
+ */
+function stabilityOf(p: NarrativeParams): number {
+  return Math.max(0, p.stabilityPoints)
+}
+
 /**
  * The trend clause. Judgement comes from how the GAP (planned − actual) moved
  * across the window; raw progress is always reported alongside as context.
@@ -187,51 +227,109 @@ export function selectFamily(p: NarrativeParams): NarrativeFamily {
  * gap's size through the aggregates band, and only Em dia / Em risco / Em atraso
  * reach family 5 (expired deadlines go to 3/4), so that split is total.
  *
- * "Stalled" is one definition for all rows: progress <= stabilityPoints (the
- * Admin stability threshold). It is one-sided on purpose — execution revised
- * DOWNWARD counts as stalled — so a negative progress value is never printed.
+ * "Stalled" is one definition for all rows: progress <= the stability threshold
+ * (stabilityOf). It is one-sided on purpose — execution revised DOWNWARD counts as
+ * stalled — so a negative progress value is never printed.
  *
- * MOVED BASELINE — deliberately NOT detected (out of scope): the gap can narrow
- * with no work done when the deadline is extended or scope is added, since both
- * lower today's planned %. It would be detectable — the stored planned %
- * (exec_media_prev in the snapshots) DROPS between the two dates, where it
- * normally only rises — but that check was left out on purpose. This is why the
- * narrowed-while-stalled row carries no judgement word: it states both facts and
- * lets "embora" carry the oddity.
+ * THE PAST GAP (built in lib/narrativeTrend.ts). The snapshot supplies only the past
+ * ACTUAL. The past PLANNED % is recomputed with rollupPctPrev over TODAY's leaves and
+ * baselines, at the snapshot's own date — the same function as the live "previsto", so
+ * the two cannot drift. The snapshot's own planned figure is unusable (exec_media_prev
+ * is AVG of the raw pct_prev column, 0 for every app-created activity), and storing a
+ * correct one would not do either: baselines are edited routinely (the edit panel
+ * writes bs/bf, dependent dates shift automatically), so a stored past planned % would
+ * measure against a plan that no longer exists.
+ *
+ * Trade-off: "de X" is the past gap RE-MEASURED against today's plan. If the plan
+ * changed inside the window, X can differ from what the header showed on that date.
+ *
+ * Leaf-count guard: when the snapshot averaged a different number of level-4 leaves
+ * than the plano has today, there is no trend clause at all — the two halves of the
+ * past gap would describe different sets. It does not catch an equal-count swap (one
+ * leaf removed, another added): the past actual then averages a set that differs from
+ * today's by that leaf.
+ *
+ * Wording follows the side of the plan each gap sits on, read from its DISPLAYED value:
+ * "desvio" behind, "vantagem" ahead (printed as a size, never negative), "em linha com
+ * o previsto" at 0, and "acima"/"abaixo" when the gap crosses the line. The judgement
+ * (favourable / unfavourable / stable, on the signed gap change) does not depend on it.
  */
 function trendClause(p: NarrativeParams): string {
   if (!p.trend) return ''
   const when     = windowPhrase(p.windowDays)
+  const s        = stabilityOf(p)
   const gapNow   = p.execTarget - p.execMedia
   const gapPrev  = p.trend.prevGap
   const gapDelta = gapNow - gapPrev
   const progress = p.execMedia - p.trend.prevExec
 
-  const widened  = gapDelta >  p.stabilityPoints
-  const narrowed = gapDelta < -p.stabilityPoints
-  const stalled  = progress <= p.stabilityPoints
+  // Two gaps that DISPLAY the same read as stable whatever the threshold: a judgement
+  // between two equal printed values ("de 6,8 para 6,8") would look like a bug. Only
+  // reachable with a threshold under 0,2.
+  const shownSame = fmtNum(gapPrev) === fmtNum(gapNow)
+  const widened   = !shownSame && gapDelta >  s
+  const narrowed  = !shownSame && gapDelta < -s
+  const stalled   = progress <= s
+  const advanced  = `avançou ${fmtPoints(progress)} ${when}`
+
+  const sidePrev   = sideOf(gapPrev)
+  const sideNow    = sideOf(gapNow)
+  const behindBoth = sidePrev === 'behind' && sideNow === 'behind'
+  const aheadBoth  = sidePrev === 'ahead'  && sideNow === 'ahead'
 
   if (widened) {
+    if (behindBoth) {
+      return stalled
+        ? `Tendência desfavorável: praticamente sem avanço ${when}, com o desvio a subir de ${fmtNum(gapPrev)} para ${fmtPoints(gapNow)}.`
+        : `Tendência desfavorável: ${advanced}, mas o desvio agravou-se de ${fmtNum(gapPrev)} para ${fmtPoints(gapNow)}.`
+    }
+    if (aheadBoth) {
+      return stalled
+        ? `Tendência desfavorável: praticamente sem avanço ${when}, com a vantagem face ao previsto a reduzir-se de ${fmtNum(-gapPrev)} para ${fmtPoints(-gapNow)}.`
+        : `Tendência desfavorável: ${advanced}, mas a vantagem face ao previsto reduziu-se de ${fmtNum(-gapPrev)} para ${fmtPoints(-gapNow)}.`
+    }
     return stalled
-      ? `Tendência desfavorável: praticamente sem avanço ${when}, com o desvio a subir de ${fmtNum(gapPrev)} para ${fmtPoints(gapNow)}.`
-      : `Tendência desfavorável: avançou ${fmtPoints(progress)} ${when}, mas o desvio agravou-se de ${fmtNum(gapPrev)} para ${fmtPoints(gapNow)}.`
+      ? `Tendência desfavorável: praticamente sem avanço ${when} e passou ${crossingFromTo(gapPrev, gapNow)}.`
+      : `Tendência desfavorável: ${advanced}, mas passou ${crossingFromTo(gapPrev, gapNow)}.`
   }
   if (narrowed) {
+    // The stalled branches below cannot be reached with the recomputed past planned %.
+    // Both planned values come from today's leaves, and leafPctPrev never falls as the
+    // date advances, so planned rises by some ΔP >= 0. The gap change is ΔP − progress,
+    // so narrowing (< −threshold) needs progress > ΔP + threshold >= threshold: never
+    // "stalled". That holds for any past actual, so an equal-count leaf swap (which only
+    // changes the past actual) cannot reach them either. Kept as a defensive fallback:
+    // generateStatusNarrative accepts any TrendInput.
+    if (behindBoth) {
+      return stalled
+        ? `Sem avanços ${when}, embora o desvio se tenha reduzido de ${fmtNum(gapPrev)} para ${fmtPoints(gapNow)}.`
+        : `Tendência favorável: ${advanced} e o desvio reduziu-se de ${fmtNum(gapPrev)} para ${fmtPoints(gapNow)}.`
+    }
+    if (aheadBoth) {
+      return stalled
+        ? `Sem avanços ${when}, embora a vantagem face ao previsto tenha aumentado de ${fmtNum(-gapPrev)} para ${fmtPoints(-gapNow)}.`
+        : `Tendência favorável: ${advanced} e a vantagem face ao previsto aumentou de ${fmtNum(-gapPrev)} para ${fmtPoints(-gapNow)}.`
+    }
     return stalled
-      ? `Sem avanços ${when}, embora o desvio se tenha reduzido de ${fmtNum(gapPrev)} para ${fmtPoints(gapNow)}.`
-      : `Tendência favorável: avançou ${fmtPoints(progress)} ${when} e o desvio reduziu-se de ${fmtNum(gapPrev)} para ${fmtPoints(gapNow)}.`
+      ? `Sem avanços ${when}, embora tenha passado ${crossingFromTo(gapPrev, gapNow)}.`
+      : `Tendência favorável: ${advanced} e passou ${crossingFromTo(gapPrev, gapNow)}.`
   }
-  // Stable. "Sem recuperação" states the gap's current level, not a from-to:
-  // nothing moved, so the level is what matters. Its stalled row says "execução
-  // inalterada" to avoid a second "sem".
-  if (p.status === 'Em dia') {
+  // Stable. "Sem recuperação" states the gap's current level, not a from-to: nothing
+  // moved, so the level is what matters; its stalled row says "execução inalterada" to
+  // avoid a second "sem". It applies only BEHIND the plan: a plano ahead of (or level
+  // with) its plan has nothing to recover, whatever the state pill says — the pill's
+  // target can differ from this "previsto" (undated leaves, sub-activity dates).
+  if (sideNow === 'behind' && p.status !== 'Em dia') {
     return stalled
-      ? `Mantém o ritmo previsto: sem avanço material ${when}, com o desvio praticamente inalterado.`
-      : `Mantém o ritmo previsto: avançou ${fmtPoints(progress)} ${when}, com o desvio praticamente inalterado.`
+      ? `Sem recuperação: execução inalterada ${when}, com o desvio em ${fmtPoints(gapNow)}.`
+      : `Sem recuperação: ${advanced}, mas o desvio mantém-se em ${fmtPoints(gapNow)}.`
   }
+  const position = sideNow === 'ahead' ? 'com a vantagem praticamente inalterada'
+    : sideNow === 'level' ? 'em linha com o previsto'
+    : 'com o desvio praticamente inalterado'
   return stalled
-    ? `Sem recuperação: execução inalterada ${when}, com o desvio em ${fmtPoints(gapNow)}.`
-    : `Sem recuperação: avançou ${fmtPoints(progress)} ${when}, mas o desvio mantém-se em ${fmtPoints(gapNow)}.`
+    ? `Mantém o ritmo previsto: sem avanço material ${when}, ${position}.`
+    : `Mantém o ritmo previsto: ${advanced}, ${position}.`
 }
 
 /** Clause 2 of family 5: em risco → em atraso → riscos críticos → prazo. */
@@ -293,7 +391,7 @@ export function generateStatusNarrative(p: NarrativeParams): string {
     if (!p.trend) return `${head}.`
     // Same "stalled" as the trend rows, so neither "avançou 0" nor "avançou -" is printed.
     const progress = p.execMedia - p.trend.prevExec
-    return progress <= p.stabilityPoints
+    return progress <= stabilityOf(p)
       ? `${head}, sem avanço material ${windowPhrase(p.windowDays)}.`
       : `${head} e avançou ${fmtPoints(progress)} ${windowPhrase(p.windowDays)}.`
   }
@@ -302,7 +400,7 @@ export function generateStatusNarrative(p: NarrativeParams): string {
     const head = `Ultrapassou o prazo em ${fmtMonthYear(p.deadline!)} com ${fmtPct(remaining)} por executar`
     if (!p.trend) return `${head}.`
     const progress = p.execMedia - p.trend.prevExec
-    return progress <= p.stabilityPoints
+    return progress <= stabilityOf(p)
       ? `${head}, sem avanço material ${windowPhrase(p.windowDays)}.`
       : `${head}; avançou apenas ${fmtPoints(progress)} ${windowPhrase(p.windowDays)}.`
   }

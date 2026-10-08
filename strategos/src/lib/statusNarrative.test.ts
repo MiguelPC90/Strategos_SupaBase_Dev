@@ -314,6 +314,114 @@ describe('stability threshold boundary', () => {
   })
 })
 
+// ── Sign-aware trend wording (behind / ahead / crossing) ──────
+describe('sign-aware trend wording', () => {
+  // t(execMedia, execTarget, prevExec, prevGap): today's gap = execTarget − execMedia.
+  const t = (execMedia: number, execTarget: number, prevExec: number, prevGap: number, o: Partial<NarrativeParams> = {}) =>
+    generateStatusNarrative(p({ execMedia, execTarget, deadline: null, trend: { prevExec, prevGap }, ...o }))
+
+  describe('both points ahead → "vantagem", printed as a size', () => {
+    it('lead grew, advanced', () => {
+      expect(t(65.3, 60, 52.3, -2)).toBe('65,3% executado contra 60% previsto. Tendência favorável: avançou 13 pontos no último mês e a vantagem face ao previsto aumentou de 2 para 5,3 pontos.')
+    })
+    it('lead shrank, advanced', () => {
+      expect(t(62, 60, 59, -5.3)).toBe('62% executado contra 60% previsto. Tendência desfavorável: avançou 3 pontos no último mês, mas a vantagem face ao previsto reduziu-se de 5,3 para 2 pontos.')
+    })
+    it('lead shrank, stalled', () => {
+      expect(t(62, 60, 62, -5.3)).toBe('62% executado contra 60% previsto. Tendência desfavorável: praticamente sem avanço no último mês, com a vantagem face ao previsto a reduzir-se de 5,3 para 2 pontos.')
+    })
+    it('stable, advanced', () => {
+      expect(t(65.3, 60, 58.6, -5.3)).toBe('65,3% executado contra 60% previsto. Mantém o ritmo previsto: avançou 6,7 pontos no último mês, com a vantagem praticamente inalterada.')
+    })
+    it('stable, stalled', () => {
+      expect(t(65.3, 60, 65.3, -5.3)).toBe('65,3% executado contra 60% previsto. Mantém o ritmo previsto: sem avanço material no último mês, com a vantagem praticamente inalterada.')
+    })
+    it('an ahead plano never reads "Sem recuperação", whatever the state pill says', () => {
+      const s = t(65.3, 60, 58.6, -5.3, { status: 'Em risco' })
+      expect(s).toContain('Mantém o ritmo previsto: avançou 6,7 pontos no último mês, com a vantagem praticamente inalterada.')
+      expect(s).not.toContain('Sem recuperação')
+    })
+  })
+
+  describe('crossing the line → acima / abaixo', () => {
+    it('behind → ahead (favourable)', () => {
+      expect(t(63, 60, 48, 4)).toBe('63% executado contra 60% previsto. Tendência favorável: avançou 15 pontos no último mês e passou de 4 pontos abaixo para 3 pontos acima do previsto.')
+    })
+    it('ahead → behind, advanced (singular "1 ponto")', () => {
+      expect(t(50, 54, 49, -3, { stabilityPoints: 0.5 })).toBe('50% executado contra 54% previsto. Tendência desfavorável: avançou 1 ponto no último mês, mas passou de 3 pontos acima para 4 pontos abaixo do previsto.')
+    })
+    it('ahead → behind, stalled', () => {
+      expect(t(50, 54, 50, -3)).toBe('50% executado contra 54% previsto. Tendência desfavorável: praticamente sem avanço no último mês e passou de 3 pontos acima para 4 pontos abaixo do previsto.')
+    })
+  })
+
+  describe('"em linha" — a gap that DISPLAYS as 0', () => {
+    it('from em linha to behind: never "0 pontos abaixo"', () => {
+      const s = t(68.2, 75, 68.2, 0)
+      expect(s).toBe('68,2% executado contra 75% previsto. Tendência desfavorável: praticamente sem avanço no último mês e passou de em linha com o previsto para 6,8 pontos abaixo do previsto.')
+      expect(s).not.toMatch(/(^|[^\d,])0 pontos/)
+    })
+    it('a gap that truncates to 0, on either side, is em linha', () => {
+      const expected = 'passou de em linha com o previsto para 6,8 pontos abaixo do previsto.'
+      expect(t(68.2, 75, 68.2, 0.05)).toContain(expected)
+      expect(t(68.2, 75, 68.2, -0.05)).toContain(expected)
+    })
+    it('from behind to em linha (favourable)', () => {
+      expect(t(59.96, 60, 49.96, 4)).toBe('59,9% executado contra 60% previsto. Tendência favorável: avançou 10 pontos no último mês e passou de 4 pontos abaixo do previsto para em linha com o previsto.')
+    })
+    it('stable at em linha', () => {
+      expect(t(60.05, 60, 53.35, 0.04)).toBe('60% executado contra 60% previsto. Mantém o ritmo previsto: avançou 6,7 pontos no último mês, em linha com o previsto.')
+    })
+  })
+
+  describe('singular and plural', () => {
+    it('"1 ponto" as the size of a lead', () => {
+      expect(t(61, 60, 58, -3)).toBe('61% executado contra 60% previsto. Tendência desfavorável: avançou 3 pontos no último mês, mas a vantagem face ao previsto reduziu-se de 3 para 1 ponto.')
+    })
+    it('"1 ponto" as one end of a crossing', () => {
+      expect(t(63, 60, 52, 1)).toBe('63% executado contra 60% previsto. Tendência favorável: avançou 11 pontos no último mês e passou de 1 ponto abaixo para 3 pontos acima do previsto.')
+    })
+  })
+
+  describe('gaps that display the same read as stable (only reachable with a threshold under 0,2)', () => {
+    it('never "de 6,8 para 6,8"', () => {
+      const s = t(68.2, 75, 55.2, 6.85, { stabilityPoints: 0 })
+      expect(s).toContain('Mantém o ritmo previsto: avançou 13 pontos no último mês, com o desvio praticamente inalterado.')
+      expect(s).not.toContain('de 6,8 para 6,8')
+    })
+    it('never "de em linha … para em linha …"', () => {
+      const s = t(60.05, 60, 53.35, 0.03, { stabilityPoints: 0 })
+      expect(s).toContain('Mantém o ritmo previsto: avançou 6,7 pontos no último mês, em linha com o previsto.')
+      expect(s).not.toContain('passou de em linha')
+    })
+  })
+
+  it('both points behind keep the existing desvio rows', () => {
+    expect(t(68.2, 75, 55.2, 5)).toContain('Tendência desfavorável: avançou 13 pontos no último mês, mas o desvio agravou-se de 5 para 6,8 pontos.')
+    expect(t(68.2, 75, 50.2, 10)).toContain('Tendência favorável: avançou 18 pontos no último mês e o desvio reduziu-se de 10 para 6,8 pontos.')
+  })
+
+  it('no trend clause ever prints a negative number, "0 pontos" or "de 0 para"', () => {
+    const gaps = [-12.3, -5.3, -1, -0.05, 0, 0.05, 1, 5.3, 12.3]
+    const offending: string[] = []
+    for (const prevGap of gaps) {
+      for (const gapNow of gaps) {
+        for (const progress of [-3, -0.5, 0, 0.5, 1, 3, 13]) {
+          for (const stabilityPoints of [-1, 0, 0.5, 1, 3]) {
+            for (const status of ['Em dia', 'Em risco', 'Em atraso']) {
+              const execTarget = 60
+              const execMedia  = execTarget - gapNow
+              const s = t(execMedia, execTarget, execMedia - progress, prevGap, { status, stabilityPoints })
+              if (/-\d/.test(s) || /(^|[^\d,])0 pontos/.test(s) || /\bde 0 para\b/.test(s)) offending.push(s)
+            }
+          }
+        }
+      }
+    }
+    expect(offending).toEqual([])
+  })
+})
+
 // ── Window phrasing ───────────────────────────────────────────
 describe('window phrasing', () => {
   it('the five named periods map to their exact phrase', () => {

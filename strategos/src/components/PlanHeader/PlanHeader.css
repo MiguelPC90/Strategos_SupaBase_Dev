@@ -104,6 +104,7 @@
   .ph-health-green { background: #22c55e; }
   .ph-health-amber { background: #f59e0b; }
   .ph-health-red   { background: #ef4444; }
+  .ph-health-done  { background: var(--status-done); }  /* same token as the Concluída pill */
 
   /* ── Row 3 — people (secondary, deliberately lighter than row 2) ── */
   .ph-people {

@@ -89,9 +89,11 @@ export default function PlanHeader({
         )}
         <span className="ph-meta-item">
           <span className="ph-meta-lbl">Saúde</span>
+          {/* A concluded plano has no health to grade: the dot turns neutral, in the
+              Concluída pill's colour, instead of showing a red/amber/green verdict. */}
           <span
-            className={`ph-health ph-health-${health.level}`}
-            title={health.reasons.join('\n')}
+            className={`ph-health ph-health-${status === 'Concluída' ? 'done' : health.level}`}
+            title={status === 'Concluída' ? 'Plano concluído' : health.reasons.join('\n')}
           />
         </span>
         <span className="ph-meta-item">

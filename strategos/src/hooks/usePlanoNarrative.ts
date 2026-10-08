@@ -91,7 +91,7 @@ export function usePlanoNarrative(
       deadline,
       realFinish,
       today,
-      trend: selectTrendInput(snapshots, planoId, today, windowDays),
+      trend: selectTrendInput(snapshots, planoId, planLeaves, today, windowDays),
       windowDays,
       stabilityPoints,
     })
